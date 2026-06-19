@@ -25,13 +25,13 @@ import { PrismaClient }                  from '@prisma/client';
 import { Role }                          from '@prisma/client';
 import os                                from 'os';
 
-import { tenantScope, requirePlatformAdmin, revokeToken } from '../middleware/tenantScope';
-import { issueImpersonationToken }       from '../services/token.service';
-import { getMessageQueueHealth }         from '../queues/messaging.queue';
-import { syncTierToRedis, TIER_QUOTA, TIER_FEATURES } from '../services/stripe.service';
-import { markBusinessSuspendedInCache, invalidateBusinessCache } from '../middleware/tenantScope';
+import { tenantScope, requirePlatformAdmin, revokeToken } from '../middleware/tenant-scope-middleware';
+import { issueImpersonationToken }       from '../services/token-service';
+import { getMessageQueueHealth }         from '../services/messaging-queue';
+import { syncTierToRedis, TIER_QUOTA, TIER_FEATURES } from '../services/stripe-service';
+import { markBusinessSuspendedInCache, invalidateBusinessCache } from '../middleware/tenant-scope-middleware';
 import { getRedisClient }                from '../config/redis';
-import { purgeCustomerData }             from '../services/gdpr.service';
+import { purgeCustomerData }             from '../services/gdpr-service';
 
 const prisma = new PrismaClient();
 
@@ -875,7 +875,7 @@ const builtinTemplates: Record<string, { subject: string; htmlBody: string; text
     isActive:  true,
   },
   QUOTA_WARNING: {
-    subject:   'Action needed: You've used {{percentUsed}}% of your message quota',
+    subject:   `Action needed: You've used {{percentUsed}}% of your message quota`,
     htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#f59e0b">⚠️ Quota Warning</h2><p>Hi {{name}},</p><p>You've used <strong>{{percentUsed}}%</strong> of your monthly message quota ({{used}} / {{total}} messages).</p><p>Upgrade now to keep your campaigns running without interruption.</p><a href="{{upgradeUrl}}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Upgrade Plan</a></div>`,
     textBody:  `Hi {{name}}, you've used {{percentUsed}}% of your quota ({{used}}/{{total}}). Upgrade at: {{upgradeUrl}}`,
     variables: ['name', 'percentUsed', 'used', 'total', 'upgradeUrl'],

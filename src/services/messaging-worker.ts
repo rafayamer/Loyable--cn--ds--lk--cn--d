@@ -24,11 +24,11 @@ import {
   QUEUE_NAMES,
   pauseTenantQueue,
   isTenantQueuePaused,
-} from '../queues/messaging.queue';
+} from '../services/messaging-queue';
 import {
   routeMessage,
   GatewayResult,
-} from '../gateways/messaging.gateway';
+} from '../services/messaging-gateway';
 import { getRedisConnection } from '../config/redis';
 import { sendEmail }          from '../utils/email.util';
 import type { ConnectionOptions } from 'bullmq';

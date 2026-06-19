@@ -18,7 +18,7 @@ import axios, { AxiosError }  from 'axios';
 import crypto                  from 'crypto';
 import { Router, Request, Response } from 'express';
 import { PrismaClient }        from '@prisma/client';
-import type { MessagePayload, TemplatePayload, TextPayload } from '../queues/messaging.queue';
+import type { MessagePayload, TemplatePayload, TextPayload } from '../services/messaging-queue';
 import { getRedisConnection }  from '../config/redis';
 
 const prisma = new PrismaClient();

@@ -31,7 +31,7 @@ import {
   VideoPayload,
   TemplatePayload,
   MessagePayload,
-} from '../queues/messaging.queue';
+} from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
 

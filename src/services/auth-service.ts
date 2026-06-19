@@ -24,7 +24,7 @@ import {
   performDummyVerify,
   TokenPair,
   AccessTokenPayload,
-} from './token.service';
+} from './token-service';
 import { getRedisClient } from '../config/redis';
 import { sendEmail } from '../utils/email.util';
 import { generateBusinessSlug } from '../utils/slug.util';

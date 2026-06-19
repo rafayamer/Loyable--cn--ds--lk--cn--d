@@ -26,8 +26,8 @@
 import { Request, Response, Router } from 'express';
 import crypto                         from 'crypto';
 import { PrismaClient }               from '@prisma/client';
-import { accruePointsForVisit }       from './loyalty.service';
-import { enqueueAutomationTrigger }   from '../queues/messaging.queue';
+import { accruePointsForVisit }       from '../services/loyalty-service';
+import { enqueueAutomationTrigger }   from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
 

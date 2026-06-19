@@ -31,19 +31,19 @@ import {
   resetPassword,
   inviteStaff,
   acceptStaffInvite,
-} from '../services/auth.service';
+} from '../services/auth-service';
 
 import {
   issueImpersonationToken,
   setRefreshCookie,
   clearRefreshCookie,
-} from '../services/token.service';
+} from '../services/token-service';
 
 import {
   tenantScope,
   requireRoles,
   requirePlatformAdmin,
-} from '../middleware/tenantScope';
+} from '../middleware/tenant-scope-middleware';
 
 import { getRedisClient } from '../config/redis';
 import { PrismaClient }   from '@prisma/client';

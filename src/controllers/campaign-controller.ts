@@ -25,7 +25,7 @@ import {
   pauseCampaign,
   buildMessagePayloadFromLayout,
   CampaignLayout,
-} from '../services/campaign.service';
+} from '../services/campaign-service';
 
 import {
   handleStripeWebhook,
@@ -33,13 +33,13 @@ import {
   createBillingPortalSession,
   getSubscriptionForBusiness,
   hasFeature,
-} from '../services/stripe.service';
+} from '../services/stripe-service';
 
 import {
   tenantScope,
   requireRoles,
   requirePlatformAdmin,
-} from '../middleware/tenantScope';
+} from '../middleware/tenant-scope-middleware';
 
 // ================================================================
 // CAMPAIGN — ZOD SCHEMAS

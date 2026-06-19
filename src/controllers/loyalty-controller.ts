@@ -28,13 +28,13 @@ import {
   upsertTierConfiguration,
   processReferralConversion,
   accruePointsForVisit,
-} from '../services/loyalty.service';
+} from '../services/loyalty-service';
 
 import {
   tenantScope,
   requireRoles,
   getBranchScopedWhere,
-} from '../middleware/tenantScope';
+} from '../middleware/tenant-scope-middleware';
 
 const prisma = new PrismaClient();
 

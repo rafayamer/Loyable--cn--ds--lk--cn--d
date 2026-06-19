@@ -24,7 +24,7 @@
 import { Request, Response, Router } from 'express';
 import { z, ZodError }               from 'zod';
 import { PrismaClient }              from '@prisma/client';
-import { tenantScope, requireRoles } from '../middleware/tenantScope';
+import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { Role }                      from '@prisma/client';
 
 const prisma = new PrismaClient();

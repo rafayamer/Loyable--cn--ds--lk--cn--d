@@ -35,12 +35,12 @@ import {
   getAutomationRuns,
   previewCompile,
   CompilationError,
-} from '../services/automation.service';
+} from '../services/automation-service';
 
 import {
   tenantScope,
   requireRoles,
-} from '../middleware/tenantScope';
+} from '../middleware/tenant-scope-middleware';
 
 // ================================================================
 // ZOD SCHEMAS

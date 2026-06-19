@@ -15,12 +15,12 @@
 // ================================================================
 
 import { PrismaClient, Prisma } from '@prisma/client';
-import { verifyPassword, hashPassword } from './token.service';
+import { verifyPassword, hashPassword } from './token-service';
 import {
   enqueueMessage,
   enqueueAutomationTrigger,
   enqueueOutboundWebhook,
-} from '../queues/messaging.queue';
+} from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
 

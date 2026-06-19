@@ -19,7 +19,7 @@
 import Stripe                  from 'stripe';
 import { PrismaClient }        from '@prisma/client';
 import { getRedisClient }      from '../config/redis';
-import { resumeTenantQueue }   from '../queues/messaging.queue';
+import { resumeTenantQueue }   from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
 

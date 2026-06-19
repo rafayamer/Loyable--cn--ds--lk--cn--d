@@ -20,14 +20,14 @@ import {
   RFGraph,
   CompiledWorkflow,
   CompiledAction,
-}                                            from './automation.compiler';
-import { creditPoints, debitPoints }         from './loyalty.service';
+}                                            from './automation-compiler';
+import { creditPoints, debitPoints }         from './loyalty-service';
 import {
   enqueueMessage,
   enqueueScheduledMessage,
   enqueueAutomationTrigger,
-}                                            from '../queues/messaging.queue';
-import { hashPassword }                      from './token.service';
+}                                            from '../services/messaging-queue';
+import { hashPassword }                      from './token-service';
 
 const prisma = new PrismaClient();
 

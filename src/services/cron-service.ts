@@ -19,8 +19,8 @@
 
 import cron                         from 'node-cron';
 import { PrismaClient, Prisma }     from '@prisma/client';
-import { processBirthdayAutomations } from './loyalty.service';
-import { enqueueAutomationTrigger }   from '../queues/messaging.queue';
+import { processBirthdayAutomations } from './loyalty-service';
+import { enqueueAutomationTrigger }   from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
 

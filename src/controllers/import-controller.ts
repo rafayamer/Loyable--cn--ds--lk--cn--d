@@ -30,7 +30,7 @@ import { Readable }                    from 'stream';
 import { z, ZodError }                 from 'zod';
 import { PrismaClient, Prisma }        from '@prisma/client';
 import { Role }                        from '@prisma/client';
-import { tenantScope, requireRoles }   from '../middleware/tenantScope';
+import { tenantScope, requireRoles }   from '../middleware/tenant-scope-middleware';
 
 const prisma = new PrismaClient();
 
