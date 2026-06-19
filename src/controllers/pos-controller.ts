@@ -18,7 +18,7 @@ export const posRouter = Router();
 
 // ── Helper: get authenticated business ID from middleware context ──
 function getBizId(req: Request): string {
-  return (req as any).businessId as string;
+  return (req as any).tenantContext?.businessId as string;
 }
 
 // ── GET /api/pos/stats ────────────────────────────────────────────

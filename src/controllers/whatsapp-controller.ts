@@ -42,7 +42,7 @@ async function saveWahaConfig(bizId: string, fields: {
 
 // ── GET /api/whatsapp/status ─────────────────────────────────────
 whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): Promise<void> => {
-  const bizId = (req as any).businessId as string;
+  const bizId = ((req as any).tenantContext?.businessId) as string;
 
   const biz = await prisma.business.findUnique({
     where:  { id: bizId },
@@ -83,7 +83,7 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
 
 // ── GET /api/whatsapp/qr ─────────────────────────────────────────
 whatsappRouter.get('/qr', tenantScope, async (req: Request, res: Response): Promise<void> => {
-  const bizId = (req as any).businessId as string;
+  const bizId = ((req as any).tenantContext?.businessId) as string;
 
   const biz = await prisma.business.findUnique({
     where:  { id: bizId },
@@ -110,7 +110,7 @@ const startSchema = z.object({
 });
 
 whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
-  const bizId  = (req as any).businessId as string;
+  const bizId  = ((req as any).tenantContext?.businessId) as string;
 
   try {
     const parsed = startSchema.safeParse(req.body);
@@ -155,7 +155,7 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
 
 // ── POST /api/whatsapp/session/stop ─────────────────────────────
 whatsappRouter.post('/session/stop', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
-  const bizId = (req as any).businessId as string;
+  const bizId = ((req as any).tenantContext?.businessId) as string;
 
   const biz = await prisma.business.findUnique({
     where:  { id: bizId },
@@ -184,7 +184,7 @@ const configSchema = z.object({
 });
 
 whatsappRouter.patch('/config', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
-  const bizId  = (req as any).businessId as string;
+  const bizId  = ((req as any).tenantContext?.businessId) as string;
   const parsed = configSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
@@ -204,7 +204,7 @@ const metaSchema = z.object({
 });
 
 whatsappRouter.patch('/meta', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
-  const bizId  = (req as any).businessId as string;
+  const bizId  = ((req as any).tenantContext?.businessId) as string;
   const parsed = metaSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
