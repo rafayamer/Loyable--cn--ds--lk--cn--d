@@ -699,8 +699,8 @@ const WhatsAppSettingsTab=()=>{
       setTimeout(fetchStatus,2000);
       setTimeout(fetchQr,3000);
     }catch(e:any){
-      const msg=e?.response?.data?.error||e?.response?.data?.message||e?.message||"Failed to start session";
-      alert(msg);
+      // api/index.ts wraps errors as plain Error objects with message from server body
+      alert(e?.message||"Failed to start session");
     }
     finally{setStarting(false);}
   };

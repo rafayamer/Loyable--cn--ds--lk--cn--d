@@ -111,40 +111,44 @@ const startSchema = z.object({
 
 whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
   const bizId  = (req as any).businessId as string;
-  const parsed = startSchema.safeParse(req.body);
-  const body   = parsed.success ? parsed.data : {};
-
-  // Save any config passed in the body first
-  if (body.wahaBaseUrl || body.wahaSessionId || body.wahaApiKey) {
-    await saveWahaConfig(bizId, body);
-  }
-
-  // Re-read from DB (merge body defaults if DB still null)
-  const biz = await prisma.business.findUnique({
-    where:  { id: bizId },
-    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-  });
-
-  const baseUrl   = biz?.wahaBaseUrl   ?? body.wahaBaseUrl   ?? 'http://localhost:3001';
-  const sessionId = biz?.wahaSessionId ?? body.wahaSessionId ?? 'default';
-  const apiKey    = biz?.wahaApiKey    ?? body.wahaApiKey    ?? '';
-
-  // If DB still has no config, persist the defaults now
-  if (!biz?.wahaBaseUrl) {
-    await saveWahaConfig(bizId, { wahaBaseUrl: baseUrl, wahaSessionId: sessionId, wahaApiKey: apiKey, provider: 'WAHA' });
-  }
 
   try {
+    const parsed = startSchema.safeParse(req.body);
+    const body   = parsed.success ? parsed.data : {};
+
+    // Determine config: body values take priority, fall back to DB, then defaults
+    const biz = await prisma.business.findUnique({
+      where:  { id: bizId },
+      select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+    });
+
+    const baseUrl   = body.wahaBaseUrl   ?? biz?.wahaBaseUrl   ?? 'http://localhost:3001';
+    const sessionId = body.wahaSessionId ?? biz?.wahaSessionId ?? 'default';
+    const apiKey    = body.wahaApiKey    ?? biz?.wahaApiKey    ?? '';
+
+    // Always persist the config so subsequent calls work
+    await saveWahaConfig(bizId, {
+      wahaBaseUrl:   baseUrl,
+      wahaSessionId: sessionId,
+      wahaApiKey:    apiKey,
+      provider:      body.provider ?? 'WAHA',
+    });
+
     await WahaGateway.startSession(baseUrl, sessionId, apiKey);
     res.json({ ok: true, baseUrl, sessionId });
+
   } catch (err: any) {
-    // 422 = session already exists (WAHA Core) — that is fine, just get QR
-    const status = err?.response?.status;
-    if (status === 422 || status === 409) {
-      res.json({ ok: true, baseUrl, sessionId, note: 'session_already_exists' });
+    // 422/409 = session already exists — fine, WAHA auto-starts on boot
+    const httpStatus = err?.response?.status ?? err?.status;
+    if (httpStatus === 422 || httpStatus === 409) {
+      res.json({ ok: true, note: 'session_already_exists' });
       return;
     }
-    const msg = err?.response?.data?.message ?? err?.message ?? 'START_FAILED';
+    const msg = err?.response?.data?.message
+      ?? err?.response?.data?.error
+      ?? err?.message
+      ?? 'START_FAILED';
+    console.error('[whatsapp] startSession error:', msg);
     res.status(500).json({ error: msg });
   }
 });
