@@ -463,6 +463,155 @@ const checkVisitMilestone = async (
 };
 
 // ================================================================
+// CUSTOMERS LIST HANDLER
+// ================================================================
+
+const listCustomersHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const q       = (req.query.q as string) ?? '';
+    const segment = (req.query.segment as string) ?? '';
+    const page    = Math.max(1, Number(req.query.page ?? 1));
+    const limit   = Math.min(100, Number(req.query.limit ?? 50));
+    const skip    = (page - 1) * limit;
+
+    const where: any = {
+      businessId,
+      isActive: true,
+      ...(q && {
+        OR: [
+          { fullName: { contains: q, mode: 'insensitive' } },
+          { phone:    { contains: q } },
+          { email:    { contains: q, mode: 'insensitive' } },
+        ],
+      }),
+      ...(segment && { segment }),
+    };
+
+    const [customers, total] = await Promise.all([
+      prisma.customer.findMany({
+        where,
+        orderBy: { lastVisitAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true, fullName: true, whatsappNumber: true, email: true,
+          segment: true, visitCount: true, totalSpend: true,
+          currentPointsBalance: true, currentTierId: true,
+          lastVisitAt: true, createdAt: true, referralCode: true,
+        },
+      }),
+      prisma.customer.count({ where }),
+    ]);
+
+    const mapped = customers.map((c: any) => ({
+      ...c,
+      phone: c.whatsappNumber,
+      pointsBalance: c.currentPointsBalance,
+    }));
+    res.status(200).json({ customers: mapped, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) { handleError(err, res); }
+};
+
+// ================================================================
+// DASHBOARD KPI HANDLER
+// ================================================================
+
+const getDashboardHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const now   = new Date();
+    const d7    = new Date(now.getTime() - 7 * 86_400_000);
+    const d30   = new Date(now.getTime() - 30 * 86_400_000);
+    const d60   = new Date(now.getTime() - 60 * 86_400_000);
+
+    const [
+      totalCustomers, activeCustomers, newThisMonth,
+      revenueResult, prevRevenueResult,
+      msgThisMonth, recentSnapshots, segmentCounts,
+      subscription,
+    ] = await Promise.all([
+      prisma.customer.count({ where: { businessId } }),
+      prisma.customer.count({ where: { businessId, lastVisitAt: { gte: d30 } } }),
+      prisma.customer.count({ where: { businessId, createdAt: { gte: d30 } } }),
+      prisma.visit.aggregate({ where: { businessId, visitedAt: { gte: d30 } }, _sum: { amountSpent: true }, _count: true }),
+      prisma.visit.aggregate({ where: { businessId, visitedAt: { gte: d60, lt: d30 } }, _sum: { amountSpent: true }, _count: true }),
+      prisma.messageQueue.count({ where: { businessId, createdAt: { gte: d30 } } }),
+      prisma.analyticsSnapshot.findMany({
+        where: { businessId, branchLocationId: null, snapshotDate: { gte: d7 } },
+        orderBy: { snapshotDate: 'asc' },
+      }),
+      prisma.customer.groupBy({
+        by: ['segment'], where: { businessId }, _count: { id: true },
+      }),
+      prisma.subscription.findUnique({ where: { businessId }, select: { monthlyMessageQuota: true, messagesUsedThisPeriod: true } }),
+    ]);
+
+    const revenue     = Number(revenueResult._sum?.amountSpent ?? 0);
+    const prevRevenue = Number(prevRevenueResult._sum?.amountSpent ?? 0);
+    const revChange   = prevRevenue ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+    res.status(200).json({
+      kpis: {
+        totalCustomers,
+        activeCustomers,
+        newThisMonth,
+        revenue,
+        revenuePrevMonth: prevRevenue,
+        revenueChange: Math.round(revChange * 10) / 10,
+        visits: revenueResult._count,
+        messagesThisMonth: msgThisMonth,
+        quotaUsed: subscription?.messagesUsedThisPeriod ?? 0,
+        quotaTotal: subscription?.monthlyMessageQuota ?? 0,
+      },
+      visitTrend: recentSnapshots.map(s => ({
+        day:     s.snapshotDate.toISOString().slice(0, 10),
+        visits:  s.totalVisits,
+        revenue: Number(s.totalRevenue ?? 0),
+      })),
+      segments: segmentCounts.map(s => ({ name: s.segment, value: s._count.id })),
+    });
+  } catch (err) { handleError(err, res); }
+};
+
+// ================================================================
+// MESSAGE QUEUE HANDLER
+// ================================================================
+
+const listMessagesHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const status  = (req.query.status as string) ?? '';
+    const limit   = Math.min(100, Number(req.query.limit ?? 50));
+    const page    = Math.max(1, Number(req.query.page ?? 1));
+
+    const where: any = {
+      businessId,
+      ...(status && { status }),
+    };
+
+    const [messages, total] = await Promise.all([
+      prisma.messageQueue.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          customer: { select: { fullName: true, whatsappNumber: true, segment: true } },
+        },
+      }),
+      prisma.messageQueue.count({ where }),
+    ]);
+
+    const mappedMsgs = messages.map((m: any) => ({
+      ...m,
+      customer: m.customer ? { ...m.customer, phone: m.customer.whatsappNumber } : null,
+    }));
+    res.status(200).json({ messages: mappedMsgs, total, page });
+  } catch (err) { handleError(err, res); }
+};
+
+// ================================================================
 // ROUTER ASSEMBLY
 // ================================================================
 
@@ -527,6 +676,27 @@ loyaltyRouter.post(
   '/referral/apply',
   validate(ApplyReferralSchema) as any,
   applyReferralHandler
+);
+
+// Dashboard KPIs
+loyaltyRouter.get(
+  '/dashboard',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  getDashboardHandler
+);
+
+// Customer list
+loyaltyRouter.get(
+  '/customers',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF, Role.CASHIER) as any,
+  listCustomersHandler
+);
+
+// Message queue
+loyaltyRouter.get(
+  '/messages',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  listMessagesHandler
 );
 
 // ================================================================
