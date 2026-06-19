@@ -799,8 +799,10 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
 // ════════════════════════════════════════════════════════════════
 // APP
 // ════════════════════════════════════════════════════════════════
-export default function App(){
-  const [loggedIn,setLoggedIn]=useState(false);const [page,setPage]=useState("dashboard");const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
+export default function App({onLogout}:{onLogout?:()=>void}={}){
+  const [loggedIn,setLoggedIn]=useState(()=>!!localStorage.getItem("accessToken"));
+  const [page,setPage]=useState("dashboard");const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
+  const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
   if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
   const nav=p=>{setPage(p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);};
   const render=()=>{switch(page){
@@ -822,12 +824,12 @@ export default function App(){
   return(
     <div className="min-h-screen" style={{background:"linear-gradient(135deg,#0a0615,#1a0f2e,#0d1525)"}}>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
-      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={()=>setLoggedIn(false)} wa={wa}/></div>
+      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa}/></div>
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(10,6,21,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">C</span></div><span className="text-white font-bold text-sm">Cube Retain</span></div>
         <button onClick={()=>setMobileMenu(!mobileMenu)} className="text-slate-400">{mobileMenu?<X size={20}/>:<Menu size={20}/>}</button>
       </div>
-      {mobileMenu&&<div className="md:hidden fixed inset-0 z-40 pt-14" style={{background:"rgba(10,6,21,0.98)"}}><nav className="p-4 space-y-1">{NAV.map(it=><button key={it.id} onClick={()=>nav(it.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${page===it.id?"text-white":"text-slate-400"}`} style={page===it.id?{background:"rgba(139,92,246,0.15)"}:{}}><it.icon size={18}/>{it.label}</button>)}<button onClick={()=>setLoggedIn(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400"><LogOut size={18}/>Logout</button></nav></div>}
+      {mobileMenu&&<div className="md:hidden fixed inset-0 z-40 pt-14" style={{background:"rgba(10,6,21,0.98)"}}><nav className="p-4 space-y-1">{NAV.map(it=><button key={it.id} onClick={()=>nav(it.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${page===it.id?"text-white":"text-slate-400"}`} style={page===it.id?{background:"rgba(139,92,246,0.15)"}:{}}><it.icon size={18}/>{it.label}</button>)}<button onClick={doLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400"><LogOut size={18}/>Logout</button></nav></div>}
       <main className={`transition-all duration-300 ${col?"md:ml-16":"md:ml-56"} pt-16 md:pt-0`}><div className="p-4 md:p-6 max-w-6xl">{render()}</div></main>
     </div>
   );
