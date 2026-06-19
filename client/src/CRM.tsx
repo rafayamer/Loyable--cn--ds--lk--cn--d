@@ -662,132 +662,115 @@ const WhatsAppSettingsTab=()=>{
   const [qr,setQr]=useState<string|null>(null);
   const [loading,setLoading]=useState(true);
   const [starting,setStarting]=useState(false);
+  const [errMsg,setErrMsg]=useState<string|null>(null);
+  const [showAdvanced,setShowAdvanced]=useState(false);
+  const [cfg,setCfg]=useState({wahaBaseUrl:"",wahaSessionId:"default",wahaApiKey:""});
   const [saving,setSaving]=useState(false);
-  const [cfg,setCfg]=useState({wahaBaseUrl:"http://localhost:3001",wahaSessionId:"default",wahaApiKey:"loyable"});
-  const [meta,setMeta]=useState({metaPhoneNumberId:"",metaAccessToken:"",metaWabaId:""});
-  const [provider,setProvider]=useState<"WAHA"|"META">("WAHA");
-  const [qrInterval,setQrInterval]=useState<any>(null);
-
-  const fetchStatus=async()=>{
-    try{
-      const d=await api.whatsapp.status();
-      setStatus(d);
-      // Populate fields from DB values if present
-      if(d.waha?.baseUrl&&d.waha.baseUrl!=="http://localhost:3001"||d.waha?.sessionId)
-        setCfg(p=>({...p,wahaBaseUrl:d.waha.baseUrl||p.wahaBaseUrl,wahaSessionId:d.waha.sessionId||p.wahaSessionId}));
-      if(d.meta?.phoneNumberId)setMeta(p=>({...p,metaPhoneNumberId:d.meta.phoneNumberId}));
-      if(d.waha?.status==="SCAN_QR_CODE")fetchQr();
-      else if(d.waha?.status!=="WORKING")setQr(null);
-    }catch{}finally{setLoading(false);}
-  };
 
   const fetchQr=async()=>{
     try{const d=await api.whatsapp.qr();if(d?.qr)setQr(d.qr);}catch{}
   };
 
+  const fetchStatus=async()=>{
+    try{
+      const d=await api.whatsapp.status();
+      setStatus(d);
+      if(d.waha?.status==="SCAN_QR_CODE")fetchQr();
+      else if(d.waha?.status==="WORKING")setQr(null);
+    }catch{}finally{setLoading(false);}
+  };
+
   useEffect(()=>{
     fetchStatus();
-    const iv=setInterval(fetchStatus,8000);
-    return()=>{clearInterval(iv);if(qrInterval)clearInterval(qrInterval);};
+    const iv=setInterval(fetchStatus,6000);
+    return()=>clearInterval(iv);
   },[]);
 
-  const startSession=async()=>{
-    setStarting(true);
+  const connect=async()=>{
+    setStarting(true);setErrMsg(null);
     try{
-      // Pass config directly in the start body — server saves+starts in one step
-      await api.whatsapp.startSession({...cfg,provider});
+      const body:any={};
+      if(cfg.wahaBaseUrl)body.wahaBaseUrl=cfg.wahaBaseUrl;
+      if(cfg.wahaApiKey)body.wahaApiKey=cfg.wahaApiKey;
+      if(cfg.wahaSessionId&&cfg.wahaSessionId!=="default")body.wahaSessionId=cfg.wahaSessionId;
+      await api.whatsapp.startSession(body);
       setTimeout(fetchStatus,2000);
-      setTimeout(fetchQr,3000);
-    }catch(e:any){
-      // api/index.ts wraps errors as plain Error objects with message from server body
-      alert(e?.message||"Failed to start session");
-    }
+      setTimeout(fetchQr,3500);
+    }catch(e:any){setErrMsg(e?.message||"Could not connect. Is WAHA running?");}
     finally{setStarting(false);}
   };
 
-  const stopSession=async()=>{
-    try{await api.whatsapp.stopSession();setTimeout(fetchStatus,2000);}catch{}
+  const disconnect=async()=>{
+    try{await api.whatsapp.stopSession();setTimeout(fetchStatus,1500);}catch{}
   };
 
-  const saveCfg=async()=>{
+  const saveAdvanced=async()=>{
     setSaving(true);
-    try{
-      await api.whatsapp.saveConfig({...cfg,provider});
-      if(meta.metaPhoneNumberId||meta.metaAccessToken)await api.whatsapp.saveMeta(meta);
-      await fetchStatus();
-    }catch{}
+    try{await api.whatsapp.saveConfig(cfg);await fetchStatus();}catch{}
     setSaving(false);
   };
 
-  const wahaStatus=status?.waha?.status||"NOT_CONFIGURED";
-  const connected=wahaStatus==="WORKING";
-  const scanning=wahaStatus==="SCAN_QR_CODE";
+  const ws=status?.waha?.status||"NOT_CONFIGURED";
+  const connected=ws==="WORKING";
+  const scanning=ws==="SCAN_QR_CODE";
+  const starting2=ws==="STARTING";
 
-  if(loading)return<Skeleton h="h-64"/>;
+  if(loading)return<Skeleton h="h-48"/>;
 
   return(
     <div className="space-y-5">
-      {/* Provider toggle */}
-      <div>
-        <div className="text-xs text-slate-400 mb-2">WhatsApp Provider</div>
-        <div className="flex gap-2">
-          {(["WAHA","META"] as const).map(p=>(
-            <button key={p} onClick={()=>setProvider(p)} className={`px-4 py-2 rounded-lg text-xs font-medium ${provider===p?"text-white":"text-slate-400"}`} style={provider===p?{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{p==="WAHA"?"WAHA (Self-hosted)":"Meta Cloud API"}</button>
-          ))}
+      {/* Big status card */}
+      <div className="rounded-2xl p-6 text-center" style={{background:connected?"rgba(34,197,94,0.08)":scanning||starting2?"rgba(251,191,36,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${connected?"rgba(34,197,94,0.2)":scanning||starting2?"rgba(251,191,36,0.2)":"rgba(255,255,255,0.08)"}`}}>
+        <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center`} style={{background:connected?"rgba(37,211,102,0.15)":scanning||starting2?"rgba(251,191,36,0.15)":"rgba(255,255,255,0.05)"}}>
+          <WAIcon size={32} className={connected?"text-green-400":scanning||starting2?"text-amber-400":"text-slate-400"}/>
         </div>
+        {connected&&<>
+          <div className="text-lg font-bold text-green-400 mb-1">WhatsApp Connected</div>
+          <div className="text-xs text-slate-400 mb-4">Your WhatsApp is linked and ready to send messages</div>
+          <button onClick={disconnect} className="px-4 py-2 rounded-lg text-xs text-red-400 font-medium" style={{border:"1px solid rgba(239,68,68,0.25)"}}>Disconnect</button>
+        </>}
+        {scanning&&<>
+          <div className="text-lg font-bold text-amber-400 mb-1">Scan QR Code</div>
+          <div className="text-xs text-slate-400 mb-4">Open WhatsApp on your phone → tap <strong>Linked Devices</strong> → <strong>Link a Device</strong></div>
+          <div className="flex justify-center mb-3">
+            {qr
+              ?<img src={qr} alt="WhatsApp QR" className="w-52 h-52 rounded-xl bg-white p-2"/>
+              :<div className="w-52 h-52 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={28} className="text-slate-500 animate-spin"/></div>
+            }
+          </div>
+          <button onClick={fetchQr} className="text-xs text-violet-400 flex items-center gap-1 mx-auto"><RefreshCw size={10}/>Refresh QR</button>
+        </>}
+        {starting2&&<>
+          <div className="text-lg font-bold text-amber-400 mb-1">Starting…</div>
+          <div className="text-xs text-slate-400">WhatsApp is initialising, QR code will appear shortly</div>
+        </>}
+        {!connected&&!scanning&&!starting2&&<>
+          <div className="text-lg font-bold text-white mb-1">Connect WhatsApp</div>
+          <div className="text-xs text-slate-400 mb-5">Link your WhatsApp number to start sending loyalty messages, campaigns, and automations</div>
+          {errMsg&&<div className="mb-3 text-xs text-red-400 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.1)"}}>{errMsg}</div>}
+          <button onClick={connect} disabled={starting} className="flex items-center gap-2 mx-auto px-6 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>
+            {starting?<RefreshCw size={16} className="animate-spin"/>:<WAIcon size={16}/>}
+            {starting?"Connecting…":"Connect WhatsApp"}
+          </button>
+        </>}
       </div>
 
-      {/* WAHA section */}
-      {provider==="WAHA"&&(
-        <div className="space-y-4">
-          {/* Status banner */}
-          <div className={`flex items-center gap-3 p-3 rounded-xl`} style={{background:connected?"rgba(34,197,94,0.1)":scanning?"rgba(251,191,36,0.1)":"rgba(239,68,68,0.08)",border:`1px solid ${connected?"rgba(34,197,94,0.2)":scanning?"rgba(251,191,36,0.2)":"rgba(239,68,68,0.15)"}`}}>
-            <WAIcon size={18} className={connected?"text-green-400":scanning?"text-amber-400":"text-red-400"}/>
-            <div className="flex-1">
-              <div className={`text-sm font-medium ${connected?"text-green-400":scanning?"text-amber-400":"text-red-400"}`}>{connected?"Connected — WhatsApp active":scanning?"Scan QR code with WhatsApp":"Disconnected"}</div>
-              <div className="text-xs text-slate-400 font-mono">{wahaStatus}</div>
-            </div>
-            {connected&&<button onClick={stopSession} className="text-xs text-red-400 px-3 py-1.5 rounded-lg" style={{border:"1px solid rgba(239,68,68,0.2)"}}>Disconnect</button>}
-            {!connected&&!scanning&&<button onClick={startSession} disabled={starting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{starting?<RefreshCw size={10} className="animate-spin"/>:<WAIcon size={10}/>}Connect</button>}
-          </div>
-
-          {/* QR Code */}
-          {scanning&&(
-            <div className="flex flex-col items-center gap-3 p-5 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.08)"}}>
-              <div className="text-xs text-slate-300 font-medium">Open WhatsApp → Linked Devices → Link a device</div>
-              {qr?<img src={qr} alt="WhatsApp QR" className="w-48 h-48 rounded-xl" style={{imageRendering:"pixelated"}}/>:<div className="w-48 h-48 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.03)"}}><RefreshCw size={24} className="text-slate-500 animate-spin"/></div>}
-              <button onClick={fetchQr} className="text-xs text-violet-400 flex items-center gap-1"><RefreshCw size={10}/>Refresh QR</button>
-            </div>
-          )}
-
-          {/* WAHA Config */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[{l:"WAHA Base URL",k:"wahaBaseUrl",ph:"http://localhost:3001"},{l:"Session Name",k:"wahaSessionId",ph:"default"},{l:"API Key",k:"wahaApiKey",ph:"loyable",type:"password"}].map(f=>(
-              <div key={f.k}>
-                <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
-                <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-              </div>
-            ))}
-          </div>
-          <div className="p-3 rounded-lg text-xs text-amber-300" style={{background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.15)"}}>
-            <strong>WAHA Core note:</strong> Session name must be <code className="font-mono bg-white/10 px-1 rounded">default</code> (free tier supports only one session).
-          </div>
-        </div>
-      )}
-
-      {/* Meta section */}
-      {provider==="META"&&(
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[{l:"Phone Number ID",k:"metaPhoneNumberId",ph:"944772475375221"},{l:"Access Token",k:"metaAccessToken",ph:"EAAQ...",type:"password"},{l:"WABA ID",k:"metaWabaId",ph:"827360646830020"}].map(f=>(
+      {/* Advanced config — collapsed by default */}
+      <div>
+        <button onClick={()=>setShowAdvanced(v=>!v)} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
+          <RefreshCw size={10}/>{showAdvanced?"Hide":"Show"} advanced settings
+        </button>
+        {showAdvanced&&<div className="mt-3 space-y-3 p-4 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+          <div className="text-xs text-slate-400 mb-2">Override WAHA server defaults (leave blank to use server config)</div>
+          {[{l:"WAHA Base URL",k:"wahaBaseUrl",ph:"http://localhost:3001"},{l:"Session Name",k:"wahaSessionId",ph:"default"},{l:"API Key",k:"wahaApiKey",ph:"••••••",type:"password"}].map(f=>(
             <div key={f.k}>
               <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
-              <input value={(meta as any)[f.k]||""} type={f.type||"text"} onChange={e=>setMeta(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
             </div>
           ))}
-        </div>
-      )}
-
-      <button onClick={saveCfg} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Configuration"}</button>
+          <button onClick={saveAdvanced} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"rgba(139,92,246,0.3)"}}>{saving?"Saving…":"Save"}</button>
+        </div>}
+      </div>
     </div>
   );
 };

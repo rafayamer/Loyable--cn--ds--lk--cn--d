@@ -58,13 +58,10 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
   if (!biz) { res.status(404).json({ error: 'BUSINESS_NOT_FOUND' }); return; }
 
   let wahaStatus: string = 'NOT_CONFIGURED';
-  if (biz.wahaBaseUrl && biz.wahaSessionId) {
-    wahaStatus = await WahaGateway.getStatus(
-      biz.wahaBaseUrl,
-      biz.wahaSessionId,
-      biz.wahaApiKey ?? ''
-    );
-  }
+  const wahaBase = biz.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
+  const wahaSess = biz.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
+  const wahaKey  = biz.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
+  wahaStatus = await WahaGateway.getStatus(wahaBase, wahaSess, wahaKey);
 
   res.json({
     waha: {
@@ -90,9 +87,9 @@ whatsappRouter.get('/qr', tenantScope, async (req: Request, res: Response): Prom
     select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
   });
 
-  const baseUrl   = biz?.wahaBaseUrl   ?? 'http://localhost:3001';
-  const sessionId = biz?.wahaSessionId ?? 'default';
-  const apiKey    = biz?.wahaApiKey    ?? '';
+  const baseUrl   = biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
+  const sessionId = biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
+  const apiKey    = biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
 
   const qr = await WahaGateway.getQrCode(baseUrl, sessionId, apiKey);
   if (!qr) { res.status(503).json({ error: 'QR_NOT_AVAILABLE' }); return; }
@@ -122,9 +119,9 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
       select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
     });
 
-    const baseUrl   = body.wahaBaseUrl   ?? biz?.wahaBaseUrl   ?? 'http://localhost:3001';
-    const sessionId = body.wahaSessionId ?? biz?.wahaSessionId ?? 'default';
-    const apiKey    = body.wahaApiKey    ?? biz?.wahaApiKey    ?? '';
+    const baseUrl   = body.wahaBaseUrl   ?? biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
+    const sessionId = body.wahaSessionId ?? biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
+    const apiKey    = body.wahaApiKey    ?? biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
 
     // Always persist the config so subsequent calls work
     await saveWahaConfig(bizId, {
