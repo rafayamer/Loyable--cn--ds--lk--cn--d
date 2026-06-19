@@ -384,6 +384,14 @@ export const WahaGateway = {
       }
       throw err;
     }
+
+    // WAHA initialises sessions asynchronously — GET /api/sessions/:id returns 404
+    // for ~2 seconds after POST 201. Poll until the session is visible.
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 600));
+      const s = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
+      if (s !== 'STOPPED') break;
+    }
   },
 
   stopSession: async (
