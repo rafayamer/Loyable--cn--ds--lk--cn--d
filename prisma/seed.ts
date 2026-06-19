@@ -28,13 +28,22 @@ async function main() {
   // ── Demo tenant ──────────────────────────────────────────────────
   const demoBusiness = await prisma.business.upsert({
     where:  { slug: 'the-coffee-house' },
-    update: {},
+    update: {
+      wahaBaseUrl:      'http://localhost:3001',
+      wahaSessionId:    'default',
+      wahaApiKey:       'loyable',
+      whatsappProvider: 'WAHA',
+    },
     create: {
       name: 'The Coffee House', slug: 'the-coffee-house',
       industry: 'Café & Restaurant', country: 'GB',
       timezone: 'Europe/London', currency: 'GBP',
       loyalDaysWindow: 7, irregularGapDays: 14, lostDaysThreshold: 60,
       messageCooldownHours: 72,
+      wahaBaseUrl:      'http://localhost:3001',
+      wahaSessionId:    'default',
+      wahaApiKey:       'loyable',
+      whatsappProvider: 'WAHA',
     },
   });
 

@@ -6,6 +6,7 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { initRedis } from './config/redis';
 import { initRedis as initTenantRedis } from './middleware/tenant-scope-middleware';
+import { wahaWebhookRouter } from './services/messaging-gateway';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -47,6 +48,10 @@ async function bootstrap() {
   await loadRouter('./controllers/ai-bi-controller',      'aiBiRouter',        '/api/ai');
   await loadRouter('./controllers/pos-controller',        'posRouter',         '/api/pos');
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
+  await loadRouter('./controllers/whatsapp-controller',  'whatsappRouter',    '/api/whatsapp');
+
+  // WAHA inbound webhook (not behind tenantScope — WAHA posts here directly)
+  app.use('/api/webhooks/waha', wahaWebhookRouter);
 
   // ── Serve React frontend ──────────────────────────────────────
   const fs         = await import('fs');

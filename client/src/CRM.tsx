@@ -651,6 +651,136 @@ const AnalyticsPage=()=>{
 // ════════════════════════════════════════════════════════════════
 // SETTINGS
 // ════════════════════════════════════════════════════════════════
+const WhatsAppSettingsTab=()=>{
+  const [status,setStatus]=useState<any>(null);
+  const [qr,setQr]=useState<string|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [starting,setStarting]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [cfg,setCfg]=useState({wahaBaseUrl:"http://localhost:3001",wahaSessionId:"default",wahaApiKey:"loyable"});
+  const [meta,setMeta]=useState({metaPhoneNumberId:"",metaAccessToken:"",metaWabaId:""});
+  const [provider,setProvider]=useState<"WAHA"|"META">("WAHA");
+  const [qrInterval,setQrInterval]=useState<any>(null);
+
+  const fetchStatus=async()=>{
+    try{
+      const d=await api.whatsapp.status();
+      setStatus(d);
+      setProvider(d.provider||"WAHA");
+      if(d.waha?.baseUrl)setCfg(p=>({...p,wahaBaseUrl:d.waha.baseUrl,wahaSessionId:d.waha.sessionId||"default"}));
+      if(d.meta?.phoneNumberId)setMeta(p=>({...p,metaPhoneNumberId:d.meta.phoneNumberId}));
+      if(d.waha?.status==="SCAN_QR_CODE"){fetchQr();}
+      else{setQr(null);}
+    }catch{}finally{setLoading(false);}
+  };
+
+  const fetchQr=async()=>{
+    try{const d=await api.whatsapp.qr();if(d?.qr)setQr(d.qr);}catch{}
+  };
+
+  useEffect(()=>{
+    fetchStatus();
+    const iv=setInterval(fetchStatus,8000);
+    return()=>{clearInterval(iv);if(qrInterval)clearInterval(qrInterval);};
+  },[]);
+
+  const startSession=async()=>{
+    setStarting(true);
+    try{
+      await api.whatsapp.saveConfig({...cfg,provider});
+      await api.whatsapp.startSession();
+      setTimeout(fetchStatus,2000);
+    }catch(e:any){alert(e?.response?.data?.error||"Failed to start session");}
+    finally{setStarting(false);}
+  };
+
+  const stopSession=async()=>{
+    try{await api.whatsapp.stopSession();setTimeout(fetchStatus,2000);}catch{}
+  };
+
+  const saveCfg=async()=>{
+    setSaving(true);
+    try{
+      await api.whatsapp.saveConfig({...cfg,provider});
+      if(meta.metaPhoneNumberId||meta.metaAccessToken)await api.whatsapp.saveMeta(meta);
+      await fetchStatus();
+    }catch{}
+    setSaving(false);
+  };
+
+  const wahaStatus=status?.waha?.status||"NOT_CONFIGURED";
+  const connected=wahaStatus==="WORKING";
+  const scanning=wahaStatus==="SCAN_QR_CODE";
+
+  if(loading)return<Skeleton h="h-64"/>;
+
+  return(
+    <div className="space-y-5">
+      {/* Provider toggle */}
+      <div>
+        <div className="text-xs text-slate-400 mb-2">WhatsApp Provider</div>
+        <div className="flex gap-2">
+          {(["WAHA","META"] as const).map(p=>(
+            <button key={p} onClick={()=>setProvider(p)} className={`px-4 py-2 rounded-lg text-xs font-medium ${provider===p?"text-white":"text-slate-400"}`} style={provider===p?{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{p==="WAHA"?"WAHA (Self-hosted)":"Meta Cloud API"}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* WAHA section */}
+      {provider==="WAHA"&&(
+        <div className="space-y-4">
+          {/* Status banner */}
+          <div className={`flex items-center gap-3 p-3 rounded-xl`} style={{background:connected?"rgba(34,197,94,0.1)":scanning?"rgba(251,191,36,0.1)":"rgba(239,68,68,0.08)",border:`1px solid ${connected?"rgba(34,197,94,0.2)":scanning?"rgba(251,191,36,0.2)":"rgba(239,68,68,0.15)"}`}}>
+            <WAIcon size={18} className={connected?"text-green-400":scanning?"text-amber-400":"text-red-400"}/>
+            <div className="flex-1">
+              <div className={`text-sm font-medium ${connected?"text-green-400":scanning?"text-amber-400":"text-red-400"}`}>{connected?"Connected — WhatsApp active":scanning?"Scan QR code with WhatsApp":"Disconnected"}</div>
+              <div className="text-xs text-slate-400 font-mono">{wahaStatus}</div>
+            </div>
+            {connected&&<button onClick={stopSession} className="text-xs text-red-400 px-3 py-1.5 rounded-lg" style={{border:"1px solid rgba(239,68,68,0.2)"}}>Disconnect</button>}
+            {!connected&&!scanning&&<button onClick={startSession} disabled={starting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{starting?<RefreshCw size={10} className="animate-spin"/>:<WAIcon size={10}/>}Connect</button>}
+          </div>
+
+          {/* QR Code */}
+          {scanning&&(
+            <div className="flex flex-col items-center gap-3 p-5 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.08)"}}>
+              <div className="text-xs text-slate-300 font-medium">Open WhatsApp → Linked Devices → Link a device</div>
+              {qr?<img src={qr} alt="WhatsApp QR" className="w-48 h-48 rounded-xl" style={{imageRendering:"pixelated"}}/>:<div className="w-48 h-48 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.03)"}}><RefreshCw size={24} className="text-slate-500 animate-spin"/></div>}
+              <button onClick={fetchQr} className="text-xs text-violet-400 flex items-center gap-1"><RefreshCw size={10}/>Refresh QR</button>
+            </div>
+          )}
+
+          {/* WAHA Config */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[{l:"WAHA Base URL",k:"wahaBaseUrl",ph:"http://localhost:3001"},{l:"Session Name",k:"wahaSessionId",ph:"default"},{l:"API Key",k:"wahaApiKey",ph:"loyable",type:"password"}].map(f=>(
+              <div key={f.k}>
+                <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
+                <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 rounded-lg text-xs text-amber-300" style={{background:"rgba(251,191,36,0.08)",border:"1px solid rgba(251,191,36,0.15)"}}>
+            <strong>WAHA Core note:</strong> Session name must be <code className="font-mono bg-white/10 px-1 rounded">default</code> (free tier supports only one session).
+          </div>
+        </div>
+      )}
+
+      {/* Meta section */}
+      {provider==="META"&&(
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[{l:"Phone Number ID",k:"metaPhoneNumberId",ph:"944772475375221"},{l:"Access Token",k:"metaAccessToken",ph:"EAAQ...",type:"password"},{l:"WABA ID",k:"metaWabaId",ph:"827360646830020"}].map(f=>(
+            <div key={f.k}>
+              <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
+              <input value={(meta as any)[f.k]||""} type={f.type||"text"} onChange={e=>setMeta(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button onClick={saveCfg} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Configuration"}</button>
+    </div>
+  );
+};
+
 const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
@@ -660,11 +790,7 @@ const SettingsPage=({wa,onConnect})=>{
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
       <div className="rounded-xl p-5" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>
         {tab==="business"&&<div className="space-y-4"><div className="flex items-center gap-4 mb-2"><div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">TC</span></div><div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[{l:"Business Name",v:"The Coffee House"},{l:"Industry",v:"Café & Restaurant"},{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div><button className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button></div>}
-        {tab==="whatsapp"&&<div className="space-y-4">
-          {wa?<div className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.2)"}}><WAIcon size={18} className="text-green-400"/><div className="flex-1"><div className="text-sm font-medium text-green-400">Connected — BullMQ worker active</div><div className="text-xs text-slate-400">+44 20 7946 0958 · Meta Cloud API v20.0</div></div><button className="text-xs text-red-400 px-2 py-1 rounded" style={{border:"1px solid rgba(239,68,68,0.2)"}}>Disconnect</button></div>:<button onClick={onConnect} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={14} className="text-white"/>Connect Meta Account</button>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[{l:"Meta Phone Number ID",v:"944772475375221"},{l:"Meta WABA ID",v:"827360646830020"},{l:"API Version",v:"v20.0"},{l:"Access Token (Argon2 encrypted)",v:"EAAQnz1r2zzw...",type:"password"},{l:"Thank-You Template",v:"thank_you_template"},{l:"Miss-You Template",v:"we_miss_you_template"},{l:"Template Language",v:"en_US"},{l:"WAHA Base URL",v:"https://waha.your-server.com"},{l:"WAHA Session ID",v:"the-coffee-house"},{l:"Test Override Number",v:"+923088581919"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} type={f.type||"text"} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div>
-          <div className="flex flex-wrap gap-2">{[{l:"Provider",v:"META",c:C.blue},{l:"Test Mode",v:"OFF (Live)",c:C.red},{l:"Batch Size",v:"200 msg/s",c:C.green},{l:"Cooldown",v:"72h",c:C.amber}].map((s,i)=><div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}><span className="text-slate-400">{s.l}:</span><span className="font-medium" style={{color:s.c}}>{s.v}</span></div>)}</div>
-        </div>}
+        {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
           <div className="text-xs text-slate-400 mb-2">6-tier RBAC from Prisma Role enum · tenantScope.ts middleware enforces branch isolation</div>
           {[{name:"Alex Thompson",role:"TENANT_OWNER",email:"alex@coffeehouse.com",branch:"All branches"},{name:"Maria Garcia",role:"BRANCH_MANAGER",email:"maria@coffeehouse.com",branch:"Soho Branch"},{name:"Tom Wilson",role:"CASHIER",email:"tom@coffeehouse.com",branch:"Soho Branch"},{name:"Lisa Park",role:"MARKETING_STAFF",email:"lisa@coffeehouse.com",branch:"All branches"}].map((m,i)=>(

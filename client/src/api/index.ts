@@ -34,7 +34,8 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const get  = <T>(path: string) => req<T>(path);
 const post = <T>(path: string, body?: unknown) => req<T>(path, { method: 'POST', body: JSON.stringify(body) });
-const put  = <T>(path: string, body?: unknown) => req<T>(path, { method: 'PUT',  body: JSON.stringify(body) });
+const put   = <T>(path: string, body?: unknown) => req<T>(path, { method: 'PUT',   body: JSON.stringify(body) });
+const patch = <T>(path: string, body?: unknown) => req<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
 const del  = <T>(path: string, body?: unknown) => req<T>(path, { method: 'DELETE', body: JSON.stringify(body) });
 
 // ── Auth ──────────────────────────────────────────────────────────
@@ -117,6 +118,16 @@ export const api = {
   settings: {
     get:    () => get<any>('/auth/me'),
     update: (body: any) => put<any>('/auth/me', body),
+  },
+
+  // ── WhatsApp / WAHA ───────────────────────────────────────────
+  whatsapp: {
+    status:       () => get<any>('/whatsapp/status'),
+    qr:           () => get<any>('/whatsapp/qr'),
+    startSession: () => post<any>('/whatsapp/session/start', {}),
+    stopSession:  () => post<any>('/whatsapp/session/stop', {}),
+    saveConfig:   (body: any) => patch<any>('/whatsapp/config', body),
+    saveMeta:     (body: any) => patch<any>('/whatsapp/meta', body),
   },
 
   // ── POS & FBR ─────────────────────────────────────────────────

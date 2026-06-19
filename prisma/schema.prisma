@@ -156,6 +156,7 @@ model Business {
   metaAccessToken      String?           // Stored encrypted at rest
 
   // WAHA self-hosted credentials
+  whatsappProvider     String?             @default("WAHA")  // "META" | "WAHA"
   wahaBaseUrl          String?
   wahaSessionId        String?
   wahaApiKey           String?
