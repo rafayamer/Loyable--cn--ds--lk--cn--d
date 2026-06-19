@@ -290,11 +290,12 @@ const MetaWizard=({onDone,onClose})=>{
   );
 };
 
-const MessagesPage=({wa,onConnect}:{wa:boolean,onConnect:()=>void})=>{
+const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const [messages,setMessages]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [statusFilter,setStatusFilter]=useState("ALL");
   const [total,setTotal]=useState(0);
+  const [waStatus,setWaStatus]=useState<string>("CHECKING");
   const statuses=["ALL","SENT","DELIVERED","READ","PENDING","QUEUED","FAILED","DROPPED_COOLDOWN","DROPPED_QUOTA","CONSENT_REVOKED"];
   const load=useCallback(()=>{
     setLoading(true);
@@ -302,22 +303,27 @@ const MessagesPage=({wa,onConnect}:{wa:boolean,onConnect:()=>void})=>{
     if(statusFilter!=="ALL")params.status=statusFilter;
     api.messages.list(params).then(d=>{setMessages(d.messages??[]);setTotal(d.total??0);}).catch(()=>{}).finally(()=>setLoading(false));
   },[statusFilter]);
-  useEffect(()=>{load();},[load]);
-  if(!wa)return(
-    <div className="space-y-4"><div><h1 className="text-xl font-bold text-white">Messages</h1></div>
-      <div className="rounded-2xl p-8 flex flex-col items-center justify-center text-center" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)",minHeight:400}}>
-        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-4" style={{background:"rgba(37,211,102,0.1)"}}><WAIcon size={40} className="text-green-400"/></div>
-        <h2 className="text-xl font-bold text-white mb-2">Connect WhatsApp Business</h2><p className="text-sm text-slate-400 max-w-sm mb-6">All messages route through BullMQ — rate-limited, cooldown-checked, GDPR-compliant.</p>
-        <button onClick={onConnect} className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={18} className="text-white"/>Connect Meta Account</button>
-        <div className="flex flex-wrap justify-center gap-3 mt-4 text-xs text-slate-500">{["Meta Cloud API","WAHA Self-hosted","Consent checks","72h cooldown","GDPR opt-out"].map((f,i)=><span key={i} className="flex items-center gap-1"><Check size={10} className="text-green-500"/>{f}</span>)}</div>
-      </div></div>
-  );
+  useEffect(()=>{
+    load();
+    api.whatsapp.status().then(d=>setWaStatus(d?.waha?.status??d?.meta?.configured?"META_OK":"NOT_CONFIGURED")).catch(()=>setWaStatus("NOT_CONFIGURED"));
+  },[load]);
+  const connected=waStatus==="WORKING"||waStatus==="META_OK";
   const byStatus=Object.entries(STATUS_COLORS).map(([s,c])=>({s,c,n:messages.filter(m=>m.status===s).length})).filter(x=>x.n>0);
   return(
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div><h1 className="text-xl font-bold text-white">Messages</h1><p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5"><span className="w-2 h-2 rounded-full bg-green-400"/>Meta WhatsApp connected · BullMQ active · {total} total</p></div>
-        <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={13}/>Refresh</button>
+        <div>
+          <h1 className="text-xl font-bold text-white">Messages</h1>
+          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+            <span className={`w-2 h-2 rounded-full ${connected?"bg-green-400":waStatus==="SCAN_QR_CODE"?"bg-amber-400":"bg-red-400"}`}/>
+            {connected?"WhatsApp connected · BullMQ active":waStatus==="SCAN_QR_CODE"?"Scan QR code in Settings → WhatsApp API":"WhatsApp not connected"}
+            {" "}· {total} total
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!connected&&<button onClick={onConnect} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12}/>Connect WhatsApp</button>}
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={13}/>Refresh</button>
+        </div>
       </div>
       <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       {byStatus.length>0&&<div className="flex flex-wrap gap-2">{byStatus.map(({s,c,n})=><div key={s} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{background:c+"14",border:`1px solid ${c}30`}}><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-300">{s}</span><span className="font-bold ml-1" style={{color:c}}>{n}</span></div>)}</div>}
@@ -1277,6 +1283,12 @@ const POSPage=()=>{
 export default function App({onLogout}:{onLogout?:()=>void}={}){
   const [loggedIn,setLoggedIn]=useState(()=>!!localStorage.getItem("accessToken"));
   const [page,setPage]=useState("dashboard");const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
+  useEffect(()=>{
+    const check=()=>api.whatsapp.status().then(d=>{setWa(d?.waha?.status==="WORKING"||!!(d?.meta?.configured));}).catch(()=>{});
+    check();
+    const iv=setInterval(check,15000);
+    return()=>clearInterval(iv);
+  },[]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
   if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
   const nav=p=>{setPage(p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);};
@@ -1285,7 +1297,7 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     case"customers":return<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
     case"profile":return selC?<CustomerProfile customer={selC} onBack={()=>nav("customers")} onMsg={c=>{setSelC(c);setPage("messages");}}/>:<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
     case"pos":return<POSPage/>;
-    case"messages":return<MessagesPage wa={wa} onConnect={()=>setShowWA(true)}/>;
+    case"messages":return<MessagesPage onConnect={()=>setPage("settings")}/>;
     case"campaigns":return<CampaignsPage onBuilder={()=>setPage("campaign-builder")}/>;
     case"campaign-builder":return<CampaignBuilderPage onBack={()=>setPage("campaigns")}/>;
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
@@ -1294,7 +1306,7 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
     case"analytics":return<AnalyticsPage/>;
-    case"settings":return<SettingsPage wa={wa} onConnect={()=>setShowWA(true)}/>;
+    case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
   return(
