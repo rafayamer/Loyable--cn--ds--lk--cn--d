@@ -402,10 +402,10 @@ export const WahaGateway = {
     apiKey:      string
   ): Promise<string | null> => {
     try {
-      // Try image format first (returns PNG binary)
+      // Try image format first (returns PNG binary). Cache-bust with timestamp so WAHA generates a fresh QR each call.
       const r = await axios.get(`${wahaBaseUrl}/api/${sessionId}/auth/qr`, {
         headers:      { 'X-Api-Key': apiKey },
-        params:       { format: 'image' },
+        params:       { format: 'image', _t: Date.now() },
         responseType: 'arraybuffer',
         timeout:      5_000,
       });

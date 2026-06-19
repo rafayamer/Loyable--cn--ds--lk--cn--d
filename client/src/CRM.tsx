@@ -772,6 +772,14 @@ const WhatsAppSettingsTab=()=>{
     return()=>clearInterval(iv);
   },[]);
 
+  // Refresh QR every 15s while in scan state so it never goes stale
+  const wsStatus=status?.waha?.status;
+  useEffect(()=>{
+    if(wsStatus!=="SCAN_QR_CODE")return;
+    const qrIv=setInterval(fetchQr,15000);
+    return()=>clearInterval(qrIv);
+  },[wsStatus]);
+
   const connect=async()=>{
     setStarting(true);setErrMsg(null);
     try{
