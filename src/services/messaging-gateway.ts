@@ -250,8 +250,8 @@ export const WahaGateway = {
     }
     try {
       const response = await axios.post(
-        `${wahaBaseUrl}/api/sendText`,
-        { session: sessionId, chatId, text },
+        `${wahaBaseUrl}/api/${sessionId}/sendText`,
+        { chatId, text },
         { headers: { 'X-Api-Key': apiKey }, timeout: WAHA_TIMEOUT_MS }
       );
       return { success: true, messageId: response.data?.id, httpStatus: response.status };
