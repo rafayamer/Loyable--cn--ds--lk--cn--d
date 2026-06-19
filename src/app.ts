@@ -5,12 +5,14 @@ import cors from 'cors';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { initRedis } from './config/redis';
+import { initRedis as initTenantRedis } from './middleware/tenant-scope-middleware';
 
 const prisma = new PrismaClient();
 const app = express();
 
 async function bootstrap() {
   await initRedis();
+  await initTenantRedis();
   await prisma.$queryRaw`SELECT 1`;
 
   app.use(helmet({ contentSecurityPolicy: false }));
