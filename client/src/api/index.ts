@@ -118,4 +118,17 @@ export const api = {
     get:    () => get<any>('/auth/me'),
     update: (body: any) => put<any>('/auth/me', body),
   },
+
+  // ── POS & FBR ─────────────────────────────────────────────────
+  pos: {
+    stats:      () => get<any>('/pos/stats'),
+    sales:      (params?: any) => {
+      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/pos/sales${qs}`);
+    },
+    sale:       (id: string)   => get<any>(`/pos/sale/${id}`),
+    createSale: (body: any)    => post<any>('/pos/sale', body),
+    retryFbr:   (id: string)   => post<any>(`/pos/sale/${id}/fbr-retry`, {}),
+    receipt:    (id: string)   => `/api/pos/receipt/${id}`,
+  },
 };

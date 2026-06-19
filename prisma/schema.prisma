@@ -170,6 +170,14 @@ model Business {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
+  // FBR / POS integration
+  fbrPosId             Int?              // FBR POS ID assigned by FBR
+  fbrToken             String?           // FBR PRAL API token
+  ntn                  String?           // National Tax Number
+  strn                 String?           // Sales Tax Registration Number
+  gstRate              Float             @default(17) // GST percentage
+  fbrEnabled           Boolean           @default(false)
+
   // Relations
   branches             BranchLocation[]
   users                User[]
@@ -349,6 +357,13 @@ model Visit {
   notes            String?
   visitedAt        DateTime        @default(now())
   createdAt        DateTime        @default(now())
+
+  // FBR e-invoicing fields
+  fbrInvoiceNumber String?         // FBR-assigned invoice number
+  fbrQrCode        String?         // FBR verification QR URL
+  fbrSubmittedAt   DateTime?       // When invoice was sent to FBR
+  gstAmount        Decimal?        @db.Decimal(10, 2)  // GST charged
+  paymentMode      String?         // CASH | CARD | WALLET
 
   customer         Customer        @relation(fields: [customerId], references: [id])
   branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])

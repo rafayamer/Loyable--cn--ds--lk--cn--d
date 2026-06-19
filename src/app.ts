@@ -43,6 +43,7 @@ async function bootstrap() {
   await loadRouter('./controllers/import-controller',     'importRouter',      '/api/import');
   await loadRouter('./controllers/webhook-pos',           'posWebhookRouter',  '/api/webhooks/pos');
   await loadRouter('./controllers/ai-bi-controller',      'aiBiRouter',        '/api/ai');
+  await loadRouter('./controllers/pos-controller',        'posRouter',         '/api/pos');
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
 
   // ── Serve React frontend ──────────────────────────────────────
