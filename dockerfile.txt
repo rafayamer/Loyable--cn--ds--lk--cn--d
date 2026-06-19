@@ -1,0 +1,173 @@
+# ================================================================
+# FILE: Dockerfile
+# Multi-stage build — production image ~200MB
+# ================================================================
+
+# ── Stage 1: Build ───────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies first (cache layer)
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --ignore-scripts
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source and compile TypeScript
+COPY tsconfig.json ./
+COPY src ./src/
+RUN npm run build
+
+# ── Stage 2: Production runtime ──────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 api
+
+# Production dependencies only
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev --ignore-scripts && \
+    npx prisma generate && \
+    npm cache clean --force
+
+# Copy compiled output from builder
+COPY --from=builder /app/dist ./dist
+
+# Run as non-root
+USER api
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:4000/health || exit 1
+
+CMD ["node", "dist/app.js"]
+
+
+# ================================================================
+# FILE: .dockerignore
+# ================================================================
+
+# (save as .dockerignore in project root)
+#
+# node_modules
+# dist
+# .env
+# .env.*
+# !.env.example
+# *.log
+# .git
+# .gitignore
+# README.md
+# coverage
+# .nyc_output
+# prisma/migrations/*.sql (optional — include if you want migration files in image)
+
+
+# ================================================================
+# FILE: prisma/seed.ts
+# Seeds a Platform Administrator and a demo business tenant.
+# Run with: npm run db:seed
+# ================================================================
+
+# (This is TypeScript — saved as prisma/seed.ts)
+#
+# import { PrismaClient } from '@prisma/client';
+# import argon2 from 'argon2';
+#
+# const prisma = new PrismaClient();
+#
+# async function main() {
+#   // ── Platform Administrator ───────────────────────────────────
+#   const adminHash = await argon2.hash('Admin@123!', {
+#     type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4,
+#   });
+#
+#   const adminBusiness = await prisma.business.upsert({
+#     where:  { slug: 'cube-retain-platform' },
+#     update: {},
+#     create: {
+#       name: 'Cube Retain Platform',
+#       slug: 'cube-retain-platform',
+#       country: 'GB', timezone: 'Europe/London', currency: 'GBP',
+#     },
+#   });
+#
+#   await prisma.user.upsert({
+#     where:  { email_businessId: { email: 'admin@cuberetain.com', businessId: adminBusiness.id } },
+#     update: {},
+#     create: {
+#       businessId:   adminBusiness.id,
+#       name:         'Platform Admin',
+#       email:        'admin@cuberetain.com',
+#       passwordHash: adminHash,
+#       role:         'PLATFORM_ADMINISTRATOR',
+#     },
+#   });
+#
+#   // ── Demo Tenant ──────────────────────────────────────────────
+#   const ownerHash = await argon2.hash('Owner@123!', {
+#     type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4,
+#   });
+#
+#   const demoBusiness = await prisma.business.upsert({
+#     where:  { slug: 'the-coffee-house' },
+#     update: {},
+#     create: {
+#       name: 'The Coffee House', slug: 'the-coffee-house',
+#       industry: 'Café & Restaurant', country: 'GB',
+#       timezone: 'Europe/London', currency: 'GBP',
+#       loyalDaysWindow: 7, irregularGapDays: 14, lostDaysThreshold: 60,
+#       messageCooldownHours: 72,
+#     },
+#   });
+#
+#   await prisma.subscription.upsert({
+#     where:  { businessId: demoBusiness.id },
+#     update: {},
+#     create: {
+#       businessId: demoBusiness.id, tier: 'PROFESSIONAL',
+#       status: 'ACTIVE', monthlyMessageQuota: 50000,
+#     },
+#   });
+#
+#   await prisma.user.upsert({
+#     where:  { email_businessId: { email: 'owner@coffeehouse.com', businessId: demoBusiness.id } },
+#     update: {},
+#     create: {
+#       businessId: demoBusiness.id, name: 'Alex Thompson',
+#       email: 'owner@coffeehouse.com', passwordHash: ownerHash,
+#       role: 'TENANT_OWNER',
+#     },
+#   });
+#
+#   // ── Demo Loyalty Tiers ───────────────────────────────────────
+#   const tiers = [
+#     { rank: 1, name: 'Bronze', minVisitCount: 0,  minTotalSpend: 0,    color: '#cd7f32' },
+#     { rank: 2, name: 'Silver', minVisitCount: 5,  minTotalSpend: 100,  color: '#c0c0c0' },
+#     { rank: 3, name: 'Gold',   minVisitCount: 15, minTotalSpend: 500,  color: '#ffd700' },
+#     { rank: 4, name: 'VIP',    minVisitCount: 30, minTotalSpend: 1000, color: '#b19cd9' },
+#   ];
+#
+#   for (const tier of tiers) {
+#     await prisma.loyaltyTier.upsert({
+#       where:  { businessId_rank: { businessId: demoBusiness.id, rank: tier.rank } },
+#       update: tier,
+#       create: { businessId: demoBusiness.id, ...tier },
+#     });
+#   }
+#
+#   console.log('✅ Database seeded successfully.');
+#   console.log('   Admin: admin@cuberetain.com / Admin@123!');
+#   console.log('   Owner: owner@coffeehouse.com / Owner@123!');
+# }
+#
+# main()
+#   .catch(console.error)
+#   .finally(() => prisma.$disconnect());

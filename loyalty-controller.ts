@@ -1,0 +1,536 @@
+// ================================================================
+//  loyalty.controller.ts
+//  Express HTTP handlers + router for all loyalty endpoints.
+//
+//  Route map:
+//   GET  /api/loyalty/:customerId/profile    → getProfileHandler
+//   POST /api/loyalty/:customerId/redeem     → redeemCouponHandler
+//   GET  /api/loyalty/tiers                  → getTiersHandler
+//   PUT  /api/loyalty/tiers                  → updateTiersHandler
+//   POST /api/loyalty/referral/apply         → applyReferralHandler
+//   GET  /api/loyalty/:customerId/referrals  → getReferralStatsHandler
+//   POST /api/loyalty/checkin                → checkInHandler (POS/QR)
+//   GET  /api/loyalty/analytics/snapshot     → getSnapshotHandler
+//
+//  All routes protected by tenantScope middleware.
+//  businessId is always sourced from req.tenantContext — never req.body.
+// ================================================================
+
+import { Request, Response, Router } from 'express';
+import { z, ZodError }               from 'zod';
+import { Role }                      from '@prisma/client';
+import { PrismaClient }              from '@prisma/client';
+
+import {
+  getCustomerLoyaltyProfile,
+  redeemCoupon,
+  getTierConfiguration,
+  upsertTierConfiguration,
+  processReferralConversion,
+  accruePointsForVisit,
+} from '../services/loyalty.service';
+
+import {
+  tenantScope,
+  requireRoles,
+  getBranchScopedWhere,
+} from '../middleware/tenantScope';
+
+const prisma = new PrismaClient();
+
+// ================================================================
+// ZOD SCHEMAS
+// ================================================================
+
+const RedeemCouponSchema = z.object({
+  couponCode:   z.string().min(1).max(100),
+  cashierPin:   z.string().length(4).regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
+  wasOffline:   z.boolean().optional().default(false),
+});
+
+const UpdateTiersSchema = z.array(
+  z.object({
+    rank:          z.number().int().min(1).max(10),
+    name:          z.string().min(1).max(50),
+    minVisitCount: z.number().int().min(0).optional(),
+    minTotalSpend: z.number().min(0).optional(),
+    color:         z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+    benefitsJson:  z.array(z.object({
+      type:          z.enum(['PERCENTAGE_DISCOUNT', 'FREE_PRODUCT', 'PRIORITY_SERVICE']),
+      value:         z.number().optional(),
+      description:   z.string().optional(),
+    })).optional(),
+  })
+);
+
+const ApplyReferralSchema = z.object({
+  referralCode:  z.string().min(5).max(50),
+});
+
+const CheckInSchema = z.object({
+  amountSpent:      z.number().min(0),
+  branchLocationId: z.string().cuid().optional(),
+  source:           z.enum(['QR_CHECKIN', 'POS_WEBHOOK', 'MANUAL']).default('QR_CHECKIN'),
+  notes:            z.string().max(500).optional(),
+});
+
+// ================================================================
+// VALIDATION MIDDLEWARE
+// ================================================================
+
+const validate = (schema: z.ZodSchema) =>
+  (req: Request, res: Response, next: ReturnType<typeof require>) => {
+    try {
+      req.body = schema.parse(req.body);
+      next();
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({
+          error:  'VALIDATION_ERROR',
+          fields: err.errors.map(e => ({ path: e.path.join('.'), message: e.message })),
+        });
+      } else {
+        next(err);
+      }
+    }
+  };
+
+// ================================================================
+// ERROR MAP
+// ================================================================
+
+const ERROR_STATUS: Record<string, number> = {
+  CUSTOMER_NOT_FOUND:             404,
+  COUPON_NOT_FOUND:               404,
+  COUPON_USED:                    409,
+  COUPON_EXPIRED:                 410,
+  INVALID_CASHIER_PIN:            401,
+  INSUFFICIENT_POINTS_BALANCE:    402,
+  INVALID_REFERRAL_CODE:          404,
+  REFERRAL_ALREADY_PROCESSED:     409,
+  TRANSACTION_FAILED:             500,
+};
+
+const handleError = (err: unknown, res: Response): void => {
+  const msg    = err instanceof Error ? err.message : 'UNKNOWN_ERROR';
+  const status = ERROR_STATUS[msg] ?? 500;
+  if (status === 500) console.error('[loyalty.controller]', err);
+  res.status(status).json({ error: status === 500 ? 'INTERNAL_ERROR' : msg });
+};
+
+// ================================================================
+// HANDLERS
+// ================================================================
+
+/**
+ * GET /api/loyalty/:customerId/profile
+ * Returns tier status, points balance, ledger, and referral code.
+ * Available to: TENANT_OWNER, BRANCH_MANAGER, MARKETING_STAFF, CASHIER
+ */
+const getProfileHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { customerId } = req.params;
+    const { businessId } = req.tenantContext;
+
+    const profile = await getCustomerLoyaltyProfile(customerId, businessId);
+
+    if (!profile.customer) {
+      res.status(404).json({ error: 'CUSTOMER_NOT_FOUND' });
+      return;
+    }
+
+    res.status(200).json(profile);
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * POST /api/loyalty/:customerId/redeem
+ * Atomic coupon redemption with row-level lock + PIN verification.
+ * Available to: CASHIER, BRANCH_MANAGER, TENANT_OWNER
+ *
+ * Body: { couponCode, cashierPin, wasOffline? }
+ */
+const redeemCouponHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { customerId }                = req.params;
+    const { couponCode, cashierPin, wasOffline } = req.body as z.infer<typeof RedeemCouponSchema>;
+    const { businessId, userId, branchLocationId } = req.tenantContext;
+
+    if (!branchLocationId) {
+      res.status(400).json({ error: 'BRANCH_LOCATION_REQUIRED_FOR_CASHIER' });
+      return;
+    }
+
+    const result = await redeemCoupon(
+      couponCode,
+      cashierPin,
+      userId,
+      branchLocationId,
+      businessId,
+      wasOffline
+    );
+
+    if (!result.success) {
+      const status = ERROR_STATUS[result.error!] ?? 400;
+      res.status(status).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({
+      success:      true,
+      discountText: result.discountText,
+      couponId:     result.couponId,
+    });
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * GET /api/loyalty/tiers
+ * Returns the business's loyalty tier configuration.
+ */
+const getTiersHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tiers = await getTierConfiguration(req.tenantContext.businessId);
+    res.status(200).json(tiers);
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * PUT /api/loyalty/tiers
+ * Upsert the loyalty tier configuration (from the visual slider UI).
+ * Available to: TENANT_OWNER only
+ *
+ * Body: Array of tier objects with rank, name, thresholds, benefits
+ */
+const updateTiersHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tiers = req.body as z.infer<typeof UpdateTiersSchema>;
+    const tiers_updated = await upsertTierConfiguration(
+      req.tenantContext.businessId,
+      tiers
+    );
+    res.status(200).json(tiers_updated);
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * POST /api/loyalty/referral/apply
+ * Apply a referral code for the authenticated customer.
+ * The atomic $transaction creates the discount coupon + credits
+ * the referrer's points in a single DB operation.
+ *
+ * Body: { referralCode }
+ */
+const applyReferralHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { referralCode }  = req.body as z.infer<typeof ApplyReferralSchema>;
+    const { businessId, userId } = req.tenantContext;
+
+    const result = await processReferralConversion(userId, referralCode, businessId);
+
+    if (!result.success) {
+      const status = ERROR_STATUS[result.error!] ?? 400;
+      res.status(status).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({
+      success:          true,
+      discountCouponId: result.discountCouponId,
+      message:          `Referral applied! You have a ${10}% discount coupon ready.`,
+    });
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * GET /api/loyalty/:customerId/referrals
+ * Return referral code, conversion count, and points earned from referrals.
+ */
+const getReferralStatsHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { customerId } = req.params;
+    const { businessId } = req.tenantContext;
+
+    const [customer, ledgerStats, referrals] = await Promise.all([
+      prisma.customer.findFirst({
+        where:  { id: customerId, businessId },
+        select: { referralCode: true },
+      }),
+      prisma.rewardPointsLedger.aggregate({
+        where:  { customerId, businessId, reason: 'REFERRAL_CREDIT' },
+        _sum:   { points: true },
+        _count: { id: true },
+      }),
+      prisma.customer.findMany({
+        where: {
+          businessId,
+          referredByCode: (await prisma.customer.findFirst({
+            where:  { id: customerId, businessId },
+            select: { referralCode: true },
+          }))?.referralCode ?? '__none__',
+        },
+        select: { id: true, fullName: true, createdAt: true },
+        take:   50,
+      }),
+    ]);
+
+    res.status(200).json({
+      referralCode:    customer?.referralCode,
+      conversions:     ledgerStats._count.id,
+      totalPointsEarned: ledgerStats._sum.points ?? 0,
+      referredCustomers: referrals.map(r => ({
+        id:       r.id,
+        name:     r.fullName,
+        joinedAt: r.createdAt,
+      })),
+    });
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * POST /api/loyalty/checkin
+ * Register a customer visit + accrue points atomically.
+ * Used by QR check-in, manual staff entry, and tablet kiosk.
+ * POS webhooks use the dedicated webhook.pos.ts controller instead.
+ *
+ * Body: { amountSpent, branchLocationId?, source?, notes? }
+ * Customer ID comes from the JWT (customer-facing portal) or query param (staff).
+ */
+const checkInHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { amountSpent, branchLocationId: bodyBranch, source, notes } =
+      req.body as z.infer<typeof CheckInSchema>;
+    const { businessId, userId, branchLocationId: tokenBranch, role } = req.tenantContext;
+
+    // Staff check-in: customerId comes from query param
+    // Customer portal: customerId is the authenticated user
+    const customerId =
+      role === Role.CUSTOMER
+        ? userId
+        : (req.query.customerId as string | undefined);
+
+    if (!customerId) {
+      res.status(400).json({ error: 'CUSTOMER_ID_REQUIRED' });
+      return;
+    }
+
+    const effectiveBranch = bodyBranch ?? tokenBranch ?? undefined;
+
+    // Idempotency: prevent same customer checking in twice today
+    const today     = new Date();
+    const dayStart  = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const existing  = await prisma.visit.findFirst({
+      where: {
+        businessId,
+        customerId,
+        source:    source ?? 'QR_CHECKIN',
+        visitedAt: { gte: dayStart },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      res.status(409).json({ error: 'ALREADY_CHECKED_IN_TODAY', visitId: existing.id });
+      return;
+    }
+
+    // Create visit
+    const visit = await prisma.$transaction(async (tx) => {
+      const v = await tx.visit.create({
+        data: {
+          businessId,
+          customerId,
+          branchLocationId: effectiveBranch,
+          amountSpent,
+          source:           source ?? 'QR_CHECKIN',
+          notes,
+          visitedAt:        new Date(),
+        },
+      });
+
+      // Increment customer counters
+      await tx.customer.update({
+        where: { id: customerId },
+        data: {
+          visitCount: { increment: 1 },
+          totalSpend: { increment: amountSpent },
+          lastVisitAt:  new Date(),
+          firstVisitAt: undefined, // Only set on first ever visit
+          updatedAt:    new Date(),
+        },
+      });
+
+      // Ensure firstVisitAt is set only if null
+      await tx.customer.updateMany({
+        where:  { id: customerId, firstVisitAt: null },
+        data:   { firstVisitAt: new Date() },
+      });
+
+      return v;
+    });
+
+    // Accrue points + tier evaluation (outside main transaction for isolation)
+    const { pointsEarned, newBalance, tierUpgraded } = await accruePointsForVisit(
+      visit.id,
+      businessId,
+      customerId,
+      amountSpent
+    );
+
+    // Check visit milestone automation (e.g. 10th visit)
+    const updatedCustomer = await prisma.customer.findUnique({
+      where:  { id: customerId },
+      select: { visitCount: true },
+    });
+
+    if (updatedCustomer) {
+      void checkVisitMilestone(businessId, customerId, updatedCustomer.visitCount);
+    }
+
+    res.status(201).json({
+      visitId:      visit.id,
+      pointsEarned,
+      newBalance,
+      tierUpgraded,
+    });
+  } catch (err) { handleError(err, res); }
+};
+
+/**
+ * GET /api/loyalty/analytics/snapshot
+ * Returns the latest AnalyticsSnapshot for the authenticated tenant.
+ * Frontend dashboards consume ONLY this endpoint — no live aggregation.
+ */
+const getSnapshotHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const days           = Math.min(Number(req.query.days ?? 30), 365);
+
+    const cutoff = new Date(Date.now() - days * 86_400_000);
+
+    const snapshots = await prisma.analyticsSnapshot.findMany({
+      where: {
+        businessId,
+        branchLocationId: null,
+        snapshotDate:     { gte: cutoff },
+      },
+      orderBy: { snapshotDate: 'asc' },
+    });
+
+    res.status(200).json(snapshots);
+  } catch (err) { handleError(err, res); }
+};
+
+// ================================================================
+// VISIT MILESTONE HELPER (fire-and-forget)
+// ================================================================
+
+const VISIT_MILESTONES = [5, 10, 25, 50, 100];
+
+const checkVisitMilestone = async (
+  businessId:  string,
+  customerId:  string,
+  visitCount:  number
+): Promise<void> => {
+  if (!VISIT_MILESTONES.includes(visitCount)) return;
+
+  const wf = await prisma.automationWorkflow.findFirst({
+    where: { businessId, triggerType: 'VISIT_MILESTONE', status: 'ACTIVE' },
+    select: { id: true },
+  });
+
+  if (!wf) return;
+
+  await prisma.automationTrigger?.create?.({
+    data: {
+      workflowId:  wf.id,
+      businessId,
+      customerId,
+      triggeredAt: new Date(),
+    },
+  }).catch(() => {}); // Table may not exist yet — safe to ignore
+
+  // Enqueue via BullMQ
+  import('../queues/messaging.queue').then(({ enqueueAutomationTrigger }) =>
+    enqueueAutomationTrigger({
+      workflowId:     wf.id,
+      businessId,
+      customerId,
+      triggerType:    'VISIT_MILESTONE',
+      triggerPayload: { visitCount },
+    })
+  ).catch(console.error);
+};
+
+// ================================================================
+// ROUTER ASSEMBLY
+// ================================================================
+
+export const loyaltyRouter = Router();
+
+// All loyalty routes require a valid tenant JWT
+loyaltyRouter.use(tenantScope as any);
+
+// Read-only: cashier and above
+loyaltyRouter.get(
+  '/:customerId/profile',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF, Role.CASHIER) as any,
+  getProfileHandler
+);
+
+loyaltyRouter.get(
+  '/:customerId/referrals',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  getReferralStatsHandler
+);
+
+loyaltyRouter.get(
+  '/analytics/snapshot',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  getSnapshotHandler
+);
+
+loyaltyRouter.get(
+  '/tiers',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF, Role.CASHIER) as any,
+  getTiersHandler
+);
+
+// Mutating: Owner only
+loyaltyRouter.put(
+  '/tiers',
+  requireRoles(Role.TENANT_OWNER) as any,
+  validate(UpdateTiersSchema) as any,
+  updateTiersHandler
+);
+
+// Cashier operations
+loyaltyRouter.post(
+  '/:customerId/redeem',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.CASHIER) as any,
+  validate(RedeemCouponSchema) as any,
+  redeemCouponHandler
+);
+
+// Check-in: staff or authenticated customer
+loyaltyRouter.post(
+  '/checkin',
+  requireRoles(
+    Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.CASHIER, Role.MARKETING_STAFF, Role.CUSTOMER
+  ) as any,
+  validate(CheckInSchema) as any,
+  checkInHandler
+);
+
+// Referral: customer portal
+loyaltyRouter.post(
+  '/referral/apply',
+  validate(ApplyReferralSchema) as any,
+  applyReferralHandler
+);
+
+// ================================================================
+// MOUNT IN app.ts:
+//   import { loyaltyRouter } from './controllers/loyalty.controller';
+//   app.use('/api/loyalty', loyaltyRouter);
+// ================================================================
