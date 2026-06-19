@@ -382,12 +382,22 @@ export const WahaGateway = {
     apiKey:      string
   ): Promise<string | null> => {
     try {
+      // Try image format first (returns PNG binary)
       const r = await axios.get(`${wahaBaseUrl}/api/${sessionId}/auth/qr`, {
         headers:      { 'X-Api-Key': apiKey },
+        params:       { format: 'image' },
         responseType: 'arraybuffer',
         timeout:      5_000,
       });
-      return `data:image/png;base64,${Buffer.from(r.data).toString('base64')}`;
+      if (r.data && r.data.byteLength > 100) {
+        return `data:image/png;base64,${Buffer.from(r.data).toString('base64')}`;
+      }
+      // Fallback: try JSON response (some WAHA versions return {value: "data:image/png;base64,..."})
+      const json = await axios.get(`${wahaBaseUrl}/api/${sessionId}/auth/qr`, {
+        headers: { 'X-Api-Key': apiKey },
+        timeout: 5_000,
+      });
+      return (json.data?.value ?? json.data?.qr ?? null) as string | null;
     } catch {
       return null;
     }
