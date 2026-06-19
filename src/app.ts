@@ -46,11 +46,22 @@ async function bootstrap() {
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
 
   // ── Serve React frontend ──────────────────────────────────────
+  const fs         = await import('fs');
   const clientDist = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDist));
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
+  const isDev      = process.env.NODE_ENV !== 'production';
+
+  if (!isDev && fs.existsSync(path.join(clientDist, 'index.html'))) {
+    // Production: serve built static files
+    app.use(express.static(clientDist));
+    app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+  } else {
+    // Development: redirect browser requests to Vite dev server on port 3000
+    app.get('/', (_req, res) => res.redirect('http://localhost:3000'));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.redirect(`http://localhost:3000${req.path}`);
+    });
+  }
 
   const PORT = process.env.PORT ?? 4000;
   app.listen(PORT, () => console.log(`[app] Running on http://localhost:${PORT}`));
