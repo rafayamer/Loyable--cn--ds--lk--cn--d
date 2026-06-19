@@ -94,6 +94,7 @@ whatsappRouter.get('/qr', tenantScope, async (req: Request, res: Response): Prom
   const qr = await WahaGateway.getQrCode(baseUrl, sessionId, apiKey);
   if (!qr) { res.status(503).json({ error: 'QR_NOT_AVAILABLE' }); return; }
 
+  res.set('Cache-Control', 'no-store');
   res.json({ qr });
 });
 
