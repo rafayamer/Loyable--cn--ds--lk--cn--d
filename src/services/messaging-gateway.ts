@@ -336,11 +336,18 @@ export const WahaGateway = {
     sessionId:   string,
     apiKey:      string
   ): Promise<void> => {
-    // Check current state first — avoid creating duplicate sessions
+    // Check current state first — avoid creating duplicate sessions or restart loops
     const currentStatus = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
     if (currentStatus === 'WORKING' || currentStatus === 'SCAN_QR_CODE' || currentStatus === 'STARTING') {
-      // Session is already alive — nothing to do
       return;
+    }
+    // FAILED = device removed or auth error — delete session so WAHA generates a fresh QR
+    if (currentStatus === 'FAILED') {
+      await axios.delete(`${wahaBaseUrl}/api/sessions/${sessionId}`, {
+        headers: { 'X-Api-Key': apiKey }, timeout: 5_000,
+      }).catch(() => {});
+      // Small delay so WAHA finishes cleanup
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     const webhookBase = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
