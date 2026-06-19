@@ -11,7 +11,7 @@
     "client:build": "cd client && npm run build",
     "client:install": "cd client && npm install",
     "waha:install": "cd waha && yarn install",
-    "waha:dev": "cd waha && PORT=3001 WHATSAPP_API_PORT=3001 yarn start:dev",
+    "waha:dev": "cd waha && PORT=3001 WHATSAPP_API_PORT=3001 WAHA_API_KEY=loyable WAHA_DASHBOARD_USERNAME=admin WAHA_DASHBOARD_PASSWORD=loyable WHATSAPP_SWAGGER_USERNAME=admin WHATSAPP_SWAGGER_PASSWORD=loyable WHATSAPP_DEFAULT_ENGINE=NOWEB WAHA_PRINT_QR=true WAHA_LOG_FORMAT=PRETTY WHATSAPP_START_SESSION=default WHATSAPP_RESTART_ALL_SESSIONS=true yarn start:dev",
     "waha:build": "cd waha && yarn build",
     "db:fix-waha": "ts-node scripts/fix-waha-session.ts",
     "build": "tsc --project tsconfig.json && npm run client:build",
