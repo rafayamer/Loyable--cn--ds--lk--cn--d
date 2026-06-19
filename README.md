@@ -116,20 +116,22 @@ npm run dev:no-waha
 
 ## Connecting WhatsApp (WAHA)
 
-After the server is running:
+WAHA auto-starts the `default` session on launch (set via `WHATSAPP_START_SESSION=default` in `waha/.env`). You just need to scan the QR code once.
+
+After `bash start.sh` completes:
 
 1. Login as `owner@coffeehouse.com / Owner@123!`
 2. Go to **Settings → WhatsApp API** tab
-3. The page auto-detects WAHA status and shows a QR code when needed
-4. Click **Connect** if status shows Disconnected
-5. When the QR code appears:
-   - Open WhatsApp on your phone
-   - Go to **⋮ Menu → Linked Devices → Link a Device**
+3. Status will show **"Scan QR code"** with a QR image
+4. On your phone:
+   - Open **WhatsApp**
+   - Tap **⋮ (three dots) → Linked Devices → Link a Device**
    - Scan the QR code
-6. Status banner turns **green — Connected**
+5. Status banner turns **green — Connected**
 
-> **WAHA Core limitation:** Only one session named `default` is supported (free tier).
-> WAHA Plus is required for multiple sessions / businesses.
+WhatsApp stays connected until you log out or restart WAHA. On next `bash start.sh`, WAHA restores the saved session automatically — no re-scan needed.
+
+> **NEVER create a session with any name other than `default`** — WAHA Core (free) only supports one session named exactly `default`. Trying to POST `/api/sessions` with name `loyable` or anything else will get a 422 error. The `WAHA_API_KEY=loyable` is just the _password_ to authenticate API calls, not the session name.
 
 ---
 
