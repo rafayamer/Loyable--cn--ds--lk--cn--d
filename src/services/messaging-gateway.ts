@@ -382,7 +382,7 @@ export const WahaGateway = {
     apiKey:      string
   ): Promise<string | null> => {
     try {
-      const r = await axios.get(`${wahaBaseUrl}/api/sessions/${sessionId}/auth/qr`, {
+      const r = await axios.get(`${wahaBaseUrl}/api/${sessionId}/auth/qr`, {
         headers:      { 'X-Api-Key': apiKey },
         responseType: 'arraybuffer',
         timeout:      5_000,
