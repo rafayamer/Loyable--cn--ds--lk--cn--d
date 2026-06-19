@@ -6,3 +6,10 @@ dist/
 *.log
 coverage/
 .nyc_output/
+
+# WAHA
+waha/node_modules/
+waha/.yarn/
+waha/dist/
+waha/.sessions/
+waha/media/
