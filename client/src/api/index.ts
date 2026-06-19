@@ -80,10 +80,12 @@ export const api = {
 
   // ── Messages ──────────────────────────────────────────────────
   messages: {
-    list: (params?: { status?: string; page?: number; limit?: number }) => {
+    list: (params?: { status?: string; page?: number; limit?: number; search?: string }) => {
       const qs = new URLSearchParams(params as any).toString();
-      return get<{ messages: any[]; total: number; page: number }>(`/loyalty/messages?${qs}`);
+      return get<{ messages: any[]; total: number; page: number }>(`/messages?${qs}`);
     },
+    send: (body: { customerId?: string; phone?: string; message: string }) =>
+      post<{ ok: boolean; messageId?: string }>('/messages/send', body),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────

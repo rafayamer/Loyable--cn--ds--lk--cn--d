@@ -290,12 +290,96 @@ const MetaWizard=({onDone,onClose})=>{
   );
 };
 
+const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
+  const [phone,setPhone]=useState("");
+  const [message,setMessage]=useState("");
+  const [sending,setSending]=useState(false);
+  const [err,setErr]=useState<string|null>(null);
+  const [customers,setCustomers]=useState<any[]>([]);
+  const [search,setSearch]=useState("");
+  const [selected,setSelected]=useState<any>(null);
+
+  useEffect(()=>{
+    api.customers.list({limit:50,search}).then(d=>setCustomers(d.customers??[])).catch(()=>{});
+  },[search]);
+
+  const send=async()=>{
+    if(!message.trim()){setErr("Message cannot be empty");return;}
+    if(!selected&&!phone.trim()){setErr("Select a customer or enter a phone number");return;}
+    setSending(true);setErr(null);
+    try{
+      await fetch('/api/messages/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${localStorage.getItem('accessToken')}`},
+        body:JSON.stringify(selected?{customerId:selected.id,message}:{phone,message}),
+      }).then(async r=>{if(!r.ok)throw new Error((await r.json()).error||'Send failed');});
+      onSent();onClose();
+    }catch(e:any){setErr(e.message||"Send failed");}
+    setSending(false);
+  };
+
+  return(
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:"rgba(0,0,0,0.7)"}}>
+      <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{background:"rgba(22,20,40,0.98)",border:"1px solid rgba(255,255,255,0.1)"}}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2"><WAIcon size={18} className="text-green-400"/><span className="font-bold text-white">New WhatsApp Message</span></div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
+        </div>
+
+        {/* Customer search */}
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">Send to customer</label>
+          <input value={search} onChange={e=>{setSearch(e.target.value);setSelected(null);}} placeholder="Search by name or phone…" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none mb-2" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          {selected
+            ?<div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{background:"rgba(37,211,102,0.1)",border:"1px solid rgba(37,211,102,0.2)"}}>
+              <WAIcon size={12} className="text-green-400"/>
+              <span className="text-xs text-green-300 font-medium">{selected.fullName} · {selected.whatsappNumber||selected.phone||"no number"}</span>
+              <button onClick={()=>{setSelected(null);setSearch("");}} className="ml-auto text-slate-500 hover:text-white"><X size={12}/></button>
+            </div>
+            :search&&customers.length>0&&<div className="rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+              {customers.slice(0,8).map((c:any)=>(
+                <button key={c.id} onClick={()=>{setSelected(c);setSearch(c.fullName);}} className="w-full text-left px-3 py-2 hover:bg-white/5 flex items-center gap-2 border-b border-white/5 last:border-0">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:"rgba(139,92,246,0.3)"}}>{c.fullName?.[0]}</div>
+                  <div><div className="text-xs text-white">{c.fullName}</div><div className="text-xs text-slate-500">{c.whatsappNumber||"no number"}</div></div>
+                </button>
+              ))}
+            </div>
+          }
+        </div>
+
+        {/* Manual phone fallback */}
+        {!selected&&<div>
+          <label className="text-xs text-slate-400 mb-1 block">Or enter phone number directly</label>
+          <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+447700000000" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        </div>}
+
+        {/* Message */}
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">Message</label>
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={4} placeholder="Type your message here…" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none resize-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <div className="text-right text-xs text-slate-600 mt-0.5">{message.length} chars</div>
+        </div>
+
+        {err&&<div className="text-xs text-red-400 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.1)"}}>{err}</div>}
+
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.04)"}}>Cancel</button>
+          <button onClick={send} disabled={sending} className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>
+            {sending?<RefreshCw size={12} className="animate-spin"/>:<Send size={12}/>}{sending?"Sending…":"Send Message"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const [messages,setMessages]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [statusFilter,setStatusFilter]=useState("ALL");
   const [total,setTotal]=useState(0);
   const [waStatus,setWaStatus]=useState<string>("CHECKING");
+  const [showCompose,setShowCompose]=useState(false);
   const statuses=["ALL","SENT","DELIVERED","READ","PENDING","QUEUED","FAILED","DROPPED_COOLDOWN","DROPPED_QUOTA","CONSENT_REVOKED"];
   const load=useCallback(()=>{
     setLoading(true);
@@ -311,6 +395,7 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const byStatus=Object.entries(STATUS_COLORS).map(([s,c])=>({s,c,n:messages.filter(m=>m.status===s).length})).filter(x=>x.n>0);
   return(
     <div className="space-y-4">
+      {showCompose&&<SendMessageModal onClose={()=>setShowCompose(false)} onSent={load}/>}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-white">Messages</h1>
@@ -322,6 +407,7 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
         </div>
         <div className="flex items-center gap-2">
           {!connected&&<button onClick={onConnect} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12}/>Connect WhatsApp</button>}
+          {connected&&<button onClick={()=>setShowCompose(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><Send size={12}/>New Message</button>}
           <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={13}/>Refresh</button>
         </div>
       </div>
