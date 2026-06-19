@@ -308,14 +308,31 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
     if(!selected&&!phone.trim()){setErr("Select a customer or enter a phone number");return;}
     setSending(true);setErr(null);
     try{
-      await fetch('/api/messages/send',{
+      const ctrl=new AbortController();
+      const timer=setTimeout(()=>ctrl.abort(),12000);
+      const r=await fetch('/api/messages/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${localStorage.getItem('accessToken')}`},
         body:JSON.stringify(selected?{customerId:selected.id,message}:{phone,message}),
-      }).then(async r=>{if(!r.ok)throw new Error((await r.json()).error||'Send failed');});
+        signal:ctrl.signal,
+      });
+      clearTimeout(timer);
+      if(!r.ok){
+        const d=await r.json().catch(()=>({}));
+        const msg=d?.error||'Send failed';
+        throw new Error(
+          msg.includes('NETWORK_TIMEOUT')||msg.includes('not ready')
+            ?'WhatsApp is not connected. Go to Settings → WhatsApp API and connect first.'
+            :msg
+        );
+      }
       onSent();onClose();
-    }catch(e:any){setErr(e.message||"Send failed");}
-    setSending(false);
+    }catch(e:any){
+      const msg=e?.name==='AbortError'?'Request timed out — WhatsApp may not be connected.':e.message||'Send failed';
+      setErr(msg);
+    }finally{
+      setSending(false);
+    }
   };
 
   return(
