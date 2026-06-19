@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -52,6 +53,14 @@ async function bootstrap() {
 
   // WAHA inbound webhook (not behind tenantScope — WAHA posts here directly)
   app.use('/api/webhooks/waha', wahaWebhookRouter);
+
+  // ── Global error handler — catches unhandled async errors ─────
+  app.use((err: any, _req: any, res: any, _next: any) => {
+    const msg = err?.message ?? 'INTERNAL_ERROR';
+    const status = err?.status ?? err?.statusCode ?? 500;
+    console.error('[app] Unhandled error:', msg);
+    if (!res.headersSent) res.status(status).json({ error: msg });
+  });
 
   // ── Serve React frontend ──────────────────────────────────────
   const fs         = await import('fs');
