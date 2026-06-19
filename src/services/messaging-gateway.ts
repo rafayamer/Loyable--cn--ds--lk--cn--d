@@ -243,6 +243,11 @@ export const WahaGateway = {
     sessionId:   string,
     apiKey:      string
   ): Promise<GatewayResult> => {
+    // Guard: don't attempt send if session isn't WORKING — avoids 15s timeout hang
+    const sessionStatus = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
+    if (sessionStatus !== 'WORKING') {
+      return { success: false, error: `WhatsApp session not ready (status: ${sessionStatus}). Please connect WhatsApp first.` };
+    }
     try {
       const response = await axios.post(
         `${wahaBaseUrl}/api/sendText`,
@@ -317,7 +322,11 @@ export const WahaGateway = {
         headers: { 'X-Api-Key': apiKey }, timeout: 5_000
       });
       return r.data?.status ?? 'STOPPED';
-    } catch {
+    } catch (err: any) {
+      // 404 = session doesn't exist yet → STOPPED (not FAILED)
+      if (err?.response?.status === 404) return 'STOPPED';
+      // Connection refused / ECONNREFUSED → WAHA not running
+      if (err?.code === 'ECONNREFUSED' || err?.code === 'ENOTFOUND') return 'STOPPED';
       return 'FAILED';
     }
   },
@@ -327,7 +336,13 @@ export const WahaGateway = {
     sessionId:   string,
     apiKey:      string
   ): Promise<void> => {
-    // Webhook URL uses businessId path — falls back to sessionId if API_BASE_URL not set
+    // Check current state first — avoid creating duplicate sessions
+    const currentStatus = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
+    if (currentStatus === 'WORKING' || currentStatus === 'SCAN_QR_CODE' || currentStatus === 'STARTING') {
+      // Session is already alive — nothing to do
+      return;
+    }
+
     const webhookBase = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
     try {
       await axios.post(
@@ -352,12 +367,11 @@ export const WahaGateway = {
           {},
           { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
         ).catch(() => {
-          // If restart fails, try plain start
           return axios.post(
             `${wahaBaseUrl}/api/sessions/${sessionId}/start`,
             {},
             { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
-          ).catch(() => { /* ignore — session may already be starting */ });
+          ).catch(() => { /* ignore */ });
         });
         return;
       }
@@ -370,9 +384,15 @@ export const WahaGateway = {
     sessionId:   string,
     apiKey:      string
   ): Promise<void> => {
-    await axios.delete(`${wahaBaseUrl}/api/sessions/${sessionId}`, {
-      headers: { 'X-Api-Key': apiKey }, timeout: 5_000
-    });
+    try {
+      await axios.delete(`${wahaBaseUrl}/api/sessions/${sessionId}`, {
+        headers: { 'X-Api-Key': apiKey }, timeout: 5_000
+      });
+    } catch (err: any) {
+      // 404 = session already gone — that's fine
+      if (err?.response?.status === 404) return;
+      throw err;
+    }
   },
 
   /** Returns Base64 PNG — displayed as an <img> on the connection wizard */
