@@ -344,14 +344,21 @@ export const WahaGateway = {
         { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
       );
     } catch (err: any) {
-      // 422/409 = session already exists in WAHA — resume it instead
+      // 422/409 = session already exists — restart it
       const status = err?.response?.status;
       if (status === 422 || status === 409) {
         await axios.post(
-          `${wahaBaseUrl}/api/sessions/${sessionId}/start`,
+          `${wahaBaseUrl}/api/sessions/${sessionId}/restart`,
           {},
           { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
-        ).catch(() => { /* ignore if already started */ });
+        ).catch(() => {
+          // If restart fails, try plain start
+          return axios.post(
+            `${wahaBaseUrl}/api/sessions/${sessionId}/start`,
+            {},
+            { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
+          ).catch(() => { /* ignore — session may already be starting */ });
+        });
         return;
       }
       throw err;
