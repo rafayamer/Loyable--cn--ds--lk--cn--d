@@ -327,11 +327,35 @@ export const WahaGateway = {
     sessionId:   string,
     apiKey:      string
   ): Promise<void> => {
-    await axios.post(
-      `${wahaBaseUrl}/api/sessions`,
-      { name: sessionId, config: { webhooks: [{ url: `${process.env.API_BASE_URL}/api/webhooks/waha/${sessionId}`, events: ['message', 'message.ack'] }] } },
-      { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
-    );
+    // Webhook URL uses businessId path — falls back to sessionId if API_BASE_URL not set
+    const webhookBase = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
+    try {
+      await axios.post(
+        `${wahaBaseUrl}/api/sessions`,
+        {
+          name: sessionId,
+          config: {
+            webhooks: [{
+              url:    `${webhookBase}/api/webhooks/waha/${sessionId}`,
+              events: ['message', 'message.ack', 'session.status'],
+            }],
+          },
+        },
+        { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
+      );
+    } catch (err: any) {
+      // 422/409 = session already exists in WAHA — resume it instead
+      const status = err?.response?.status;
+      if (status === 422 || status === 409) {
+        await axios.post(
+          `${wahaBaseUrl}/api/sessions/${sessionId}/start`,
+          {},
+          { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
+        ).catch(() => { /* ignore if already started */ });
+        return;
+      }
+      throw err;
+    }
   },
 
   stopSession: async (

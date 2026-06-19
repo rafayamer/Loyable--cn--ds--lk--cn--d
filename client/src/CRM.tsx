@@ -672,11 +672,12 @@ const WhatsAppSettingsTab=()=>{
     try{
       const d=await api.whatsapp.status();
       setStatus(d);
-      setProvider(d.provider||"WAHA");
-      if(d.waha?.baseUrl)setCfg(p=>({...p,wahaBaseUrl:d.waha.baseUrl,wahaSessionId:d.waha.sessionId||"default"}));
+      // Populate fields from DB values if present
+      if(d.waha?.baseUrl&&d.waha.baseUrl!=="http://localhost:3001"||d.waha?.sessionId)
+        setCfg(p=>({...p,wahaBaseUrl:d.waha.baseUrl||p.wahaBaseUrl,wahaSessionId:d.waha.sessionId||p.wahaSessionId}));
       if(d.meta?.phoneNumberId)setMeta(p=>({...p,metaPhoneNumberId:d.meta.phoneNumberId}));
-      if(d.waha?.status==="SCAN_QR_CODE"){fetchQr();}
-      else{setQr(null);}
+      if(d.waha?.status==="SCAN_QR_CODE")fetchQr();
+      else if(d.waha?.status!=="WORKING")setQr(null);
     }catch{}finally{setLoading(false);}
   };
 
@@ -693,10 +694,14 @@ const WhatsAppSettingsTab=()=>{
   const startSession=async()=>{
     setStarting(true);
     try{
-      await api.whatsapp.saveConfig({...cfg,provider});
-      await api.whatsapp.startSession();
+      // Pass config directly in the start body — server saves+starts in one step
+      await api.whatsapp.startSession({...cfg,provider});
       setTimeout(fetchStatus,2000);
-    }catch(e:any){alert(e?.response?.data?.error||"Failed to start session");}
+      setTimeout(fetchQr,3000);
+    }catch(e:any){
+      const msg=e?.response?.data?.error||e?.response?.data?.message||e?.message||"Failed to start session";
+      alert(msg);
+    }
     finally{setStarting(false);}
   };
 
