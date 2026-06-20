@@ -1526,16 +1526,53 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
+  // Bottom nav items (5 most important)
+  const BOT_NAV=[
+    {id:"dashboard",icon:LayoutDashboard,label:"Home"},
+    {id:"customers",icon:Users,label:"Customers"},
+    {id:"messages",icon:MessageSquare,label:"Messages"},
+    {id:"campaigns",icon:Zap,label:"Campaigns"},
+    {id:"settings",icon:Settings,label:"Settings"},
+  ];
   return(
-    <div className="min-h-screen" style={{background:"linear-gradient(135deg,#0a0615,#1a0f2e,#0d1525)"}}>
+    <div className="min-h-screen" style={{background:BG}}>
+      <style>{`
+        ::-webkit-scrollbar{width:4px;height:4px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.3);border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,0.6)}
+      `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
+      {/* Desktop sidebar */}
       <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa}/></div>
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(10,6,21,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-        <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">C</span></div><span className="text-white font-bold text-sm">Cube Retain</span></div>
-        <button onClick={()=>setMobileMenu(!mobileMenu)} className="text-slate-400">{mobileMenu?<X size={20}/>:<Menu size={20}/>}</button>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
+          <span className="text-white font-bold text-sm">Loyable</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full" style={{background:wa?"#22c55e":"#6b7280"}}/>
+          <span className="text-xs text-slate-400">{wa?"Connected":"Disconnected"}</span>
+        </div>
       </div>
-      {mobileMenu&&<div className="md:hidden fixed inset-0 z-40 pt-14" style={{background:"rgba(10,6,21,0.98)"}}><nav className="p-4 space-y-1">{NAV.map(it=><button key={it.id} onClick={()=>nav(it.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${page===it.id?"text-white":"text-slate-400"}`} style={page===it.id?{background:"rgba(139,92,246,0.15)"}:{}}><it.icon size={18}/>{it.label}</button>)}<button onClick={doLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400"><LogOut size={18}/>Logout</button></nav></div>}
-      <main className={`transition-all duration-300 ${col?"md:ml-16":"md:ml-56"} pt-16 md:pt-0`}><div className="p-4 md:p-6 max-w-6xl">{render()}</div></main>
+      {/* Main content */}
+      <main className={`transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-20 md:pb-0`}>
+        <div className="p-4 md:p-6 max-w-6xl">{render()}</div>
+      </main>
+      {/* Mobile bottom navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center" style={{background:"rgba(8,6,18,0.97)",backdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+        {BOT_NAV.map(it=>{
+          const active=page===it.id||(it.id==="customers"&&(page==="profile"));
+          return(
+            <button key={it.id} onClick={()=>nav(it.id)} className="flex-1 flex flex-col items-center gap-1 py-3 transition-all" style={{color:active?"#8b5cf6":"#64748b"}}>
+              <it.icon size={20} strokeWidth={active?2.5:1.8}/>
+              <span className="text-[10px] font-medium">{it.label}</span>
+              {active&&<div className="absolute top-0 w-8 h-[2px] rounded-b-full" style={{background:"#8b5cf6"}}/>}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
