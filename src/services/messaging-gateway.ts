@@ -172,29 +172,39 @@ export const WahaGateway = {
     const current = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
     if (current === 'WORKING' || current === 'SCAN_QR_CODE' || current === 'STARTING') return;
 
-    // Always delete the existing session before creating so the store config is applied fresh.
+    // Delete any existing session so the NOWEB store config is applied fresh.
     await axios.delete(`${wahaBaseUrl}/api/sessions/${sessionId}`, {
       headers: { 'X-Api-Key': apiKey }, timeout: 5_000,
     }).catch(() => {});
-    await new Promise(r => setTimeout(r, 1000));
+    // Give WAHA time to fully clean up before recreating.
+    await new Promise(r => setTimeout(r, 3000));
 
     const webhookBase = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
-    await axios.post(
-      `${wahaBaseUrl}/api/sessions`,
-      {
-        name: sessionId,
-        config: {
-          webhooks: [{
-            url:    `${webhookBase}/api/webhooks/waha/${sessionId}`,
-            events: ['message', 'message.ack', 'session.status'],
-          }],
-          noweb: { store: { enabled: true, full_sync: true } },
+    try {
+      await axios.post(
+        `${wahaBaseUrl}/api/sessions`,
+        {
+          name: sessionId,
+          config: {
+            webhooks: [{
+              url:    `${webhookBase}/api/webhooks/waha/${sessionId}`,
+              events: ['message', 'message.ack', 'session.status'],
+            }],
+            noweb: { store: { enabled: true, full_sync: true } },
+          },
         },
-      },
-      { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
-    );
+        { headers: { 'X-Api-Key': apiKey }, timeout: 15_000 }
+      );
+    } catch (err: any) {
+      // 422/409 means session already exists — proceed to poll for QR.
+      const status = err?.response?.status;
+      if (status !== 422 && status !== 409) {
+        console.error('[waha] session create failed:', err?.response?.data ?? err?.message);
+        throw err;
+      }
+    }
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 1000));
       const s = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
       if (s !== 'STOPPED') break;
