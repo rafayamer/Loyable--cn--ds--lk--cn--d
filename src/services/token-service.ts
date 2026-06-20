@@ -110,28 +110,37 @@ export const issueTokenPair = async (
 ): Promise<TokenPair> => {
   const jwtSecret = getJwtSecret();
 
-  // ── Refresh token: create one session row per device ──────────
   const rawRefreshToken  = crypto.randomBytes(64).toString('hex');
   const refreshTokenHash = await hashPassword(rawRefreshToken);
 
-  const session = await prisma.userSession.create({
-    data: {
-      userId:           payload.sub,
-      refreshTokenHash,
-      userAgent:        meta?.userAgent,
-      ipAddress:        meta?.ipAddress,
-    },
-    select: { id: true },
-  });
+  // Try multi-session table first; fall back to legacy single-hash if table not yet migrated
+  let sessionId: string | undefined;
+  try {
+    const session = await prisma.userSession.create({
+      data: {
+        userId:           payload.sub,
+        refreshTokenHash,
+        userAgent:        meta?.userAgent,
+        ipAddress:        meta?.ipAddress,
+      },
+      select: { id: true },
+    });
+    sessionId = session.id;
+  } catch {
+    // user_sessions table not yet migrated — fall back to single-hash on User
+    await prisma.user.update({
+      where: { id: payload.sub },
+      data:  { refreshTokenHash },
+    });
+  }
 
-  // ── Access token (embeds sessionId for rotation routing) ───────
   const accessToken = jwt.sign(
-    { ...payload, sessionId: session.id },
+    { ...payload, ...(sessionId ? { sessionId } : {}) },
     jwtSecret,
     { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' } as SignOptions
   );
 
-  return { accessToken, refreshToken: rawRefreshToken, sessionId: session.id };
+  return { accessToken, refreshToken: rawRefreshToken, sessionId: sessionId ?? '' };
 };
 
 // ================================================================
@@ -168,30 +177,38 @@ export const rotateRefreshToken = async (
 
   if (!user || !user.isActive) throw new Error('USER_NOT_FOUND_OR_INACTIVE');
 
-  // Find the specific session for this device
-  const session = sessionId
-    ? await prisma.userSession.findUnique({ where: { id: sessionId } })
-    : await prisma.userSession.findFirst({ where: { userId }, orderBy: { lastUsedAt: 'desc' } });
-
-  if (!session || session.userId !== userId) throw new Error('NO_ACTIVE_SESSION');
-
-  const isValid = await verifyPassword(session.refreshTokenHash, rawRefreshToken);
-
-  if (!isValid) {
-    // Theft detected — kill only this session (not all devices)
-    await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
-    throw new Error('REFRESH_TOKEN_INVALID');
+  // Try new multi-session path first
+  let session: { id: string; userId: string; refreshTokenHash: string } | null = null;
+  try {
+    session = sessionId
+      ? await prisma.userSession.findUnique({ where: { id: sessionId } })
+      : await prisma.userSession.findFirst({ where: { userId }, orderBy: { lastUsedAt: 'desc' } });
+  } catch {
+    // user_sessions table not yet migrated — fall through to legacy path
   }
 
-  // Blacklist the old access token (best-effort)
-  if (oldAccessToken) {
-    revokeToken(oldAccessToken).catch((err: Error) =>
-      console.error('[token.service] Failed to revoke old access token:', err.message)
-    );
+  if (session) {
+    if (session.userId !== userId) throw new Error('NO_ACTIVE_SESSION');
+    const isValid = await verifyPassword(session.refreshTokenHash, rawRefreshToken);
+    if (!isValid) {
+      await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
+      throw new Error('REFRESH_TOKEN_INVALID');
+    }
+    if (oldAccessToken) revokeToken(oldAccessToken).catch(() => {});
+    await prisma.userSession.delete({ where: { id: session.id } });
+  } else {
+    // Legacy fallback: verify against User.refreshTokenHash
+    const userWithHash = await prisma.user.findUnique({
+      where: { id: userId }, select: { refreshTokenHash: true },
+    });
+    if (!userWithHash?.refreshTokenHash) throw new Error('NO_ACTIVE_SESSION');
+    const isValid = await verifyPassword(userWithHash.refreshTokenHash, rawRefreshToken);
+    if (!isValid) {
+      await prisma.user.update({ where: { id: userId }, data: { refreshTokenHash: null } });
+      throw new Error('REFRESH_TOKEN_INVALID');
+    }
+    if (oldAccessToken) revokeToken(oldAccessToken).catch(() => {});
   }
-
-  // Delete the old session row and issue a new one (rotation)
-  await prisma.userSession.delete({ where: { id: session.id } });
 
   return issueTokenPair(
     { sub: user.id, businessId: user.businessId, branchLocationId: user.branchLocationId, role: user.role },
@@ -216,11 +233,15 @@ export const revokeAllUserTokens = async (
   currentAccessToken?: string,
   sessionId?:          string
 ): Promise<void> => {
-  if (sessionId) {
-    await prisma.userSession.delete({ where: { id: sessionId } }).catch(() => {});
-  } else {
-    // No sessionId — delete all sessions for this user (legacy path / forced logout)
-    await prisma.userSession.deleteMany({ where: { userId } });
+  try {
+    if (sessionId) {
+      await prisma.userSession.delete({ where: { id: sessionId } }).catch(() => {});
+    } else {
+      await prisma.userSession.deleteMany({ where: { userId } });
+    }
+  } catch {
+    // Table not yet migrated — fall back to clearing User.refreshTokenHash
+    await prisma.user.update({ where: { id: userId }, data: { refreshTokenHash: null } }).catch(() => {});
   }
   if (currentAccessToken) {
     await revokeToken(currentAccessToken);
