@@ -13,11 +13,11 @@ const TIER_COLORS = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFE
 const C = { primary:"#8b5cf6", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
 
 // ── Global design tokens ──────────────────────────────────────────
-const GS  = "rgba(12,9,26,0.8)";
-const GSB = "1px solid rgba(255,255,255,0.07)";
+const GS  = "rgba(255,255,255,0.04)";
+const GSB = "1px solid rgba(255,255,255,0.10)";
 const BG  = "linear-gradient(135deg,#080612 0%,#0f0a1e 50%,#080d1a 100%)";
-const INP = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)" };
-const CARD: React.CSSProperties = { background:GS, border:GSB, backdropFilter:"blur(20px)" };
+const INP = { background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)" };
+const CARD: React.CSSProperties = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)" };
 
 // ════════════════════════════════════════════════════════════════
 // HELPERS
@@ -76,7 +76,7 @@ const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-al
 // ════════════════════════════════════════════════════════════════
 const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"customers",icon:Users,label:"Customers"},{id:"pos",icon:ShoppingCart,label:"POS"},{id:"messages",icon:MessageSquare,label:"Messages"},{id:"campaigns",icon:Send,label:"Campaigns"},{id:"automations",icon:Zap,label:"Automations"},{id:"loyalty",icon:Award,label:"Loyalty & Points"},{id:"datahub",icon:Database,label:"Data Hub"},{id:"ai",icon:Brain,label:"AI Insights"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"settings",icon:Settings,label:"Settings"}];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa})=>(
-  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"linear-gradient(180deg,#0d0a1e 0%,#080612 100%)",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"rgba(8,5,18,0.85)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
     <div className={`flex items-center gap-3 p-4 mb-2 ${col?"justify-center":""}`}>
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
       {!col&&<div className="flex-1 min-w-0"><div className="text-white font-bold text-sm tracking-tight">Loyable</div><div className="text-slate-600 text-[10px]">CRM Platform</div></div>}
@@ -1535,7 +1535,14 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     {id:"settings",icon:Settings,label:"Settings"},
   ];
   return(
-    <div className="min-h-screen" style={{background:BG}}>
+    <div className="min-h-screen relative overflow-x-hidden" style={{background:"#06040f"}}>
+      {/* Ambient background orbs for glassmorphism depth */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"40%",right:"-10%",width:"600px",height:"600px",borderRadius:"50%",background:"radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",bottom:"-10%",left:"30%",width:"500px",height:"500px",borderRadius:"50%",background:"radial-gradient(circle,rgba(236,72,153,0.08) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)",filter:"blur(30px)"}}/>
+      </div>
       <style>{`
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -1557,7 +1564,7 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
         </div>
       </div>
       {/* Main content */}
-      <main className={`transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-20 md:pb-0`}>
+      <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-20 md:pb-0`}>
         <div className="p-4 md:p-6 max-w-6xl">{render()}</div>
       </main>
       {/* Mobile bottom navigation */}
