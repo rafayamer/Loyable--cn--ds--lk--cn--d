@@ -410,6 +410,55 @@ export const WahaGateway = {
     }
   },
 
+  /**
+   * Fetch the conversation overview (one row per chat) from WAHA.
+   * Used to render the inbox conversation list.
+   * NOWEB CORE: GET /api/{session}/chats/overview
+   */
+  getChatsOverview: async (
+    wahaBaseUrl: string,
+    sessionId:   string,
+    apiKey:      string,
+    limit = 50,
+  ): Promise<any[]> => {
+    try {
+      const r = await axios.get(`${wahaBaseUrl}/api/${sessionId}/chats/overview`, {
+        headers: { 'X-Api-Key': apiKey },
+        params:  { limit, offset: 0 },
+        timeout: 20_000,
+      });
+      return Array.isArray(r.data) ? r.data : [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Fetch messages for a single chat, newest first.
+   * NOWEB CORE: GET /api/{session}/chats/{chatId}/messages
+   */
+  getChatMessages: async (
+    wahaBaseUrl: string,
+    sessionId:   string,
+    apiKey:      string,
+    chatId:      string,
+    limit = 100,
+  ): Promise<any[]> => {
+    try {
+      const r = await axios.get(
+        `${wahaBaseUrl}/api/${sessionId}/chats/${encodeURIComponent(chatId)}/messages`,
+        {
+          headers: { 'X-Api-Key': apiKey },
+          params:  { limit, downloadMedia: false },
+          timeout: 20_000,
+        },
+      );
+      return Array.isArray(r.data) ? r.data : [];
+    } catch {
+      return [];
+    }
+  },
+
   /** Returns Base64 PNG — displayed as an <img> on the connection wizard */
   getQrCode: async (
     wahaBaseUrl: string,
@@ -712,8 +761,10 @@ const processInboundSentiment = async (
 // ================================================================
 
 /** Convert E.164 phone to WAHA chatId format (+447911123456 → 447911123456@c.us) */
-const toChatId = (phone: string): string =>
-  phone.replace('+', '').replace(/\s/g, '') + '@c.us';
+export const toChatId = (phone: string): string => {
+  const digits = phone.replace(/[^\d]/g, '');
+  return `${digits}@c.us`;
+};
 
 /** Normalize WAHA sender format back to E.164 */
 const normalizePhone = (raw: string): string => {

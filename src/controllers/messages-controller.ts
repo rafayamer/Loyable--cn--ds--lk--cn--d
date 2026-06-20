@@ -1,19 +1,40 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
-import { WahaGateway } from '../services/messaging-gateway';
+import { WahaGateway, toChatId } from '../services/messaging-gateway';
 
 const prisma = new PrismaClient();
 export const messagesRouter = Router();
 
+// Resolve a business's WAHA connection config (DB → env → defaults).
+async function wahaConfig(businessId: string) {
+  const biz = await prisma.business.findUnique({
+    where:  { id: businessId },
+    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+  });
+  return {
+    baseUrl:   biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001',
+    sessionId: biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default',
+    apiKey:    biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '',
+  };
+}
+
+// Normalise a WAHA chatId / sender into a displayable phone (+447911123456).
+const chatIdToPhone = (raw: string): string => {
+  const digits = String(raw).replace(/@.*$/, '').replace(/[^\d]/g, '');
+  return digits ? `+${digits}` : '';
+};
+
 // ── POST /api/messages/send ───────────────────────────────────────
-// Send a direct WhatsApp message to a customer
+// Send a direct WhatsApp message. Accepts either a chatId (reply in a
+// thread), a raw phone, or a customerId we can resolve a number from.
 messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) => {
   const { businessId } = (req as any).tenantContext;
 
-  const { customerId, phone, message } = req.body as {
+  const { customerId, phone, chatId, message } = req.body as {
     customerId?: string;
     phone?:      string;
+    chatId?:     string;
     message:     string;
   };
 
@@ -21,28 +42,22 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     return res.status(400).json({ error: 'Message is required' });
   }
 
-  const to = phone || (customerId
-    ? (await prisma.customer.findUnique({ where: { id: customerId }, select: { whatsappNumber: true } }))?.whatsappNumber
-    : null);
+  // Determine the recipient. Priority: explicit chatId → phone → customer's number.
+  let resolvedChatId = chatId?.trim() || '';
+  if (!resolvedChatId) {
+    const to = phone || (customerId
+      ? (await prisma.customer.findUnique({ where: { id: customerId }, select: { whatsappNumber: true } }))?.whatsappNumber
+      : null);
+    if (!to) return res.status(400).json({ error: 'chatId, phone or customerId required' });
+    resolvedChatId = toChatId(to);   // ← FIX: build a real WAHA chatId (was passing raw "+phone")
+  } else if (!resolvedChatId.includes('@')) {
+    // Caller passed a bare phone in the chatId field — normalise it.
+    resolvedChatId = toChatId(resolvedChatId);
+  }
 
-  if (!to) return res.status(400).json({ error: 'Phone number or customerId required' });
+  const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
 
-  const biz = await prisma.business.findUnique({
-    where:  { id: businessId },
-    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-  });
-
-  const baseUrl   = biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
-  const sessionId = biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
-  const apiKey    = biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
-
-  const result = await WahaGateway.sendText(
-    to.startsWith('+') ? to : `+${to}`,
-    message,
-    baseUrl,
-    sessionId,
-    apiKey,
-  );
+  const result = await WahaGateway.sendText(resolvedChatId, message, baseUrl, sessionId, apiKey);
 
   if (!result.success) {
     console.error('[messages] send failed:', result.error);
@@ -64,10 +79,83 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     });
   } catch { /* model may not exist yet */ }
 
-  res.json({ ok: true, messageId: result.messageId });
+  res.json({ ok: true, messageId: result.messageId, chatId: resolvedChatId });
+});
+
+// ── GET /api/messages/inbox ───────────────────────────────────────
+// Live conversation list pulled straight from WAHA, enriched with the
+// matching loyalty customer (so the UI can show real names).
+messagesRouter.get('/inbox', tenantScope, async (req: Request, res: Response) => {
+  const { businessId } = (req as any).tenantContext;
+  const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
+
+  const overview = await WahaGateway.getChatsOverview(baseUrl, sessionId, apiKey, 60);
+
+  // Map known phone numbers → customer records for name enrichment.
+  const phones = overview
+    .map(c => chatIdToPhone(c.id))
+    .filter(Boolean);
+
+  const customers = phones.length
+    ? await prisma.customer.findMany({
+        where:  { businessId, whatsappNumber: { in: phones } },
+        select: { id: true, fullName: true, whatsappNumber: true },
+      })
+    : [];
+  const byPhone = new Map(customers.map(c => [c.whatsappNumber, c]));
+
+  const conversations = overview
+    .filter(c => !String(c.id).endsWith('@g.us'))   // skip group chats
+    .map(c => {
+      const phone    = chatIdToPhone(c.id);
+      const customer = byPhone.get(phone);
+      const last     = c.lastMessage ?? {};
+      return {
+        chatId:     c.id,
+        phone,
+        name:       customer?.fullName || c.name || phone || 'Unknown',
+        customerId: customer?.id ?? null,
+        picture:    c.picture ?? null,
+        lastText:   last.body ?? '',
+        lastFromMe: !!last.fromMe,
+        timestamp:  last.timestamp ? last.timestamp * 1000 : null,
+        unread:     c.unreadCount ?? 0,
+      };
+    })
+    .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
+  res.json({ conversations });
+});
+
+// ── GET /api/messages/inbox/:chatId ───────────────────────────────
+// Full thread for one conversation. Defaults to the last 3 days.
+messagesRouter.get('/inbox/:chatId', tenantScope, async (req: Request, res: Response) => {
+  const { businessId } = (req as any).tenantContext;
+  const chatId = decodeURIComponent(req.params.chatId);
+  const days   = parseInt(String(req.query.days ?? 3), 10);
+  const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
+
+  const raw = await WahaGateway.getChatMessages(baseUrl, sessionId, apiKey, chatId, 200);
+
+  const cutoff = days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
+
+  const messages = raw
+    .map((m: any) => ({
+      id:        m.id,
+      body:      m.body ?? m.caption ?? (m.hasMedia ? '[media]' : ''),
+      fromMe:    !!m.fromMe,
+      timestamp: m.timestamp ? m.timestamp * 1000 : null,
+      ack:       m.ack ?? null,
+      type:      m.type ?? 'chat',
+    }))
+    .filter((m: any) => m.timestamp == null || m.timestamp >= cutoff)
+    .sort((a: any, b: any) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+  res.json({ chatId, days, messages });
 });
 
 // ── GET /api/messages ─────────────────────────────────────────────
+// Outbound delivery log (campaign/automation sends).
 messagesRouter.get('/', tenantScope, async (req: Request, res: Response) => {
   const { businessId } = (req as any).tenantContext;
   const page  = parseInt(String(req.query.page  ?? 1), 10);

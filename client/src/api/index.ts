@@ -84,8 +84,11 @@ export const api = {
       const qs = new URLSearchParams(params as any).toString();
       return get<{ messages: any[]; total: number; page: number }>(`/messages?${qs}`);
     },
-    send: (body: { customerId?: string; phone?: string; message: string }) =>
-      post<{ ok: boolean; messageId?: string }>('/messages/send', body),
+    send: (body: { customerId?: string; phone?: string; chatId?: string; message: string }) =>
+      post<{ ok: boolean; messageId?: string; chatId?: string }>('/messages/send', body),
+    inbox:  () => get<{ conversations: any[] }>(`/messages/inbox?_t=${Date.now()}`),
+    thread: (chatId: string, days = 3) =>
+      get<{ chatId: string; days: number; messages: any[] }>(`/messages/inbox/${encodeURIComponent(chatId)}?days=${days}&_t=${Date.now()}`),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────

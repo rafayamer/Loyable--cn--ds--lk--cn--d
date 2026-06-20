@@ -390,6 +390,89 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
   );
 };
 
+// ── Live two-way WhatsApp inbox (pulls real chats from WAHA) ──────
+const chatTime=(ts:number|null)=>{if(!ts)return"";const d=new Date(ts);const now=new Date();const sameDay=d.toDateString()===now.toDateString();return sameDay?d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString([],{day:"2-digit",month:"short"});};
+const ackLabel=(a:number|null)=>a==null?"":a>=3?"✓✓":a===2?"✓✓":a===1?"✓":"…";
+const InboxView=({connected}:{connected:boolean})=>{
+  const [convos,setConvos]=useState<any[]>([]);
+  const [loadingList,setLoadingList]=useState(true);
+  const [active,setActive]=useState<any>(null);
+  const [thread,setThread]=useState<any[]>([]);
+  const [loadingThread,setLoadingThread]=useState(false);
+  const [reply,setReply]=useState("");
+  const [sending,setSending]=useState(false);
+  const [err,setErr]=useState("");
+  const scrollRef=useRef<HTMLDivElement>(null);
+  const loadList=useCallback(()=>{api.messages.inbox().then(d=>setConvos(d.conversations??[])).catch(()=>{}).finally(()=>setLoadingList(false));},[]);
+  const loadThread=useCallback((chatId:string,quiet=false)=>{if(!quiet)setLoadingThread(true);api.messages.thread(chatId,3).then(d=>setThread(d.messages??[])).catch(()=>{}).finally(()=>setLoadingThread(false));},[]);
+  useEffect(()=>{if(!connected)return;loadList();const t=setInterval(loadList,15000);return()=>clearInterval(t);},[connected,loadList]);
+  useEffect(()=>{if(!active)return;loadThread(active.chatId);const t=setInterval(()=>loadThread(active.chatId,true),8000);return()=>clearInterval(t);},[active,loadThread]);
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[thread]);
+  const send=async()=>{
+    if(!reply.trim()||!active)return;
+    setSending(true);setErr("");
+    const text=reply.trim();
+    setReply("");
+    // optimistic append
+    setThread(p=>[...p,{id:`tmp${Date.now()}`,body:text,fromMe:true,timestamp:Date.now(),ack:0,type:"chat"}]);
+    try{
+      await api.messages.send({chatId:active.chatId,message:text});
+      loadThread(active.chatId,true);loadList();
+    }catch(e:any){setErr(e?.message||"Send failed");}
+    finally{setSending(false);}
+  };
+  if(!connected)return<div className="rounded-xl p-10 text-center text-slate-500" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>Connect WhatsApp in Settings → WhatsApp API to load your inbox.</div>;
+  return(
+    <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-3" style={{height:"calc(100vh - 220px)",minHeight:"480px"}}>
+      {/* Conversation list */}
+      <div className="rounded-xl overflow-hidden flex flex-col" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>
+        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between"><span className="text-xs font-semibold text-slate-300">Conversations</span><button onClick={loadList} className="text-slate-500 hover:text-white"><RefreshCw size={13}/></button></div>
+        <div className="flex-1 overflow-y-auto">
+          {loadingList?[...Array(6)].map((_,i)=><div key={i} className="p-3"><Skeleton h="h-10"/></div>):
+           convos.length===0?<div className="p-6 text-center text-xs text-slate-500">No conversations in the last 3 days</div>:
+           convos.map(c=>(
+            <button key={c.chatId} onClick={()=>setActive(c)} className={`w-full text-left px-3 py-2.5 border-b border-white/3 flex items-center gap-3 transition-colors ${active?.chatId===c.chatId?"bg-white/5":"hover:bg-white/2"}`}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{(c.name||"?").slice(0,1).toUpperCase()}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-white truncate">{c.name}</span><span className="text-xs text-slate-500 shrink-0">{chatTime(c.timestamp)}</span></div>
+                <div className="flex items-center gap-1"><span className="text-xs text-slate-400 truncate">{c.lastFromMe?"You: ":""}{c.lastText||"—"}</span>{c.unread>0&&<span className="ml-auto shrink-0 text-xs font-bold text-white rounded-full px-1.5" style={{background:"#25D366"}}>{c.unread}</span>}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Thread */}
+      <div className="rounded-xl overflow-hidden flex flex-col" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>
+        {!active?<div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Select a conversation</div>:(
+          <>
+            <div className="px-4 py-3 border-b border-white/5 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{(active.name||"?").slice(0,1).toUpperCase()}</div>
+              <div><div className="text-sm font-semibold text-white">{active.name}</div><div className="text-xs text-slate-500">{active.phone}</div></div>
+            </div>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2" style={{background:"rgba(15,15,25,0.4)"}}>
+              {loadingThread?[...Array(5)].map((_,i)=><Skeleton key={i} h="h-8"/>):
+               thread.length===0?<div className="text-center text-xs text-slate-500 py-6">No messages in the last 3 days</div>:
+               thread.map(m=>(
+                <div key={m.id} className={`flex ${m.fromMe?"justify-end":"justify-start"}`}>
+                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-xs ${m.fromMe?"text-white":"text-slate-100"}`} style={{background:m.fromMe?"linear-gradient(135deg,#25D366,#128C7E)":"rgba(255,255,255,0.07)"}}>
+                    <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                    <div className={`text-xs mt-0.5 flex items-center gap-1 justify-end ${m.fromMe?"text-white/70":"text-slate-500"}`}>{chatTime(m.timestamp)} {m.fromMe&&<span>{ackLabel(m.ack)}</span>}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {err&&<div className="px-4 py-1.5 text-xs text-red-400">{err}</div>}
+            <div className="p-3 border-t border-white/5 flex items-center gap-2">
+              <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Type a message…" className="flex-1 px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              <button onClick={send} disabled={sending||!reply.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{sending?<RefreshCw size={13} className="animate-spin"/>:<Send size={13}/>}Send</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const [messages,setMessages]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
@@ -397,6 +480,7 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const [total,setTotal]=useState(0);
   const [waStatus,setWaStatus]=useState<string>("CHECKING");
   const [showCompose,setShowCompose]=useState(false);
+  const [view,setView]=useState<"inbox"|"log">("inbox");
   const statuses=["ALL","SENT","DELIVERED","READ","PENDING","QUEUED","FAILED","DROPPED_COOLDOWN","DROPPED_QUOTA","CONSENT_REVOKED"];
   const load=useCallback(()=>{
     setLoading(true);
@@ -418,16 +502,21 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
           <h1 className="text-xl font-bold text-white">Messages</h1>
           <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
             <span className={`w-2 h-2 rounded-full ${connected?"bg-green-400":waStatus==="SCAN_QR_CODE"?"bg-amber-400":"bg-red-400"}`}/>
-            {connected?"WhatsApp connected · BullMQ active":waStatus==="SCAN_QR_CODE"?"Scan QR code in Settings → WhatsApp API":"WhatsApp not connected"}
-            {" "}· {total} total
+            {connected?"WhatsApp connected · live inbox":waStatus==="SCAN_QR_CODE"?"Scan QR code in Settings → WhatsApp API":"WhatsApp not connected"}
+            {view==="log"?` · ${total} logged`:""}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {!connected&&<button onClick={onConnect} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12}/>Connect WhatsApp</button>}
           {connected&&<button onClick={()=>setShowCompose(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><Send size={12}/>New Message</button>}
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={13}/>Refresh</button>
         </div>
       </div>
+      <div className="flex gap-1">
+        <button onClick={()=>setView("inbox")} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view==="inbox"?"text-white":"text-slate-400"}`} style={view==="inbox"?{background:"linear-gradient(135deg,#25D366,#128C7E)"}:{background:"rgba(255,255,255,0.03)"}}>Inbox</button>
+        <button onClick={()=>setView("log")} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view==="log"?"text-white":"text-slate-400"}`} style={view==="log"?{background:"rgba(139,92,246,0.3)"}:{background:"rgba(255,255,255,0.03)"}}>Delivery Log</button>
+      </div>
+      {view==="inbox"?<InboxView connected={connected}/>:(
+      <>
       <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       {byStatus.length>0&&<div className="flex flex-wrap gap-2">{byStatus.map(({s,c,n})=><div key={s} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{background:c+"14",border:`1px solid ${c}30`}}><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-300">{s}</span><span className="font-bold ml-1" style={{color:c}}>{n}</span></div>)}</div>}
       <div className="rounded-xl overflow-hidden" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>
@@ -443,6 +532,8 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
           ))}</tbody>
         </table></div>
       </div>
+      </>
+      )}
     </div>
   );
 };
