@@ -378,6 +378,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
           select: {
             name:          true,
             slug:          true,
+            industry:      true,
             customDomain:  true,
             brandingColors:true,
             subscription: {
@@ -402,6 +403,42 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/** PUT /api/auth/me  — update business profile (industry, name) */
+const UpdateMeSchema = z.object({
+  industry: z.string().max(80).optional(),
+  name:     z.string().min(2).max(100).optional(),
+  ntn:      z.string().max(20).optional(),
+  strn:     z.string().max(20).optional(),
+  fbrPosId: z.number().int().optional(),
+  fbrToken: z.string().max(200).optional(),
+  gstRate:  z.number().min(0).max(100).optional(),
+  fbrEnabled: z.boolean().optional(),
+});
+
+const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const body = UpdateMeSchema.parse(req.body);
+    const updated = await prisma.business.update({
+      where: { id: businessId },
+      data: {
+        ...(body.industry   !== undefined && { industry:   body.industry }),
+        ...(body.name       !== undefined && { name:       body.name }),
+        ...(body.ntn        !== undefined && { ntn:        body.ntn }),
+        ...(body.strn       !== undefined && { strn:       body.strn }),
+        ...(body.fbrPosId   !== undefined && { fbrPosId:   body.fbrPosId }),
+        ...(body.fbrToken   !== undefined && { fbrToken:   body.fbrToken }),
+        ...(body.gstRate    !== undefined && { gstRate:    body.gstRate }),
+        ...(body.fbrEnabled !== undefined && { fbrEnabled: body.fbrEnabled }),
+      },
+      select: { id: true, name: true, industry: true },
+    });
+    res.json({ business: updated });
+  } catch (err) {
+    handleAuthError(err, res);
+  }
+};
+
 // ================================================================
 // ROUTER ASSEMBLY
 // ================================================================
@@ -419,6 +456,7 @@ authRouter.post('/accept-invite',                    validate(AcceptInviteSchema
 // Protected routes (require valid JWT via tenantScope)
 authRouter.post('/logout',    tenantScope,                                           logoutHandler);
 authRouter.get('/me',         tenantScope,                                           meHandler);
+authRouter.put('/me',         tenantScope, validate(UpdateMeSchema),                  updateMeHandler);
 authRouter.post('/invite',    tenantScope, inviteLimit, validate(InviteStaffSchema),
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), inviteStaffHandler
 );

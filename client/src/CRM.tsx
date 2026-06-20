@@ -158,6 +158,16 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
 // ════════════════════════════════════════════════════════════════
 // LOGIN
 // ════════════════════════════════════════════════════════════════
+// Sync biz_industry / biz_name from server so any device gets the right POS config
+const hydrateFromApi=async()=>{
+  try{
+    const d=await api.settings.get();
+    const biz=d?.user?.business;
+    if(biz?.industry)localStorage.setItem("biz_industry",biz.industry);
+    if(biz?.name)localStorage.setItem("biz_name",biz.name);
+  }catch{}
+};
+
 const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
   const [e,setE]=useState("owner@coffeehouse.com");
   const [p,setP]=useState("Owner@123!");
@@ -169,6 +179,7 @@ const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
     try{
       const d=await api.auth.login(e,p);
       localStorage.setItem("accessToken",d.accessToken);
+      await hydrateFromApi();
       onLogin(d.user);
     }catch(ex){setErr((ex as Error).message);}
     finally{setLoading(false);}
@@ -1061,7 +1072,7 @@ const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
-  const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");};
+  const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
     <div className="space-y-4">
@@ -1074,7 +1085,7 @@ const SettingsPage=({wa,onConnect})=>{
             <div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>{setBizNameVal(e.target.value);localStorage.setItem("biz_name",e.target.value);}} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>{setBizNameVal(e.target.value);localStorage.setItem("biz_name",e.target.value);}} onBlur={e=>api.settings.update({name:e.target.value}).catch(()=>{})} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
             {[{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
@@ -2111,6 +2122,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
 // ════════════════════════════════════════════════════════════════
 // APP
 // ════════════════════════════════════════════════════════════════
+
 export default function App({onLogout}:{onLogout?:()=>void}={}){
   const [loggedIn,setLoggedIn]=useState(()=>!!localStorage.getItem("accessToken"));
   const role=useRole();
@@ -2120,11 +2132,15 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
   useEffect(()=>{
+    if(loggedIn){
+      // Hydrate biz_industry / biz_name from server on every session start
+      hydrateFromApi();
+    }
     const check=()=>api.whatsapp.status().then(d=>{setWa(d?.waha?.status==="WORKING"||!!(d?.meta?.configured));}).catch(()=>{});
     check();
     const iv=setInterval(check,15000);
     return()=>clearInterval(iv);
-  },[]);
+  },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
   if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
   const nav=p=>{
