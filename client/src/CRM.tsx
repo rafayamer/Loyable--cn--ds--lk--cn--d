@@ -1060,6 +1060,7 @@ const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","B
 const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
+  const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");};
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
@@ -1073,7 +1074,8 @@ const SettingsPage=({wa,onConnect})=>{
             <div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[{l:"Business Name",v:"The Coffee House"},{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}
+            <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>{setBizNameVal(e.target.value);localStorage.setItem("biz_name",e.target.value);}} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+            {[{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
               <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
@@ -1262,22 +1264,43 @@ const deductStock=(bizType:string,itemName:string,qty:number)=>{const m=getMenu(
 
 // ── Bill helpers ──────────────────────────────────────────────────
 const calcOrderTotal=(order:ActiveOrder)=>{const sub=order.items.reduce((s,i)=>s+i.qty*i.price,0)-order.discount;return Math.max(0,sub);};
-const buildBillText=(order:ActiveOrder,currency:string)=>{
-  const lines=order.items.map(i=>`• ${i.name} ×${i.qty} = ${currency} ${(i.qty*i.price).toFixed(2)}`).join("\n");
+const BIZ_THANK_YOU:Record<string,string>={
+  restaurant:"Thank you for dining with us! We hope to see you again soon. 💜",
+  salon:"Thank you for choosing us! We hope to see you again soon. 💜",
+  gym:"Great session! See you next time. 💜",
+  retail:"Thank you for shopping with us! We hope to see you again soon. 💜",
+};
+const buildBillText=(order:ActiveOrder,currency:string,bizType?:string)=>{
+  const bizName=localStorage.getItem("biz_name")||"Our Store";
   const total=calcOrderTotal(order);
-  return `🧾 *Loyable — Receipt*\n${order.table?`Table: ${order.table}\n`:""}`+
-    `${order.cname?`Customer: ${order.cname}\n`:""}\n${lines}\n${order.discount>0?`Discount: -${currency} ${order.discount.toFixed(2)}\n`:""}`+
-    `\n*Total: ${currency} ${total.toFixed(2)}*\n\nThank you for visiting us! We hope to see you again soon. 💜\n\n— Loyable`;
+  const DIVIDER="━━━━━━━━━━━━━━";
+  // Build right-aligned dotted lines
+  const COL=34; // total line width for dots
+  const lines=order.items.map(i=>{
+    const left=`• ${i.name} ×${i.qty}`;
+    const amt=`${currency} ${(i.qty*i.price).toFixed(0)}`;
+    const dots=".".repeat(Math.max(1,COL-left.length-amt.length));
+    return `${left} ${dots} ${amt}`;
+  }).join("\n");
+  const thankYou=BIZ_THANK_YOU[bizType||getPosBizType()]||BIZ_THANK_YOU.retail;
+  const header=[
+    `✨ *${bizName}* ✨`,
+    `📋 Receipt`,
+    ...(order.cname?[`\nCustomer: ${order.cname}`]:[]),
+  ].join("\n");
+  const discountLine=order.discount>0?`\nDiscount: -${currency} ${order.discount.toFixed(0)}`:"";
+  return `${header}\n\n${DIVIDER}\n${lines}\n${DIVIDER}${discountLine}\n*TOTAL: ${currency} ${total.toFixed(0)}*\n\n${thankYou}\n\n_message powered by loyable.site_`;
 };
 const printBill=(order:ActiveOrder,currency:string)=>{
   const total=calcOrderTotal(order);
+  const bizName=localStorage.getItem("biz_name")||"Receipt";
   const w=window.open("","_blank","width=400,height=600");if(!w)return;
-  w.document.write(`<html><head><title>Receipt – Loyable</title><style>body{font-family:monospace;padding:20px;max-width:300px;margin:0 auto}h2{text-align:center;font-size:16px}hr{border:1px dashed #ccc}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-weight:bold;font-size:16px;border-top:2px solid #000;padding-top:8px;margin-top:8px}.footer{text-align:center;margin-top:16px;font-size:11px;color:#666}@media print{button{display:none}}</style></head><body>
-  <h2>🧾 Loyable</h2><hr/>${order.table?`<p style="text-align:center">Table: ${order.table}</p>`:""}${order.cname?`<p style="text-align:center">Customer: ${order.cname}</p>`:""}
-  <hr/>${order.items.map(i=>`<div class="row"><span>${i.name} ×${i.qty}</span><span>${currency} ${(i.qty*i.price).toFixed(2)}</span></div>`).join("")}
-  ${order.discount>0?`<div class="row"><span>Discount</span><span>-${currency} ${order.discount.toFixed(2)}</span></div>`:""}
-  <div class="row total"><span>TOTAL</span><span>${currency} ${total.toFixed(2)}</span></div><hr/>
-  <p class="footer">Thank you for visiting us!<br/>Powered by Loyable</p>
+  w.document.write(`<html><head><title>Receipt – ${bizName}</title><style>body{font-family:monospace;padding:20px;max-width:300px;margin:0 auto}h2{text-align:center;font-size:16px}hr{border:1px dashed #ccc}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-weight:bold;font-size:16px;border-top:2px solid #000;padding-top:8px;margin-top:8px}.footer{text-align:center;margin-top:16px;font-size:11px;color:#666}@media print{button{display:none}}</style></head><body>
+  <h2>✨ ${bizName} ✨</h2><hr/>${order.table?`<p style="text-align:center">Table: ${order.table}</p>`:""}${order.cname?`<p style="text-align:center">Customer: ${order.cname}</p>`:""}
+  <hr/>${order.items.map(i=>`<div class="row"><span>${i.name} ×${i.qty}</span><span>${currency} ${(i.qty*i.price).toFixed(0)}</span></div>`).join("")}
+  ${order.discount>0?`<div class="row"><span>Discount</span><span>-${currency} ${order.discount.toFixed(0)}</span></div>`:""}
+  <div class="row total"><span>TOTAL</span><span>${currency} ${total.toFixed(0)}</span></div><hr/>
+  <p class="footer">Thank you for choosing us!<br/>message powered by loyable.site</p>
   <br/><button onclick="window.print()">🖨 Print</button></body></html>`);
   w.document.close();setTimeout(()=>w.print(),400);
 };
@@ -1416,7 +1439,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
     if(!o.phone)return;
     setWaSent("sending");
     const ph=normPhone(o.phone);
-    const msg=buildBillText(o,currency);
+    const msg=buildBillText(o,currency,bizType);
     try{
       await api.messages.send({phone:ph,message:msg});
       setWaSent("ok");
