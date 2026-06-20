@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { tenantScope } from '../middleware/tenant-scope-middleware';
 import {
   submitInvoice,
   generateInvoiceNumber,
@@ -15,6 +16,9 @@ import {
 
 const prisma = new PrismaClient();
 export const posRouter = Router();
+
+// All POS routes require a valid tenant JWT
+posRouter.use(tenantScope);
 
 // ── Helper: get authenticated business ID from middleware context ──
 function getBizId(req: Request): string {
