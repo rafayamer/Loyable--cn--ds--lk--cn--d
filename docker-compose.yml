@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+
+  # ── Loyable CRM (Express API + React frontend) ──────────────────
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      API_BASE_URL: ${API_BASE_URL}
+      # Internal Docker network address of WAHA — tenants never see this
+      WAHA_BASE_URL: http://waha:3000
+      WAHA_API_KEY: ${WAHA_API_KEY}
+    depends_on:
+      - waha
+
+  # ── WAHA (self-hosted WhatsApp HTTP API) ────────────────────────
+  # Tenants never interact with this directly.
+  # The app backend talks to WAHA internally via http://waha:3000
+  waha:
+    image: devlikeapro/waha
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      WAHA_PRINT_QR: 'false'
+      WAHA_LOG_FORMAT: PRETTY
+      WHATSAPP_RESTART_ALL_SESSIONS: 'false'
+      WAHA_MEDIA_STORAGE: LOCAL
+      WHATSAPP_FILES_FOLDER: /app/media
+    volumes:
+      - waha_sessions:/app/.sessions
+      - waha_media:/app/media
+
+volumes:
+  waha_sessions:
+  waha_media:
