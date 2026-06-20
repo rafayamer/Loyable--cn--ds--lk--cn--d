@@ -1376,12 +1376,29 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
 // ── Active Order Card (unpaid) ────────────────────────────────────
 const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:ActiveOrder;currency:string;bizType:string;onPaid:(o:ActiveOrder)=>void;role?:string})=>{
   const [paying,setPaying]=useState(false);const [err,setErr]=useState("");const [waSent,setWaSent]=useState<"none"|"sending"|"ok"|"fail">("none");
+  const [editing,setEditing]=useState(false);
+  const [editItems,setEditItems]=useState<{name:string;qty:number;price:number}[]>([]);
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),10000);return()=>clearInterval(iv);},[]);
+
+  const openEdit=()=>{setEditItems(order.items.map(i=>({...i})));setEditing(true);};
+  const saveEdit=()=>{
+    if(!editItems.filter(i=>i.qty>0).length)return;
+    updateOrder(order.id,{items:editItems.filter(i=>i.qty>0).map(i=>({...i,ready:false}))});
+    setEditing(false);
+  };
+  const editQty=(name:string,delta:number)=>{
+    setEditItems(p=>p.map(i=>i.name===name?{...i,qty:Math.max(0,i.qty+delta)}:i).filter(i=>i.qty>0));
+  };
+  // Add a menu item to the edit list
+  const editAdd=(menuItem:MenuItem)=>{
+    setEditItems(p=>{const ex=p.find(i=>i.name===menuItem.name);
+      return ex?p.map(i=>i.name===menuItem.name?{...i,qty:i.qty+1}:i):[...p,{name:menuItem.name,qty:1,price:menuItem.price}];});
+  };
+  const allMenuItems=getMenu(bizType);
   const total=calcOrderTotal(order);
   const elapsed=Math.floor((now-order.createdAt)/60000);
   // Prep time = max prepTime across items (restaurant only)
-  const allMenuItems=getMenu(bizType);
   const prepMins=bizType==="restaurant"?Math.max(0,...order.items.map(i=>allMenuItems.find(m=>m.name===i.name)?.prepTime??0)):0;
   const remaining=prepMins>0?Math.max(0,prepMins-elapsed):null;
   const isOverdue=remaining!==null&&remaining===0&&elapsed>=prepMins;
@@ -1457,13 +1474,53 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
         ))}
       </div>
       {err&&<div className="text-[10px] text-red-400 mb-2 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.08)"}}>{err}</div>}
-      {order.status==="UNPAID"&&can(role,"editOrders")&&(
+      {order.status==="UNPAID"&&can(role,"editOrders")&&!editing&&(
         <div className="flex gap-2">
           <button onClick={markPaid} disabled={paying} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
             {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
           </button>
+          <button onClick={openEdit} className="px-3 py-2 rounded-xl text-violet-300 hover:text-white transition-colors" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.25)"}} title="Edit Order"><Edit size={14}/></button>
           <button onClick={()=>printBill(order,currency)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
           <button onClick={()=>{if(confirm("Delete this unpaid order?"))removeOrder(order.id);}} className="px-3 py-2 rounded-xl text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}} title="Delete Order"><Trash2 size={14}/></button>
+        </div>
+      )}
+      {/* Inline order editor */}
+      {editing&&(
+        <div className="mt-3 rounded-xl overflow-hidden" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(139,92,246,0.25)"}}>
+          <div className="px-3 py-2 flex items-center justify-between" style={{borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+            <span className="text-xs font-semibold text-violet-300">Edit Order</span>
+            <button onClick={()=>setEditing(false)} className="text-slate-500 hover:text-slate-300"><X size={14}/></button>
+          </div>
+          {/* Current items */}
+          <div className="px-3 py-2 space-y-1 max-h-32 overflow-y-auto">
+            {editItems.map(i=>(
+              <div key={i.name} className="flex items-center gap-2 text-xs">
+                <button onClick={()=>editQty(i.name,-1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(239,68,68,0.2)",color:"#f87171"}}>−</button>
+                <span className="text-slate-300 flex-1 truncate">{i.name}</span>
+                <span className="text-white font-bold w-4 text-center">{i.qty}</span>
+                <button onClick={()=>editQty(i.name,1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(139,92,246,0.25)",color:"#c4b5fd"}}>+</button>
+                <span className="text-slate-400 w-16 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          {/* Add items from menu */}
+          <div className="px-3 py-2" style={{borderTop:"1px solid rgba(255,255,255,0.04)"}}>
+            <div className="text-[10px] text-slate-500 mb-1.5 uppercase tracking-wider">Add items</div>
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+              {allMenuItems.map(m=>(
+                <button key={m.id} onClick={()=>editAdd(m)} className="px-2 py-1 rounded-lg text-[11px] text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                  {m.name} <span className="text-slate-500">{currency} {m.price}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-3 py-2.5 flex gap-2" style={{borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+            <div className="flex-1 text-xs text-white font-bold">
+              New total: {currency} {editItems.reduce((s,i)=>s+i.qty*i.price,0).toFixed(2)}
+            </div>
+            <button onClick={saveEdit} className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+            <button onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
+          </div>
         </div>
       )}
       {order.status==="UNPAID"&&!can(role,"editOrders")&&(
@@ -1751,9 +1808,9 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           </div>
           <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
           <button onClick={placeOrder} disabled={placing||!order.length} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#f59e0b,#d97706)"}}>
-            <Send size={15}/>{placing?"Placing…":"Place Order (Unpaid)"}
+            {bizType==="restaurant"?<>🍳 {placing?"Sending…":"Send to Kitchen"}</>:<><Send size={15}/>{placing?"Placing…":"Place Order"}</>}
           </button>
-          {placed&&<div className="mt-2 p-2 rounded-xl text-xs text-green-400 flex items-center gap-2" style={{background:"rgba(34,197,94,0.08)"}}><CheckCircle size={12}/>Order sent to kitchen!</div>}
+          {placed&&<div className="mt-2 p-2 rounded-xl text-xs text-green-400 flex items-center gap-2" style={{background:"rgba(34,197,94,0.08)"}}><CheckCircle size={12}/>{bizType==="restaurant"?"Order sent to kitchen!":"Order placed!"}</div>}
         </div>
 
         {/* Active unpaid orders */}
