@@ -12,6 +12,13 @@ const ROLE_COLORS = { PLATFORM_ADMINISTRATOR:"#ef4444", TENANT_OWNER:"#f59e0b", 
 const TIER_COLORS = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFESSIONAL:"#8b5cf6", ENTERPRISE:"#f59e0b" };
 const C = { primary:"#8b5cf6", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
 
+// ── Global design tokens ──────────────────────────────────────────
+const GS  = "rgba(12,9,26,0.8)";
+const GSB = "1px solid rgba(255,255,255,0.07)";
+const BG  = "linear-gradient(135deg,#080612 0%,#0f0a1e 50%,#080d1a 100%)";
+const INP = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)" };
+const CARD: React.CSSProperties = { background:GS, border:GSB, backdropFilter:"blur(20px)" };
+
 // ════════════════════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════════════════════
@@ -47,40 +54,52 @@ const mapCustomer = (c: any) => ({
 // ════════════════════════════════════════════════════════════════
 // MICRO COMPONENTS
 // ════════════════════════════════════════════════════════════════
-const Badge=({children,color,size="sm"})=><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${size==="xs"?"text-xs":"text-xs"}`} style={{background:color+"22",color}}>{children}</span>;
+const Badge=({children,color,size="sm"})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:`1px solid ${color}33`}}>{children}</span>;
 const KPI=({icon:Icon,label,value,change,positive,color,sub})=>(
-  <div className="rounded-xl p-4" style={{background:"rgba(30,30,45,0.8)",border:"1px solid rgba(255,255,255,0.06)"}}>
-    <div className="flex items-center justify-between mb-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:color+"18"}}><Icon size={18} style={{color}}/></div>{change&&<span className={`text-xs font-medium flex items-center gap-0.5 ${positive?"text-green-400":"text-red-400"}`}>{positive?<ArrowUpRight size={12}/>:<ArrowDownRight size={12}/>}{change}</span>}</div>
-    <div className="text-2xl font-bold text-white mb-0.5">{value}</div>
-    <div className="text-xs text-slate-400">{label}</div>
+  <div className="rounded-2xl p-5 relative overflow-hidden" style={CARD}>
+    <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-[0.06]" style={{background:color,transform:"translate(35%,-35%)"}}/>
+    <div className="flex items-start justify-between mb-4">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{background:color+"18"}}><Icon size={20} style={{color}}/></div>
+      {change&&<span className={`text-xs font-semibold flex items-center gap-0.5 px-2 py-1 rounded-lg ${positive?"text-emerald-400 bg-emerald-400/10":"text-red-400 bg-red-400/10"}`}>{positive?<ArrowUpRight size={11}/>:<ArrowDownRight size={11}/>}{change}</span>}
+    </div>
+    <div className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</div>
+    <div className="text-xs font-medium text-slate-400">{label}</div>
     {sub&&<div className="text-xs text-slate-600 mt-0.5">{sub}</div>}
   </div>
 );
 const WAIcon=({size=18,className=""})=><svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
-const card="rounded-xl p-4"+" style={{background:\"rgba(30,30,45,0.8)\",border:\"1px solid rgba(255,255,255,0.06)\"}}";
-const inp="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500/50";
-const btn="px-4 py-2 rounded-lg text-xs font-medium text-white";
+const inp="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500/40 transition-all";
+const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90";
 
 // ════════════════════════════════════════════════════════════════
 // SIDEBAR
 // ════════════════════════════════════════════════════════════════
 const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"customers",icon:Users,label:"Customers"},{id:"pos",icon:ShoppingCart,label:"POS"},{id:"messages",icon:MessageSquare,label:"Messages"},{id:"campaigns",icon:Send,label:"Campaigns"},{id:"automations",icon:Zap,label:"Automations"},{id:"loyalty",icon:Award,label:"Loyalty & Points"},{id:"datahub",icon:Database,label:"Data Hub"},{id:"ai",icon:Brain,label:"AI Insights"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"settings",icon:Settings,label:"Settings"}];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa})=>(
-  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-16":"w-56"}`} style={{background:"linear-gradient(180deg,#0f0a1e,#1a1130)",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
-    <div className="flex items-center gap-2.5 p-4 mb-1">
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">C</span></div>
-      {!col&&<span className="text-white font-bold text-sm tracking-tight">Cube Retain</span>}
-      <button onClick={()=>setCol(!col)} className="ml-auto text-slate-500 hover:text-white">{col?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
+  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"linear-gradient(180deg,#0d0a1e 0%,#080612 100%)",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+    <div className={`flex items-center gap-3 p-4 mb-2 ${col?"justify-center":""}`}>
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
+      {!col&&<div className="flex-1 min-w-0"><div className="text-white font-bold text-sm tracking-tight">Loyable</div><div className="text-slate-600 text-[10px]">CRM Platform</div></div>}
+      <button onClick={()=>setCol(!col)} className={`text-slate-600 hover:text-slate-300 transition-colors ${col?"hidden":""}`}><ChevronLeft size={15}/></button>
+      {col&&<button onClick={()=>setCol(!col)} className="absolute right-2 text-slate-600 hover:text-slate-300 transition-colors"><ChevronRight size={15}/></button>}
     </div>
-    {!col&&<div className="mx-3 mb-2 px-3 py-1.5 rounded-lg" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.15)"}}><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-400"/><span className="text-xs text-green-400">The Coffee House</span></div></div>}
-    <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">{NAV.map(it=>(
-      <button key={it.id} onClick={()=>setPage(it.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${page===it.id?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/5"}`} style={page===it.id?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.1))"}:{}}>
-        <it.icon size={17}/>{!col&&<span className="flex-1 text-left text-xs">{it.label}</span>}
-        {!col&&it.id==="messages"&&wa&&<div className="w-1.5 h-1.5 rounded-full bg-green-400"/>}
-        {!col&&it.id==="ai"&&<Badge color={C.accent} size="xs">ML</Badge>}
-      </button>
-    ))}</nav>
-    <div className="p-2 mb-2"><button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-red-400 transition-all"><LogOut size={17}/>{!col&&<span className="text-xs">Logout</span>}</button></div>
+    {!col&&<div className="mx-3 mb-3 px-3 py-2 rounded-xl flex items-center gap-2" style={{background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.12)"}}><div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/><span className="text-xs text-emerald-400 font-medium truncate">The Coffee House</span></div>}
+    <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto">{NAV.map(it=>{
+      const active=page===it.id;
+      return(
+        <button key={it.id} onClick={()=>setPage(it.id)} title={col?it.label:undefined}
+          className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 ${col?"justify-center px-3":"px-3"} ${active?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"}`}
+          style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",borderLeft:col?"none":"3px solid #8b5cf6",paddingLeft:col?undefined:"9px"}:{}}>
+          <it.icon size={17} className="flex-shrink-0"/>
+          {!col&&<span className="flex-1 text-left">{it.label}</span>}
+          {!col&&it.id==="messages"&&wa&&<div className="w-2 h-2 rounded-full bg-emerald-400"/>}
+          {!col&&it.id==="ai"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.15)",color:"#06b6d4"}}>ML</span>}
+        </button>
+      );
+    })}</nav>
+    <div className="p-2.5 border-t border-white/[0.05]">
+      <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/5 transition-all ${col?"justify-center":""}`}><LogOut size={16}/>{!col&&<span>Logout</span>}</button>
+    </div>
   </div>
 );
 
@@ -103,17 +122,25 @@ const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
     finally{setLoading(false);}
   };
   return(
-    <div className="min-h-screen flex items-center justify-center p-4" style={{background:"linear-gradient(135deg,#0a0615,#1a0f2e,#0d1525)"}}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8"><div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-2xl">C</span></div><h1 className="text-2xl font-bold text-white">Cube Retain CRM</h1><p className="text-slate-400 text-sm mt-1">Multi-tenant customer retention platform</p></div>
-        <div className="rounded-2xl p-6" style={{background:"rgba(20,15,35,0.9)",border:"1px solid rgba(255,255,255,0.08)"}}>
-          <div className="space-y-3 mb-4">
-            <div><label className="text-xs text-slate-400 mb-1 block">Business email</label><input value={e} onChange={ev=>setE(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="email" placeholder="owner@coffeehouse.com" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Password</label><input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{background:BG}}>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.07] blur-3xl" style={{background:"#8b5cf6"}}/>
+        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full opacity-[0.07] blur-3xl" style={{background:"#06b6d4"}}/>
+      </div>
+      <div className="w-full max-w-sm relative z-10">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-2xl" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-2xl">L</span></div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Loyable CRM</h1>
+          <p className="text-slate-400 text-sm mt-1.5">Sign in to your workspace</p>
+        </div>
+        <div className="rounded-2xl p-6" style={CARD}>
+          <div className="space-y-4 mb-5">
+            <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Email</label><input value={e} onChange={ev=>setE(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="email" placeholder="owner@business.com" className={inp} style={INP}/></div>
+            <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Password</label><input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={INP}/></div>
           </div>
-          {err&&<div className="mb-3 px-3 py-2 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)"}}>{err}</div>}
-          <button onClick={submit} disabled={loading} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mb-3 disabled:opacity-60 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading&&<RefreshCw size={14} className="animate-spin"/>}{loading?"Signing in…":"Sign In"}</button>
-          <div className="mt-3 p-2 rounded-lg" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.15)"}}><p className="text-xs text-slate-500 text-center">Protected by Argon2id · JWT tokens · Rate limited</p></div>
+          {err&&<div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{err}</div>}
+          <button onClick={submit} disabled={loading} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading&&<RefreshCw size={14} className="animate-spin"/>}{loading?"Signing in…":"Sign In"}</button>
+          <div className="mt-4 px-3 py-2.5 rounded-xl" style={{background:"rgba(139,92,246,0.07)",border:"1px solid rgba(139,92,246,0.12)"}}><p className="text-[11px] text-slate-500 text-center">Secured with Argon2id · JWT · Rate limiting</p></div>
         </div>
       </div>
     </div>
@@ -124,7 +151,7 @@ const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
 // LOADING SKELETON
 // ════════════════════════════════════════════════════════════════
 const Skeleton=({h="h-4",w="w-full",className=""}:{h?:string,w?:string,className?:string})=>(
-  <div className={`${h} ${w} ${className} rounded-lg animate-pulse`} style={{background:"rgba(255,255,255,0.06)"}}/>
+  <div className={`${h} ${w} ${className} rounded-xl animate-pulse`} style={{background:"rgba(255,255,255,0.05)"}}/>
 );
 
 // ════════════════════════════════════════════════════════════════
