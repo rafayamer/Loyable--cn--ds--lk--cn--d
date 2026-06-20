@@ -1614,7 +1614,15 @@ const KitchenDisplay=({currency}:{currency:string})=>{
 const InventoryPanel=({bizType}:{bizType:string})=>{
   const [items,setItems]=useState<MenuItem[]>(()=>getMenu(bizType));
   const [saving,setSaving]=useState(false);
+  const imgRefs=useRef<Record<string,HTMLInputElement|null>>({});
   const update=(id:string,stock:number)=>setItems(p=>p.map(i=>i.id===id?{...i,stock}:i));
+  const updateImage=(id:string,image:string|undefined)=>setItems(p=>p.map(i=>i.id===id?{...i,image}:i));
+  const pickImg=(id:string)=>imgRefs.current[id]?.click();
+  const handleImg=(id:string,e:React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0];if(!f)return;
+    if(f.size>500*1024){alert("Image must be under 500 KB");return;}
+    const r=new FileReader();r.onload=ev=>{updateImage(id,ev.target?.result as string);};r.readAsDataURL(f);
+  };
   const save=()=>{setSaving(true);saveMenu(bizType,items);setTimeout(()=>setSaving(false),600);};
   const LOW=5;
   const lowItems=items.filter(i=>i.stock!=null&&i.stock<=LOW);
@@ -1631,11 +1639,18 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
       <div className="gc rounded-2xl overflow-hidden" style={CARD}>
         <table className="w-full text-xs">
           <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
-            {["Item","Category","Price",bizType==="restaurant"?"Prep (min)":"",bizType==="retail"?"Barcode":"","Stock",""].map((h,i)=>h?<th key={i} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>:null)}
+            {["Photo","Item","Category","Price",bizType==="restaurant"?"Prep (min)":"",bizType==="retail"?"Barcode":"","Stock",""].map((h,i)=>h?<th key={i} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>:null)}
           </tr></thead>
           <tbody>
             {items.map(item=>(
               <tr key={item.id} style={{borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
+                <td className="px-3 py-2">
+                  <input ref={el=>{imgRefs.current[item.id]=el;}} type="file" accept="image/*" className="hidden" onChange={e=>handleImg(item.id,e)}/>
+                  <button onClick={()=>pickImg(item.id)} title="Upload product photo" className="block w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 transition-opacity hover:opacity-80" style={{background:"rgba(255,255,255,0.04)",border:"1px dashed rgba(255,255,255,0.12)"}}>
+                    {item.image?<img src={item.image} alt={item.name} className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center"><Image size={14} className="text-slate-500"/></div>}
+                  </button>
+                  {item.image&&<button onClick={()=>updateImage(item.id,undefined)} className="text-[9px] text-red-400 hover:text-red-300 mt-0.5 block text-center w-10">✕</button>}
+                </td>
                 <td className="px-4 py-3 text-white font-medium">{item.name}</td>
                 <td className="px-4 py-3"><span className="text-[10px] text-slate-400">{item.cat}</span></td>
                 <td className="px-4 py-3 text-violet-400 font-semibold">{item.price.toFixed(2)}</td>
@@ -1673,17 +1688,42 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
   const [table,setTable]=useState("");const [notes,setNotes]=useState("");
   const [placing,setPlacing]=useState(false);const [placed,setPlaced]=useState(false);
-  const [barcode,setBarcode]=useState("");const barcodeRef=useRef<HTMLInputElement>(null);
+  const [barcodeFlash,setBarcodeFlash]=useState<string|null>(null);
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
   const cats=[...new Set(menuItems.map(i=>i.cat))];
   const [showMenu,setShowMenu]=useState(false);
 
-  // Barcode scan handler — match by name prefix or barcode field
-  const handleBarcodeScan=(code:string)=>{
-    const match=menuItems.find(i=>i.name.toLowerCase()===code.toLowerCase()||(i as any).barcode===code);
-    if(match)addItem(match);
-    setBarcode("");
-  };
+  // Barcode scan handler — match by barcode field or exact name
+  const handleBarcodeScan=useCallback((code:string)=>{
+    const match=menuItems.find(i=>i.barcode===code||i.name.toLowerCase()===code.toLowerCase());
+    if(match){addItem(match);setBarcodeFlash(match.name);setTimeout(()=>setBarcodeFlash(null),1500);}
+    else{setBarcodeFlash("❓ "+code+" not found");setTimeout(()=>setBarcodeFlash(null),2000);}
+  },[menuItems]);
+
+  // Global barcode listener — detects scanner by fast keystroke timing (<60ms between chars)
+  useEffect(()=>{
+    if(bizType!=="retail")return;
+    let buf="";let lastT=0;let timer:ReturnType<typeof setTimeout>;
+    const onKey=(e:KeyboardEvent)=>{
+      const target=e.target as HTMLElement;
+      // Don't intercept if user is typing in an input/textarea/select (except barcode field)
+      if(["INPUT","TEXTAREA","SELECT"].includes(target.tagName)&&!(target as HTMLInputElement).dataset.barcode)return;
+      const now=Date.now();
+      if(e.key==="Enter"){
+        if(buf.length>=3)handleBarcodeScan(buf);
+        buf="";lastT=0;return;
+      }
+      if(e.key.length===1){
+        if(now-lastT>100&&buf.length>0){buf="";}// gap too long — reset
+        buf+=e.key;lastT=now;
+        clearTimeout(timer);
+        // auto-fire if we haven't seen Enter in 200ms (some scanners don't send Enter)
+        timer=setTimeout(()=>{if(buf.length>=3)handleBarcodeScan(buf);buf="";lastT=0;},200);
+      }
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>{window.removeEventListener("keydown",onKey);clearTimeout(timer);};
+  },[bizType,handleBarcodeScan]);
 
   // Reload menu when editor closes
   const reloadMenu=()=>setMenuItems(getMenu(bizType));
@@ -1715,11 +1755,16 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
         {bizType==="retail"&&(
           <div className="gc rounded-2xl px-4 py-3 flex items-center gap-3" style={CARD}>
             <Tag size={16} className="text-violet-400 flex-shrink-0"/>
-            <input ref={barcodeRef} value={barcode} onChange={e=>setBarcode(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"&&barcode.trim()){handleBarcodeScan(barcode.trim());}}}
-              className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
-              placeholder="Scan barcode or type product name + Enter…" autoComplete="off"/>
-            {barcode&&<button onClick={()=>handleBarcodeScan(barcode.trim())} className="text-xs text-violet-400 font-semibold">Add</button>}
+            <div className="flex-1">
+              <div className="text-xs text-slate-300">Barcode scanner active — scan any product to add it instantly</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Or set barcodes per product in Inventory tab</div>
+            </div>
+            {barcodeFlash&&(
+              <div className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${barcodeFlash.startsWith("❓")?"text-red-400":"text-green-400"}`}
+                style={{background:barcodeFlash.startsWith("❓")?"rgba(239,68,68,0.1)":"rgba(34,197,94,0.1)"}}>
+                {barcodeFlash.startsWith("❓")?barcodeFlash:`✓ Added: ${barcodeFlash}`}
+              </div>
+            )}
           </div>
         )}
         {/* Menu catalogue */}
