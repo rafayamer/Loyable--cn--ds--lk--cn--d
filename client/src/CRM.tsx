@@ -1158,58 +1158,442 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
 // ── Shared POS sub-components ─────────────────────────────────────
 const inpS={background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"#fff"};
 
-const POSOrderSummary=({items,discount,currency,onProcess,processing,saleErr,saleResult,onReceipt,gstRate=0}:{items:any[],discount:number,currency:string,onProcess:()=>void,processing:boolean,saleErr:string,saleResult:any,onReceipt:(id:string)=>void,gstRate?:number})=>{
-  const subtotal=items.reduce((s:number,i:any)=>s+(Number(i.qty||1)*(Number(i.unitPrice)||Number(i.price)||0)),0)-discount;
-  const gst=gstRate>0?parseFloat((subtotal-(subtotal/(1+gstRate/100))).toFixed(2)):0;
-  const total=parseFloat(subtotal.toFixed(2));
+// Active orders store (shared across POS components via simple module-level state)
+type ActiveOrder={id:string;table?:string;type:string;items:{name:string;qty:number;price:number;ready?:boolean}[];discount:number;phone:string;cname:string;payMode:"CASH"|"CARD"|"WALLET";status:"UNPAID"|"PAID";createdAt:number;notes?:string;staff?:string;};
+const _orders:{list:ActiveOrder[];listeners:Set<()=>void>}={list:JSON.parse(localStorage.getItem("pos_orders")||"[]"),listeners:new Set()};
+const saveOrders=()=>{localStorage.setItem("pos_orders",JSON.stringify(_orders.list));_orders.listeners.forEach(fn=>fn());};
+const addOrder=(o:Omit<ActiveOrder,"id"|"createdAt">)=>{_orders.list.unshift({...o,id:Math.random().toString(36).slice(2),createdAt:Date.now()});saveOrders();};
+const updateOrder=(id:string,patch:Partial<ActiveOrder>)=>{_orders.list=_orders.list.map(o=>o.id===id?{...o,...patch}:o);saveOrders();};
+const removeOrder=(id:string)=>{_orders.list=_orders.list.filter(o=>o.id!==id);saveOrders();};
+const useOrders=()=>{const[,r]=useState(0);useEffect(()=>{const fn=()=>r(x=>x+1);_orders.listeners.add(fn);return()=>{_orders.listeners.delete(fn);};},[]);return _orders.list;};
+
+// Menu store (owner-editable, persisted)
+type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color?:string;desc?:string;};
+const DEFAULT_MENUS:Record<string,MenuItem[]>={
+  restaurant:[
+    {id:"r1",cat:"Starters",name:"Soup of the Day",price:3.5,stock:20,color:"#f59e0b"},{id:"r2",cat:"Starters",name:"Garlic Bread",price:2.5,stock:30,color:"#f59e0b"},
+    {id:"r3",cat:"Mains",name:"Grilled Chicken",price:12.5,stock:15,color:"#8b5cf6"},{id:"r4",cat:"Mains",name:"Beef Burger",price:9.5,stock:20,color:"#8b5cf6"},{id:"r5",cat:"Mains",name:"Margherita Pizza",price:10.0,stock:10,color:"#8b5cf6"},{id:"r6",cat:"Mains",name:"Pasta Carbonara",price:9.0,stock:18,color:"#8b5cf6"},
+    {id:"r7",cat:"Drinks",name:"Americano",price:2.8,stock:50,color:"#06b6d4"},{id:"r8",cat:"Drinks",name:"Latte",price:3.5,stock:50,color:"#06b6d4"},{id:"r9",cat:"Drinks",name:"Fresh OJ",price:3.0,stock:25,color:"#06b6d4"},
+    {id:"r10",cat:"Desserts",name:"Chocolate Brownie",price:4.5,stock:12,color:"#ec4899"},{id:"r11",cat:"Desserts",name:"Cheesecake",price:4.0,stock:8,color:"#ec4899"},
+  ],
+  salon:[
+    {id:"s1",cat:"Hair",name:"Haircut – Ladies",price:35,color:"#ec4899"},{id:"s2",cat:"Hair",name:"Haircut – Gents",price:20,color:"#ec4899"},{id:"s3",cat:"Hair",name:"Hair Colour",price:65,color:"#ec4899"},{id:"s4",cat:"Hair",name:"Highlights",price:80,color:"#ec4899"},
+    {id:"s5",cat:"Nails",name:"Manicure",price:25,color:"#8b5cf6"},{id:"s6",cat:"Nails",name:"Pedicure",price:30,color:"#8b5cf6"},{id:"s7",cat:"Nails",name:"Gel Nails",price:45,color:"#8b5cf6"},
+    {id:"s8",cat:"Skin",name:"Facial",price:50,color:"#06b6d4"},{id:"s9",cat:"Skin",name:"Threading",price:8,color:"#06b6d4"},{id:"s10",cat:"Skin",name:"Eyebrow Shape",price:12,color:"#06b6d4"},
+    {id:"s11",cat:"Packages",name:"Bridal Package",price:250,color:"#f59e0b"},{id:"s12",cat:"Packages",name:"Pamper Day",price:120,color:"#f59e0b"},
+  ],
+  gym:[
+    {id:"g1",cat:"Memberships",name:"Monthly – Basic",price:30,desc:"Gym access only",color:"#3b82f6"},{id:"g2",cat:"Memberships",name:"Monthly – Premium",price:50,desc:"Gym + classes",color:"#8b5cf6"},
+    {id:"g3",cat:"Memberships",name:"Quarterly",price:85,desc:"3 month all-access",color:"#06b6d4"},{id:"g4",cat:"Memberships",name:"Annual",price:299,desc:"Best value",color:"#f59e0b"},
+    {id:"g5",cat:"Add-ons",name:"Day Pass",price:8,desc:"Single visit",color:"#22c55e"},{id:"g6",cat:"Add-ons",name:"PT Session (1hr)",price:45,desc:"Personal training",color:"#ec4899"},
+    {id:"g7",cat:"Add-ons",name:"Class Pack (10)",price:70,desc:"10 group classes",color:"#f97316"},{id:"g8",cat:"Add-ons",name:"Locker Rental",price:5,desc:"Monthly locker",color:"#6b7280"},
+  ],
+  retail:[],
+};
+const getMenu=(bizType:string):MenuItem[]=>{const stored=localStorage.getItem(`pos_menu_${bizType}`);return stored?JSON.parse(stored):DEFAULT_MENUS[bizType]??[];};
+const saveMenu=(bizType:string,items:MenuItem[])=>{localStorage.setItem(`pos_menu_${bizType}`,JSON.stringify(items));};
+const deductStock=(bizType:string,itemName:string,qty:number)=>{const m=getMenu(bizType);const updated=m.map(i=>i.name===itemName&&i.stock!=null?{...i,stock:Math.max(0,i.stock-qty)}:i);saveMenu(bizType,updated);};
+
+// ── Bill helpers ──────────────────────────────────────────────────
+const calcOrderTotal=(order:ActiveOrder)=>{const sub=order.items.reduce((s,i)=>s+i.qty*i.price,0)-order.discount;return Math.max(0,sub);};
+const buildBillText=(order:ActiveOrder,currency:string)=>{
+  const lines=order.items.map(i=>`• ${i.name} ×${i.qty} = ${currency} ${(i.qty*i.price).toFixed(2)}`).join("\n");
+  const total=calcOrderTotal(order);
+  return `🧾 *Loyable — Receipt*\n${order.table?`Table: ${order.table}\n`:""}`+
+    `${order.cname?`Customer: ${order.cname}\n`:""}\n${lines}\n${order.discount>0?`Discount: -${currency} ${order.discount.toFixed(2)}\n`:""}`+
+    `\n*Total: ${currency} ${total.toFixed(2)}*\n\nThank you for visiting us! We hope to see you again soon. 💜\n\n— Loyable`;
+};
+const printBill=(order:ActiveOrder,currency:string)=>{
+  const total=calcOrderTotal(order);
+  const w=window.open("","_blank","width=400,height=600");if(!w)return;
+  w.document.write(`<html><head><title>Receipt – Loyable</title><style>body{font-family:monospace;padding:20px;max-width:300px;margin:0 auto}h2{text-align:center;font-size:16px}hr{border:1px dashed #ccc}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-weight:bold;font-size:16px;border-top:2px solid #000;padding-top:8px;margin-top:8px}.footer{text-align:center;margin-top:16px;font-size:11px;color:#666}@media print{button{display:none}}</style></head><body>
+  <h2>🧾 Loyable</h2><hr/>${order.table?`<p style="text-align:center">Table: ${order.table}</p>`:""}${order.cname?`<p style="text-align:center">Customer: ${order.cname}</p>`:""}
+  <hr/>${order.items.map(i=>`<div class="row"><span>${i.name} ×${i.qty}</span><span>${currency} ${(i.qty*i.price).toFixed(2)}</span></div>`).join("")}
+  ${order.discount>0?`<div class="row"><span>Discount</span><span>-${currency} ${order.discount.toFixed(2)}</span></div>`:""}
+  <div class="row total"><span>TOTAL</span><span>${currency} ${total.toFixed(2)}</span></div><hr/>
+  <p class="footer">Thank you for visiting us!<br/>Powered by Loyable</p>
+  <br/><button onclick="window.print()">🖨 Print</button></body></html>`);
+  w.document.close();setTimeout(()=>w.print(),400);
+};
+
+// ── Menu Editor Modal ─────────────────────────────────────────────
+const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
+  const [items,setItems]=useState<MenuItem[]>(()=>getMenu(bizType));
+  const [editing,setEditing]=useState<MenuItem|null>(null);
+  const [form,setForm]=useState({name:"",cat:"",price:"",stock:"",desc:""});
+  const cats=[...new Set(items.map(i=>i.cat))];
+  const save=()=>{saveMenu(bizType,items);onClose();};
+  const startEdit=(item:MenuItem)=>{setEditing(item);setForm({name:item.name,cat:item.cat,price:String(item.price),stock:String(item.stock??""),desc:item.desc??""});};
+  const startNew=()=>{setEditing({id:"",cat:cats[0]||"General",name:"",price:0} as any);setForm({name:"",cat:cats[0]||"General",price:"",stock:"",desc:""});};
+  const applyEdit=()=>{
+    if(!form.name||!form.price)return;
+    const updated:MenuItem={id:editing?.id||Math.random().toString(36).slice(2),cat:form.cat||"General",name:form.name,price:Number(form.price),stock:form.stock?Number(form.stock):undefined,desc:form.desc||undefined};
+    setItems(p=>editing?.id?p.map(i=>i.id===editing.id?updated:i):[...p,updated]);
+    setEditing(null);
+  };
   return(
-    <div className="gc rounded-2xl p-5" style={CARD}>
-      <div className="text-sm font-semibold text-white mb-4">Order Summary</div>
-      <div className="space-y-2 text-xs mb-4 max-h-48 overflow-y-auto">
-        {items.filter((i:any)=>i.name||i.label).map((i:any,idx:number)=>(
-          <div key={idx} className="flex justify-between text-slate-300">
-            <span className="truncate mr-2">{i.name||i.label} ×{i.qty||1}</span>
-            <span>{currency} {((Number(i.qty||1))*(Number(i.unitPrice)||Number(i.price)||0)).toFixed(2)}</span>
-          </div>
-        ))}
-        {items.filter((i:any)=>i.name||i.label).length===0&&<div className="text-slate-500 py-2 text-center">No items added</div>}
-        {discount>0&&<div className="flex justify-between text-amber-400"><span>Discount</span><span>-{currency} {discount.toFixed(2)}</span></div>}
-      </div>
-      <div className="border-t border-white/10 pt-3 space-y-1.5 text-xs">
-        {gstRate>0&&<><div className="flex justify-between text-slate-400"><span>Subtotal (excl. GST)</span><span>{currency} {(subtotal-gst).toFixed(2)}</span></div><div className="flex justify-between text-amber-400"><span>GST ({gstRate}%)</span><span>{currency} {gst.toFixed(2)}</span></div></>}
-        <div className="flex justify-between text-white font-bold text-base mt-1"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
-      </div>
-      {saleErr&&<div className="mt-3 p-2 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>{saleErr}</div>}
-      <button onClick={onProcess} disabled={processing||items.every((i:any)=>!i.name&&!i.label)} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
-        {processing?<RefreshCw size={15} className="animate-spin"/>:<ShoppingCart size={15}/>}{processing?"Processing...":"Complete Sale"}
-      </button>
-      {saleResult&&(
-        <div className="mt-3 p-3 rounded-xl" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)"}}>
-          <div className="flex items-center gap-2 mb-2"><CheckCircle size={14} className="text-green-400"/><span className="text-xs font-medium text-white">Sale Complete!</span></div>
-          {saleResult.fbrInvoiceNumber&&<div className="text-[10px] text-slate-400 font-mono break-all">{saleResult.fbrInvoiceNumber}</div>}
-          <button onClick={()=>onReceipt(saleResult.visit?.id||saleResult.id)} className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-300 flex items-center justify-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}><Printer size={11}/>Print Receipt</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)"}}>
+      <div className="gc rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" style={CARD}>
+        <div className="flex items-center justify-between p-5 border-b border-white/10">
+          <div><div className="text-sm font-bold text-white">Menu Manager</div><div className="text-[10px] text-slate-400">Add, edit or remove items. Changes apply instantly.</div></div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
-      )}
+        <div className="flex-1 overflow-y-auto p-5 space-y-2">
+          {cats.map(cat=>(
+            <div key={cat}>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 mt-3">{cat}</div>
+              {items.filter(i=>i.cat===cat).map(item=>(
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-xs font-semibold">{item.name}</div>
+                    <div className="text-slate-400 text-[10px]">{item.desc||""} {item.stock!=null?`· Stock: ${item.stock}`:""}</div>
+                  </div>
+                  <span className="text-violet-400 text-xs font-bold">{item.price.toFixed(2)}</span>
+                  <button onClick={()=>startEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)"}}><Edit size={12}/></button>
+                  <button onClick={()=>setItems(p=>p.filter(i=>i.id!==item.id))} className="p-1.5 rounded-lg text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)"}}><X size={12}/></button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        {editing&&(
+          <div className="border-t border-white/10 p-5 space-y-3">
+            <div className="text-xs font-semibold text-white mb-2">{editing.id?"Edit Item":"New Item"}</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-[10px] text-slate-400 block mb-1">Name *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
+              <div><label className="text-[10px] text-slate-400 block mb-1">Category *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}/></div>
+              <div><label className="text-[10px] text-slate-400 block mb-1">Price *</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
+              <div><label className="text-[10px] text-slate-400 block mb-1">Stock (optional)</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Leave blank = unlimited" value={form.stock} onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
+              <div className="col-span-2"><label className="text-[10px] text-slate-400 block mb-1">Description</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/></div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={applyEdit} className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Item</button>
+              <button onClick={()=>setEditing(null)} className="px-4 py-2 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.06)"}}>Cancel</button>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center justify-between p-5 border-t border-white/10">
+          <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-violet-400 font-semibold" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Plus size={13}/>Add Item</button>
+          <button onClick={save} className="px-5 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Save & Close</button>
+        </div>
+      </div>
     </div>
   );
 };
 
-const PaymentPanel=({mode,setMode,phone,setPhone,name,setName,discount,setDiscount,currency}:any)=>(
-  <div className="gc rounded-2xl p-5" style={CARD}>
-    <div className="text-sm font-semibold text-white mb-4">Customer & Payment</div>
-    <div className="grid grid-cols-2 gap-3 mb-4">
-      <div><label className="text-[10px] text-slate-400 block mb-1">Phone (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+92..." value={phone} onChange={(e:any)=>setPhone(e.target.value)}/></div>
-      <div><label className="text-[10px] text-slate-400 block mb-1">Name (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Customer name" value={name} onChange={(e:any)=>setName(e.target.value)}/></div>
+// ── Active Order Card (unpaid) ────────────────────────────────────
+const ActiveOrderCard=({order,currency,bizType,onPaid}:{order:ActiveOrder;currency:string;bizType:string;onPaid:(o:ActiveOrder)=>void})=>{
+  const [paying,setPaying]=useState(false);const [err,setErr]=useState("");
+  const total=calcOrderTotal(order);
+  const elapsed=Math.floor((Date.now()-order.createdAt)/60000);
+
+  const markPaid=async()=>{
+    setPaying(true);setErr("");
+    try{
+      const r=await api.pos.createSale({customerPhone:order.phone,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
+      // Deduct inventory
+      order.items.forEach(i=>deductStock(bizType,i.name,i.qty));
+      updateOrder(order.id,{status:"PAID"});
+      onPaid({...order,status:"PAID"});
+      // Send WhatsApp thank-you
+      if(order.phone){
+        const msg=buildBillText(order,currency);
+        await api.messages.send({phone:order.phone,message:msg}).catch(()=>{});
+      }
+      setTimeout(()=>removeOrder(order.id),4000);
+    }catch(ex){setErr((ex as Error).message);}
+    setPaying(false);
+  };
+
+  return(
+    <div className="gc rounded-2xl p-4 transition-all" style={{...CARD,border:order.status==="PAID"?"1px solid rgba(34,197,94,0.35)":"1px solid rgba(255,255,255,0.10)"}}>
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            {order.table&&<span className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-cyan-400" style={{background:"rgba(6,182,212,0.12)"}}>{order.table}</span>}
+            {order.cname&&<span className="text-xs text-white font-semibold">{order.cname}</span>}
+            {!order.cname&&!order.table&&<span className="text-xs text-slate-400">Walk-in</span>}
+          </div>
+          <div className="text-[10px] text-slate-500 mt-0.5">{elapsed}m ago · {order.payMode}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-white font-bold text-sm">{currency} {total.toFixed(2)}</div>
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${order.status==="PAID"?"text-green-400":"text-amber-400"}`} style={{background:order.status==="PAID"?"rgba(34,197,94,0.1)":"rgba(245,158,11,0.1)"}}>{order.status}</span>
+        </div>
+      </div>
+      <div className="space-y-1 mb-3">
+        {order.items.map((i,idx)=>(
+          <div key={idx} className="flex justify-between text-[11px]">
+            <span className="text-slate-300">{i.name} ×{i.qty}</span>
+            <span className="text-slate-400">{currency} {(i.qty*i.price).toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+      {err&&<div className="text-[10px] text-red-400 mb-2 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.08)"}}>{err}</div>}
+      {order.status==="UNPAID"&&(
+        <div className="flex gap-2">
+          <button onClick={markPaid} disabled={paying} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
+            {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
+          </button>
+          <button onClick={()=>printBill(order,currency)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
+        </div>
+      )}
+      {order.status==="PAID"&&<div className="flex items-center gap-2 text-green-400 text-xs"><CheckCircle size={13}/><span>Paid · WhatsApp receipt sent</span><button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button></div>}
     </div>
-    <div className="text-xs text-slate-400 mb-2">Payment Mode</div>
-    <div className="flex gap-2 mb-4">
-      {(["CASH","CARD","WALLET"] as const).map(m=>(
-        <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode===m?"text-white":"text-slate-400 hover:text-slate-200"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
-      ))}
+  );
+};
+
+// ── Kitchen Display System ────────────────────────────────────────
+const KitchenDisplay=({currency}:{currency:string})=>{
+  const orders=useOrders();
+  const active=orders.filter(o=>o.status==="UNPAID");
+  const [,r]=useState(0);
+  useEffect(()=>{const iv=setInterval(()=>r(x=>x+1),30000);return()=>clearInterval(iv);},[]);
+
+  const toggleReady=(orderId:string,itemIdx:number)=>{
+    const o=_orders.list.find(x=>x.id===orderId);if(!o)return;
+    const items=o.items.map((i,idx)=>idx===itemIdx?{...i,ready:!i.ready}:i);
+    updateOrder(orderId,{items});
+  };
+
+  if(!active.length)return(
+    <div className="gc rounded-2xl p-12 text-center" style={CARD}>
+      <div className="text-4xl mb-3">🍳</div>
+      <div className="text-white font-semibold mb-1">Kitchen is clear!</div>
+      <div className="text-slate-400 text-sm">No active orders. Enjoy the calm.</div>
     </div>
-    <div className="flex items-center gap-3"><label className="text-xs text-slate-400 w-20">Discount ({currency})</label><input className="flex-1 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={discount||""} onChange={(e:any)=>setDiscount(Number(e.target.value))}/></div>
-  </div>
-);
+  );
+
+  return(
+    <div>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
+        <span className="text-sm text-slate-300 font-medium">{active.length} active order{active.length!==1?"s":""} in queue</span>
+        <span className="text-[10px] text-slate-500">Auto-refreshes every 30s</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {active.map(order=>{
+          const elapsed=Math.floor((Date.now()-order.createdAt)/60000);
+          const allReady=order.items.every(i=>i.ready);
+          return(
+            <div key={order.id} className="gc rounded-2xl p-4" style={{...CARD,border:allReady?"1px solid rgba(34,197,94,0.4)":elapsed>15?"1px solid rgba(239,68,68,0.4)":"1px solid rgba(245,158,11,0.3)"}}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {order.table&&<span className="px-2.5 py-1 rounded-lg text-xs font-bold text-cyan-400" style={{background:"rgba(6,182,212,0.15)"}}>{order.table}</span>}
+                  {!order.table&&<span className="text-slate-400 text-xs">Walk-in</span>}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-xs font-bold ${elapsed>15?"text-red-400":elapsed>10?"text-amber-400":"text-green-400"}`}>{elapsed}m</span>
+                  {allReady&&<span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-green-400" style={{background:"rgba(34,197,94,0.12)"}}>READY ✓</span>}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {order.items.map((item,idx)=>(
+                  <button key={idx} onClick={()=>toggleReady(order.id,idx)} className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${item.ready?"opacity-50":""}`} style={{background:item.ready?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",border:item.ready?"1px solid rgba(34,197,94,0.2)":"1px solid rgba(255,255,255,0.06)"}}>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${item.ready?"bg-green-500":"bg-white/10"}`}>{item.ready&&<Check size={10} className="text-white"/>}</div>
+                    <span className={`text-xs flex-1 ${item.ready?"line-through text-slate-500":"text-white"}`}>{item.name}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">×{item.qty}</span>
+                  </button>
+                ))}
+              </div>
+              {order.notes&&<div className="mt-2 text-[10px] text-amber-400 flex items-start gap-1"><Info size={10} className="mt-0.5 flex-shrink-0"/>{order.notes}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Inventory Panel ───────────────────────────────────────────────
+const InventoryPanel=({bizType}:{bizType:string})=>{
+  const [items,setItems]=useState<MenuItem[]>(()=>getMenu(bizType));
+  const [saving,setSaving]=useState(false);
+  const update=(id:string,stock:number)=>setItems(p=>p.map(i=>i.id===id?{...i,stock}:i));
+  const save=()=>{setSaving(true);saveMenu(bizType,items);setTimeout(()=>setSaving(false),600);};
+  const LOW=5;
+  const lowItems=items.filter(i=>i.stock!=null&&i.stock<=LOW);
+  return(
+    <div className="space-y-4">
+      {lowItems.length>0&&(
+        <div className="gc rounded-2xl p-4 flex items-start gap-3" style={{...CARD,border:"1px solid rgba(239,68,68,0.3)"}}>
+          <AlertTriangle size={16} className="text-red-400 mt-0.5 flex-shrink-0"/>
+          <div><div className="text-xs font-semibold text-red-400 mb-1">Low Stock Alert</div>
+            <div className="text-xs text-slate-300">{lowItems.map(i=>`${i.name} (${i.stock} left)`).join(", ")}</div>
+          </div>
+        </div>
+      )}
+      <div className="gc rounded-2xl overflow-hidden" style={CARD}>
+        <table className="w-full text-xs">
+          <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+            {["Item","Category","Price","Stock",""].map(h=><th key={h} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {items.map(item=>(
+              <tr key={item.id} style={{borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
+                <td className="px-4 py-3 text-white font-medium">{item.name}</td>
+                <td className="px-4 py-3"><span className="text-[10px] text-slate-400">{item.cat}</span></td>
+                <td className="px-4 py-3 text-violet-400 font-semibold">{item.price.toFixed(2)}</td>
+                <td className="px-4 py-3">
+                  {item.stock!=null?(
+                    <div className="flex items-center gap-2">
+                      <button onClick={()=>update(item.id,Math.max(0,(item.stock||0)-1))} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white text-xs" style={{background:"rgba(255,255,255,0.06)"}}>-</button>
+                      <span className={`w-8 text-center font-semibold ${item.stock<=LOW?"text-red-400":item.stock<=10?"text-amber-400":"text-green-400"}`}>{item.stock}</span>
+                      <button onClick={()=>update(item.id,(item.stock||0)+10)} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white text-xs" style={{background:"rgba(255,255,255,0.06)"}}>+</button>
+                    </div>
+                  ):<span className="text-slate-600">Unlimited</span>}
+                </td>
+                <td className="px-4 py-3">
+                  {item.stock==null&&<button onClick={()=>update(item.id,50)} className="text-[10px] text-violet-400 hover:text-violet-300">Track Stock</button>}
+                  {item.stock!=null&&<button onClick={()=>update(item.id,undefined as any)} className="text-[10px] text-slate-500 hover:text-slate-300">Remove</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button onClick={save} disabled={saving} className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saved ✓":"Save Stock Levels"}</button>
+    </div>
+  );
+};
+
+// ── Shared order builder: menu catalogue + active orders ──────────
+const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;extraTop?:React.ReactNode})=>{
+  const [menuItems,setMenuItems]=useState<MenuItem[]>(()=>getMenu(bizType));
+  const [cat,setCat]=useState(0);
+  const [order,setOrder]=useState<{name:string;price:number;qty:number}[]>([]);
+  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CASH");
+  const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
+  const [table,setTable]=useState("");const [notes,setNotes]=useState("");
+  const [placing,setPlacing]=useState(false);const [placed,setPlaced]=useState(false);
+  const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
+  const cats=[...new Set(menuItems.map(i=>i.cat))];
+  const [showMenu,setShowMenu]=useState(false);
+
+  // Reload menu when editor closes
+  const reloadMenu=()=>setMenuItems(getMenu(bizType));
+
+  const addItem=(item:MenuItem)=>{
+    if(item.stock!=null&&item.stock<=0)return;
+    setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p.map(x=>x.name===item.name?{...x,qty:x.qty+1}:x):[...p,{name:item.name,price:item.price,qty:1}];});
+    setPlaced(false);
+  };
+  const removeItem=(n:string)=>setOrder(p=>p.map(x=>x.name===n?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
+
+  const placeOrder=()=>{
+    if(!order.length)return;
+    setPlacing(true);
+    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount,phone,cname,payMode:mode,status:"UNPAID",notes});
+    setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");
+    setPlaced(true);setTimeout(()=>setPlaced(false),3000);
+    setPlacing(false);
+  };
+
+  const subtotal=order.reduce((s,i)=>s+i.qty*i.price,0)-discount;
+  const total=Math.max(0,subtotal);
+
+  return(
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {showMenu&&<MenuEditor bizType={bizType} onClose={()=>{reloadMenu();setShowMenu(false);}}/>}
+      <div className="lg:col-span-2 space-y-4">
+        {extraTop}
+        {/* Menu catalogue */}
+        <div className="gc rounded-2xl p-5" style={CARD}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+              {cats.map((c,i)=>{const color=menuItems.find(x=>x.cat===c)?.color||"#8b5cf6";return(
+                <button key={c} onClick={()=>setCat(i)} className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all" style={cat===i?{background:`${color}33`,border:`1px solid ${color}55`,color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#94a3b8"}}>{c}</button>
+              );})}
+            </div>
+            <button onClick={()=>setShowMenu(true)} className="ml-3 flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}} title="Edit menu"><Edit size={12}/>Menu</button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {menuItems.filter(i=>i.cat===cats[cat]).map(item=>{
+              const inOrder=order.find(x=>x.name===item.name);
+              const outOfStock=item.stock!=null&&item.stock<=0;
+              return(
+                <button key={item.id} onClick={()=>addItem(item)} disabled={outOfStock} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{background:inOrder?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)"}}>
+                  <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{item.name}</div>
+                  {item.desc&&<div className="text-slate-500 text-[10px] mb-1">{item.desc}</div>}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300 text-xs">{currency} {item.price.toFixed(2)}</span>
+                    <div className="flex items-center gap-1">
+                      {outOfStock&&<span className="text-[9px] text-red-400">Out</span>}
+                      {item.stock!=null&&!outOfStock&&item.stock<=5&&<span className="text-[9px] text-amber-400">{item.stock} left</span>}
+                      {inOrder&&<span className="text-violet-400 text-[10px] font-bold">×{inOrder.qty}</span>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            {menuItems.filter(i=>i.cat===cats[cat]).length===0&&<div className="col-span-3 py-6 text-center text-slate-500 text-xs">No items in this category. <button onClick={()=>setShowMenu(true)} className="text-violet-400 underline">Add items</button></div>}
+          </div>
+        </div>
+
+        {/* Order being built */}
+        {order.length>0&&(
+          <div className="gc rounded-2xl p-4" style={CARD}>
+            <div className="text-sm font-semibold text-white mb-3">Current Order</div>
+            <div className="space-y-1">
+              {order.map(i=>(
+                <div key={i.name} className="flex items-center gap-2 py-1.5" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                  <button onClick={()=>removeItem(i.name)} className="w-5 h-5 rounded-full text-slate-500 hover:text-red-400 text-xs flex items-center justify-center" style={{background:"rgba(255,255,255,0.06)"}}>-</button>
+                  <span className="text-slate-300 text-xs flex-1">{i.name}</span>
+                  <span className="text-white text-xs font-semibold w-5 text-center">{i.qty}</span>
+                  <button onClick={()=>addItem({id:"",cat:"",name:i.name,price:i.price})} className="w-5 h-5 rounded-full text-slate-500 hover:text-green-400 text-xs flex items-center justify-center" style={{background:"rgba(255,255,255,0.06)"}}>+</button>
+                  <span className="text-slate-400 text-xs w-20 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Customer + payment + table */}
+        <div className="gc rounded-2xl p-5" style={CARD}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for receipt)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+92…" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
+          </div>
+          <div className="flex gap-2 mb-4">
+            {(["CASH","CARD","WALLET"] as const).map(m=>(
+              <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3"><label className="text-xs text-slate-400">Discount ({currency})</label><input className="w-28 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={discount||""} onChange={e=>setDiscount(Number(e.target.value))}/></div>
+        </div>
+      </div>
+
+      {/* Right: summary + place order + active orders */}
+      <div className="space-y-4">
+        <div className="gc rounded-2xl p-5" style={CARD}>
+          <div className="text-sm font-semibold text-white mb-4">Order Summary</div>
+          <div className="space-y-1.5 text-xs mb-4 max-h-44 overflow-y-auto">
+            {order.map((i,idx)=><div key={idx} className="flex justify-between text-slate-300"><span>{i.name} ×{i.qty}</span><span>{currency} {(i.qty*i.price).toFixed(2)}</span></div>)}
+            {!order.length&&<div className="text-slate-500 text-center py-3">Tap items from the menu</div>}
+            {discount>0&&<div className="flex justify-between text-amber-400"><span>Discount</span><span>-{currency} {discount.toFixed(2)}</span></div>}
+          </div>
+          <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
+          <button onClick={placeOrder} disabled={placing||!order.length} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#f59e0b,#d97706)"}}>
+            <Send size={15}/>{placing?"Placing…":"Place Order (Unpaid)"}
+          </button>
+          {placed&&<div className="mt-2 p-2 rounded-xl text-xs text-green-400 flex items-center gap-2" style={{background:"rgba(34,197,94,0.08)"}}><CheckCircle size={12}/>Order sent to kitchen!</div>}
+        </div>
+
+        {/* Active unpaid orders */}
+        {activeOrders.length>0&&(
+          <div>
+            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Active Orders ({activeOrders.length})</div>
+            <div className="space-y-3">
+              {activeOrders.map(o=><ActiveOrderCard key={o.id} order={o} currency={currency} bizType={bizType} onPaid={()=>{}}/>)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ── Sales History (shared across all POS types) ───────────────────
 const SalesHistory=({currency}:{currency:string})=>{
@@ -1253,9 +1637,9 @@ const SalesHistory=({currency}:{currency:string})=>{
       {total>20&&<div className="flex items-center justify-between text-xs text-slate-400">
         <span>{total} total</span>
         <div className="flex gap-1">
-          <button disabled={pg===1} onClick={()=>setPg(p=>p-1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>Prev</button>
+          <button disabled={pg===1} onClick={()=>setPg(p=>p-1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40" style={{background:"rgba(255,255,255,0.06)"}}>Prev</button>
           <span className="px-3 py-1.5 text-white">{pg}</span>
-          <button disabled={pg*20>=total} onClick={()=>setPg(p=>p+1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>Next</button>
+          <button disabled={pg*20>=total} onClick={()=>setPg(p=>p+1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40" style={{background:"rgba(255,255,255,0.06)"}}>Next</button>
         </div>
       </div>}
       {sel&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(6px)"}}>
@@ -1276,7 +1660,7 @@ const SalesHistory=({currency}:{currency:string})=>{
   );
 };
 
-// ── FBR Settings panel (shared) ───────────────────────────────────
+// ── FBR Panel (shared) ────────────────────────────────────────────
 const FBRPanel=()=>{
   const [stats,setStats]=useState<any>(null);
   const [s,setS]=useState({ntn:"",strn:"",fbrPosId:"",fbrToken:"",gstRate:"17",fbrEnabled:false});
@@ -1317,403 +1701,7 @@ const FBRPanel=()=>{
 };
 
 // ════════════════════════════════════════════════════════════════
-// RESTAURANT / CAFÉ POS
-// ════════════════════════════════════════════════════════════════
-const RestaurantPOS=({currency}:{currency:string})=>{
-  const MENU_CATS=[
-    {cat:"Starters",color:"#f59e0b",items:[{name:"Soup of the Day",price:3.5},{name:"Garlic Bread",price:2.5},{name:"Caesar Salad",price:5.5},{name:"Chicken Wings",price:7.0}]},
-    {cat:"Mains",color:"#8b5cf6",items:[{name:"Grilled Chicken",price:12.5},{name:"Beef Burger",price:9.5},{name:"Margherita Pizza",price:10.0},{name:"Pasta Carbonara",price:9.0},{name:"Fish & Chips",price:11.5},{name:"Veggie Wrap",price:8.0}]},
-    {cat:"Drinks",color:"#06b6d4",items:[{name:"Americano",price:2.8},{name:"Latte",price:3.5},{name:"Fresh OJ",price:3.0},{name:"Sparkling Water",price:1.5},{name:"Coke",price:2.0}]},
-    {cat:"Desserts",color:"#ec4899",items:[{name:"Chocolate Brownie",price:4.5},{name:"Cheesecake",price:4.0},{name:"Ice Cream",price:3.0}]},
-  ];
-  const TABLES=Array.from({length:12},(_,i)=>({id:i+1,status:["free","occupied","dirty"][Math.floor(Math.random()*3)]}));
-  const [selCat,setSelCat]=useState(0);
-  const [order,setOrder]=useState<{name:string,price:number,qty:number}[]>([]);
-  const [table,setTable]=useState<number|null>(null);
-  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
-  const [phone,setPhone]=useState("");const [name,setName]=useState("");const [discount,setDiscount]=useState(0);
-  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
-  const [kotSent,setKotSent]=useState(false);const [view,setView]=useState<"menu"|"tables">("menu");
-
-  const addToOrder=(item:{name:string,price:number})=>{
-    setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p.map(x=>x.name===item.name?{...x,qty:x.qty+1}:x):[...p,{...item,qty:1}];});
-    setKotSent(false);
-  };
-  const removeFromOrder=(n:string)=>setOrder(p=>p.map(x=>x.name===n?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
-  const sendKOT=()=>{setKotSent(true);};
-
-  const process=async()=>{
-    if(!order.length){setSaleErr("Add items first.");return;}
-    setProcessing(true);setSaleErr("");setSaleResult(null);
-    try{
-      const r=await api.pos.createSale({customerPhone:phone,customerName:name,items:order.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:mode,discount,notes:table?`Table ${table}`:""});
-      setSaleResult(r);setOrder([]);setTable(null);setKotSent(false);
-    }catch(ex){setSaleErr((ex as Error).message);}
-    setProcessing(false);
-  };
-
-  return(
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
-        {/* Table / Menu toggle */}
-        <div className="flex gap-2">
-          {(["menu","tables"] as const).map(v=>(
-            <button key={v} onClick={()=>setView(v)} className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${view===v?"text-white":"text-slate-400"}`} style={view===v?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
-              {v==="menu"?"🍽 Menu":"🪑 Tables"}
-            </button>
-          ))}
-          {table&&<span className="px-3 py-2 rounded-xl text-xs text-cyan-400 font-medium" style={{background:"rgba(6,182,212,0.1)",border:"1px solid rgba(6,182,212,0.2)"}}>Table {table} selected</span>}
-        </div>
-
-        {view==="tables"&&(
-          <div className="gc rounded-2xl p-5" style={CARD}>
-            <div className="text-sm font-semibold text-white mb-4">Floor Plan</div>
-            <div className="grid grid-cols-4 gap-3">
-              {TABLES.map(t=>(
-                <button key={t.id} onClick={()=>{setTable(t.id);setView("menu");}} className={`p-3 rounded-xl text-xs font-semibold transition-all ${table===t.id?"ring-2 ring-violet-500":""}`} style={{background:t.status==="free"?"rgba(34,197,94,0.1)":t.status==="occupied"?"rgba(239,68,68,0.1)":"rgba(245,158,11,0.1)",border:`1px solid ${t.status==="free"?"rgba(34,197,94,0.25)":t.status==="occupied"?"rgba(239,68,68,0.25)":"rgba(245,158,11,0.25)"}`}}>
-                  <div className="text-lg mb-1">🪑</div>
-                  <div style={{color:t.status==="free"?"#22c55e":t.status==="occupied"?"#ef4444":"#f59e0b"}}>T{t.id}</div>
-                  <div className="text-[9px] capitalize" style={{color:t.status==="free"?"#22c55e":t.status==="occupied"?"#ef4444":"#f59e0b"}}>{t.status}</div>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-4 mt-4 text-[10px] text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"/>Free</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"/>Occupied</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"/>Needs Cleaning</span>
-            </div>
-          </div>
-        )}
-
-        {view==="menu"&&(
-          <div className="gc rounded-2xl p-5" style={CARD}>
-            {/* Category tabs */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-              {MENU_CATS.map((c,i)=>(
-                <button key={c.cat} onClick={()=>setSelCat(i)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${selCat===i?"text-white":"text-slate-400"}`} style={selCat===i?{background:`${c.color}33`,border:`1px solid ${c.color}55`,color:c.color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>{c.cat}</button>
-              ))}
-            </div>
-            {/* Menu grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {MENU_CATS[selCat].items.map(item=>{
-                const inOrder=order.find(x=>x.name===item.name);
-                return(
-                  <button key={item.name} onClick={()=>addToOrder(item)} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{background:inOrder?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)"}}>
-                    <div className="text-white text-xs font-semibold mb-1 leading-tight">{item.name}</div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300 text-xs">{currency} {item.price.toFixed(2)}</span>
-                      {inOrder&&<span className="text-violet-400 text-[10px] font-bold">×{inOrder.qty}</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Current order */}
-        {order.length>0&&(
-          <div className="gc rounded-2xl p-4" style={CARD}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-white">Current Order</span>
-              <button onClick={sendKOT} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all" style={kotSent?{background:"rgba(34,197,94,0.15)",color:"#22c55e",border:"1px solid rgba(34,197,94,0.3)"}:{background:"rgba(245,158,11,0.15)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.3)"}}>
-                {kotSent?<><CheckCircle size={12}/>KOT Sent</>:<><Send size={12}/>Send to Kitchen (KOT)</>}
-              </button>
-            </div>
-            <div className="space-y-1">
-              {order.map(i=>(
-                <div key={i.name} className="flex items-center justify-between text-xs py-1.5" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                  <span className="text-slate-300 flex-1">{i.name}</span>
-                  <div className="flex items-center gap-2">
-                    <button onClick={()=>removeFromOrder(i.name)} className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>-</button>
-                    <span className="text-white w-5 text-center font-semibold">{i.qty}</span>
-                    <button onClick={()=>addToOrder(i)} className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-green-400 transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>+</button>
-                    <span className="text-slate-300 w-16 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={name} setName={setName} discount={discount} setDiscount={setDiscount} currency={currency}/>
-      </div>
-      <div>
-        <POSOrderSummary items={order.map(i=>({...i,unitPrice:i.price}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>
-      </div>
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════
-// SALON POS
-// ════════════════════════════════════════════════════════════════
-const SalonPOS=({currency}:{currency:string})=>{
-  const SERVICES=[
-    {cat:"Hair",color:"#ec4899",items:[{name:"Haircut – Ladies",price:35},{name:"Haircut – Gents",price:20},{name:"Blow Dry",price:25},{name:"Hair Colour",price:65},{name:"Highlights",price:80},{name:"Keratin Treatment",price:120}]},
-    {cat:"Nails",color:"#8b5cf6",items:[{name:"Manicure",price:25},{name:"Pedicure",price:30},{name:"Gel Nails",price:45},{name:"Nail Art",price:15}]},
-    {cat:"Skin",color:"#06b6d4",items:[{name:"Facial",price:50},{name:"Threading",price:8},{name:"Waxing – Full Leg",price:35},{name:"Eyebrow Shape",price:12}]},
-    {cat:"Packages",color:"#f59e0b",items:[{name:"Bridal Package",price:250},{name:"Pamper Day",price:120},{name:"Teen Package",price:65}]},
-  ];
-  const STAFF=["Sarah","Emma","Priya","Zara","Layla"];
-  const [selCat,setSelCat]=useState(0);
-  const [order,setOrder]=useState<{name:string,price:number,qty:number,staff:string}[]>([]);
-  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
-  const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
-  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
-  const [notes,setNotes]=useState("");const [apptDate,setApptDate]=useState("");const [apptTime,setApptTime]=useState("");
-
-  const addService=(item:{name:string,price:number})=>{
-    setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p:([...p,{...item,qty:1,staff:STAFF[0]}]);});
-  };
-
-  const process=async()=>{
-    if(!order.length){setSaleErr("Add at least one service.");return;}
-    setProcessing(true);setSaleErr("");setSaleResult(null);
-    try{
-      const r=await api.pos.createSale({customerPhone:phone,customerName:cname,items:order.map(i=>({name:`${i.name} (${i.staff})`,qty:1,unitPrice:i.price})),paymentMode:mode,discount,notes});
-      setSaleResult(r);setOrder([]);
-    }catch(ex){setSaleErr((ex as Error).message);}
-    setProcessing(false);
-  };
-
-  return(
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
-        {/* Appointment quick-book */}
-        <div className="gc rounded-2xl p-4" style={CARD}>
-          <div className="flex items-center gap-2 mb-3"><Award size={15} className="text-pink-400"/><span className="text-sm font-semibold text-white">Appointment</span><span className="text-[10px] text-slate-500">(optional – book alongside service)</span></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="text-[10px] text-slate-400 block mb-1">Date</label><input type="date" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={apptDate} onChange={e=>setApptDate(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">Time</label><input type="time" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={apptTime} onChange={e=>setApptTime(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Formula</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. 7N+3W mix" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
-          </div>
-        </div>
-
-        {/* Service catalogue */}
-        <div className="gc rounded-2xl p-5" style={CARD}>
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-            {SERVICES.map((c,i)=>(
-              <button key={c.cat} onClick={()=>setSelCat(i)} className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all" style={selCat===i?{background:`${c.color}33`,border:`1px solid ${c.color}55`,color:c.color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#94a3b8"}}>
-                {c.cat}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {SERVICES[selCat].items.map(item=>{
-              const added=order.some(x=>x.name===item.name);
-              return(
-                <button key={item.name} onClick={()=>addService(item)} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02]" style={{background:added?"rgba(236,72,153,0.12)":"rgba(255,255,255,0.04)",border:added?"1px solid rgba(236,72,153,0.35)":"1px solid rgba(255,255,255,0.08)"}}>
-                  <div className="text-white text-xs font-semibold mb-1">{item.name}</div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300 text-xs">{currency} {item.price}</span>
-                    {added&&<CheckCircle size={12} className="text-pink-400"/>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Order with staff assignment */}
-        {order.length>0&&(
-          <div className="gc rounded-2xl p-4" style={CARD}>
-            <div className="text-sm font-semibold text-white mb-3">Services & Staff Assignment</div>
-            <div className="space-y-2">
-              {order.map((item,idx)=>(
-                <div key={item.name} className="flex items-center gap-3 py-2" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                  <div className="flex-1 text-xs text-white">{item.name}</div>
-                  <select className="px-2 py-1 rounded-lg text-[10px] text-white outline-none" style={inpS} value={item.staff} onChange={e=>setOrder(p=>p.map((x,i)=>i===idx?{...x,staff:e.target.value}:x))}>
-                    {STAFF.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <span className="text-slate-300 text-xs w-16 text-right">{currency} {item.price}</span>
-                  <button onClick={()=>setOrder(p=>p.filter((_,i)=>i!==idx))} className="text-slate-600 hover:text-red-400"><X size={13}/></button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={cname} setName={setCname} discount={discount} setDiscount={setDiscount} currency={currency}/>
-      </div>
-      <div>
-        <POSOrderSummary items={order.map(i=>({name:`${i.name}`,label:i.name,unitPrice:i.price,qty:1}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>
-      </div>
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════
-// GYM POS
-// ════════════════════════════════════════════════════════════════
-const GymPOS=({currency}:{currency:string})=>{
-  const PLANS=[
-    {name:"Monthly – Basic",price:30,color:"#3b82f6",desc:"Gym access only"},
-    {name:"Monthly – Premium",price:50,color:"#8b5cf6",desc:"Gym + classes"},
-    {name:"Quarterly",price:85,color:"#06b6d4",desc:"3 month all-access"},
-    {name:"Annual",price:299,color:"#f59e0b",desc:"Best value"},
-    {name:"Day Pass",price:8,color:"#22c55e",desc:"Single visit"},
-    {name:"PT Session (1hr)",price:45,color:"#ec4899",desc:"Personal training"},
-    {name:"Class Pack (10)",price:70,color:"#f97316",desc:"10 group classes"},
-    {name:"Locker Rental",price:5,color:"#6b7280",desc:"Monthly locker"},
-  ];
-  const CLASSES=[
-    {name:"Yoga",time:"09:00",trainer:"Emma",spots:3},{name:"HIIT",time:"10:30",trainer:"Jake",spots:0},
-    {name:"Spin",time:"12:00",trainer:"Priya",spots:5},{name:"Boxing",time:"14:00",trainer:"Tariq",spots:2},
-    {name:"Pilates",time:"17:30",trainer:"Sarah",spots:8},{name:"Zumba",time:"19:00",trainer:"Maria",spots:1},
-  ];
-  const [order,setOrder]=useState<{name:string,price:number,qty:number}[]>([]);
-  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
-  const [phone,setPhone]=useState("");const [mname,setMname]=useState("");const [discount,setDiscount]=useState(0);
-  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
-  const [checkInPhone,setCheckInPhone]=useState("");const [checkInMsg,setCheckInMsg]=useState("");const [view,setView]=useState<"plans"|"classes"|"checkin">("plans");
-
-  const addPlan=(item:{name:string,price:number})=>{setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p.map(x=>x.name===item.name?{...x,qty:x.qty+1}:x):[...p,{...item,qty:1}];});};
-  const process=async()=>{
-    if(!order.length){setSaleErr("Select a plan or service.");return;}
-    setProcessing(true);setSaleErr("");setSaleResult(null);
-    try{
-      const r=await api.pos.createSale({customerPhone:phone,customerName:mname,items:order.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:mode,discount});
-      setSaleResult(r);setOrder([]);
-    }catch(ex){setSaleErr((ex as Error).message);}
-    setProcessing(false);
-  };
-  const doCheckIn=()=>{if(!checkInPhone.trim()){setCheckInMsg("Enter phone number.");return;}setCheckInMsg(`✓ Check-in recorded for ${checkInPhone}`);setCheckInPhone("");};
-
-  return(
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
-        <div className="flex gap-2">
-          {(["plans","classes","checkin"] as const).map(v=>(
-            <button key={v} onClick={()=>setView(v)} className="px-4 py-2 rounded-xl text-xs font-semibold transition-all" style={view===v?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)",color:"#fff"}:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#94a3b8"}}>
-              {v==="plans"?"💳 Memberships":v==="classes"?"🏋️ Classes":"📲 Check-In"}
-            </button>
-          ))}
-        </div>
-
-        {view==="plans"&&(
-          <div className="gc rounded-2xl p-5" style={CARD}>
-            <div className="text-sm font-semibold text-white mb-4">Membership Plans & Add-ons</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {PLANS.map(plan=>{
-                const inOrder=order.find(x=>x.name===plan.name);
-                return(
-                  <button key={plan.name} onClick={()=>addPlan(plan)} className="p-4 rounded-xl text-left transition-all hover:scale-[1.02]" style={{background:inOrder?`${plan.color}20`:"rgba(255,255,255,0.04)",border:inOrder?`1px solid ${plan.color}55`:"1px solid rgba(255,255,255,0.08)"}}>
-                    <div className="text-lg mb-2">💳</div>
-                    <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{plan.name}</div>
-                    <div className="text-slate-400 text-[10px] mb-2">{plan.desc}</div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm" style={{color:plan.color}}>{currency} {plan.price}</span>
-                      {inOrder&&<span className="text-[10px] font-bold" style={{color:plan.color}}>×{inOrder.qty}</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {view==="classes"&&(
-          <div className="gc rounded-2xl p-5" style={CARD}>
-            <div className="text-sm font-semibold text-white mb-4">Today's Classes</div>
-            <div className="space-y-2">
-              {CLASSES.map(cls=>(
-                <div key={cls.name} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                  <div className="flex items-center gap-3">
-                    <div className="text-xl">🏋️</div>
-                    <div><div className="text-white text-xs font-semibold">{cls.name}</div><div className="text-slate-400 text-[10px]">{cls.time} · {cls.trainer}</div></div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cls.spots===0?"text-red-400":"text-green-400"}`} style={{background:cls.spots===0?"rgba(239,68,68,0.1)":"rgba(34,197,94,0.1)"}}>{cls.spots===0?"Full":`${cls.spots} spots`}</span>
-                    <button onClick={()=>addPlan({name:`${cls.name} Class – ${cls.time}`,price:8})} disabled={cls.spots===0} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all" style={{background:"rgba(139,92,246,0.3)"}}>Book</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view==="checkin"&&(
-          <div className="gc rounded-2xl p-5" style={CARD}>
-            <div className="flex items-center gap-2 mb-4"><Smartphone size={16} className="text-cyan-400"/><span className="text-sm font-semibold text-white">Member Check-In</span></div>
-            <div className="max-w-sm space-y-3">
-              <div><label className="text-xs text-slate-400 block mb-1">Member Phone / ID</label><input className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none" style={inpS} placeholder="+44 7..." value={checkInPhone} onChange={e=>setCheckInPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doCheckIn()}/></div>
-              <button onClick={doCheckIn} className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#06b6d4,#0891b2)"}}>
-                <CheckCircle size={15}/>Check In
-              </button>
-              {checkInMsg&&<div className={`p-3 rounded-xl text-xs font-medium ${checkInMsg.startsWith("✓")?"text-green-400":"text-red-400"}`} style={{background:checkInMsg.startsWith("✓")?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)"}}>{checkInMsg}</div>}
-            </div>
-            <div className="mt-6">
-              <div className="text-xs text-slate-400 mb-3">Recent Check-ins Today</div>
-              <div className="space-y-2">
-                {["+44 7911 123456","+44 7700 900001","+44 7800 000002"].map((p,i)=>(
-                  <div key={i} className="flex items-center justify-between p-2 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.03)"}}>
-                    <span className="text-slate-300">{p}</span>
-                    <span className="text-slate-500">{8+i}:0{i}0 am</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view!=="checkin"&&<PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={mname} setName={setMname} discount={discount} setDiscount={setDiscount} currency={currency}/>}
-      </div>
-      <div>
-        {view!=="checkin"&&<POSOrderSummary items={order.map(i=>({...i,unitPrice:i.price}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>}
-      </div>
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════
-// GENERIC / RETAIL POS (original functionality)
-// ════════════════════════════════════════════════════════════════
-const GenericPOS=({currency}:{currency:string})=>{
-  const [items,setItems]=useState([{name:"",qty:1,unitPrice:0}]);
-  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CASH");
-  const [phone,setPhone]=useState("");const [name,setName]=useState("");const [discount,setDiscount]=useState(0);
-  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
-  const GST_RATE=17;
-  const addItem=()=>setItems(p=>[...p,{name:"",qty:1,unitPrice:0}]);
-  const removeItem=(idx:number)=>setItems(p=>p.filter((_,i)=>i!==idx));
-  const update=(idx:number,f:string,v:any)=>setItems(p=>p.map((it,i)=>i===idx?{...it,[f]:v}:it));
-  const process=async()=>{
-    if(items.some(i=>!i.name||i.unitPrice<=0)){setSaleErr("All items need a name and price.");return;}
-    setProcessing(true);setSaleErr("");setSaleResult(null);
-    try{const r=await api.pos.createSale({customerPhone:phone,customerName:name,items:items.map(i=>({name:i.name,qty:Number(i.qty),unitPrice:Number(i.unitPrice)})),paymentMode:mode,discount:Number(discount)});setSaleResult(r);setItems([{name:"",qty:1,unitPrice:0}]);setPhone("");setName("");setDiscount(0);}
-    catch(ex){setSaleErr((ex as Error).message);}
-    setProcessing(false);
-  };
-  return(
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
-        <div className="gc rounded-2xl p-5" style={CARD}>
-          <div className="flex items-center justify-between mb-4"><span className="text-sm font-semibold text-white">Items</span><button onClick={addItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-violet-400 font-medium" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Plus size={12}/>Add Row</button></div>
-          <div className="grid grid-cols-12 gap-2 text-[10px] text-slate-500 px-1 mb-2 uppercase tracking-wider"><span className="col-span-5">Item</span><span className="col-span-2">Qty</span><span className="col-span-3">Price</span><span className="col-span-2">Total</span></div>
-          <div className="space-y-2">
-            {items.map((item,idx)=>(
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                <input className="col-span-5 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Item name" value={item.name} onChange={e=>update(idx,"name",e.target.value)}/>
-                <input className="col-span-2 px-2 py-2 rounded-xl text-xs text-white outline-none text-center" style={inpS} type="number" min={1} value={item.qty} onChange={e=>update(idx,"qty",e.target.value)}/>
-                <input className="col-span-3 px-2 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={item.unitPrice||""} onChange={e=>update(idx,"unitPrice",e.target.value)}/>
-                <div className="col-span-1 flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 hidden xl:block">{currency}{(item.qty*(item.unitPrice||0)).toFixed(0)}</span>
-                  <button onClick={()=>removeItem(idx)} disabled={items.length===1} className="text-slate-600 hover:text-red-400 disabled:opacity-20"><X size={13}/></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={name} setName={setName} discount={discount} setDiscount={setDiscount} currency={currency}/>
-      </div>
-      <div><POSOrderSummary items={items} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")} gstRate={GST_RATE}/></div>
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════
-// MAIN POS PAGE — detects business type, renders correct POS
+// MAIN POS PAGE
 // ════════════════════════════════════════════════════════════════
 const BIZ_TYPES=[
   {id:"restaurant",label:"Restaurant / Café",icon:"🍽",color:"#f59e0b"},
@@ -1723,57 +1711,67 @@ const BIZ_TYPES=[
 ];
 
 const POSPage=()=>{
-  const [tab,setTab]=useState<"pos"|"history"|"fbr">("pos");
+  const [tab,setTab]=useState<"pos"|"kds"|"inventory"|"history"|"fbr">("pos");
   const [bizType,setBizType]=useState<string>(()=>localStorage.getItem("pos_biztype")||"");
   const [currency]=useState("PKR");
+  const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
 
   const selectType=(t:string)=>{setBizType(t);localStorage.setItem("pos_biztype",t);};
 
-  if(!bizType){
-    return(
-      <div>
-        <div className="mb-8"><h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2"><ShoppingCart size={22} className="text-violet-400"/>Point of Sale</h1><p className="text-sm text-slate-400 mt-1">Select your business type to get the right POS experience</p></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl">
-          {BIZ_TYPES.map(b=>(
-            <button key={b.id} onClick={()=>selectType(b.id)} className="gc rounded-2xl p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{...CARD,border:`1px solid ${b.color}25`}}>
-              <div className="text-4xl mb-3">{b.icon}</div>
-              <div className="text-white font-semibold text-sm mb-1">{b.label}</div>
-              <div className="text-[10px] text-slate-400">Optimised workflow</div>
-              <div className="mt-4 text-xs font-semibold" style={{color:b.color}}>Select →</div>
-            </button>
-          ))}
-        </div>
+  if(!bizType){return(
+    <div>
+      <div className="mb-8"><h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2"><ShoppingCart size={22} className="text-violet-400"/>Loyable POS</h1><p className="text-sm text-slate-400 mt-1">Select your business type to get the right POS experience</p></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl">
+        {BIZ_TYPES.map(b=>(
+          <button key={b.id} onClick={()=>selectType(b.id)} className="gc rounded-2xl p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{...CARD,border:`1px solid ${b.color}25`}}>
+            <div className="text-4xl mb-3">{b.icon}</div>
+            <div className="text-white font-semibold text-sm mb-1">{b.label}</div>
+            <div className="text-[10px] text-slate-400 mb-4">Optimised workflow</div>
+            <div className="text-xs font-semibold" style={{color:b.color}}>Select →</div>
+          </button>
+        ))}
       </div>
-    );
-  }
+    </div>
+  );}
 
   const biz=BIZ_TYPES.find(b=>b.id===bizType)!;
 
   return(
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{biz.icon}</span>
-          <div><h1 className="text-2xl font-bold text-white tracking-tight">{biz.label} POS</h1><p className="text-xs text-slate-400 mt-0.5">FBR e-invoicing · {currency} currency</p></div>
-          <button onClick={()=>setBizType("")} className="ml-2 px-2.5 py-1 rounded-lg text-[10px] text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)"}}>Change Type</button>
+          <div><h1 className="text-2xl font-bold text-white tracking-tight">Loyable POS</h1><p className="text-xs text-slate-400 mt-0.5">{biz.label} · {currency}</p></div>
+          <button onClick={()=>setBizType("")} className="ml-1 px-2.5 py-1 rounded-lg text-[10px] text-slate-400 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}>Change</button>
         </div>
         <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(255,255,255,0.05)"}}>
-          {(["pos","history","fbr"] as const).map(t=>(
-            <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>{t==="pos"?"New Sale":t==="history"?"History":"FBR"}</button>
+          {([["pos","🧾 New Sale"],["kds","👨‍🍳 Kitchen"],["inventory","📦 Inventory"],["history","📋 History"],["fbr","🏛 FBR"]] as const).map(([t,label])=>(
+            <button key={t} onClick={()=>setTab(t as any)} className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>
+              {label}
+              {t==="kds"&&activeOrders.length>0&&<span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{background:"#ef4444"}}>{activeOrders.length}</span>}
+            </button>
           ))}
         </div>
       </div>
 
-      {tab==="pos"&&bizType==="restaurant"&&<RestaurantPOS currency={currency}/>}
-      {tab==="pos"&&bizType==="salon"&&<SalonPOS currency={currency}/>}
-      {tab==="pos"&&bizType==="gym"&&<GymPOS currency={currency}/>}
-      {tab==="pos"&&bizType==="retail"&&<GenericPOS currency={currency}/>}
+      {tab==="pos"&&<POSBuilder bizType={bizType} currency={currency}/>}
+      {tab==="kds"&&(
+        <div>
+          <div className="mb-4"><h2 className="text-lg font-bold text-white">Kitchen Display</h2><p className="text-xs text-slate-400">Tap items to mark as ready. Orders auto-sorted by wait time.</p></div>
+          <KitchenDisplay currency={currency}/>
+        </div>
+      )}
+      {tab==="inventory"&&(
+        <div>
+          <div className="mb-4"><h2 className="text-lg font-bold text-white">Inventory</h2><p className="text-xs text-slate-400">Stock levels update automatically when orders are marked as paid.</p></div>
+          <InventoryPanel bizType={bizType}/>
+        </div>
+      )}
       {tab==="history"&&<SalesHistory currency={currency}/>}
       {tab==="fbr"&&<FBRPanel/>}
     </div>
   );
 };
-
 // ════════════════════════════════════════════════════════════════
 // APP
 // ════════════════════════════════════════════════════════════════
