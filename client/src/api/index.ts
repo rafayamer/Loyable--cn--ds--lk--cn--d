@@ -13,16 +13,25 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (res.status === 401) {
-    // Try refresh
+    // Try refresh — send userId + sessionId so the server rotates the right session
     try {
-      const r = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      const userId    = localStorage.getItem('userId');
+      const sessionId = localStorage.getItem('sessionId');
+      const r = await fetch(`${BASE}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, sessionId }),
+      });
       if (r.ok) {
         const d = await r.json();
         localStorage.setItem('accessToken', d.accessToken);
+        if (d.sessionId) localStorage.setItem('sessionId', d.sessionId);
         return req<T>(path, init);
       }
     } catch {}
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('sessionId');
     window.location.href = '/';
     throw new Error('Unauthenticated');
   }

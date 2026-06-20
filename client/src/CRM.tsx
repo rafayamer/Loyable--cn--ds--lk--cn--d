@@ -179,6 +179,8 @@ const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
     try{
       const d=await api.auth.login(e,p);
       localStorage.setItem("accessToken",d.accessToken);
+      if(d.sessionId)localStorage.setItem("sessionId",d.sessionId);
+      if(d.user?.id)localStorage.setItem("userId",d.user.id);
       await hydrateFromApi();
       onLogin(d.user);
     }catch(ex){setErr((ex as Error).message);}

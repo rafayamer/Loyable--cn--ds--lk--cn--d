@@ -48,6 +48,7 @@ export interface AccessTokenPayload {
   businessId:       string;
   branchLocationId?: string | null;
   role:             Role;
+  sessionId?:       string;          // UserSession.id — used to rotate the correct session
   isImpersonating?: boolean;
   impersonatedBy?:  string;          // Super Admin userId
 }
@@ -55,6 +56,7 @@ export interface AccessTokenPayload {
 export interface TokenPair {
   accessToken:  string; // Goes in response body / Authorization header
   refreshToken: string; // Raw — set once as HTTP-only cookie, then discarded
+  sessionId:    string; // UserSession.id — embedded in JWT so refresh knows which row to rotate
 }
 
 // ================================================================
@@ -103,26 +105,33 @@ export const verifyPassword = async (
  *   - Never exposes the raw refresh token in logs or response bodies
  */
 export const issueTokenPair = async (
-  payload: AccessTokenPayload
+  payload: AccessTokenPayload,
+  meta?: { userAgent?: string; ipAddress?: string }
 ): Promise<TokenPair> => {
   const jwtSecret = getJwtSecret();
 
-  // ── Access token ───────────────────────────────────────────────
-  const accessToken = jwt.sign(payload, jwtSecret, {
-    expiresIn: ACCESS_TOKEN_EXPIRY,
-    algorithm: 'HS256',
-  } as SignOptions);
-
-  // ── Refresh token ──────────────────────────────────────────────
+  // ── Refresh token: create one session row per device ──────────
   const rawRefreshToken  = crypto.randomBytes(64).toString('hex');
   const refreshTokenHash = await hashPassword(rawRefreshToken);
 
-  await prisma.user.update({
-    where: { id: payload.sub },
-    data:  { refreshTokenHash },
+  const session = await prisma.userSession.create({
+    data: {
+      userId:           payload.sub,
+      refreshTokenHash,
+      userAgent:        meta?.userAgent,
+      ipAddress:        meta?.ipAddress,
+    },
+    select: { id: true },
   });
 
-  return { accessToken, refreshToken: rawRefreshToken };
+  // ── Access token (embeds sessionId for rotation routing) ───────
+  const accessToken = jwt.sign(
+    { ...payload, sessionId: session.id },
+    jwtSecret,
+    { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' } as SignOptions
+  );
+
+  return { accessToken, refreshToken: rawRefreshToken, sessionId: session.id };
 };
 
 // ================================================================
@@ -146,60 +155,48 @@ export const issueTokenPair = async (
  * user's next rotation invalidates it.
  */
 export const rotateRefreshToken = async (
-  userId:           string,
-  rawRefreshToken:  string,
-  oldAccessToken?:  string
+  userId:          string,
+  rawRefreshToken: string,
+  oldAccessToken?: string,
+  sessionId?:      string,
+  meta?:           { userAgent?: string; ipAddress?: string }
 ): Promise<TokenPair> => {
   const user = await prisma.user.findUnique({
     where:  { id: userId },
-    select: {
-      id:               true,
-      businessId:       true,
-      branchLocationId: true,
-      role:             true,
-      refreshTokenHash: true,
-      isActive:         true,
-    },
+    select: { id: true, businessId: true, branchLocationId: true, role: true, isActive: true },
   });
 
-  if (!user || !user.isActive) {
-    throw new Error('USER_NOT_FOUND_OR_INACTIVE');
-  }
+  if (!user || !user.isActive) throw new Error('USER_NOT_FOUND_OR_INACTIVE');
 
-  if (!user.refreshTokenHash) {
-    throw new Error('NO_ACTIVE_SESSION');
-  }
+  // Find the specific session for this device
+  const session = sessionId
+    ? await prisma.userSession.findUnique({ where: { id: sessionId } })
+    : await prisma.userSession.findFirst({ where: { userId }, orderBy: { lastUsedAt: 'desc' } });
 
-  const isValid = await verifyPassword(user.refreshTokenHash, rawRefreshToken);
+  if (!session || session.userId !== userId) throw new Error('NO_ACTIVE_SESSION');
+
+  const isValid = await verifyPassword(session.refreshTokenHash, rawRefreshToken);
 
   if (!isValid) {
-    // ── Theft detection: clear stored hash ──────────────────────
-    // If the attacker got the old refresh token, using it here will
-    // invalidate the legitimate user's next rotation attempt, alerting
-    // them that their session has been compromised.
-    await prisma.user.update({
-      where: { id: userId },
-      data:  { refreshTokenHash: null },
-    });
-
-    // TODO: Emit 'SESSION_COMPROMISED' audit log + alert notification here
-
+    // Theft detected — kill only this session (not all devices)
+    await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
     throw new Error('REFRESH_TOKEN_INVALID');
   }
 
-  // Blacklist the old access token if provided (best-effort, non-blocking)
+  // Blacklist the old access token (best-effort)
   if (oldAccessToken) {
     revokeToken(oldAccessToken).catch((err: Error) =>
       console.error('[token.service] Failed to revoke old access token:', err.message)
     );
   }
 
-  return issueTokenPair({
-    sub:              user.id,
-    businessId:       user.businessId,
-    branchLocationId: user.branchLocationId,
-    role:             user.role,
-  });
+  // Delete the old session row and issue a new one (rotation)
+  await prisma.userSession.delete({ where: { id: session.id } });
+
+  return issueTokenPair(
+    { sub: user.id, businessId: user.businessId, branchLocationId: user.branchLocationId, role: user.role },
+    meta
+  );
 };
 
 // ================================================================
@@ -213,15 +210,18 @@ export const rotateRefreshToken = async (
  *
  * Call on: logout, password change, role change, forced logoff by admin.
  */
+/** Revoke a single session (one device logout). */
 export const revokeAllUserTokens = async (
-  userId:            string,
-  currentAccessToken?: string
+  userId:              string,
+  currentAccessToken?: string,
+  sessionId?:          string
 ): Promise<void> => {
-  await prisma.user.update({
-    where: { id: userId },
-    data:  { refreshTokenHash: null },
-  });
-
+  if (sessionId) {
+    await prisma.userSession.delete({ where: { id: sessionId } }).catch(() => {});
+  } else {
+    // No sessionId — delete all sessions for this user (legacy path / forced logout)
+    await prisma.userSession.deleteMany({ where: { userId } });
+  }
   if (currentAccessToken) {
     await revokeToken(currentAccessToken);
   }

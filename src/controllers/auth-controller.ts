@@ -21,6 +21,7 @@ import { z, ZodError }  from 'zod';
 import rateLimit        from 'express-rate-limit';
 import { RedisStore }   from 'rate-limit-redis';
 import { Role }         from '@prisma/client';
+import jwt              from 'jsonwebtoken';
 
 import {
   registerBusiness,
@@ -214,6 +215,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     setRefreshCookie(res, result.refreshToken);
     res.status(200).json({
       accessToken: result.accessToken,
+      sessionId:   result.sessionId,
       user:        result.user,
     });
   } catch (err) {
@@ -226,8 +228,11 @@ const logoutHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, businessId } = req.tenantContext;
     const accessToken = req.headers.authorization!.split(' ')[1];
+    // Decode sessionId from the JWT (non-verifying — tenantScope already verified it)
+    const decoded = jwt.decode(accessToken) as any;
+    const sessionId = decoded?.sessionId as string | undefined;
 
-    await logout(userId, businessId, accessToken, req.ip);
+    await logout(userId, businessId, accessToken, req.ip, sessionId);
     clearRefreshCookie(res);
     res.status(204).send();
   } catch (err) {
@@ -237,18 +242,17 @@ const logoutHandler = async (req: Request, res: Response): Promise<void> => {
 
 /** POST /api/auth/refresh
  *
- *  Reads userId from request body (not from tenantScope — access token
- *  may already be expired). Reads raw refresh token from HTTP-only cookie.
- *
- *  The old access token is optionally passed in the body for immediate
- *  Redis blacklisting, preventing a narrow replay window.
+ *  Reads userId + sessionId from request body.
+ *  sessionId routes the rotation to the correct UserSession row so
+ *  30 concurrent devices can each refresh independently.
  */
 const refreshHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const rawRefreshToken = req.cookies?.refresh_token as string | undefined;
-    const { userId, oldAccessToken } = req.body as {
+    const { userId, oldAccessToken, sessionId } = req.body as {
       userId:          string;
       oldAccessToken?: string;
+      sessionId?:      string;
     };
 
     if (!rawRefreshToken) {
@@ -261,9 +265,12 @@ const refreshHandler = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const tokens = await refreshAccessToken(userId, rawRefreshToken, oldAccessToken);
+    const tokens = await refreshAccessToken(userId, rawRefreshToken, oldAccessToken, sessionId, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
     setRefreshCookie(res, tokens.refreshToken);
-    res.status(200).json({ accessToken: tokens.accessToken });
+    res.status(200).json({ accessToken: tokens.accessToken, sessionId: tokens.sessionId });
   } catch (err) {
     handleAuthError(err, res);
   }

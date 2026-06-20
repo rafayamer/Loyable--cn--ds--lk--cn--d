@@ -240,7 +240,7 @@ model User {
   name             String
   phone            String?
   role             Role
-  refreshTokenHash String?         // HTTP-only refresh token (Argon2id hash)
+  refreshTokenHash String?         // kept for migration compat — no longer used for multi-device
   isActive         Boolean         @default(true)
   lastLoginAt      DateTime?
   createdAt        DateTime        @default(now())
@@ -250,12 +250,29 @@ model User {
   branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])
   auditLogs        AuditLog[]
   couponRedemptions CouponRedemptionLog[]
+  sessions         UserSession[]
 
   @@unique([email, businessId])
   @@index([businessId])
   @@index([businessId, branchLocationId])
   @@index([businessId, role])
   @@map("users")
+}
+
+// One row per logged-in device — enables unlimited concurrent sessions
+model UserSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    // Argon2id hash of the raw refresh token
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
 }
 
 // ================================================================

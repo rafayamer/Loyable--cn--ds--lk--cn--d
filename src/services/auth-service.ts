@@ -298,9 +298,10 @@ export const logout = async (
   userId:      string,
   businessId:  string,
   accessToken: string,
-  ipAddress?:  string
+  ipAddress?:  string,
+  sessionId?:  string
 ): Promise<void> => {
-  await revokeAllUserTokens(userId, accessToken);
+  await revokeAllUserTokens(userId, accessToken, sessionId);
 
   await prisma.auditLog.create({
     data: {
@@ -319,9 +320,11 @@ export const logout = async (
 export const refreshAccessToken = (
   userId:          string,
   rawRefreshToken: string,
-  oldAccessToken?: string
+  oldAccessToken?: string,
+  sessionId?:      string,
+  meta?:           { userAgent?: string; ipAddress?: string }
 ): Promise<TokenPair> =>
-  rotateRefreshToken(userId, rawRefreshToken, oldAccessToken);
+  rotateRefreshToken(userId, rawRefreshToken, oldAccessToken, sessionId, meta);
 
 // ================================================================
 // FORGOT PASSWORD
