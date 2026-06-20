@@ -1375,7 +1375,7 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
 
 // ── Active Order Card (unpaid) ────────────────────────────────────
 const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:ActiveOrder;currency:string;bizType:string;onPaid:(o:ActiveOrder)=>void;role?:string})=>{
-  const [paying,setPaying]=useState(false);const [err,setErr]=useState("");
+  const [paying,setPaying]=useState(false);const [err,setErr]=useState("");const [waSent,setWaSent]=useState<"none"|"sending"|"ok"|"fail">("none");
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),10000);return()=>clearInterval(iv);},[]);
   const total=calcOrderTotal(order);
@@ -1386,20 +1386,40 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
   const remaining=prepMins>0?Math.max(0,prepMins-elapsed):null;
   const isOverdue=remaining!==null&&remaining===0&&elapsed>=prepMins;
 
+  // Normalise phone to international format (handles 0300… → +92300…)
+  const normPhone=(p:string):string=>{
+    const d=p.replace(/\D/g,"");
+    if(!d)return"";
+    if(d.startsWith("0")&&d.length===11)return"+92"+d.slice(1); // Pakistani local
+    if(d.length>=10&&!p.startsWith("+"))return"+"+d;
+    return p.trim();
+  };
+
+  const sendWA=async(o:ActiveOrder)=>{
+    if(!o.phone)return;
+    setWaSent("sending");
+    const ph=normPhone(o.phone);
+    const msg=buildBillText(o,currency);
+    try{
+      await api.messages.send({phone:ph,message:msg});
+      setWaSent("ok");
+    }catch(ex){
+      console.error("[POS] WA receipt failed:",ex);
+      setWaSent("fail");
+    }
+  };
+
   const markPaid=async()=>{
     setPaying(true);setErr("");
     try{
-      const r=await api.pos.createSale({customerPhone:order.phone,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
+      await api.pos.createSale({customerPhone:order.phone?normPhone(order.phone):undefined,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
       // Deduct inventory
       order.items.forEach(i=>deductStock(bizType,i.name,i.qty));
       updateOrder(order.id,{status:"PAID"});
       onPaid({...order,status:"PAID"});
-      // Send WhatsApp thank-you
-      if(order.phone){
-        const msg=buildBillText(order,currency);
-        await api.messages.send({phone:order.phone,message:msg}).catch(()=>{});
-      }
-      setTimeout(()=>removeOrder(order.id),4000);
+      // Send WhatsApp receipt
+      await sendWA(order);
+      setTimeout(()=>removeOrder(order.id),6000);
     }catch(ex){setErr((ex as Error).message);}
     setPaying(false);
   };
@@ -1449,7 +1469,24 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
       {order.status==="UNPAID"&&!can(role,"editOrders")&&(
         <div className="text-[10px] text-slate-500 text-center py-1">View only — only owners can mark orders as paid</div>
       )}
-      {order.status==="PAID"&&<div className="flex items-center gap-2 text-green-400 text-xs"><CheckCircle size={13}/><span>Paid{order.phone?" · WhatsApp receipt sent":""}</span><button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button></div>}
+      {order.status==="PAID"&&(
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-green-400 text-xs">
+            <CheckCircle size={13}/>
+            <span>Paid · {order.payMode}</span>
+            <button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button>
+          </div>
+          {order.phone&&(
+            <div className="flex items-center gap-2 text-xs">
+              {waSent==="sending"&&<><RefreshCw size={11} className="animate-spin text-slate-400"/><span className="text-slate-400">Sending WhatsApp receipt…</span></>}
+              {waSent==="ok"&&<><WAIcon size={12} className="text-green-400"/><span className="text-green-400">WhatsApp receipt sent to {normPhone(order.phone)}</span></>}
+              {waSent==="fail"&&<><XCircle size={11} className="text-red-400"/><span className="text-red-400">WhatsApp failed</span><button onClick={()=>sendWA(order)} className="ml-auto text-violet-400 underline text-[10px]">Retry</button></>}
+              {waSent==="none"&&<><WAIcon size={12} className="text-slate-500"/><span className="text-slate-500">No WA sent</span><button onClick={()=>sendWA(order)} className="ml-auto text-violet-400 underline text-[10px]">Send now</button></>}
+            </div>
+          )}
+          {!order.phone&&<div className="text-[10px] text-slate-500">No phone number — WhatsApp receipt skipped</div>}
+        </div>
+      )}
     </div>
   );
 };
