@@ -1155,348 +1155,621 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
 // ════════════════════════════════════════════════════════════════
 // POS PAGE
 // ════════════════════════════════════════════════════════════════
-const POSPage=()=>{
-  const [tab,setTab]=useState<"sale"|"history"|"fbr">("sale");
+// ── Shared POS sub-components ─────────────────────────────────────
+const inpS={background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"#fff"};
 
-  // ── New Sale state ───────────────────────────────────────────
-  const [items,setItems]=useState([{name:"",qty:1,unitPrice:0,pctCode:""}]);
-  const [paymentMode,setPaymentMode]=useState<"CASH"|"CARD"|"WALLET">("CASH");
-  const [customerPhone,setCustomerPhone]=useState("");
-  const [customerName,setCustomerName]=useState("");
-  const [discount,setDiscount]=useState(0);
-  const [processing,setProcessing]=useState(false);
-  const [saleResult,setSaleResult]=useState<any>(null);
-  const [saleErr,setSaleErr]=useState("");
-
-  // ── History state ────────────────────────────────────────────
-  const [sales,setSales]=useState<any[]>([]);
-  const [salesTotal,setSalesTotal]=useState(0);
-  const [salesPage,setSalesPage]=useState(1);
-  const [salesLoading,setSalesLoading]=useState(false);
-  const [filterFrom,setFilterFrom]=useState("");
-  const [filterTo,setFilterTo]=useState("");
-  const [filterMode,setFilterMode]=useState("");
-  const [selectedSale,setSelectedSale]=useState<any>(null);
-
-  // ── FBR Stats state ──────────────────────────────────────────
-  const [stats,setStats]=useState<any>(null);
-  const [fbrSettings,setFbrSettings]=useState({ntn:"",strn:"",fbrPosId:"",fbrToken:"",gstRate:"17",fbrEnabled:false});
-  const [savingSettings,setSavingSettings]=useState(false);
-  const [testingConn,setTestingConn]=useState(false);
-  const [connResult,setConnResult]=useState<string|null>(null);
-
-  const GST_RATE=17;
-
-  // ── Calculations ─────────────────────────────────────────────
-  const subtotal=items.reduce((s,i)=>s+(i.qty*(i.unitPrice||0)),0)-discount;
-  const gstAmt=parseFloat((subtotal-(subtotal/(1+GST_RATE/100))).toFixed(2));
+const POSOrderSummary=({items,discount,currency,onProcess,processing,saleErr,saleResult,onReceipt,gstRate=0}:{items:any[],discount:number,currency:string,onProcess:()=>void,processing:boolean,saleErr:string,saleResult:any,onReceipt:(id:string)=>void,gstRate?:number})=>{
+  const subtotal=items.reduce((s:number,i:any)=>s+(Number(i.qty||1)*(Number(i.unitPrice)||Number(i.price)||0)),0)-discount;
+  const gst=gstRate>0?parseFloat((subtotal-(subtotal/(1+gstRate/100))).toFixed(2)):0;
   const total=parseFloat(subtotal.toFixed(2));
+  return(
+    <div className="gc rounded-2xl p-5" style={CARD}>
+      <div className="text-sm font-semibold text-white mb-4">Order Summary</div>
+      <div className="space-y-2 text-xs mb-4 max-h-48 overflow-y-auto">
+        {items.filter((i:any)=>i.name||i.label).map((i:any,idx:number)=>(
+          <div key={idx} className="flex justify-between text-slate-300">
+            <span className="truncate mr-2">{i.name||i.label} ×{i.qty||1}</span>
+            <span>{currency} {((Number(i.qty||1))*(Number(i.unitPrice)||Number(i.price)||0)).toFixed(2)}</span>
+          </div>
+        ))}
+        {items.filter((i:any)=>i.name||i.label).length===0&&<div className="text-slate-500 py-2 text-center">No items added</div>}
+        {discount>0&&<div className="flex justify-between text-amber-400"><span>Discount</span><span>-{currency} {discount.toFixed(2)}</span></div>}
+      </div>
+      <div className="border-t border-white/10 pt-3 space-y-1.5 text-xs">
+        {gstRate>0&&<><div className="flex justify-between text-slate-400"><span>Subtotal (excl. GST)</span><span>{currency} {(subtotal-gst).toFixed(2)}</span></div><div className="flex justify-between text-amber-400"><span>GST ({gstRate}%)</span><span>{currency} {gst.toFixed(2)}</span></div></>}
+        <div className="flex justify-between text-white font-bold text-base mt-1"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
+      </div>
+      {saleErr&&<div className="mt-3 p-2 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>{saleErr}</div>}
+      <button onClick={onProcess} disabled={processing||items.every((i:any)=>!i.name&&!i.label)} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+        {processing?<RefreshCw size={15} className="animate-spin"/>:<ShoppingCart size={15}/>}{processing?"Processing...":"Complete Sale"}
+      </button>
+      {saleResult&&(
+        <div className="mt-3 p-3 rounded-xl" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)"}}>
+          <div className="flex items-center gap-2 mb-2"><CheckCircle size={14} className="text-green-400"/><span className="text-xs font-medium text-white">Sale Complete!</span></div>
+          {saleResult.fbrInvoiceNumber&&<div className="text-[10px] text-slate-400 font-mono break-all">{saleResult.fbrInvoiceNumber}</div>}
+          <button onClick={()=>onReceipt(saleResult.visit?.id||saleResult.id)} className="mt-2 w-full py-1.5 rounded-lg text-xs text-slate-300 flex items-center justify-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}><Printer size={11}/>Print Receipt</button>
+        </div>
+      )}
+    </div>
+  );
+};
 
-  const addItem=()=>setItems(p=>[...p,{name:"",qty:1,unitPrice:0,pctCode:""}]);
-  const removeItem=(idx:number)=>setItems(p=>p.filter((_,i)=>i!==idx));
-  const updateItem=(idx:number,field:string,val:any)=>setItems(p=>p.map((it,i)=>i===idx?{...it,[field]:val}:it));
+const PaymentPanel=({mode,setMode,phone,setPhone,name,setName,discount,setDiscount,currency}:any)=>(
+  <div className="gc rounded-2xl p-5" style={CARD}>
+    <div className="text-sm font-semibold text-white mb-4">Customer & Payment</div>
+    <div className="grid grid-cols-2 gap-3 mb-4">
+      <div><label className="text-[10px] text-slate-400 block mb-1">Phone (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+92..." value={phone} onChange={(e:any)=>setPhone(e.target.value)}/></div>
+      <div><label className="text-[10px] text-slate-400 block mb-1">Name (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Customer name" value={name} onChange={(e:any)=>setName(e.target.value)}/></div>
+    </div>
+    <div className="text-xs text-slate-400 mb-2">Payment Mode</div>
+    <div className="flex gap-2 mb-4">
+      {(["CASH","CARD","WALLET"] as const).map(m=>(
+        <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode===m?"text-white":"text-slate-400 hover:text-slate-200"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
+      ))}
+    </div>
+    <div className="flex items-center gap-3"><label className="text-xs text-slate-400 w-20">Discount ({currency})</label><input className="flex-1 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={discount||""} onChange={(e:any)=>setDiscount(Number(e.target.value))}/></div>
+  </div>
+);
 
-  const processSale=async()=>{
-    if(items.some(i=>!i.name||i.unitPrice<=0)){setSaleErr("All items need a name and price.");return;}
+// ── Sales History (shared across all POS types) ───────────────────
+const SalesHistory=({currency}:{currency:string})=>{
+  const [sales,setSales]=useState<any[]>([]);const [total,setTotal]=useState(0);const [pg,setPg]=useState(1);const [loading,setLoading]=useState(false);
+  const [from,setFrom]=useState("");const [to,setTo]=useState("");const [mode,setMode]=useState("");const [sel,setSel]=useState<any>(null);
+  const load=async()=>{setLoading(true);try{const p:any={page:pg,limit:20};if(from)p.from=from;if(to)p.to=to;if(mode)p.paymentMode=mode;const r=await api.pos.sales(p);setSales(r.sales??[]);setTotal(r.total??0);}catch{}setLoading(false);};
+  useEffect(()=>{load();},[pg,from,to,mode]);
+  return(
+    <div className="space-y-4">
+      <div className="gc rounded-2xl p-4" style={CARD}>
+        <div className="flex flex-wrap gap-3 items-end">
+          {[["From","date",from,setFrom],["To","date",to,setTo]].map(([l,t,v,s]:any)=><div key={l}><label className="text-[10px] text-slate-400 block mb-1">{l}</label><input type={t} className="px-2 py-1.5 rounded-xl text-xs text-white outline-none" style={inpS} value={v} onChange={(e:any)=>s(e.target.value)}/></div>)}
+          <div><label className="text-[10px] text-slate-400 block mb-1">Payment</label>
+            <select className="px-2 py-1.5 rounded-xl text-xs text-white outline-none" style={inpS} value={mode} onChange={(e:any)=>setMode(e.target.value)}>
+              <option value="">All</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="WALLET">Wallet</option>
+            </select>
+          </div>
+          <button onClick={()=>{setPg(1);load();}} className="px-3 py-1.5 rounded-xl text-xs text-white font-medium" style={{background:"rgba(139,92,246,0.3)"}}>Apply</button>
+        </div>
+      </div>
+      <div className="gc rounded-2xl overflow-hidden" style={CARD}>
+        {loading?<div className="p-8 text-center text-slate-400"><RefreshCw size={20} className="animate-spin mx-auto mb-2"/>Loading...</div>:(
+          <table className="w-full text-xs"><thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+            {["Date","Customer","Amount","Mode","FBR","Status",""].map(h=><th key={h} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>)}
+          </tr></thead><tbody>
+            {sales.length===0?<tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No sales found</td></tr>:
+            sales.map(s=>(
+              <tr key={s.id} className="cursor-pointer hover:bg-white/[0.025] transition-colors" style={{borderBottom:"1px solid rgba(255,255,255,0.03)"}} onClick={()=>setSel(s)}>
+                <td className="px-4 py-3 text-slate-300">{new Date(s.visitedAt).toLocaleString("en-GB",{dateStyle:"short",timeStyle:"short"})}</td>
+                <td className="px-4 py-3 text-white">{s.customer?.fullName??"—"}</td>
+                <td className="px-4 py-3 text-white font-medium">{currency} {Number(s.amountSpent).toFixed(2)}</td>
+                <td className="px-4 py-3"><Badge color={s.paymentMode==="CASH"?"#22c55e":s.paymentMode==="CARD"?"#3b82f6":"#8b5cf6"}>{s.paymentMode??"—"}</Badge></td>
+                <td className="px-4 py-3 text-slate-500 font-mono text-[10px] max-w-[100px] truncate">{s.fbrInvoiceNumber??"—"}</td>
+                <td className="px-4 py-3">{s.fbrSubmittedAt?<Badge color="#22c55e">OK</Badge>:<Badge color="#f59e0b">Pending</Badge>}</td>
+                <td className="px-4 py-3"><button onClick={e=>{e.stopPropagation();window.open(api.pos.receipt(s.id),"_blank");}} className="p-1 rounded text-slate-400 hover:text-white"><Printer size={12}/></button></td>
+              </tr>
+            ))}
+          </tbody></table>
+        )}
+      </div>
+      {total>20&&<div className="flex items-center justify-between text-xs text-slate-400">
+        <span>{total} total</span>
+        <div className="flex gap-1">
+          <button disabled={pg===1} onClick={()=>setPg(p=>p-1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>Prev</button>
+          <span className="px-3 py-1.5 text-white">{pg}</span>
+          <button disabled={pg*20>=total} onClick={()=>setPg(p=>p+1)} className="px-3 py-1.5 rounded-xl disabled:opacity-40 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>Next</button>
+        </div>
+      </div>}
+      {sel&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(6px)"}}>
+        <div className="gc rounded-2xl p-6 w-full max-w-md" style={CARD}>
+          <div className="flex items-center justify-between mb-4"><span className="text-sm font-semibold text-white">Sale Detail</span><button onClick={()=>setSel(null)} className="text-slate-400 hover:text-white"><X size={16}/></button></div>
+          <div className="space-y-2.5 text-xs">
+            {[["Customer",sel.customer?.fullName??"—"],["Amount",`${currency} ${Number(sel.amountSpent).toFixed(2)}`],["GST",`${currency} ${Number(sel.gstAmount??0).toFixed(2)}`],["Payment",sel.paymentMode??"—"],["FBR Invoice",sel.fbrInvoiceNumber??"Not submitted"],["Date",new Date(sel.visitedAt).toLocaleString()]].map(([k,v])=>(
+              <div key={k} className="flex justify-between"><span className="text-slate-400">{k}</span><span className="text-white font-medium max-w-[200px] text-right break-all">{v}</span></div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-5">
+            <button onClick={()=>window.open(api.pos.receipt(sel.id),"_blank")} className="flex-1 py-2.5 rounded-xl text-xs text-white flex items-center justify-center gap-1.5 font-medium" style={{background:"rgba(139,92,246,0.3)"}}><Printer size={12}/>Receipt</button>
+            {!sel.fbrSubmittedAt&&<button onClick={async()=>{try{await api.pos.retryFbr(sel.id);setSel(null);load();}catch(e){alert((e as Error).message);}}} className="flex-1 py-2.5 rounded-xl text-xs text-amber-400 flex items-center justify-center gap-1.5" style={{background:"rgba(245,158,11,0.1)"}}><RefreshCw size={12}/>Retry FBR</button>}
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+};
+
+// ── FBR Settings panel (shared) ───────────────────────────────────
+const FBRPanel=()=>{
+  const [stats,setStats]=useState<any>(null);
+  const [s,setS]=useState({ntn:"",strn:"",fbrPosId:"",fbrToken:"",gstRate:"17",fbrEnabled:false});
+  const [saving,setSaving]=useState(false);const [testing,setTesting]=useState(false);const [res,setRes]=useState<string|null>(null);
+  useEffect(()=>{api.pos.stats().then(setStats).catch(()=>{});},[]);
+  return(
+    <div className="space-y-4">
+      {stats&&<div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <KPI icon={DollarSign} label="Sales Today" value={`PKR ${(stats.totalSales??0).toFixed(0)}`} color={C.green}/>
+        <KPI icon={Receipt} label="GST Collected" value={`PKR ${(stats.totalGst??0).toFixed(0)}`} color={C.amber}/>
+        <KPI icon={ShoppingCart} label="Transactions" value={stats.transactionCount??0} color={C.primary}/>
+        <KPI icon={CheckCircle} label="FBR Submitted" value={stats.fbrSubmitted??0} color={C.green}/>
+        <KPI icon={XCircle} label="FBR Pending" value={stats.fbrFailed??0} color={C.red}/>
+      </div>}
+      <div className="gc rounded-2xl p-5" style={CARD}>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-semibold text-white">FBR Configuration</span>
+          <button onClick={()=>setS(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrEnabled?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrEnabled?22:2}}/></button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          {[["NTN","ntn","National Tax Number"],["STRN","strn","Sales Tax Reg. No."],["POS ID","fbrPosId","FBR-assigned POS ID"],["FBR Token","fbrToken","PRAL API Bearer Token"],["GST Rate (%)","gstRate","Default 17"]].map(([label,key,ph])=>(
+            <div key={key}><label className="text-[10px] text-slate-400 block mb-1">{label}</label>
+              <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder={ph} value={(s as any)[key]} onChange={e=>setS(p=>({...p,[key]:e.target.value}))}/>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={async()=>{setSaving(true);try{await api.settings.update({ntn:s.ntn,strn:s.strn,fbrPosId:parseInt(s.fbrPosId)||undefined,fbrToken:s.fbrToken,gstRate:parseFloat(s.gstRate)||17,fbrEnabled:s.fbrEnabled});}catch{}setSaving(false);}} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save"}</button>
+          <button onClick={async()=>{setTesting(true);setRes(null);try{await api.pos.stats();setRes("ok");}catch{setRes("fail");}setTesting(false);}} disabled={testing} className="px-4 py-2 rounded-xl text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>{testing?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test</button>
+          {res&&<span className={`px-3 py-2 rounded-xl text-xs ${res==="ok"?"text-green-400":"text-red-400"}`}>{res==="ok"?"✓ Connected":"✗ Failed"}</span>}
+        </div>
+      </div>
+      <div className="gc rounded-2xl p-4" style={{...CARD,border:"1px solid rgba(245,158,11,0.2)"}}>
+        <div className="flex items-start gap-3"><Info size={15} className="text-amber-400 mt-0.5 flex-shrink-0"/><div><div className="text-xs font-semibold text-amber-400 mb-1">Sandbox Mode</div><div className="text-xs text-slate-400">FBR submissions are mocked in non-production. Invoice numbers are prefixed <code className="text-slate-300">SANDBOX-</code>.</div></div></div>
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// RESTAURANT / CAFÉ POS
+// ════════════════════════════════════════════════════════════════
+const RestaurantPOS=({currency}:{currency:string})=>{
+  const MENU_CATS=[
+    {cat:"Starters",color:"#f59e0b",items:[{name:"Soup of the Day",price:3.5},{name:"Garlic Bread",price:2.5},{name:"Caesar Salad",price:5.5},{name:"Chicken Wings",price:7.0}]},
+    {cat:"Mains",color:"#8b5cf6",items:[{name:"Grilled Chicken",price:12.5},{name:"Beef Burger",price:9.5},{name:"Margherita Pizza",price:10.0},{name:"Pasta Carbonara",price:9.0},{name:"Fish & Chips",price:11.5},{name:"Veggie Wrap",price:8.0}]},
+    {cat:"Drinks",color:"#06b6d4",items:[{name:"Americano",price:2.8},{name:"Latte",price:3.5},{name:"Fresh OJ",price:3.0},{name:"Sparkling Water",price:1.5},{name:"Coke",price:2.0}]},
+    {cat:"Desserts",color:"#ec4899",items:[{name:"Chocolate Brownie",price:4.5},{name:"Cheesecake",price:4.0},{name:"Ice Cream",price:3.0}]},
+  ];
+  const TABLES=Array.from({length:12},(_,i)=>({id:i+1,status:["free","occupied","dirty"][Math.floor(Math.random()*3)]}));
+  const [selCat,setSelCat]=useState(0);
+  const [order,setOrder]=useState<{name:string,price:number,qty:number}[]>([]);
+  const [table,setTable]=useState<number|null>(null);
+  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
+  const [phone,setPhone]=useState("");const [name,setName]=useState("");const [discount,setDiscount]=useState(0);
+  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
+  const [kotSent,setKotSent]=useState(false);const [view,setView]=useState<"menu"|"tables">("menu");
+
+  const addToOrder=(item:{name:string,price:number})=>{
+    setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p.map(x=>x.name===item.name?{...x,qty:x.qty+1}:x):[...p,{...item,qty:1}];});
+    setKotSent(false);
+  };
+  const removeFromOrder=(n:string)=>setOrder(p=>p.map(x=>x.name===n?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
+  const sendKOT=()=>{setKotSent(true);};
+
+  const process=async()=>{
+    if(!order.length){setSaleErr("Add items first.");return;}
     setProcessing(true);setSaleErr("");setSaleResult(null);
     try{
-      const r=await api.pos.createSale({customerPhone,customerName,items:items.map(i=>({name:i.name,qty:Number(i.qty),unitPrice:Number(i.unitPrice),pctCode:i.pctCode||undefined})),paymentMode,discount:Number(discount)});
-      setSaleResult(r);
-      // Reset form
-      setItems([{name:"",qty:1,unitPrice:0,pctCode:""}]);setCustomerPhone("");setCustomerName("");setDiscount(0);
+      const r=await api.pos.createSale({customerPhone:phone,customerName:name,items:order.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:mode,discount,notes:table?`Table ${table}`:""});
+      setSaleResult(r);setOrder([]);setTable(null);setKotSent(false);
     }catch(ex){setSaleErr((ex as Error).message);}
-    finally{setProcessing(false);}
+    setProcessing(false);
   };
 
-  const loadSales=async()=>{
-    setSalesLoading(true);
+  return(
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        {/* Table / Menu toggle */}
+        <div className="flex gap-2">
+          {(["menu","tables"] as const).map(v=>(
+            <button key={v} onClick={()=>setView(v)} className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${view===v?"text-white":"text-slate-400"}`} style={view===v?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+              {v==="menu"?"🍽 Menu":"🪑 Tables"}
+            </button>
+          ))}
+          {table&&<span className="px-3 py-2 rounded-xl text-xs text-cyan-400 font-medium" style={{background:"rgba(6,182,212,0.1)",border:"1px solid rgba(6,182,212,0.2)"}}>Table {table} selected</span>}
+        </div>
+
+        {view==="tables"&&(
+          <div className="gc rounded-2xl p-5" style={CARD}>
+            <div className="text-sm font-semibold text-white mb-4">Floor Plan</div>
+            <div className="grid grid-cols-4 gap-3">
+              {TABLES.map(t=>(
+                <button key={t.id} onClick={()=>{setTable(t.id);setView("menu");}} className={`p-3 rounded-xl text-xs font-semibold transition-all ${table===t.id?"ring-2 ring-violet-500":""}`} style={{background:t.status==="free"?"rgba(34,197,94,0.1)":t.status==="occupied"?"rgba(239,68,68,0.1)":"rgba(245,158,11,0.1)",border:`1px solid ${t.status==="free"?"rgba(34,197,94,0.25)":t.status==="occupied"?"rgba(239,68,68,0.25)":"rgba(245,158,11,0.25)"}`}}>
+                  <div className="text-lg mb-1">🪑</div>
+                  <div style={{color:t.status==="free"?"#22c55e":t.status==="occupied"?"#ef4444":"#f59e0b"}}>T{t.id}</div>
+                  <div className="text-[9px] capitalize" style={{color:t.status==="free"?"#22c55e":t.status==="occupied"?"#ef4444":"#f59e0b"}}>{t.status}</div>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-4 mt-4 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"/>Free</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"/>Occupied</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"/>Needs Cleaning</span>
+            </div>
+          </div>
+        )}
+
+        {view==="menu"&&(
+          <div className="gc rounded-2xl p-5" style={CARD}>
+            {/* Category tabs */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+              {MENU_CATS.map((c,i)=>(
+                <button key={c.cat} onClick={()=>setSelCat(i)} className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${selCat===i?"text-white":"text-slate-400"}`} style={selCat===i?{background:`${c.color}33`,border:`1px solid ${c.color}55`,color:c.color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>{c.cat}</button>
+              ))}
+            </div>
+            {/* Menu grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {MENU_CATS[selCat].items.map(item=>{
+                const inOrder=order.find(x=>x.name===item.name);
+                return(
+                  <button key={item.name} onClick={()=>addToOrder(item)} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{background:inOrder?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)"}}>
+                    <div className="text-white text-xs font-semibold mb-1 leading-tight">{item.name}</div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-xs">{currency} {item.price.toFixed(2)}</span>
+                      {inOrder&&<span className="text-violet-400 text-[10px] font-bold">×{inOrder.qty}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Current order */}
+        {order.length>0&&(
+          <div className="gc rounded-2xl p-4" style={CARD}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-white">Current Order</span>
+              <button onClick={sendKOT} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all" style={kotSent?{background:"rgba(34,197,94,0.15)",color:"#22c55e",border:"1px solid rgba(34,197,94,0.3)"}:{background:"rgba(245,158,11,0.15)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.3)"}}>
+                {kotSent?<><CheckCircle size={12}/>KOT Sent</>:<><Send size={12}/>Send to Kitchen (KOT)</>}
+              </button>
+            </div>
+            <div className="space-y-1">
+              {order.map(i=>(
+                <div key={i.name} className="flex items-center justify-between text-xs py-1.5" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                  <span className="text-slate-300 flex-1">{i.name}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={()=>removeFromOrder(i.name)} className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>-</button>
+                    <span className="text-white w-5 text-center font-semibold">{i.qty}</span>
+                    <button onClick={()=>addToOrder(i)} className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-green-400 transition-colors" style={{background:"rgba(255,255,255,0.06)"}}>+</button>
+                    <span className="text-slate-300 w-16 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={name} setName={setName} discount={discount} setDiscount={setDiscount} currency={currency}/>
+      </div>
+      <div>
+        <POSOrderSummary items={order.map(i=>({...i,unitPrice:i.price}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// SALON POS
+// ════════════════════════════════════════════════════════════════
+const SalonPOS=({currency}:{currency:string})=>{
+  const SERVICES=[
+    {cat:"Hair",color:"#ec4899",items:[{name:"Haircut – Ladies",price:35},{name:"Haircut – Gents",price:20},{name:"Blow Dry",price:25},{name:"Hair Colour",price:65},{name:"Highlights",price:80},{name:"Keratin Treatment",price:120}]},
+    {cat:"Nails",color:"#8b5cf6",items:[{name:"Manicure",price:25},{name:"Pedicure",price:30},{name:"Gel Nails",price:45},{name:"Nail Art",price:15}]},
+    {cat:"Skin",color:"#06b6d4",items:[{name:"Facial",price:50},{name:"Threading",price:8},{name:"Waxing – Full Leg",price:35},{name:"Eyebrow Shape",price:12}]},
+    {cat:"Packages",color:"#f59e0b",items:[{name:"Bridal Package",price:250},{name:"Pamper Day",price:120},{name:"Teen Package",price:65}]},
+  ];
+  const STAFF=["Sarah","Emma","Priya","Zara","Layla"];
+  const [selCat,setSelCat]=useState(0);
+  const [order,setOrder]=useState<{name:string,price:number,qty:number,staff:string}[]>([]);
+  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
+  const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
+  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
+  const [notes,setNotes]=useState("");const [apptDate,setApptDate]=useState("");const [apptTime,setApptTime]=useState("");
+
+  const addService=(item:{name:string,price:number})=>{
+    setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p:([...p,{...item,qty:1,staff:STAFF[0]}]);});
+  };
+
+  const process=async()=>{
+    if(!order.length){setSaleErr("Add at least one service.");return;}
+    setProcessing(true);setSaleErr("");setSaleResult(null);
     try{
-      const p:any={page:salesPage,limit:20};
-      if(filterFrom)p.from=filterFrom;
-      if(filterTo)p.to=filterTo;
-      if(filterMode)p.paymentMode=filterMode;
-      const r=await api.pos.sales(p);
-      setSales(r.sales??[]);setSalesTotal(r.total??0);
-    }catch{}
-    finally{setSalesLoading(false);}
+      const r=await api.pos.createSale({customerPhone:phone,customerName:cname,items:order.map(i=>({name:`${i.name} (${i.staff})`,qty:1,unitPrice:i.price})),paymentMode:mode,discount,notes});
+      setSaleResult(r);setOrder([]);
+    }catch(ex){setSaleErr((ex as Error).message);}
+    setProcessing(false);
   };
 
-  const loadStats=async()=>{
-    try{const r=await api.pos.stats();setStats(r);}catch{}
-  };
+  return(
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        {/* Appointment quick-book */}
+        <div className="gc rounded-2xl p-4" style={CARD}>
+          <div className="flex items-center gap-2 mb-3"><Award size={15} className="text-pink-400"/><span className="text-sm font-semibold text-white">Appointment</span><span className="text-[10px] text-slate-500">(optional – book alongside service)</span></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="text-[10px] text-slate-400 block mb-1">Date</label><input type="date" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={apptDate} onChange={e=>setApptDate(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Time</label><input type="time" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={apptTime} onChange={e=>setApptTime(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Formula</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. 7N+3W mix" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
+          </div>
+        </div>
 
-  useEffect(()=>{if(tab==="history")loadSales();},[tab,salesPage,filterFrom,filterTo,filterMode]);
-  useEffect(()=>{if(tab==="fbr")loadStats();},[tab]);
+        {/* Service catalogue */}
+        <div className="gc rounded-2xl p-5" style={CARD}>
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            {SERVICES.map((c,i)=>(
+              <button key={c.cat} onClick={()=>setSelCat(i)} className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all" style={selCat===i?{background:`${c.color}33`,border:`1px solid ${c.color}55`,color:c.color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#94a3b8"}}>
+                {c.cat}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {SERVICES[selCat].items.map(item=>{
+              const added=order.some(x=>x.name===item.name);
+              return(
+                <button key={item.name} onClick={()=>addService(item)} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02]" style={{background:added?"rgba(236,72,153,0.12)":"rgba(255,255,255,0.04)",border:added?"1px solid rgba(236,72,153,0.35)":"1px solid rgba(255,255,255,0.08)"}}>
+                  <div className="text-white text-xs font-semibold mb-1">{item.name}</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300 text-xs">{currency} {item.price}</span>
+                    {added&&<CheckCircle size={12} className="text-pink-400"/>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-  const retryFbr=async(id:string)=>{
-    try{await api.pos.retryFbr(id);loadSales();alert("FBR retry successful");}
-    catch(ex){alert("Retry failed: "+(ex as Error).message);}
-  };
+        {/* Order with staff assignment */}
+        {order.length>0&&(
+          <div className="gc rounded-2xl p-4" style={CARD}>
+            <div className="text-sm font-semibold text-white mb-3">Services & Staff Assignment</div>
+            <div className="space-y-2">
+              {order.map((item,idx)=>(
+                <div key={item.name} className="flex items-center gap-3 py-2" style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                  <div className="flex-1 text-xs text-white">{item.name}</div>
+                  <select className="px-2 py-1 rounded-lg text-[10px] text-white outline-none" style={inpS} value={item.staff} onChange={e=>setOrder(p=>p.map((x,i)=>i===idx?{...x,staff:e.target.value}:x))}>
+                    {STAFF.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <span className="text-slate-300 text-xs w-16 text-right">{currency} {item.price}</span>
+                  <button onClick={()=>setOrder(p=>p.filter((_,i)=>i!==idx))} className="text-slate-600 hover:text-red-400"><X size={13}/></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-  const openReceipt=(id:string)=>{window.open(api.pos.receipt(id),"_blank");};
+        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={cname} setName={setCname} discount={discount} setDiscount={setDiscount} currency={currency}/>
+      </div>
+      <div>
+        <POSOrderSummary items={order.map(i=>({name:`${i.name}`,label:i.name,unitPrice:i.price,qty:1}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>
+      </div>
+    </div>
+  );
+};
 
-  const testConn=async()=>{
-    setTestingConn(true);setConnResult(null);
+// ════════════════════════════════════════════════════════════════
+// GYM POS
+// ════════════════════════════════════════════════════════════════
+const GymPOS=({currency}:{currency:string})=>{
+  const PLANS=[
+    {name:"Monthly – Basic",price:30,color:"#3b82f6",desc:"Gym access only"},
+    {name:"Monthly – Premium",price:50,color:"#8b5cf6",desc:"Gym + classes"},
+    {name:"Quarterly",price:85,color:"#06b6d4",desc:"3 month all-access"},
+    {name:"Annual",price:299,color:"#f59e0b",desc:"Best value"},
+    {name:"Day Pass",price:8,color:"#22c55e",desc:"Single visit"},
+    {name:"PT Session (1hr)",price:45,color:"#ec4899",desc:"Personal training"},
+    {name:"Class Pack (10)",price:70,color:"#f97316",desc:"10 group classes"},
+    {name:"Locker Rental",price:5,color:"#6b7280",desc:"Monthly locker"},
+  ];
+  const CLASSES=[
+    {name:"Yoga",time:"09:00",trainer:"Emma",spots:3},{name:"HIIT",time:"10:30",trainer:"Jake",spots:0},
+    {name:"Spin",time:"12:00",trainer:"Priya",spots:5},{name:"Boxing",time:"14:00",trainer:"Tariq",spots:2},
+    {name:"Pilates",time:"17:30",trainer:"Sarah",spots:8},{name:"Zumba",time:"19:00",trainer:"Maria",spots:1},
+  ];
+  const [order,setOrder]=useState<{name:string,price:number,qty:number}[]>([]);
+  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CARD");
+  const [phone,setPhone]=useState("");const [mname,setMname]=useState("");const [discount,setDiscount]=useState(0);
+  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
+  const [checkInPhone,setCheckInPhone]=useState("");const [checkInMsg,setCheckInMsg]=useState("");const [view,setView]=useState<"plans"|"classes"|"checkin">("plans");
+
+  const addPlan=(item:{name:string,price:number})=>{setOrder(p=>{const ex=p.find(x=>x.name===item.name);return ex?p.map(x=>x.name===item.name?{...x,qty:x.qty+1}:x):[...p,{...item,qty:1}];});};
+  const process=async()=>{
+    if(!order.length){setSaleErr("Select a plan or service.");return;}
+    setProcessing(true);setSaleErr("");setSaleResult(null);
     try{
-      await api.pos.stats();
-      setConnResult("ok");
-    }catch{setConnResult("fail");}
-    finally{setTestingConn(false);}
+      const r=await api.pos.createSale({customerPhone:phone,customerName:mname,items:order.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:mode,discount});
+      setSaleResult(r);setOrder([]);
+    }catch(ex){setSaleErr((ex as Error).message);}
+    setProcessing(false);
   };
+  const doCheckIn=()=>{if(!checkInPhone.trim()){setCheckInMsg("Enter phone number.");return;}setCheckInMsg(`✓ Check-in recorded for ${checkInPhone}`);setCheckInPhone("");};
 
-  const cardS=CARD;
-  const inpS={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff"};
+  return(
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        <div className="flex gap-2">
+          {(["plans","classes","checkin"] as const).map(v=>(
+            <button key={v} onClick={()=>setView(v)} className="px-4 py-2 rounded-xl text-xs font-semibold transition-all" style={view===v?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)",color:"#fff"}:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#94a3b8"}}>
+              {v==="plans"?"💳 Memberships":v==="classes"?"🏋️ Classes":"📲 Check-In"}
+            </button>
+          ))}
+        </div>
+
+        {view==="plans"&&(
+          <div className="gc rounded-2xl p-5" style={CARD}>
+            <div className="text-sm font-semibold text-white mb-4">Membership Plans & Add-ons</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {PLANS.map(plan=>{
+                const inOrder=order.find(x=>x.name===plan.name);
+                return(
+                  <button key={plan.name} onClick={()=>addPlan(plan)} className="p-4 rounded-xl text-left transition-all hover:scale-[1.02]" style={{background:inOrder?`${plan.color}20`:"rgba(255,255,255,0.04)",border:inOrder?`1px solid ${plan.color}55`:"1px solid rgba(255,255,255,0.08)"}}>
+                    <div className="text-lg mb-2">💳</div>
+                    <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{plan.name}</div>
+                    <div className="text-slate-400 text-[10px] mb-2">{plan.desc}</div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm" style={{color:plan.color}}>{currency} {plan.price}</span>
+                      {inOrder&&<span className="text-[10px] font-bold" style={{color:plan.color}}>×{inOrder.qty}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {view==="classes"&&(
+          <div className="gc rounded-2xl p-5" style={CARD}>
+            <div className="text-sm font-semibold text-white mb-4">Today's Classes</div>
+            <div className="space-y-2">
+              {CLASSES.map(cls=>(
+                <div key={cls.name} className="flex items-center justify-between p-3 rounded-xl transition-all" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xl">🏋️</div>
+                    <div><div className="text-white text-xs font-semibold">{cls.name}</div><div className="text-slate-400 text-[10px]">{cls.time} · {cls.trainer}</div></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cls.spots===0?"text-red-400":"text-green-400"}`} style={{background:cls.spots===0?"rgba(239,68,68,0.1)":"rgba(34,197,94,0.1)"}}>{cls.spots===0?"Full":`${cls.spots} spots`}</span>
+                    <button onClick={()=>addPlan({name:`${cls.name} Class – ${cls.time}`,price:8})} disabled={cls.spots===0} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all" style={{background:"rgba(139,92,246,0.3)"}}>Book</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view==="checkin"&&(
+          <div className="gc rounded-2xl p-5" style={CARD}>
+            <div className="flex items-center gap-2 mb-4"><Smartphone size={16} className="text-cyan-400"/><span className="text-sm font-semibold text-white">Member Check-In</span></div>
+            <div className="max-w-sm space-y-3">
+              <div><label className="text-xs text-slate-400 block mb-1">Member Phone / ID</label><input className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none" style={inpS} placeholder="+44 7..." value={checkInPhone} onChange={e=>setCheckInPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doCheckIn()}/></div>
+              <button onClick={doCheckIn} className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#06b6d4,#0891b2)"}}>
+                <CheckCircle size={15}/>Check In
+              </button>
+              {checkInMsg&&<div className={`p-3 rounded-xl text-xs font-medium ${checkInMsg.startsWith("✓")?"text-green-400":"text-red-400"}`} style={{background:checkInMsg.startsWith("✓")?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)"}}>{checkInMsg}</div>}
+            </div>
+            <div className="mt-6">
+              <div className="text-xs text-slate-400 mb-3">Recent Check-ins Today</div>
+              <div className="space-y-2">
+                {["+44 7911 123456","+44 7700 900001","+44 7800 000002"].map((p,i)=>(
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.03)"}}>
+                    <span className="text-slate-300">{p}</span>
+                    <span className="text-slate-500">{8+i}:0{i}0 am</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view!=="checkin"&&<PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={mname} setName={setMname} discount={discount} setDiscount={setDiscount} currency={currency}/>}
+      </div>
+      <div>
+        {view!=="checkin"&&<POSOrderSummary items={order.map(i=>({...i,unitPrice:i.price}))} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")}/>}
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// GENERIC / RETAIL POS (original functionality)
+// ════════════════════════════════════════════════════════════════
+const GenericPOS=({currency}:{currency:string})=>{
+  const [items,setItems]=useState([{name:"",qty:1,unitPrice:0}]);
+  const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CASH");
+  const [phone,setPhone]=useState("");const [name,setName]=useState("");const [discount,setDiscount]=useState(0);
+  const [processing,setProcessing]=useState(false);const [saleErr,setSaleErr]=useState("");const [saleResult,setSaleResult]=useState<any>(null);
+  const GST_RATE=17;
+  const addItem=()=>setItems(p=>[...p,{name:"",qty:1,unitPrice:0}]);
+  const removeItem=(idx:number)=>setItems(p=>p.filter((_,i)=>i!==idx));
+  const update=(idx:number,f:string,v:any)=>setItems(p=>p.map((it,i)=>i===idx?{...it,[f]:v}:it));
+  const process=async()=>{
+    if(items.some(i=>!i.name||i.unitPrice<=0)){setSaleErr("All items need a name and price.");return;}
+    setProcessing(true);setSaleErr("");setSaleResult(null);
+    try{const r=await api.pos.createSale({customerPhone:phone,customerName:name,items:items.map(i=>({name:i.name,qty:Number(i.qty),unitPrice:Number(i.unitPrice)})),paymentMode:mode,discount:Number(discount)});setSaleResult(r);setItems([{name:"",qty:1,unitPrice:0}]);setPhone("");setName("");setDiscount(0);}
+    catch(ex){setSaleErr((ex as Error).message);}
+    setProcessing(false);
+  };
+  return(
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        <div className="gc rounded-2xl p-5" style={CARD}>
+          <div className="flex items-center justify-between mb-4"><span className="text-sm font-semibold text-white">Items</span><button onClick={addItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-violet-400 font-medium" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Plus size={12}/>Add Row</button></div>
+          <div className="grid grid-cols-12 gap-2 text-[10px] text-slate-500 px-1 mb-2 uppercase tracking-wider"><span className="col-span-5">Item</span><span className="col-span-2">Qty</span><span className="col-span-3">Price</span><span className="col-span-2">Total</span></div>
+          <div className="space-y-2">
+            {items.map((item,idx)=>(
+              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                <input className="col-span-5 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Item name" value={item.name} onChange={e=>update(idx,"name",e.target.value)}/>
+                <input className="col-span-2 px-2 py-2 rounded-xl text-xs text-white outline-none text-center" style={inpS} type="number" min={1} value={item.qty} onChange={e=>update(idx,"qty",e.target.value)}/>
+                <input className="col-span-3 px-2 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={item.unitPrice||""} onChange={e=>update(idx,"unitPrice",e.target.value)}/>
+                <div className="col-span-1 flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 hidden xl:block">{currency}{(item.qty*(item.unitPrice||0)).toFixed(0)}</span>
+                  <button onClick={()=>removeItem(idx)} disabled={items.length===1} className="text-slate-600 hover:text-red-400 disabled:opacity-20"><X size={13}/></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <PaymentPanel mode={mode} setMode={setMode} phone={phone} setPhone={setPhone} name={name} setName={setName} discount={discount} setDiscount={setDiscount} currency={currency}/>
+      </div>
+      <div><POSOrderSummary items={items} discount={discount} currency={currency} onProcess={process} processing={processing} saleErr={saleErr} saleResult={saleResult} onReceipt={id=>window.open(api.pos.receipt(id),"_blank")} gstRate={GST_RATE}/></div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// MAIN POS PAGE — detects business type, renders correct POS
+// ════════════════════════════════════════════════════════════════
+const BIZ_TYPES=[
+  {id:"restaurant",label:"Restaurant / Café",icon:"🍽",color:"#f59e0b"},
+  {id:"salon",label:"Salon / Beauty",icon:"💇",color:"#ec4899"},
+  {id:"gym",label:"Gym / Fitness",icon:"💪",color:"#06b6d4"},
+  {id:"retail",label:"Retail / General",icon:"🛍",color:"#8b5cf6"},
+];
+
+const POSPage=()=>{
+  const [tab,setTab]=useState<"pos"|"history"|"fbr">("pos");
+  const [bizType,setBizType]=useState<string>(()=>localStorage.getItem("pos_biztype")||"");
+  const [currency]=useState("PKR");
+
+  const selectType=(t:string)=>{setBizType(t);localStorage.setItem("pos_biztype",t);};
+
+  if(!bizType){
+    return(
+      <div>
+        <div className="mb-8"><h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2"><ShoppingCart size={22} className="text-violet-400"/>Point of Sale</h1><p className="text-sm text-slate-400 mt-1">Select your business type to get the right POS experience</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl">
+          {BIZ_TYPES.map(b=>(
+            <button key={b.id} onClick={()=>selectType(b.id)} className="gc rounded-2xl p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{...CARD,border:`1px solid ${b.color}25`}}>
+              <div className="text-4xl mb-3">{b.icon}</div>
+              <div className="text-white font-semibold text-sm mb-1">{b.label}</div>
+              <div className="text-[10px] text-slate-400">Optimised workflow</div>
+              <div className="mt-4 text-xs font-semibold" style={{color:b.color}}>Select →</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const biz=BIZ_TYPES.find(b=>b.id===bizType)!;
 
   return(
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-xl font-bold text-white flex items-center gap-2"><ShoppingCart size={20} className="text-violet-400"/>Point of Sale</h1><p className="text-xs text-slate-400 mt-0.5">FBR e-invoicing enabled</p></div>
-        <div className="flex gap-1 rounded-lg p-1" style={{background:"rgba(255,255,255,0.05)"}}>
-          {(["sale","history","fbr"] as const).map(t=>(
-            <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>{t==="sale"?"New Sale":t==="history"?"Sales History":"FBR Status"}</button>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{biz.icon}</span>
+          <div><h1 className="text-2xl font-bold text-white tracking-tight">{biz.label} POS</h1><p className="text-xs text-slate-400 mt-0.5">FBR e-invoicing · {currency} currency</p></div>
+          <button onClick={()=>setBizType("")} className="ml-2 px-2.5 py-1 rounded-lg text-[10px] text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)"}}>Change Type</button>
+        </div>
+        <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(255,255,255,0.05)"}}>
+          {(["pos","history","fbr"] as const).map(t=>(
+            <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>{t==="pos"?"New Sale":t==="history"?"History":"FBR"}</button>
           ))}
         </div>
       </div>
 
-      {/* ── TAB 1: New Sale ── */}
-      {tab==="sale"&&(
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: Item entry */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="rounded-xl p-4" className="gc" style={cardS}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-white">Items</span>
-                <button onClick={addItem} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-violet-400" style={{background:"rgba(139,92,246,0.1)"}}>
-                  <Plus size={12}/>Add Item
-                </button>
-              </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-12 gap-2 text-xs text-slate-500 px-1">
-                  <span className="col-span-5">Item Name</span>
-                  <span className="col-span-2">Qty</span>
-                  <span className="col-span-3">Unit Price</span>
-                  <span className="col-span-1"></span>
-                </div>
-                {items.map((item,idx)=>(
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                    <input className="col-span-5 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} placeholder="Item name" value={item.name} onChange={e=>updateItem(idx,"name",e.target.value)}/>
-                    <input className="col-span-2 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} type="number" min={1} value={item.qty} onChange={e=>updateItem(idx,"qty",e.target.value)}/>
-                    <input className="col-span-3 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={item.unitPrice||""} onChange={e=>updateItem(idx,"unitPrice",e.target.value)}/>
-                    <button onClick={()=>removeItem(idx)} disabled={items.length===1} className="col-span-1 text-slate-600 hover:text-red-400 disabled:opacity-30 flex justify-center"><X size={14}/></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Customer + Payment */}
-            <div className="rounded-xl p-4" className="gc" style={cardS}>
-              <div className="text-sm font-medium text-white mb-3">Customer (optional)</div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <input className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={inpS} placeholder="Phone (+92...)" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)}/>
-                <input className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={inpS} placeholder="Name" value={customerName} onChange={e=>setCustomerName(e.target.value)}/>
-              </div>
-              <div className="text-sm font-medium text-white mb-3">Payment Mode</div>
-              <div className="flex gap-2 mb-4">
-                {(["CASH","CARD","WALLET"] as const).map(m=>(
-                  <button key={m} onClick={()=>setPaymentMode(m)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${paymentMode===m?"text-white":"text-slate-400"}`} style={paymentMode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.4)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-xs text-slate-400">Discount</label>
-                <input className="w-28 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} value={discount||""} placeholder="0.00" onChange={e=>setDiscount(Number(e.target.value))}/>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Summary + process */}
-          <div className="space-y-4">
-            <div className="rounded-xl p-4" className="gc" style={cardS}>
-              <div className="text-sm font-medium text-white mb-4">Order Summary</div>
-              <div className="space-y-2 text-xs">
-                {items.filter(i=>i.name).map((i,idx)=>(
-                  <div key={idx} className="flex justify-between text-slate-300">
-                    <span className="truncate mr-2">{i.name} x{i.qty}</span>
-                    <span>PKR {(i.qty*(i.unitPrice||0)).toFixed(2)}</span>
-                  </div>
-                ))}
-                {discount>0&&<div className="flex justify-between text-amber-400"><span>Discount</span><span>-PKR {discount.toFixed(2)}</span></div>}
-                <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
-                  <div className="flex justify-between text-slate-400"><span>Subtotal (excl. GST)</span><span>PKR {(subtotal-gstAmt).toFixed(2)}</span></div>
-                  <div className="flex justify-between text-amber-400"><span>GST ({GST_RATE}%)</span><span>PKR {gstAmt.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-white font-bold text-sm mt-1"><span>TOTAL</span><span>PKR {total.toFixed(2)}</span></div>
-                </div>
-              </div>
-              {saleErr&&<div className="mt-3 p-2 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>{saleErr}</div>}
-              <button onClick={processSale} disabled={processing||items.every(i=>!i.name)} className="w-full mt-4 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}>
-                {processing?<RefreshCw size={14} className="animate-spin"/>:<ShoppingCart size={14}/>}{processing?"Processing...":"Process Sale"}
-              </button>
-            </div>
-
-            {/* Sale result */}
-            {saleResult&&(
-              <div className="rounded-xl p-4" className="gc" style={{...cardS,border:"1px solid rgba(34,197,94,0.3)"}}>
-                <div className="flex items-center gap-2 mb-3"><CheckCircle size={16} className="text-green-400"/><span className="text-sm font-medium text-white">Sale Complete</span></div>
-                <div className="space-y-1 text-xs">
-                  <div className="text-slate-400">FBR Invoice #</div>
-                  <div className="text-green-400 font-mono text-xs break-all">{saleResult.fbrInvoiceNumber??"Pending"}</div>
-                </div>
-                {saleResult.fbrQrCode&&<div className="mt-3 text-xs text-slate-400 break-all">{saleResult.fbrQrCode}</div>}
-                <button onClick={()=>openReceipt(saleResult.visit?.id)} className="mt-3 w-full py-1.5 rounded-lg text-xs text-slate-300 flex items-center justify-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>
-                  <Printer size={12}/>Print Receipt
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 2: Sales History ── */}
-      {tab==="history"&&(
-        <div className="space-y-4">
-          {/* Filters */}
-          <div className="rounded-xl p-4" className="gc" style={cardS}>
-            <div className="flex flex-wrap gap-3 items-end">
-              <div><label className="text-xs text-slate-400 block mb-1">From</label><input type="date" className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} value={filterFrom} onChange={e=>setFilterFrom(e.target.value)}/></div>
-              <div><label className="text-xs text-slate-400 block mb-1">To</label><input type="date" className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} value={filterTo} onChange={e=>setFilterTo(e.target.value)}/></div>
-              <div><label className="text-xs text-slate-400 block mb-1">Payment</label>
-                <select className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} value={filterMode} onChange={e=>setFilterMode(e.target.value)}>
-                  <option value="">All</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="WALLET">Wallet</option>
-                </select>
-              </div>
-              <button onClick={()=>{setSalesPage(1);loadSales();}} className="px-3 py-1.5 rounded-lg text-xs text-white" style={{background:"rgba(139,92,246,0.3)"}}>Apply</button>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="rounded-xl overflow-hidden" className="gc" style={cardS}>
-            {salesLoading?<div className="p-8 text-center text-slate-400"><RefreshCw size={20} className="animate-spin mx-auto mb-2"/>Loading...</div>:(
-              <table className="w-full text-xs">
-                <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                  {["Date/Time","Customer","Amount","GST","Mode","FBR Invoice","Status",""].map(h=><th key={h} className="px-3 py-2.5 text-left text-slate-400 font-medium">{h}</th>)}
-                </tr></thead>
-                <tbody>
-                  {sales.length===0?<tr><td colSpan={8} className="px-3 py-6 text-center text-slate-500">No sales found</td></tr>:
-                  sales.map(s=>(
-                    <tr key={s.id} className="cursor-pointer hover:bg-white/[0.02]" style={{borderBottom:"1px solid rgba(255,255,255,0.03)"}} onClick={()=>setSelectedSale(s)}>
-                      <td className="px-3 py-2.5 text-slate-300">{new Date(s.visitedAt).toLocaleString("en-PK",{dateStyle:"short",timeStyle:"short"})}</td>
-                      <td className="px-3 py-2.5 text-white">{s.customer?.fullName??"—"}</td>
-                      <td className="px-3 py-2.5 text-white font-medium">PKR {Number(s.amountSpent).toFixed(2)}</td>
-                      <td className="px-3 py-2.5 text-amber-400">{s.gstAmount?`PKR ${Number(s.gstAmount).toFixed(2)}`:"—"}</td>
-                      <td className="px-3 py-2.5"><Badge color={s.paymentMode==="CASH"?"#22c55e":s.paymentMode==="CARD"?"#3b82f6":"#8b5cf6"}>{s.paymentMode??"—"}</Badge></td>
-                      <td className="px-3 py-2.5 text-slate-400 font-mono max-w-[120px] truncate">{s.fbrInvoiceNumber??<span className="text-slate-600">—</span>}</td>
-                      <td className="px-3 py-2.5">{s.fbrSubmittedAt?<Badge color="#22c55e">Submitted</Badge>:<Badge color="#ef4444">Pending</Badge>}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex gap-1">
-                          <button onClick={e=>{e.stopPropagation();openReceipt(s.id);}} className="p-1 rounded text-slate-400 hover:text-white"><Printer size={12}/></button>
-                          {!s.fbrSubmittedAt&&<button onClick={e=>{e.stopPropagation();retryFbr(s.id);}} className="p-1 rounded text-amber-400 hover:text-amber-300"><RefreshCw size={12}/></button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Pagination */}
-          {salesTotal>20&&(
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>{salesTotal} total</span>
-              <div className="flex gap-1">
-                <button disabled={salesPage===1} onClick={()=>setSalesPage(p=>p-1)} className="px-2 py-1 rounded disabled:opacity-40 hover:text-white" style={{background:"rgba(255,255,255,0.06)"}}>Prev</button>
-                <span className="px-2 py-1 text-white">{salesPage}</span>
-                <button disabled={salesPage*20>=salesTotal} onClick={()=>setSalesPage(p=>p+1)} className="px-2 py-1 rounded disabled:opacity-40 hover:text-white" style={{background:"rgba(255,255,255,0.06)"}}>Next</button>
-              </div>
-            </div>
-          )}
-
-          {/* Sale detail modal */}
-          {selectedSale&&(
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)"}}>
-              <div className="rounded-2xl p-6 w-full max-w-md" style={{background:"#1a1130",border:"1px solid rgba(255,255,255,0.1)"}}>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-medium text-white">Sale Detail</span>
-                  <button onClick={()=>setSelectedSale(null)} className="text-slate-400 hover:text-white"><X size={16}/></button>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-400">Customer</span><span className="text-white">{selectedSale.customer?.fullName??"—"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Amount</span><span className="text-white font-medium">PKR {Number(selectedSale.amountSpent).toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">GST</span><span className="text-amber-400">PKR {Number(selectedSale.gstAmount??0).toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Payment</span><span className="text-white">{selectedSale.paymentMode??"—"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">FBR Invoice</span><span className="text-green-400 font-mono break-all text-right max-w-[200px]">{selectedSale.fbrInvoiceNumber??<span className="text-red-400">Not submitted</span>}</span></div>
-                  {selectedSale.fbrQrCode&&<div><span className="text-slate-400">QR URL</span><div className="mt-1 text-cyan-400 break-all">{selectedSale.fbrQrCode}</div></div>}
-                  <div className="flex justify-between"><span className="text-slate-400">Date</span><span className="text-white">{new Date(selectedSale.visitedAt).toLocaleString()}</span></div>
-                  {selectedSale.notes&&<div><span className="text-slate-400">Notes</span><div className="text-slate-300 mt-0.5">{selectedSale.notes}</div></div>}
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={()=>openReceipt(selectedSale.id)} className="flex-1 py-2 rounded-lg text-xs text-white flex items-center justify-center gap-1.5" style={{background:"rgba(139,92,246,0.3)"}}><Printer size={12}/>Receipt</button>
-                  {!selectedSale.fbrSubmittedAt&&<button onClick={()=>{retryFbr(selectedSale.id);setSelectedSale(null);}} className="flex-1 py-2 rounded-lg text-xs text-amber-400 flex items-center justify-center gap-1.5" style={{background:"rgba(245,158,11,0.1)"}}>
-                    <RefreshCw size={12}/>Retry FBR
-                  </button>}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB 3: FBR Status & Settings ── */}
-      {tab==="fbr"&&(
-        <div className="space-y-4">
-          {/* KPIs */}
-          {stats&&(
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <KPI icon={DollarSign}  label="Total Sales Today"    value={`PKR ${(stats.totalSales??0).toFixed(2)}`}  color={C.green}/>
-              <KPI icon={Receipt}     label="GST Collected"        value={`PKR ${(stats.totalGst??0).toFixed(2)}`}    color={C.amber}/>
-              <KPI icon={ShoppingCart}label="Transactions"         value={stats.transactionCount??0}                  color={C.primary}/>
-              <KPI icon={CheckCircle} label="FBR Submitted"        value={stats.fbrSubmitted??0}                      color={C.green}/>
-              <KPI icon={XCircle}     label="FBR Pending"          value={stats.fbrFailed??0}                         color={C.red}/>
-            </div>
-          )}
-          {!stats&&<button onClick={loadStats} className="px-3 py-2 rounded-lg text-xs text-white" style={{background:"rgba(139,92,246,0.3)"}}>Load Stats</button>}
-
-          {/* FBR Settings */}
-          <div className="rounded-xl p-5" className="gc" style={cardS}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-white">FBR Configuration</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">FBR Enabled</span>
-                <button onClick={()=>setFbrSettings(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-9 h-5 rounded-full relative transition-colors ${fbrSettings.fbrEnabled?"bg-violet-500":"bg-white/10"}`}>
-                  <div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:fbrSettings.fbrEnabled?18:2}}/>
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              {[["NTN","ntn","National Tax Number"],["STRN","strn","Sales Tax Registration Number"],["POS ID","fbrPosId","FBR-assigned POS ID"],["FBR Token","fbrToken","PRAL API Bearer Token"],["GST Rate (%)","gstRate","Default 17"]].map(([label,key,ph])=>(
-                <div key={key}>
-                  <label className="text-xs text-slate-400 block mb-1">{label}</label>
-                  <input className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={inpS} placeholder={ph} value={(fbrSettings as any)[key]} onChange={e=>setFbrSettings(p=>({...p,[key]:e.target.value}))}/>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={async()=>{setSavingSettings(true);try{await api.settings.update({ntn:fbrSettings.ntn,strn:fbrSettings.strn,fbrPosId:parseInt(fbrSettings.fbrPosId)||undefined,fbrToken:fbrSettings.fbrToken,gstRate:parseFloat(fbrSettings.gstRate)||17,fbrEnabled:fbrSettings.fbrEnabled});}catch{}setSavingSettings(false);}} disabled={savingSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}>
-                {savingSettings?"Saving...":"Save Settings"}
-              </button>
-              <button onClick={testConn} disabled={testingConn} className="px-4 py-2 rounded-lg text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>
-                {testingConn?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test Connection
-              </button>
-              {connResult&&<span className={`px-3 py-2 rounded-lg text-xs ${connResult==="ok"?"text-green-400":"text-red-400"}`}>{connResult==="ok"?"Connected":"Connection failed"}</span>}
-            </div>
-          </div>
-
-          {/* Sandbox notice */}
-          <div className="rounded-xl p-4" className="gc" style={{...cardS,border:"1px solid rgba(245,158,11,0.2)"}}>
-            <div className="flex items-start gap-3">
-              <Info size={16} className="text-amber-400 mt-0.5 flex-shrink-0"/>
-              <div>
-                <div className="text-xs font-medium text-amber-400 mb-1">Sandbox Mode Active</div>
-                <div className="text-xs text-slate-400">When <code className="text-slate-300">NODE_ENV</code> is not <code className="text-slate-300">production</code>, FBR submissions are mocked — no real API calls are made. Invoice numbers are prefixed with <code className="text-slate-300">SANDBOX-</code>. Set <code className="text-slate-300">NODE_ENV=production</code> + valid FBR credentials to go live.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {tab==="pos"&&bizType==="restaurant"&&<RestaurantPOS currency={currency}/>}
+      {tab==="pos"&&bizType==="salon"&&<SalonPOS currency={currency}/>}
+      {tab==="pos"&&bizType==="gym"&&<GymPOS currency={currency}/>}
+      {tab==="pos"&&bizType==="retail"&&<GenericPOS currency={currency}/>}
+      {tab==="history"&&<SalesHistory currency={currency}/>}
+      {tab==="fbr"&&<FBRPanel/>}
     </div>
   );
 };
