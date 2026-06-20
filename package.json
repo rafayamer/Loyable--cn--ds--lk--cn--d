@@ -23,7 +23,8 @@
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
     "db:validate": "prisma validate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fresh": "bash scripts/fresh-dev.sh"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
