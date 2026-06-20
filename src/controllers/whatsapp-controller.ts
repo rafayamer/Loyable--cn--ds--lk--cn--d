@@ -84,8 +84,18 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
       data:  { wahaBaseUrl: baseUrl, wahaSessionId: sessionId, wahaApiKey: apiKey },
     });
 
-    await WahaGateway.startSession(baseUrl, sessionId, apiKey);
-    res.json({ ok: true, baseUrl, sessionId });
+    // Check if already starting/working before kicking off a 30s poll
+    const currentStatus = await WahaGateway.getStatus(baseUrl, sessionId, apiKey);
+    if (currentStatus === 'WORKING' || currentStatus === 'SCAN_QR_CODE' || currentStatus === 'STARTING') {
+      res.json({ ok: true, note: 'already_running', status: currentStatus });
+      return;
+    }
+
+    // Fire-and-forget — don't block the HTTP response for 30s
+    WahaGateway.startSession(baseUrl, sessionId, apiKey).catch(e =>
+      console.error('[whatsapp] startSession bg error:', e?.message)
+    );
+    res.json({ ok: true, baseUrl, sessionId, note: 'starting' });
   } catch (err: any) {
     const s = err?.response?.status ?? err?.status;
     if (s === 422 || s === 409) { res.json({ ok: true, note: 'session_already_exists' }); return; }

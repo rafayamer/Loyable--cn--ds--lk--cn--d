@@ -209,9 +209,10 @@ export const WahaGateway = {
       throw err;
     }
 
-    for (let i = 0; i < 10; i++) {
-      await new Promise(r => setTimeout(r, 600));
-      if ((await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey)) !== 'STOPPED') break;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const s = await WahaGateway.getStatus(wahaBaseUrl, sessionId, apiKey);
+      if (s !== 'STOPPED') break;
     }
   },
 
