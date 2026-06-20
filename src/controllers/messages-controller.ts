@@ -64,14 +64,28 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     return res.status(502).json({ error: result.error ?? 'Send failed' });
   }
 
-  // Log into MessageQueue if we have a customerId to satisfy the FK
-  if (customerId) {
+  // Resolve customerId from phone/chatId if not provided (needed for MessageQueue FK).
+  let logCustomerId = customerId;
+  if (!logCustomerId) {
+    // Derive phone from the resolved chatId (e.g. "923088581919@c.us" → "+923088581919")
+    const digits = resolvedChatId.replace(/@.*$/, '').replace(/[^\d]/g, '');
+    const derivedPhone = digits ? `+${digits}` : (phone ?? '');
+    if (derivedPhone) {
+      const found = await prisma.customer.findFirst({
+        where:  { businessId, whatsappNumber: derivedPhone },
+        select: { id: true },
+      });
+      logCustomerId = found?.id;
+    }
+  }
+
+  if (logCustomerId) {
     try {
       await prisma.messageQueue.create({
         data: {
           businessId,
-          customerId,
-          channel:           'WHATSAPP',
+          customerId:        logCustomerId,
+          channel:           'WHATSAPP_WAHA',
           provider:          'WAHA',
           status:            'SENT',
           payloadJson:       { type: 'TEXT', body: message } as any,
@@ -81,7 +95,7 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
         },
       });
     } catch (e) {
-      console.warn('[messages] log to queue failed:', (e as Error).message);
+      console.error('[messages] log to queue failed:', (e as Error).message, (e as any)?.meta);
     }
   }
 
