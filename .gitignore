@@ -14,3 +14,4 @@ waha/dist/
 waha/.sessions/
 waha/media/
 waha/.env
+.claude/
