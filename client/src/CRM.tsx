@@ -13,11 +13,18 @@ const TIER_COLORS = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFE
 const C = { primary:"#8b5cf6", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
 
 // ── Global design tokens ──────────────────────────────────────────
-const GS  = "rgba(255,255,255,0.04)";
-const GSB = "1px solid rgba(255,255,255,0.10)";
+const GS  = "rgba(255,255,255,0.08)";
+const GSB = "1px solid rgba(255,255,255,0.18)";
 const BG  = "linear-gradient(135deg,#080612 0%,#0f0a1e 50%,#080d1a 100%)";
-const INP = { background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)" };
-const CARD: React.CSSProperties = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)" };
+const INP = { background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)" };
+const CARD: React.CSSProperties = {
+  background:"rgba(255,255,255,0.07)",
+  backdropFilter:"blur(16px)",
+  WebkitBackdropFilter:"blur(16px)",
+  borderRadius:"16px",
+  border:"1px solid rgba(255,255,255,0.18)",
+  boxShadow:"0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(255,255,255,0.05)",
+};
 
 // ════════════════════════════════════════════════════════════════
 // HELPERS
@@ -56,7 +63,7 @@ const mapCustomer = (c: any) => ({
 // ════════════════════════════════════════════════════════════════
 const Badge=({children,color,size="sm"})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:`1px solid ${color}33`}}>{children}</span>;
 const KPI=({icon:Icon,label,value,change,positive,color,sub})=>(
-  <div className="rounded-2xl p-5 relative overflow-hidden" style={CARD}>
+  <div className="gc rounded-2xl p-5 relative overflow-hidden" style={CARD}>
     <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-[0.06]" style={{background:color,transform:"translate(35%,-35%)"}}/>
     <div className="flex items-start justify-between mb-4">
       <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{background:color+"18"}}><Icon size={20} style={{color}}/></div>
@@ -133,7 +140,7 @@ const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
           <h1 className="text-2xl font-bold text-white tracking-tight">Loyable CRM</h1>
           <p className="text-slate-400 text-sm mt-1.5">Sign in to your workspace</p>
         </div>
-        <div className="rounded-2xl p-6" style={CARD}>
+        <div className="gc rounded-2xl p-6" style={CARD}>
           <div className="space-y-4 mb-5">
             <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Email</label><input value={e} onChange={ev=>setE(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="email" placeholder="owner@business.com" className={inp} style={INP}/></div>
             <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Password</label><input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={INP}/></div>
@@ -183,24 +190,24 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         </>}
       </div>
       {/* Quota bar */}
-      {k&&k.quotaTotal>0&&<div className="rounded-xl p-4" style={CARD}>
+      {k&&k.quotaTotal>0&&<div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-2"><span className="text-xs text-slate-400">Monthly Message Quota</span><span className="text-xs font-medium text-white">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()}</span></div>
         <div className="h-2 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full transition-all" style={{width:`${Math.min(quotaPct,100)}%`,background:quotaPct>90?"#ef4444":quotaPct>75?"#f59e0b":"#8b5cf6"}}/></div>
         {quotaPct>80&&<p className="text-xs text-amber-400 mt-1">⚠️ {quotaPct}% quota used — consider upgrading</p>}
       </div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Visits & Revenue (7 days)</h3>
           {loading?<Skeleton h="h-[200px]"/>:<ResponsiveContainer width="100%" height={200}><AreaChart data={visitTrend.length?visitTrend:[{day:"No data",v:0,r:0}]}><defs><linearGradient id="gv2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="gr2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.3}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="day" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="v" name="Visits" stroke="#8b5cf6" fill="url(#gv2)" strokeWidth={2}/><Area type="monotone" dataKey="r" name="Revenue £" stroke="#06b6d4" fill="url(#gr2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-white">Customer Segments</h3></div>
           {loading?<Skeleton h="h-[200px]"/>:segData.length>0?(
             <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" nameKey="name">{segData.map((s:any,i:number)=><Cell key={i} fill={s.color}/>)}</Pie><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/></PieChart></ResponsiveContainer>
           ):<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No segment data yet — add customers first</div>}
         </div>
       </div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-white">High Churn Risk Customers</h3><button onClick={()=>setPage("customers")} className="text-xs text-violet-400">View all →</button></div>
         {customers.length===0?<p className="text-xs text-slate-500 text-center py-4">No at-risk customers found</p>:<div className="space-y-2">{customers.filter(c=>c.churnRisk>0).sort((a:any,b:any)=>b.churnRisk-a.churnRisk).slice(0,4).map((c:any,i:number)=>(
           <div key={i} className="flex items-center gap-3 p-2 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}>
@@ -238,7 +245,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
         <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search name or phone..." className="w-full pl-9 pr-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
         <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       </div>
-      <div className="rounded-xl overflow-hidden" style={CARD}>
+      <div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Segment</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden sm:table-cell">Visits</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Churn</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">CLV</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden sm:table-cell">Points</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th></tr></thead>
           <tbody>{filtered.map(c=>(
             <tr key={c.id} onClick={()=>onSelect(c)} className="border-b border-white/3 hover:bg-white/3 cursor-pointer">
@@ -270,21 +277,21 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
   return(
   <div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"><ChevronLeft size={14}/>Back</button>
-    <div className="rounded-xl p-5" style={CARD}>
+    <div className="gc rounded-xl p-5" style={CARD}>
       <div className="flex items-start gap-4 flex-wrap">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
         <div className="flex-1 min-w-48"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><Badge color={TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}>{c.tier}</Badge></div><div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone}</span><span className="flex items-center gap-1"><Mail size={10}/>{c.email}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span></div></div>
         <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
       </div>
     </div>
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{[{l:"Visits",v:c.visits},{l:"Total Spent",v:`£${c.spent.toLocaleString()}`},{l:"Avg. Order",v:`£${c.avg}`},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Points Balance",v:c.points.toLocaleString()}].map((s,i)=><div key={i} className="rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{[{l:"Visits",v:c.visits},{l:"Total Spent",v:`£${c.spent.toLocaleString()}`},{l:"Avg. Order",v:`£${c.avg}`},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Points Balance",v:c.points.toLocaleString()}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Points Ledger (Append-Only)</h3>
         {ledgerLoading?<Skeleton h="h-20"/>:ledger.length===0?<p className="text-xs text-slate-500 text-center py-6">No points activity yet</p>:
         <div className="space-y-1 max-h-64 overflow-y-auto">{ledger.map((l:any,i:number)=><div key={l.id||i} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${l.type==="CREDIT"?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}</div><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{l.reason||"Transaction"}</div><div className="text-xs text-slate-500 font-mono truncate">{l.externalRef||""}</div></div><div className="text-right flex-shrink-0"><div className={`text-xs font-bold ${l.type==="CREDIT"?"text-green-400":"text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}{l.points}pts</div><div className="text-xs text-slate-500">{(l.balanceAfter??0).toLocaleString()} bal</div></div><div className="text-xs text-slate-600 w-14 text-right flex-shrink-0">{l.createdAt?timeAgo(l.createdAt):""}</div></div>)}</div>}
       </div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Message History</h3>
         {ledgerLoading?<Skeleton h="h-20"/>:msgs.length===0?<p className="text-xs text-slate-500 text-center py-6">No messages sent yet</p>:
         <div className="space-y-1 max-h-64 overflow-y-auto">{msgs.slice(0,20).map((m:any,i:number)=><div key={m.id||i} className="flex items-center gap-2 py-2 px-3 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.02)"}}><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge><span className="flex-1 text-slate-300 truncate font-mono">{m.templateName||"—"}</span><span className="text-slate-600 flex-shrink-0">{m.createdAt?timeAgo(m.createdAt):""}</span></div>)}</div>}
@@ -448,11 +455,11 @@ const InboxView=({connected}:{connected:boolean})=>{
     }catch(e:any){setErr(e?.message||"Send failed");}
     finally{setSending(false);}
   };
-  if(!connected)return<div className="rounded-xl p-10 text-center text-slate-500" style={CARD}>Connect WhatsApp in Settings → WhatsApp API to load your inbox.</div>;
+  if(!connected)return<div className="gc rounded-xl p-10 text-center text-slate-500" style={CARD}>Connect WhatsApp in Settings → WhatsApp API to load your inbox.</div>;
   return(
     <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-3" style={{height:"calc(100vh - 220px)",minHeight:"480px"}}>
       {/* Conversation list */}
-      <div className="rounded-xl overflow-hidden flex flex-col" style={CARD}>
+      <div className="gc rounded-xl overflow-hidden flex flex-col" style={CARD}>
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between"><span className="text-xs font-semibold text-slate-300">Conversations</span><button onClick={loadList} className="text-slate-500 hover:text-white"><RefreshCw size={13}/></button></div>
         <div className="flex-1 overflow-y-auto">
           {loadingList?[...Array(6)].map((_,i)=><div key={i} className="p-3"><Skeleton h="h-10"/></div>):
@@ -469,7 +476,7 @@ const InboxView=({connected}:{connected:boolean})=>{
         </div>
       </div>
       {/* Thread */}
-      <div className="rounded-xl overflow-hidden flex flex-col" style={CARD}>
+      <div className="gc rounded-xl overflow-hidden flex flex-col" style={CARD}>
         {!active?<div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Select a conversation</div>:(
           <>
             <div className="px-4 py-3 border-b border-white/5 flex items-center gap-3">
@@ -546,7 +553,7 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
       <>
       <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       {byStatus.length>0&&<div className="flex flex-wrap gap-2">{byStatus.map(({s,c,n})=><div key={s} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{background:c+"14",border:`1px solid ${c}30`}}><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-300">{s}</span><span className="font-bold ml-1" style={{color:c}}>{n}</span></div>)}</div>}
-      <div className="rounded-xl overflow-hidden" style={CARD}>
+      <div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Template</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Sent</th></tr></thead>
           <tbody>{loading?[...Array(6)].map((_,i)=><tr key={i}><td colSpan={5} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):messages.length===0?<tr><td colSpan={5} className="py-8 text-center text-slate-500">No messages found</td></tr>:messages.map((m:any)=>(
             <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
@@ -591,7 +598,7 @@ const CampaignBuilderPage=({onBack})=>{
       <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Campaign Builder</h1><p className="text-xs text-slate-400 mt-0.5">Drag blocks into the phone preview · layoutJson saved to Prisma Campaign model</p></div></div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Block Palette */}
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><MousePointer size={14} className="text-violet-400"/>Block Palette</h3>
           <div className="space-y-2">{BLOCK_PALETTE.map(b=><div key={b.type} draggable onDragStart={()=>onDragStart(b.type)} className="flex items-center gap-3 p-3 rounded-xl cursor-grab active:cursor-grabbing select-none" style={{background:b.color+"12",border:`1px solid ${b.color}25`}}><div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:b.color+"20"}}><b.icon size={15} style={{color:b.color}}/></div><div><div className="text-xs font-medium text-white">{b.label}</div><div className="text-xs text-slate-500">{b.type}</div></div><div className="ml-auto text-slate-600"><MoreVertical size={14}/></div></div>)}</div>
           <div className="mt-4 p-3 rounded-xl" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.15)"}}>
@@ -623,7 +630,7 @@ const CampaignBuilderPage=({onBack})=>{
           <button className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save & Schedule Campaign →</button>
         </div>
         {/* Properties Panel */}
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Campaign Config</h3>
           <div className="space-y-3">{[{l:"Campaign Name",v:"Summer Win-Back 2026"},{l:"Target Segment",v:"AT_RISK"},{l:"Schedule",v:"Jun 20, 2026 · 10:00 AM"},{l:"Cooldown Override",v:"72h (default)"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div>
           <div className="mt-4 pt-4 border-t border-white/5"><div className="text-xs font-medium text-white mb-2">Payload preview (layoutJson → Prisma)</div><pre className="text-xs text-violet-300 overflow-x-auto p-2 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontSize:10}}>{JSON.stringify({blocks:blocks.map(b=>({id:b.id,type:b.type,order:blocks.indexOf(b)}))},null,2)}</pre></div>
@@ -653,14 +660,14 @@ const AutomationBuilderPage=({onBack})=>{
       <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Automation Builder</h1><p className="text-xs text-slate-400 mt-0.5">Visual reactflow canvas · compiles to graphJson + compiledJson stored in Prisma</p></div></div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Trigger */}
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <div className="text-xs font-semibold text-cyan-400 mb-3 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>TRIGGER NODE</div>
           <div className="space-y-2">{TRIGGERS.map(t=><button key={t.type} onClick={()=>setTrig(t.type)} className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${trig===t.type?"ring-2":"hover:bg-white/3"}`} style={trig===t.type?{background:t.color+"15",border:`1px solid ${t.color}35`,ringColor:t.color}:{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:t.color+"20"}}><t.icon size={16} style={{color:t.color}}/></div><div className="flex-1"><div className="text-xs font-medium text-white">{t.label}</div><div className="text-xs text-slate-500">{t.desc}</div></div>{trig===t.type&&<CircleCheck size={16} style={{color:t.color}}/>}
           </button>)}</div>
         </div>
         {/* Visual Flow Canvas */}
-        <div className="rounded-xl p-4" style={CARD}>
+        <div className="gc rounded-xl p-4" style={CARD}>
           <div className="text-xs font-semibold text-slate-400 mb-3">Flow Canvas</div>
           <div className="flex flex-col items-center gap-0">
             {/* Trigger node */}
@@ -677,7 +684,7 @@ const AutomationBuilderPage=({onBack})=>{
           <div className="mt-4 text-xs text-slate-500 text-center">graphJson → compiledJson → BullMQ job</div>
         </div>
         {/* Config & JSON */}
-        <div className="rounded-xl p-4 space-y-4" style={CARD}>
+        <div className="gc rounded-xl p-4 space-y-4" style={CARD}>
           <div className="text-xs font-semibold text-amber-400 mb-2 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>ACTION NODES</div>
           <div className="space-y-2">{ACTIONS.map(a=><button key={a.type} onClick={()=>!acts.includes(a.type)&&setActs(p=>[...p,a.type])} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left text-xs transition-all ${acts.includes(a.type)?"opacity-50 cursor-not-allowed":""}`} style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}><a.icon size={14} style={{color:a.color}}/><span className="text-white">{a.label}</span><span className="text-slate-600 ml-auto">{a.desc}</span></button>)}</div>
           <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Delay before actions (minutes)</label><input type="number" value={delay} onChange={e=>setDelay(Number(e.target.value))} min={0} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
@@ -718,7 +725,7 @@ const LoyaltyPage=()=>{
         <KPI icon={Send} label="Messages (Month)" value={dashKpis?.messagesThisMonth?.toLocaleString()??"-"} color={C.blue}/>
         <KPI icon={Award} label="Tiers Configured" value={loading?"-":tiers.length} color={C.amber}/>
       </div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white">Tier Configuration — Adjust sliders to set thresholds</h3>
           <button onClick={save} disabled={saving||loading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:saved?<Check size={12}/>:null}{saving?"Saving…":saved?"Saved!":"Save Tiers"}</button>
@@ -738,7 +745,7 @@ const LoyaltyPage=()=>{
           </div>
         )})}</div>}
       </div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Info size={14} className="text-violet-400"/>How Points Work</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           {[{icon:Star,title:"Earn Points",desc:"1 point per £1 spent at check-in. Points are awarded via the POS webhook or manual check-in.",col:C.amber},{icon:Gift,title:"Redeem Rewards",desc:"Customers redeem via QR code or staff on the POS. Redemptions create DEBIT ledger entries.",col:C.green},{icon:Crown,title:"Tier Upgrades",desc:"Tiers are evaluated nightly by cron-service. Upgrades trigger TIER_UPGRADE automation.",col:C.primary}].map((item,i)=>(
@@ -772,21 +779,21 @@ const DataHubPage=()=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Data Hub</h1><p className="text-xs text-slate-400 mt-0.5">BullMQ queue monitor · Google Sheets sync · Processing pipeline</p></div><button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><RefreshCw size={14}/>Sync Now</button></div>
       {/* Pipeline */}
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Layers size={14} className="text-violet-400"/>Check-In → BullMQ Pipeline</h3>
         <div className="flex items-center gap-2 overflow-x-auto pb-2">{[{l:"Check-In",icon:UserPlus,desc:"QR / POS Webhook",c:"#3b82f6"},{l:"Classify",icon:Layers,desc:"Segment + Tier",c:"#8b5cf6"},{l:"Consent Check",icon:Shield,desc:"Pre-flight #4",c:"#06b6d4"},{l:"Quota Guard",icon:Lock,desc:"Redis key check",c:"#f59e0b"},{l:"Cooldown",icon:Clock,desc:"72h window",c:"#ec4899"},{l:"BullMQ",icon:Database,desc:"Job enqueued",c:"#22c55e"},{l:"Gateway",icon:Send,desc:"Meta / WAHA",c:"#25D366"}].map((s,i)=>(
           <div key={i} className="flex items-center gap-1.5 flex-shrink-0">{i>0&&<ChevronRight size={12} className="text-slate-600"/>}<div className="p-2.5 rounded-xl text-center min-w-[72px]" style={{background:s.c+"10",border:`1px solid ${s.c}20`}}><s.icon size={16} className="mx-auto mb-1" style={{color:s.c}}/><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500" style={{fontSize:9}}>{s.desc}</div></div></div>
         ))}</div>
       </div>
       <div className="flex gap-1">{["queue","sheets","logs"].map(t=><button key={t} onClick={()=>setTab(t)} className={`px-3 py-2 rounded-lg text-xs capitalize ${tab===t?"text-white":"text-slate-400"}`} style={tab===t?{background:"rgba(139,92,246,0.2)"}:{}}>{t==="queue"?"Message Queue":t==="sheets"?"Google Sheets":"Logs"}</button>)}</div>
-      {tab==="queue"&&<div className="rounded-xl overflow-hidden" style={CARD}>
+      {tab==="queue"&&<div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Template</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider Message ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Time</th></tr></thead>
           <tbody>{queueLoading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={5} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):queueMsgs.length===0?<tr><td colSpan={5} className="py-8 text-center text-slate-500 text-xs">No messages in queue</td></tr>:queueMsgs.map((m:any)=>(
             <tr key={m.id} className="border-b border-white/3 hover:bg-white/2"><td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td><td className="py-2.5 px-3 font-mono text-violet-300">{m.templateName||"—"}</td><td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td><td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono">{m.providerId||<span className="text-slate-700">—</span>}</td><td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td></tr>
           ))}</tbody></table></div>
         <div className="p-3 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(STATUS_COLORS).map(([s,c])=><div key={s} className="flex items-center gap-1 text-xs"><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-400">{s}</span><span className="text-white font-medium">({queueMsgs.filter((m:any)=>m.status===s).length})</span></div>)}</div>
       </div>}
-      {tab==="sheets"&&<div className="space-y-2">{sheets.map((s,i)=><div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={CARD}><Table size={14} className="text-violet-400 flex-shrink-0"/><div className="flex-1"><div className="text-xs font-medium text-white">{s.name}</div><div className="text-xs text-slate-500">{s.rows.toLocaleString()} rows · {s.sync}</div></div><Badge color={C.green}>{s.status}</Badge></div>)}</div>}
+      {tab==="sheets"&&<div className="space-y-2">{sheets.map((s,i)=><div key={i} className="gc flex items-center gap-3 p-3 rounded-xl" style={CARD}><Table size={14} className="text-violet-400 flex-shrink-0"/><div className="flex-1"><div className="text-xs font-medium text-white">{s.name}</div><div className="text-xs text-slate-500">{s.rows.toLocaleString()} rows · {s.sync}</div></div><Badge color={C.green}>{s.status}</Badge></div>)}</div>}
       {tab==="logs"&&<div className="rounded-xl p-4 font-mono text-xs space-y-1.5" style={{background:"rgba(8,6,18,0.95)",border:"1px solid rgba(255,255,255,0.06)",maxHeight:380,overflow:"auto"}}>{[{t:"10:42:15",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT PASSED: customerId=cust_3 all 7 checks clear → routing to META gateway"},{t:"10:42:15",l:"INFO",c:"meta.gateway",m:"SENT code=200 wamid=HBgLMzQ0N…  template=thank_you_template"},{t:"10:42:14",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT #6 COOLDOWN: DROPPED customer=cust_8 within 72h window"},{t:"10:42:13",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT #4 CONSENT: DROPPED customer=cust_7 marketingConsentWhatsapp=false"},{t:"10:42:10",l:"WARN",c:"messaging.worker",m:"PRE-FLIGHT #7 QUOTA: businessId=biz_x MONTHLY_QUOTA_EXHAUSTED → pauseTenantQueue"},{t:"10:35:00",l:"INFO",c:"waha.webhook",m:"OPT-OUT detected phone=+447977999000 keyword=STOP → ConsentChangeLog appended"},{t:"10:30:00",l:"INFO",c:"waha.webhook",m:"SENTIMENT VERY_NEGATIVE customer=cust_6 text='terrible service' → marketingPausedUntil=+72h"},{t:"01:05:00",l:"INFO",c:"analytics.cron",m:"Nightly snapshot complete: churnRate=31.6% retentionRate=68.4% avgLtv=385 businessId=biz_1"}].map((l,i)=>(
         <div key={i} className="flex gap-2"><span className="text-slate-600 flex-shrink-0">{l.t}</span><span className={l.l==="ERROR"?"text-red-400":l.l==="WARN"?"text-amber-400":"text-green-400"}>[{l.l}]</span><span className="text-violet-400 flex-shrink-0">{l.c}:</span><span className="text-slate-300">{l.m}</span></div>
       ))}</div>}
@@ -813,7 +820,7 @@ const AIPage=()=>{
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold text-white flex items-center gap-2"><Brain size={22} className="text-violet-400"/>AI Business Intelligence</h1><p className="text-xs text-slate-400 mt-0.5">Natural language → Prisma query → GPT insight · businessId injected server-side</p></div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Brain size={14} className="text-violet-400"/>Ask Your Data</h3>
         <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((q,i)=><button key={i} onClick={()=>setQuery(q)} className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-all" style={{border:"1px solid rgba(255,255,255,0.06)"}}>{q}</button>)}</div>
         <div className="flex gap-2"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&run()} placeholder="Ask anything about your customers, revenue, campaigns..." className={`flex-1 ${inp}`} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><button onClick={run} disabled={!query||loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}{loading?"Thinking…":"Ask"}</button></div>
@@ -855,18 +862,18 @@ const AnalyticsPage=()=>{
       </>}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Customer Segments</h3>
         {loading?<Skeleton h="h-[180px]"/>:segData.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No segment data yet</div>:
         <div className="flex items-center gap-4"><ResponsiveContainer width="45%" height={180}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" stroke="none">{segData.map((e:any,i:number)=><Cell key={i} fill={e.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="space-y-1 flex-1">{segData.map((s:any,i:number)=><div key={i} className="flex items-center justify-between text-xs"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:s.color}}/><span className="text-slate-300">{s.name}</span></span><span className="text-white font-medium">{s.value}</span></div>)}</div></div>}
       </div>
-      <div className="rounded-xl p-4" style={CARD}>
+      <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Message Performance (30 days)</h3>
         {loading?<Skeleton h="h-[180px]"/>:msgPerf.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
         <ResponsiveContainer width="100%" height={180}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[3,3,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[3,3,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer>}
       </div>
     </div>
-    <div className="rounded-xl p-4" style={CARD}>
+    <div className="gc rounded-xl p-4" style={CARD}>
       <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
       <ResponsiveContainer width="100%" height={200}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="c" name="Total Customers" fill="#8b5cf6" radius={[4,4,0,0]}/><Bar dataKey="ret" name="Active" fill="#22c55e" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}
@@ -1011,7 +1018,7 @@ const SettingsPage=({wa,onConnect})=>{
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold text-white">Settings</h1><p className="text-xs text-slate-400 mt-0.5">Tenant configuration · All changes scoped to businessId</p></div>
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
-      <div className="rounded-xl p-5" style={CARD}>
+      <div className="gc rounded-xl p-5" style={CARD}>
         {tab==="business"&&<div className="space-y-4"><div className="flex items-center gap-4 mb-2"><div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">TC</span></div><div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[{l:"Business Name",v:"The Coffee House"},{l:"Industry",v:"Café & Restaurant"},{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div><button className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button></div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
@@ -1067,9 +1074,9 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
         </>}
       </div>
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:campaigns.length===0?
-        <div className="rounded-xl p-8 text-center" style={CARD}><Target size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No campaigns yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create First Campaign</button></div>:
+        <div className="gc rounded-xl p-8 text-center" style={CARD}><Target size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No campaigns yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create First Campaign</button></div>:
       <div className="space-y-3">{campaigns.map((c:any)=>(
-        <div key={c.id} className="rounded-xl p-4" style={CARD}>
+        <div key={c.id} className="gc rounded-xl p-4" style={CARD}>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:statusColor(c.status)+"20"}}>
@@ -1122,13 +1129,13 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Automations</h1><p className="text-xs text-slate-400 mt-0.5">Visual flow builder → compiledJson → BullMQ jobs · Zero-code IF/THEN</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Build Automation</button></div>
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:autos.length===0?
-        <div className="rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Build First Automation</button></div>:
+        <div className="gc rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Build First Automation</button></div>:
       <div className="space-y-3">{autos.map((a:any)=>{
         const on=a.isActive??a.on??false;
         const compiledActions=(a.compiledJson?.actions||a.compiledJson||[]);
         const triggerType=a.trigger?.type||a.trigger||(typeof a.compiledJson?.trigger==="object"?a.compiledJson?.trigger?.type:a.compiledJson?.trigger)||"—";
         return(
-        <div key={a.id} className={`rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} style={{...CARD,border:`1px solid ${on?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.07)"}`}}>
+        <div key={a.id} className={`rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} className="gc" style={{...CARD,border:`1px solid ${on?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.07)"}`}}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:on?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.05)"}}><Zap size={16} className={on?"text-violet-400":"text-slate-500"}/></div>
@@ -1256,7 +1263,7 @@ const POSPage=()=>{
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: Item entry */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="rounded-xl p-4" style={cardS}>
+            <div className="rounded-xl p-4" className="gc" style={cardS}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-white">Items</span>
                 <button onClick={addItem} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-violet-400" style={{background:"rgba(139,92,246,0.1)"}}>
@@ -1282,7 +1289,7 @@ const POSPage=()=>{
             </div>
 
             {/* Customer + Payment */}
-            <div className="rounded-xl p-4" style={cardS}>
+            <div className="rounded-xl p-4" className="gc" style={cardS}>
               <div className="text-sm font-medium text-white mb-3">Customer (optional)</div>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <input className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={inpS} placeholder="Phone (+92...)" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)}/>
@@ -1303,7 +1310,7 @@ const POSPage=()=>{
 
           {/* Right: Summary + process */}
           <div className="space-y-4">
-            <div className="rounded-xl p-4" style={cardS}>
+            <div className="rounded-xl p-4" className="gc" style={cardS}>
               <div className="text-sm font-medium text-white mb-4">Order Summary</div>
               <div className="space-y-2 text-xs">
                 {items.filter(i=>i.name).map((i,idx)=>(
@@ -1327,7 +1334,7 @@ const POSPage=()=>{
 
             {/* Sale result */}
             {saleResult&&(
-              <div className="rounded-xl p-4" style={{...cardS,border:"1px solid rgba(34,197,94,0.3)"}}>
+              <div className="rounded-xl p-4" className="gc" style={{...cardS,border:"1px solid rgba(34,197,94,0.3)"}}>
                 <div className="flex items-center gap-2 mb-3"><CheckCircle size={16} className="text-green-400"/><span className="text-sm font-medium text-white">Sale Complete</span></div>
                 <div className="space-y-1 text-xs">
                   <div className="text-slate-400">FBR Invoice #</div>
@@ -1347,7 +1354,7 @@ const POSPage=()=>{
       {tab==="history"&&(
         <div className="space-y-4">
           {/* Filters */}
-          <div className="rounded-xl p-4" style={cardS}>
+          <div className="rounded-xl p-4" className="gc" style={cardS}>
             <div className="flex flex-wrap gap-3 items-end">
               <div><label className="text-xs text-slate-400 block mb-1">From</label><input type="date" className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} value={filterFrom} onChange={e=>setFilterFrom(e.target.value)}/></div>
               <div><label className="text-xs text-slate-400 block mb-1">To</label><input type="date" className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={inpS} value={filterTo} onChange={e=>setFilterTo(e.target.value)}/></div>
@@ -1361,7 +1368,7 @@ const POSPage=()=>{
           </div>
 
           {/* Table */}
-          <div className="rounded-xl overflow-hidden" style={cardS}>
+          <div className="rounded-xl overflow-hidden" className="gc" style={cardS}>
             {salesLoading?<div className="p-8 text-center text-slate-400"><RefreshCw size={20} className="animate-spin mx-auto mb-2"/>Loading...</div>:(
               <table className="w-full text-xs">
                 <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
@@ -1449,7 +1456,7 @@ const POSPage=()=>{
           {!stats&&<button onClick={loadStats} className="px-3 py-2 rounded-lg text-xs text-white" style={{background:"rgba(139,92,246,0.3)"}}>Load Stats</button>}
 
           {/* FBR Settings */}
-          <div className="rounded-xl p-5" style={cardS}>
+          <div className="rounded-xl p-5" className="gc" style={cardS}>
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-white">FBR Configuration</span>
               <div className="flex items-center gap-2">
@@ -1479,7 +1486,7 @@ const POSPage=()=>{
           </div>
 
           {/* Sandbox notice */}
-          <div className="rounded-xl p-4" style={{...cardS,border:"1px solid rgba(245,158,11,0.2)"}}>
+          <div className="rounded-xl p-4" className="gc" style={{...cardS,border:"1px solid rgba(245,158,11,0.2)"}}>
             <div className="flex items-start gap-3">
               <Info size={16} className="text-amber-400 mt-0.5 flex-shrink-0"/>
               <div>
@@ -1544,10 +1551,14 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
         <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)",filter:"blur(30px)"}}/>
       </div>
       <style>{`
+        *{box-sizing:border-box}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.3);border-radius:4px}
+        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.35);border-radius:4px}
         ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,0.6)}
+        .gc{position:relative;overflow:hidden}
+        .gc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);z-index:1;pointer-events:none}
+        .gc::after{content:'';position:absolute;top:0;left:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent,rgba(255,255,255,0.15));z-index:1;pointer-events:none}
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
