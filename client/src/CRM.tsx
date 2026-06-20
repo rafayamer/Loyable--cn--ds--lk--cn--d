@@ -79,18 +79,62 @@ const inp="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-50
 const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90";
 
 // ════════════════════════════════════════════════════════════════
+// ROLE SYSTEM — 4 tiers
+// ════════════════════════════════════════════════════════════════
+// Roles: TENANT_OWNER > BRANCH_MANAGER > MARKETING_STAFF > KITCHEN
+const ROLES={OWNER:"TENANT_OWNER",MANAGER:"BRANCH_MANAGER",STAFF:"MARKETING_STAFF",KITCHEN:"KITCHEN"};
+const getRole=():string=>localStorage.getItem("userRole")||ROLES.OWNER;
+const useRole=()=>{const[role,setRole]=useState(getRole);useEffect(()=>{const fn=()=>setRole(getRole());window.addEventListener("storage",fn);return()=>window.removeEventListener("storage",fn);},[]);return role;};
+const can=(role:string,action:"viewAnalytics"|"viewRevenue"|"viewOrders"|"editMenu"|"editOrders"|"changeSettings"|"viewKitchen"|"newSale")=>{
+  if(role===ROLES.OWNER)return true;
+  if(role===ROLES.MANAGER)return!["viewAnalytics","viewRevenue","changeSettings"].includes(action);
+  if(role===ROLES.STAFF)return["newSale","viewKitchen"].includes(action);
+  if(role===ROLES.KITCHEN)return action==="viewKitchen";
+  return false;
+};
+
+// Business category → POS type mapping (set in Settings)
+const BIZ_CAT_MAP:Record<string,string>={
+  "Café & Restaurant":"restaurant","Restaurant":"restaurant","Café":"restaurant","Coffee Shop":"restaurant","Bar":"restaurant",
+  "Hair Salon":"salon","Beauty Salon":"salon","Salon":"salon","Spa":"salon","Barbershop":"salon","Nail Studio":"salon",
+  "Gym":"gym","Fitness":"gym","CrossFit":"gym","Yoga Studio":"gym","Sports Club":"gym",
+  "Retail":"retail","Shop":"retail","Store":"retail","Boutique":"retail","Pharmacy":"retail","Supermarket":"retail",
+};
+const getPosBizType=():string=>{
+  const stored=localStorage.getItem("pos_biztype_override");if(stored)return stored;
+  const industry=localStorage.getItem("biz_industry")||"";
+  for(const[key,val]of Object.entries(BIZ_CAT_MAP)){if(industry.toLowerCase().includes(key.toLowerCase()))return val;}
+  return "";
+};
+
+// ════════════════════════════════════════════════════════════════
 // SIDEBAR
 // ════════════════════════════════════════════════════════════════
-const NAV=[{id:"dashboard",icon:LayoutDashboard,label:"Dashboard"},{id:"customers",icon:Users,label:"Customers"},{id:"pos",icon:ShoppingCart,label:"POS"},{id:"messages",icon:MessageSquare,label:"Messages"},{id:"campaigns",icon:Send,label:"Campaigns"},{id:"automations",icon:Zap,label:"Automations"},{id:"loyalty",icon:Award,label:"Loyalty & Points"},{id:"datahub",icon:Database,label:"Data Hub"},{id:"ai",icon:Brain,label:"AI Insights"},{id:"analytics",icon:BarChart3,label:"Analytics"},{id:"settings",icon:Settings,label:"Settings"}];
-const Sidebar=({page,setPage,col,setCol,onLogout,wa})=>(
+const NAV_ALL=[
+  {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER]},
+  {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN]},
+  {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+  {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"loyalty",icon:Award,label:"Loyalty & Points",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
+  {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
+  {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER]},
+  {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
+];
+const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
+  const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
+  return(
   <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"rgba(8,5,18,0.85)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
     <div className={`flex items-center gap-3 p-4 mb-2 ${col?"justify-center":""}`}>
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
-      {!col&&<div className="flex-1 min-w-0"><div className="text-white font-bold text-sm tracking-tight">Loyable</div><div className="text-slate-600 text-[10px]">CRM Platform</div></div>}
+      {!col&&<div className="flex-1 min-w-0"><div className="text-white font-bold text-sm tracking-tight">Loyable</div><div className="text-slate-600 text-[10px]">by Abdul Rafay Amer</div></div>}
       <button onClick={()=>setCol(!col)} className={`text-slate-600 hover:text-slate-300 transition-colors ${col?"hidden":""}`}><ChevronLeft size={15}/></button>
       {col&&<button onClick={()=>setCol(!col)} className="absolute right-2 text-slate-600 hover:text-slate-300 transition-colors"><ChevronRight size={15}/></button>}
     </div>
-    {!col&&<div className="mx-3 mb-3 px-3 py-2 rounded-xl flex items-center gap-2" style={{background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.12)"}}><div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/><span className="text-xs text-emerald-400 font-medium truncate">The Coffee House</span></div>}
+    {!col&&<div className="mx-3 mb-2 px-3 py-2 rounded-xl flex items-center gap-2" style={{background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.12)"}}><div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/><span className="text-xs text-emerald-400 font-medium truncate">The Coffee House</span></div>}
+    {!col&&<div className="mx-3 mb-3 px-2 py-1 rounded-lg" style={{background:"rgba(139,92,246,0.1)"}}><span className="text-[9px] font-bold uppercase tracking-wider" style={{color:ROLE_COLORS[role]||"#8b5cf6"}}>{role?.replace("_"," ")}</span></div>}
     <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto">{NAV.map(it=>{
       const active=page===it.id;
       return(
@@ -108,7 +152,8 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa})=>(
       <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/5 transition-all ${col?"justify-center":""}`}><LogOut size={16}/>{!col&&<span>Logout</span>}</button>
     </div>
   </div>
-);
+  );
+};
 
 // ════════════════════════════════════════════════════════════════
 // LOGIN
@@ -1011,15 +1056,36 @@ const WhatsAppSettingsTab=()=>{
   );
 };
 
+const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
 const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
+  const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
+  const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");};
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold text-white">Settings</h1><p className="text-xs text-slate-400 mt-0.5">Tenant configuration · All changes scoped to businessId</p></div>
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
       <div className="gc rounded-xl p-5" style={CARD}>
-        {tab==="business"&&<div className="space-y-4"><div className="flex items-center gap-4 mb-2"><div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">TC</span></div><div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[{l:"Business Name",v:"The Coffee House"},{l:"Industry",v:"Café & Restaurant"},{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div><button className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button></div>}
+        {tab==="business"&&<div className="space-y-4">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">TC</span></div>
+            <div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[{l:"Business Name",v:"The Coffee House"},{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
+              <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {INDUSTRY_OPTIONS.map(o=><option key={o} value={o} style={{background:"#1a1030"}}>{o}</option>)}
+              </select>
+              <div className="text-[10px] text-slate-500 mt-1">
+                POS type: <span className="text-violet-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
+              </div>
+            </div>
+          </div>
+          <button className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+        </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
           <div className="text-xs text-slate-400 mb-2">6-tier RBAC from Prisma Role enum · tenantScope.ts middleware enforces branch isolation</div>
@@ -1168,7 +1234,7 @@ const removeOrder=(id:string)=>{_orders.list=_orders.list.filter(o=>o.id!==id);s
 const useOrders=()=>{const[,r]=useState(0);useEffect(()=>{const fn=()=>r(x=>x+1);_orders.listeners.add(fn);return()=>{_orders.listeners.delete(fn);};},[]);return _orders.list;};
 
 // Menu store (owner-editable, persisted)
-type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color?:string;desc?:string;};
+type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color?:string;desc?:string;prepTime?:number;barcode?:string;};
 const DEFAULT_MENUS:Record<string,MenuItem[]>={
   restaurant:[
     {id:"r1",cat:"Starters",name:"Soup of the Day",price:3.5,stock:20,color:"#f59e0b"},{id:"r2",cat:"Starters",name:"Garlic Bread",price:2.5,stock:30,color:"#f59e0b"},
@@ -1220,14 +1286,14 @@ const printBill=(order:ActiveOrder,currency:string)=>{
 const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
   const [items,setItems]=useState<MenuItem[]>(()=>getMenu(bizType));
   const [editing,setEditing]=useState<MenuItem|null>(null);
-  const [form,setForm]=useState({name:"",cat:"",price:"",stock:"",desc:""});
+  const [form,setForm]=useState({name:"",cat:"",price:"",stock:"",desc:"",prepTime:"",barcode:""});
   const cats=[...new Set(items.map(i=>i.cat))];
   const save=()=>{saveMenu(bizType,items);onClose();};
-  const startEdit=(item:MenuItem)=>{setEditing(item);setForm({name:item.name,cat:item.cat,price:String(item.price),stock:String(item.stock??""),desc:item.desc??""});};
-  const startNew=()=>{setEditing({id:"",cat:cats[0]||"General",name:"",price:0} as any);setForm({name:"",cat:cats[0]||"General",price:"",stock:"",desc:""});};
+  const startEdit=(item:MenuItem)=>{setEditing(item);setForm({name:item.name,cat:item.cat,price:String(item.price),stock:String(item.stock??""),desc:item.desc??"",prepTime:String(item.prepTime??""),barcode:item.barcode??""});};
+  const startNew=()=>{setEditing({id:"",cat:cats[0]||"General",name:"",price:0} as any);setForm({name:"",cat:cats[0]||"General",price:"",stock:"",desc:"",prepTime:"",barcode:""});};
   const applyEdit=()=>{
     if(!form.name||!form.price)return;
-    const updated:MenuItem={id:editing?.id||Math.random().toString(36).slice(2),cat:form.cat||"General",name:form.name,price:Number(form.price),stock:form.stock?Number(form.stock):undefined,desc:form.desc||undefined};
+    const updated:MenuItem={id:editing?.id||Math.random().toString(36).slice(2),cat:form.cat||"General",name:form.name,price:Number(form.price),stock:form.stock?Number(form.stock):undefined,desc:form.desc||undefined,prepTime:form.prepTime?Number(form.prepTime):undefined,barcode:form.barcode||undefined};
     setItems(p=>editing?.id?p.map(i=>i.id===editing.id?updated:i):[...p,updated]);
     setEditing(null);
   };
@@ -1264,6 +1330,8 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
               <div><label className="text-[10px] text-slate-400 block mb-1">Category *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}/></div>
               <div><label className="text-[10px] text-slate-400 block mb-1">Price *</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
               <div><label className="text-[10px] text-slate-400 block mb-1">Stock (optional)</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Leave blank = unlimited" value={form.stock} onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
+              {bizType==="restaurant"&&<div><label className="text-[10px] text-slate-400 block mb-1">Prep Time (min)</label><input type="number" min={1} className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. 15" value={form.prepTime} onChange={e=>setForm(p=>({...p,prepTime:e.target.value}))}/></div>}
+              {bizType==="retail"&&<div><label className="text-[10px] text-slate-400 block mb-1">Barcode (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Scan or type barcode" value={form.barcode} onChange={e=>setForm(p=>({...p,barcode:e.target.value}))}/></div>}
               <div className="col-span-2"><label className="text-[10px] text-slate-400 block mb-1">Description</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/></div>
             </div>
             <div className="flex gap-2">
@@ -1282,10 +1350,17 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
 };
 
 // ── Active Order Card (unpaid) ────────────────────────────────────
-const ActiveOrderCard=({order,currency,bizType,onPaid}:{order:ActiveOrder;currency:string;bizType:string;onPaid:(o:ActiveOrder)=>void})=>{
+const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:ActiveOrder;currency:string;bizType:string;onPaid:(o:ActiveOrder)=>void;role?:string})=>{
   const [paying,setPaying]=useState(false);const [err,setErr]=useState("");
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),10000);return()=>clearInterval(iv);},[]);
   const total=calcOrderTotal(order);
-  const elapsed=Math.floor((Date.now()-order.createdAt)/60000);
+  const elapsed=Math.floor((now-order.createdAt)/60000);
+  // Prep time = max prepTime across items (restaurant only)
+  const allMenuItems=getMenu(bizType);
+  const prepMins=bizType==="restaurant"?Math.max(0,...order.items.map(i=>allMenuItems.find(m=>m.name===i.name)?.prepTime??0)):0;
+  const remaining=prepMins>0?Math.max(0,prepMins-elapsed):null;
+  const isOverdue=remaining!==null&&remaining===0&&elapsed>=prepMins;
 
   const markPaid=async()=>{
     setPaying(true);setErr("");
@@ -1314,7 +1389,15 @@ const ActiveOrderCard=({order,currency,bizType,onPaid}:{order:ActiveOrder;curren
             {order.cname&&<span className="text-xs text-white font-semibold">{order.cname}</span>}
             {!order.cname&&!order.table&&<span className="text-xs text-slate-400">Walk-in</span>}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">{elapsed}m ago · {order.payMode}</div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] text-slate-500">{elapsed}m ago · {order.payMode}</span>
+            {prepMins>0&&remaining!==null&&(
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isOverdue?"text-red-400 animate-pulse":"remaining===0&&!isOverdue?text-green-400:text-amber-400"}`}
+                style={{background:isOverdue?"rgba(239,68,68,0.12)":"rgba(245,158,11,0.1)"}}>
+                {isOverdue?"⚠ Overdue":`⏱ ${remaining}m left`}
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-right">
           <div className="text-white font-bold text-sm">{currency} {total.toFixed(2)}</div>
@@ -1330,7 +1413,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid}:{order:ActiveOrder;curren
         ))}
       </div>
       {err&&<div className="text-[10px] text-red-400 mb-2 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.08)"}}>{err}</div>}
-      {order.status==="UNPAID"&&(
+      {order.status==="UNPAID"&&can(role,"editOrders")&&(
         <div className="flex gap-2">
           <button onClick={markPaid} disabled={paying} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
             {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
@@ -1338,7 +1421,10 @@ const ActiveOrderCard=({order,currency,bizType,onPaid}:{order:ActiveOrder;curren
           <button onClick={()=>printBill(order,currency)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
         </div>
       )}
-      {order.status==="PAID"&&<div className="flex items-center gap-2 text-green-400 text-xs"><CheckCircle size={13}/><span>Paid · WhatsApp receipt sent</span><button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button></div>}
+      {order.status==="UNPAID"&&!can(role,"editOrders")&&(
+        <div className="text-[10px] text-slate-500 text-center py-1">View only — only owners can mark orders as paid</div>
+      )}
+      {order.status==="PAID"&&<div className="flex items-center gap-2 text-green-400 text-xs"><CheckCircle size={13}/><span>Paid{order.phone?" · WhatsApp receipt sent":""}</span><button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button></div>}
     </div>
   );
 };
@@ -1426,7 +1512,7 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
       <div className="gc rounded-2xl overflow-hidden" style={CARD}>
         <table className="w-full text-xs">
           <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
-            {["Item","Category","Price","Stock",""].map(h=><th key={h} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>)}
+            {["Item","Category","Price",bizType==="restaurant"?"Prep (min)":"",bizType==="retail"?"Barcode":"","Stock",""].map((h,i)=>h?<th key={i} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{h}</th>:null)}
           </tr></thead>
           <tbody>
             {items.map(item=>(
@@ -1434,6 +1520,8 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
                 <td className="px-4 py-3 text-white font-medium">{item.name}</td>
                 <td className="px-4 py-3"><span className="text-[10px] text-slate-400">{item.cat}</span></td>
                 <td className="px-4 py-3 text-violet-400 font-semibold">{item.price.toFixed(2)}</td>
+                {bizType==="restaurant"&&<td className="px-4 py-3 text-slate-400 text-[10px]">{item.prepTime?`${item.prepTime}m`:"—"}</td>}
+                {bizType==="retail"&&<td className="px-4 py-3 text-slate-500 text-[10px] font-mono">{item.barcode||"—"}</td>}
                 <td className="px-4 py-3">
                   {item.stock!=null?(
                     <div className="flex items-center gap-2">
@@ -1466,9 +1554,17 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
   const [table,setTable]=useState("");const [notes,setNotes]=useState("");
   const [placing,setPlacing]=useState(false);const [placed,setPlaced]=useState(false);
+  const [barcode,setBarcode]=useState("");const barcodeRef=useRef<HTMLInputElement>(null);
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
   const cats=[...new Set(menuItems.map(i=>i.cat))];
   const [showMenu,setShowMenu]=useState(false);
+
+  // Barcode scan handler — match by name prefix or barcode field
+  const handleBarcodeScan=(code:string)=>{
+    const match=menuItems.find(i=>i.name.toLowerCase()===code.toLowerCase()||(i as any).barcode===code);
+    if(match)addItem(match);
+    setBarcode("");
+  };
 
   // Reload menu when editor closes
   const reloadMenu=()=>setMenuItems(getMenu(bizType));
@@ -1497,6 +1593,16 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
       {showMenu&&<MenuEditor bizType={bizType} onClose={()=>{reloadMenu();setShowMenu(false);}}/>}
       <div className="lg:col-span-2 space-y-4">
         {extraTop}
+        {bizType==="retail"&&(
+          <div className="gc rounded-2xl px-4 py-3 flex items-center gap-3" style={CARD}>
+            <Tag size={16} className="text-violet-400 flex-shrink-0"/>
+            <input ref={barcodeRef} value={barcode} onChange={e=>setBarcode(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&barcode.trim()){handleBarcodeScan(barcode.trim());}}}
+              className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
+              placeholder="Scan barcode or type product name + Enter…" autoComplete="off"/>
+            {barcode&&<button onClick={()=>handleBarcodeScan(barcode.trim())} className="text-xs text-violet-400 font-semibold">Add</button>}
+          </div>
+        )}
         {/* Menu catalogue */}
         <div className="gc rounded-2xl p-5" style={CARD}>
           <div className="flex items-center justify-between mb-3">
@@ -1710,26 +1816,50 @@ const BIZ_TYPES=[
   {id:"retail",label:"Retail / General",icon:"🛍",color:"#8b5cf6"},
 ];
 
-const POSPage=()=>{
-  const [tab,setTab]=useState<"pos"|"kds"|"inventory"|"history"|"fbr">("pos");
-  const [bizType,setBizType]=useState<string>(()=>localStorage.getItem("pos_biztype")||"");
+const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
+  const bizType=getPosBizType();
+  const [tab,setTab]=useState<"pos"|"kds"|"inventory"|"history"|"fbr">(
+    ()=>can(role,"viewKitchen")&&!can(role,"newSale")?"kds":"pos"
+  );
   const [currency]=useState("PKR");
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
 
-  const selectType=(t:string)=>{setBizType(t);localStorage.setItem("pos_biztype",t);};
+  // Build tab list based on biz type and role
+  const allTabs:[string,string][]=[
+    ["pos","🧾 New Sale"],
+    ...(bizType==="restaurant"?[["kds","👨‍🍳 Kitchen"]] as [string,string][]:
+        bizType==="gym"?[["kds","🏃 Check-in"]] as [string,string][]:[]),
+    ...(can(role,"editMenu")?[["inventory","📦 Inventory"]] as [string,string][]:[]),
+    ...(can(role,"viewOrders")?[["history","📋 History"]] as [string,string][]:[]),
+    ...(can(role,"changeSettings")?[["fbr","🏛 FBR"]] as [string,string][]:[]),
+  ];
+
+  // Kitchen/check-in only roles see just the KDS tab
+  if(!can(role,"newSale")){
+    const biz=BIZ_TYPES.find(b=>b.id===bizType);
+    return(
+      <div>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            {bizType==="gym"?"🏃":"👨‍🍳"} {bizType==="gym"?"Check-in Display":"Kitchen Display"}
+          </h1>
+          <p className="text-xs text-slate-400">{biz?.label??""} · {role?.replace("_"," ")}</p>
+        </div>
+        <KitchenDisplay currency={currency}/>
+      </div>
+    );
+  }
 
   if(!bizType){return(
     <div>
-      <div className="mb-8"><h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2"><ShoppingCart size={22} className="text-violet-400"/>Loyable POS</h1><p className="text-sm text-slate-400 mt-1">Select your business type to get the right POS experience</p></div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl">
-        {BIZ_TYPES.map(b=>(
-          <button key={b.id} onClick={()=>selectType(b.id)} className="gc rounded-2xl p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.98]" style={{...CARD,border:`1px solid ${b.color}25`}}>
-            <div className="text-4xl mb-3">{b.icon}</div>
-            <div className="text-white font-semibold text-sm mb-1">{b.label}</div>
-            <div className="text-[10px] text-slate-400 mb-4">Optimised workflow</div>
-            <div className="text-xs font-semibold" style={{color:b.color}}>Select →</div>
-          </button>
-        ))}
+      <div className="mb-6 gc rounded-2xl p-5" style={{...CARD,borderColor:"rgba(245,158,11,0.3)"}}>
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5"/>
+          <div>
+            <div className="text-white font-semibold text-sm mb-1">Business type not set</div>
+            <div className="text-xs text-slate-400">Go to <strong className="text-violet-400">Settings → Business Profile</strong> and set your industry category to auto-configure the POS for your business.</div>
+          </div>
+        </div>
       </div>
     </div>
   );}
@@ -1742,13 +1872,12 @@ const POSPage=()=>{
         <div className="flex items-center gap-3">
           <span className="text-2xl">{biz.icon}</span>
           <div><h1 className="text-2xl font-bold text-white tracking-tight">Loyable POS</h1><p className="text-xs text-slate-400 mt-0.5">{biz.label} · {currency}</p></div>
-          <button onClick={()=>setBizType("")} className="ml-1 px-2.5 py-1 rounded-lg text-[10px] text-slate-400 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}>Change</button>
         </div>
         <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(255,255,255,0.05)"}}>
-          {([["pos","🧾 New Sale"],["kds","👨‍🍳 Kitchen"],["inventory","📦 Inventory"],["history","📋 History"],["fbr","🏛 FBR"]] as const).map(([t,label])=>(
+          {allTabs.map(([t,label])=>(
             <button key={t} onClick={()=>setTab(t as any)} className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>
               {label}
-              {t==="kds"&&activeOrders.length>0&&<span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{background:"#ef4444"}}>{activeOrders.length}</span>}
+              {(t==="kds")&&activeOrders.length>0&&<span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{background:"#ef4444"}}>{activeOrders.length}</span>}
             </button>
           ))}
         </div>
@@ -1757,7 +1886,7 @@ const POSPage=()=>{
       {tab==="pos"&&<POSBuilder bizType={bizType} currency={currency}/>}
       {tab==="kds"&&(
         <div>
-          <div className="mb-4"><h2 className="text-lg font-bold text-white">Kitchen Display</h2><p className="text-xs text-slate-400">Tap items to mark as ready. Orders auto-sorted by wait time.</p></div>
+          <div className="mb-4"><h2 className="text-lg font-bold text-white">{bizType==="gym"?"Check-in Display":"Kitchen Display"}</h2><p className="text-xs text-slate-400">Tap items to mark as ready. Orders auto-sorted by wait time.</p></div>
           <KitchenDisplay currency={currency}/>
         </div>
       )}
@@ -1777,7 +1906,12 @@ const POSPage=()=>{
 // ════════════════════════════════════════════════════════════════
 export default function App({onLogout}:{onLogout?:()=>void}={}){
   const [loggedIn,setLoggedIn]=useState(()=>!!localStorage.getItem("accessToken"));
-  const [page,setPage]=useState("dashboard");const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
+  const role=useRole();
+  const [page,setPage]=useState(()=>{
+    const r=localStorage.getItem("userRole")||ROLES.OWNER;
+    return r===ROLES.KITCHEN?"pos":"dashboard";
+  });
+  const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
   useEffect(()=>{
     const check=()=>api.whatsapp.status().then(d=>{setWa(d?.waha?.status==="WORKING"||!!(d?.meta?.configured));}).catch(()=>{});
     check();
@@ -1786,12 +1920,20 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
   },[]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
   if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
-  const nav=p=>{setPage(p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);};
-  const render=()=>{switch(page){
+  const nav=p=>{
+    // Enforce role restrictions — redirect to POS if not allowed
+    const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
+    if(!allowed.includes(role)){setPage(role===ROLES.KITCHEN?"pos":"pos");return;}
+    setPage(p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);
+  };
+  const render=()=>{
+    // Block non-owner from owner-only pages
+    if(!can(role,"viewAnalytics")&&(page==="dashboard"||page==="analytics"||page==="ai"||page==="datahub"))return<POSPage role={role}/>;
+    switch(page){
     case"dashboard":return<DashboardPage setPage={nav}/>;
     case"customers":return<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
     case"profile":return selC?<CustomerProfile customer={selC} onBack={()=>nav("customers")} onMsg={c=>{setSelC(c);setPage("messages");}}/>:<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
-    case"pos":return<POSPage/>;
+    case"pos":return<POSPage role={role}/>;
     case"messages":return<MessagesPage onConnect={()=>setPage("settings")}/>;
     case"campaigns":return<CampaignsPage onBuilder={()=>setPage("campaign-builder")}/>;
     case"campaign-builder":return<CampaignBuilderPage onBack={()=>setPage("campaigns")}/>;
@@ -1833,7 +1975,7 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
-      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa}/></div>
+      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role}/></div>
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2">
