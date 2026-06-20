@@ -132,7 +132,6 @@ export const api = {
     startSession: (body?: any) => post<any>('/whatsapp/session/start', body ?? {}),
     stopSession:  () => post<any>('/whatsapp/session/stop', {}),
     saveConfig:   (body: any) => patch<any>('/whatsapp/config', body),
-    saveMeta:     (body: any) => patch<any>('/whatsapp/meta', body),
   },
 
   // ── POS & FBR ─────────────────────────────────────────────────
