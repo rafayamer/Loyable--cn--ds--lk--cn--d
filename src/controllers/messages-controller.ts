@@ -64,20 +64,26 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     return res.status(502).json({ error: result.error ?? 'Send failed' });
   }
 
-  // Log as a MessageLog record if the model exists
-  try {
-    await (prisma as any).messageLog.create({
-      data: {
-        businessId,
-        customerId: customerId ?? null,
-        direction:  'OUTBOUND',
-        body:       message,
-        status:     'SENT',
-        provider:   'WAHA',
-        providerId: result.messageId ?? null,
-      },
-    });
-  } catch { /* model may not exist yet */ }
+  // Log into MessageQueue if we have a customerId to satisfy the FK
+  if (customerId) {
+    try {
+      await prisma.messageQueue.create({
+        data: {
+          businessId,
+          customerId,
+          channel:           'WHATSAPP',
+          provider:          'WAHA',
+          status:            'SENT',
+          payloadJson:       { type: 'TEXT', body: message } as any,
+          providerMessageId: result.messageId ?? null,
+          sentAt:            new Date(),
+          isPromotional:     false,
+        },
+      });
+    } catch (e) {
+      console.warn('[messages] log to queue failed:', (e as Error).message);
+    }
+  }
 
   res.json({ ok: true, messageId: result.messageId, chatId: resolvedChatId });
 });
@@ -161,16 +167,14 @@ messagesRouter.get('/', tenantScope, async (req: Request, res: Response) => {
   const page  = parseInt(String(req.query.page  ?? 1), 10);
   const limit = parseInt(String(req.query.limit ?? 30), 10);
 
-  try {
-    const rows = await (prisma as any).messageLog.findMany({
-      where:   { businessId },
-      orderBy: { createdAt: 'desc' },
-      skip:    (page - 1) * limit,
-      take:    limit,
-      include: { customer: { select: { fullName: true, whatsappNumber: true } } },
-    });
-    res.json({ messages: rows });
-  } catch {
-    res.json({ messages: [] });
-  }
+  const status = req.query.status as string | undefined;
+
+  const rows = await prisma.messageQueue.findMany({
+    where:   { businessId, ...(status ? { status: status as any } : {}) },
+    orderBy: { createdAt: 'desc' },
+    skip:    (page - 1) * limit,
+    take:    limit,
+    include: { customer: { select: { fullName: true, whatsappNumber: true } } },
+  });
+  res.json({ messages: rows });
 });

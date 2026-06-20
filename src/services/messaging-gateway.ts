@@ -190,6 +190,7 @@ export const WahaGateway = {
               url:    `${webhookBase}/api/webhooks/waha/${sessionId}`,
               events: ['message', 'message.ack', 'session.status'],
             }],
+            noweb: { store: { enabled: true, full_sync: true } },
           },
         },
         { headers: { 'X-Api-Key': apiKey }, timeout: 10_000 }
