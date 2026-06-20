@@ -1234,7 +1234,7 @@ const removeOrder=(id:string)=>{_orders.list=_orders.list.filter(o=>o.id!==id);s
 const useOrders=()=>{const[,r]=useState(0);useEffect(()=>{const fn=()=>r(x=>x+1);_orders.listeners.add(fn);return()=>{_orders.listeners.delete(fn);};},[]);return _orders.list;};
 
 // Menu store (owner-editable, persisted)
-type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color?:string;desc?:string;prepTime?:number;barcode?:string;};
+type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color?:string;desc?:string;prepTime?:number;barcode?:string;image?:string;};
 const DEFAULT_MENUS:Record<string,MenuItem[]>={
   restaurant:[
     {id:"r1",cat:"Starters",name:"Soup of the Day",price:3.5,stock:20,color:"#f59e0b"},{id:"r2",cat:"Starters",name:"Garlic Bread",price:2.5,stock:30,color:"#f59e0b"},
@@ -1286,16 +1286,23 @@ const printBill=(order:ActiveOrder,currency:string)=>{
 const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
   const [items,setItems]=useState<MenuItem[]>(()=>getMenu(bizType));
   const [editing,setEditing]=useState<MenuItem|null>(null);
-  const [form,setForm]=useState({name:"",cat:"",price:"",stock:"",desc:"",prepTime:"",barcode:""});
+  const [form,setForm]=useState({name:"",cat:"",price:"",stock:"",desc:"",prepTime:"",barcode:"",image:""});
+  const imgRef=useRef<HTMLInputElement>(null);
   const cats=[...new Set(items.map(i=>i.cat))];
   const save=()=>{saveMenu(bizType,items);onClose();};
-  const startEdit=(item:MenuItem)=>{setEditing(item);setForm({name:item.name,cat:item.cat,price:String(item.price),stock:String(item.stock??""),desc:item.desc??"",prepTime:String(item.prepTime??""),barcode:item.barcode??""});};
-  const startNew=()=>{setEditing({id:"",cat:cats[0]||"General",name:"",price:0} as any);setForm({name:"",cat:cats[0]||"General",price:"",stock:"",desc:"",prepTime:"",barcode:""});};
+  const startEdit=(item:MenuItem)=>{setEditing(item);setForm({name:item.name,cat:item.cat,price:String(item.price),stock:String(item.stock??""),desc:item.desc??"",prepTime:String(item.prepTime??""),barcode:item.barcode??"",image:item.image??""});};
+  const startNew=()=>{setEditing({id:"",cat:cats[0]||"General",name:"",price:0} as any);setForm({name:"",cat:cats[0]||"General",price:"",stock:"",desc:"",prepTime:"",barcode:"",image:""});};
   const applyEdit=()=>{
     if(!form.name||!form.price)return;
-    const updated:MenuItem={id:editing?.id||Math.random().toString(36).slice(2),cat:form.cat||"General",name:form.name,price:Number(form.price),stock:form.stock?Number(form.stock):undefined,desc:form.desc||undefined,prepTime:form.prepTime?Number(form.prepTime):undefined,barcode:form.barcode||undefined};
+    const updated:MenuItem={id:editing?.id||Math.random().toString(36).slice(2),cat:form.cat||"General",name:form.name,price:Number(form.price),stock:form.stock?Number(form.stock):undefined,desc:form.desc||undefined,prepTime:form.prepTime?Number(form.prepTime):undefined,barcode:form.barcode||undefined,image:form.image||undefined};
     setItems(p=>editing?.id?p.map(i=>i.id===editing.id?updated:i):[...p,updated]);
     setEditing(null);
+  };
+  const pickImage=()=>imgRef.current?.click();
+  const handleImage=(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0];if(!f)return;
+    if(f.size>500*1024){alert("Image must be under 500 KB");return;}
+    const r=new FileReader();r.onload=ev=>setForm(p=>({...p,image:ev.target?.result as string}));r.readAsDataURL(f);
   };
   return(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)"}}>
@@ -1310,6 +1317,10 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
               <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 mt-3">{cat}</div>
               {items.filter(i=>i.cat===cat).map(item=>(
                 <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                  {item.image
+                    ?<img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
+                    :<div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(139,92,246,0.12)"}}><ShoppingBag size={14} className="text-violet-400"/></div>
+                  }
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-xs font-semibold">{item.name}</div>
                     <div className="text-slate-400 text-[10px]">{item.desc||""} {item.stock!=null?`· Stock: ${item.stock}`:""}</div>
@@ -1325,6 +1336,19 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
         {editing&&(
           <div className="border-t border-white/10 p-5 space-y-3">
             <div className="text-xs font-semibold text-white mb-2">{editing.id?"Edit Item":"New Item"}</div>
+            {/* Image upload */}
+            <div className="flex items-center gap-3 mb-3">
+              <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImage}/>
+              {form.image
+                ?<img src={form.image} alt="preview" className="w-14 h-14 rounded-xl object-cover border border-white/10"/>
+                :<div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.04)",border:"1px dashed rgba(255,255,255,0.15)"}}><Image size={18} className="text-slate-500"/></div>
+              }
+              <div>
+                <button onClick={pickImage} className="block px-3 py-1.5 rounded-lg text-[11px] text-violet-400 font-semibold mb-1" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}>📷 {form.image?"Change Photo":"Upload Photo"}</button>
+                {form.image&&<button onClick={()=>setForm(p=>({...p,image:""}))} className="text-[10px] text-red-400 hover:text-red-300">Remove</button>}
+                <div className="text-[10px] text-slate-500 mt-0.5">PNG/JPG · max 500 KB</div>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-[10px] text-slate-400 block mb-1">Name *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
               <div><label className="text-[10px] text-slate-400 block mb-1">Category *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}/></div>
@@ -1419,6 +1443,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
             {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
           </button>
           <button onClick={()=>printBill(order,currency)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
+          <button onClick={()=>{if(confirm("Delete this unpaid order?"))removeOrder(order.id);}} className="px-3 py-2 rounded-xl text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}} title="Delete Order"><Trash2 size={14}/></button>
         </div>
       )}
       {order.status==="UNPAID"&&!can(role,"editOrders")&&(
@@ -1618,18 +1643,25 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
               const inOrder=order.find(x=>x.name===item.name);
               const outOfStock=item.stock!=null&&item.stock<=0;
               return(
-                <button key={item.id} onClick={()=>addItem(item)} disabled={outOfStock} className="p-3 rounded-xl text-left transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{background:inOrder?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)"}}>
-                  <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{item.name}</div>
-                  {item.desc&&<div className="text-slate-500 text-[10px] mb-1">{item.desc}</div>}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300 text-xs">{currency} {item.price.toFixed(2)}</span>
-                    <div className="flex items-center gap-1">
+                <div key={item.id} className="rounded-xl overflow-hidden transition-all" style={{background:inOrder?"rgba(139,92,246,0.12)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)",opacity:outOfStock?0.4:1}}>
+                  {item.image&&<img src={item.image} alt={item.name} className="w-full h-20 object-cover"/>}
+                  <button onClick={()=>!outOfStock&&addItem(item)} className="w-full p-3 text-left" disabled={outOfStock}>
+                    <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{item.name}</div>
+                    {item.desc&&<div className="text-slate-500 text-[10px] mb-1 truncate">{item.desc}</div>}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-xs">{currency} {item.price.toFixed(2)}</span>
                       {outOfStock&&<span className="text-[9px] text-red-400">Out</span>}
                       {item.stock!=null&&!outOfStock&&item.stock<=5&&<span className="text-[9px] text-amber-400">{item.stock} left</span>}
-                      {inOrder&&<span className="text-violet-400 text-[10px] font-bold">×{inOrder.qty}</span>}
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  {inOrder&&(
+                    <div className="flex items-center justify-between px-3 pb-2">
+                      <button onClick={()=>removeItem(item.name)} className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{background:"rgba(239,68,68,0.25)"}}>−</button>
+                      <span className="text-violet-300 text-xs font-bold">×{inOrder.qty}</span>
+                      <button onClick={()=>addItem(item)} className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{background:"rgba(139,92,246,0.35)"}}>+</button>
+                    </div>
+                  )}
+                </div>
               );
             })}
             {menuItems.filter(i=>i.cat===cats[cat]).length===0&&<div className="col-span-3 py-6 text-center text-slate-500 text-xs">No items in this category. <button onClick={()=>setShowMenu(true)} className="text-violet-400 underline">Add items</button></div>}
