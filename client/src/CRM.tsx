@@ -1715,6 +1715,8 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
   const cats=[...new Set(menuItems.map(i=>i.cat))];
   const [showMenu,setShowMenu]=useState(false);
+  const summaryRef=useRef<HTMLDivElement>(null);
+  const scrollToSummary=()=>summaryRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
 
   // Barcode scan handler — match by barcode field or exact name
   const handleBarcodeScan=useCallback((code:string)=>{
@@ -1770,8 +1772,19 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const subtotal=order.reduce((s,i)=>s+i.qty*i.price,0)-discount;
   const total=Math.max(0,subtotal);
 
+  const cartCount=order.reduce((s,i)=>s+i.qty,0);
+  const total2=Math.max(0,order.reduce((s,i)=>s+i.qty*i.price,0)-discount);
+
   return(
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Mobile floating cart button */}
+      {cartCount>0&&(
+        <button onClick={scrollToSummary} className="lg:hidden fixed right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl text-white text-sm font-semibold shadow-2xl" style={{bottom:"80px",background:"linear-gradient(135deg,#f59e0b,#d97706)",boxShadow:"0 8px 32px rgba(245,158,11,0.4)"}}>
+          <ShoppingCart size={18}/>
+          <span>{cartCount} item{cartCount>1?"s":""}</span>
+          <span className="opacity-80">· {currency} {total2.toFixed(0)}</span>
+        </button>
+      )}
       {showMenu&&<MenuEditor bizType={bizType} onClose={()=>{reloadMenu();setShowMenu(false);}}/>}
       <div className="lg:col-span-2 space-y-4">
         {extraTop}
@@ -1850,7 +1863,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
 
         {/* Customer + payment + table */}
         <div className="gc rounded-2xl p-5" style={CARD}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for receipt)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+92…" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
@@ -1866,7 +1879,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
       </div>
 
       {/* Right: summary + place order + active orders */}
-      <div className="space-y-4">
+      <div className="space-y-4" ref={summaryRef}>
         <div className="gc rounded-2xl p-5" style={CARD}>
           <div className="text-sm font-semibold text-white mb-4">Order Summary</div>
           <div className="space-y-1.5 text-xs mb-4 max-h-44 overflow-y-auto">
@@ -2140,14 +2153,18 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
-  // Bottom nav items (5 most important)
-  const BOT_NAV=[
-    {id:"dashboard",icon:LayoutDashboard,label:"Home"},
-    {id:"customers",icon:Users,label:"Customers"},
-    {id:"messages",icon:MessageSquare,label:"Messages"},
-    {id:"campaigns",icon:Zap,label:"Campaigns"},
-    {id:"settings",icon:Settings,label:"Settings"},
+  // Bottom nav — role-filtered, capped at 5 most relevant items
+  const BOT_NAV_ALL=[
+    {id:"dashboard",icon:LayoutDashboard,label:"Home",roles:[ROLES.OWNER]},
+    {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN]},
+    {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+    {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER]},
+    {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ];
+  const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
   return(
     <div className="min-h-screen relative overflow-x-hidden" style={{background:"#06040f"}}>
       {/* Ambient background orbs for glassmorphism depth */}
@@ -2158,7 +2175,9 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
         <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)",filter:"blur(30px)"}}/>
       </div>
       <style>{`
-        *{box-sizing:border-box}
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        html{-webkit-text-size-adjust:100%}
+        body{overscroll-behavior:none}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.35);border-radius:4px}
@@ -2166,34 +2185,36 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
         .gc{position:relative;overflow:hidden}
         .gc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);z-index:1;pointer-events:none}
         .gc::after{content:'';position:absolute;top:0;left:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent,rgba(255,255,255,0.15));z-index:1;pointer-events:none}
+        button,a{touch-action:manipulation}
+        input,select,textarea{font-size:16px!important}
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
       <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role}/></div>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
           <span className="text-white font-bold text-sm">Loyable</span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full" style={{background:wa?"#22c55e":"#6b7280"}}/>
-          <span className="text-xs text-slate-400">{wa?"Connected":"Disconnected"}</span>
+          <span className="text-xs text-slate-400 capitalize">{NAV_ALL.find(n=>n.id===page)?.label||""}</span>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{background:wa?"#22c55e":"#6b7280"}}/><span className="text-[10px] text-slate-500">{wa?"WA":"—"}</span></div>
         </div>
       </div>
       {/* Main content */}
-      <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-20 md:pb-0`}>
-        <div className="p-4 md:p-6 max-w-6xl">{render()}</div>
+      <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-24 md:pb-0`}>
+        <div className="p-3 md:p-6 max-w-6xl">{render()}</div>
       </main>
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center" style={{background:"rgba(8,6,18,0.97)",backdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:"rgba(8,6,18,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
         {BOT_NAV.map(it=>{
-          const active=page===it.id||(it.id==="customers"&&(page==="profile"));
+          const active=page===it.id||(it.id==="customers"&&page==="profile");
           return(
-            <button key={it.id} onClick={()=>nav(it.id)} className="flex-1 flex flex-col items-center gap-1 py-3 transition-all" style={{color:active?"#8b5cf6":"#64748b"}}>
+            <button key={it.id} onClick={()=>nav(it.id)} className="relative flex-1 min-w-[60px] flex flex-col items-center gap-1 py-3 transition-all" style={{color:active?"#8b5cf6":"#64748b"}}>
+              {active&&<div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-b-full" style={{background:"#8b5cf6"}}/>}
               <it.icon size={20} strokeWidth={active?2.5:1.8}/>
               <span className="text-[10px] font-medium">{it.label}</span>
-              {active&&<div className="absolute top-0 w-8 h-[2px] rounded-b-full" style={{background:"#8b5cf6"}}/>}
             </button>
           );
         })}
