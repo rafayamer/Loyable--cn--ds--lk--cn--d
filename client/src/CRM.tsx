@@ -501,6 +501,30 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     </div>
   );
 
+  // When user switches to login/signup/forgot — show full-screen auth, not the landing page
+  if(view!=="landing"){
+    return(
+      <div className="min-h-screen flex flex-col relative overflow-hidden" style={{background:BG}}>
+        <AuthBg/>
+        {/* Minimal nav */}
+        <div className="relative z-10 flex items-center justify-between px-6 py-4">
+          <button onClick={()=>setView("landing")} className="flex items-center gap-2 group">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
+            <span className="text-white font-semibold text-base tracking-tight group-hover:opacity-80 transition-opacity">Loyable</span>
+          </button>
+          {view==="login"&&<button onClick={()=>setView("signup")} className="text-xs text-slate-400 hover:text-white transition-colors">No account? <span className="text-violet-400 font-medium">Sign up free</span></button>}
+          {(view==="signup")&&<button onClick={()=>setView("login")} className="text-xs text-slate-400 hover:text-white transition-colors">Have an account? <span className="text-violet-400 font-medium">Sign in</span></button>}
+          {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>setView("login")} className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors flex items-center gap-1"><ArrowLeft size={12}/>Back to sign in</button>}
+        </div>
+        <div className="flex-1 flex items-center justify-center px-4 py-8 relative z-10">
+          <div className="w-full max-w-md">
+            <AuthSection/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return(
     <div className="min-h-screen relative overflow-x-hidden" style={{background:BG}}>
       <AuthBg/>
