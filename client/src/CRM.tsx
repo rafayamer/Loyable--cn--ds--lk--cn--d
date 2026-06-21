@@ -2611,7 +2611,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
 // APP
 // ════════════════════════════════════════════════════════════════
 
-export default function App({onLogout}:{onLogout?:()=>void}={}){
+export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleChange?:(role:string)=>void}={}){
   const [loggedIn,setLoggedIn]=useState(()=>{
     // Handle OAuth redirect: /api/auth/google redirects back with ?accessToken=...&sessionId=...&userId=...
     const params=new URLSearchParams(window.location.search);
@@ -2651,7 +2651,12 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     return()=>clearInterval(iv);
   },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
-  if(!loggedIn)return <LoginPage onLogin={(u:any)=>{if(u?.role)localStorage.setItem("userRole",u.role);setLoggedIn(true);}}/>;
+  if(!loggedIn)return <LoginPage onLogin={(u:any)=>{
+    if(u?.role)localStorage.setItem("userRole",u.role);
+    onRoleChange?.(u?.role??'');
+    if(u?.role==='PLATFORM_ADMINISTRATOR')return; // App.tsx will switch to AdminPanel
+    setLoggedIn(true);
+  }}/>;
   const nav=p=>{
     // Enforce role restrictions — redirect to POS if not allowed
     const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
