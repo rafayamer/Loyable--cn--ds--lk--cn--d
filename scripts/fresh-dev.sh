@@ -34,6 +34,15 @@ pkill -9 -f "concurrently" 2>/dev/null || true
 # 3) Give the OS a moment to release the sockets.
 sleep 1
 
+echo "📦  Pulling latest code…"
+git pull origin "$(git rev-parse --abbrev-ref HEAD)" 2>&1 | sed 's/^/   /'
+
+echo "📦  Installing dependencies…"
+npm install --legacy-peer-deps 2>&1 | tail -3
+
+echo "🔄  Regenerating Prisma client…"
+npm run db:generate 2>&1 | tail -3
+
 echo "✅  Clean. Starting fresh dev session (backend + WAHA + client)…"
 echo "------------------------------------------------------------"
 exec npm run dev:all
