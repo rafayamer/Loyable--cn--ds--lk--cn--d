@@ -50,9 +50,13 @@ const del  = <T>(path: string, body?: unknown) => req<T>(path, { method: 'DELETE
 // ── Auth ──────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    login:  (email: string, password: string) => post<{ accessToken: string; user: any }>('/auth/login', { email, password }),
-    me:     () => get<any>('/auth/me'),
-    logout: () => post('/auth/logout'),
+    login:         (email: string, password: string) => post<{ accessToken: string; sessionId?: string; user: any }>('/auth/login', { email, password }),
+    register:      (body: { businessName: string; ownerName: string; ownerEmail: string; ownerPassword: string; country: string; timezone: string; currency: string; industry?: string }) =>
+                     post<{ accessToken: string; user: any }>('/auth/register', body),
+    me:            () => get<any>('/auth/me'),
+    logout:        () => post('/auth/logout'),
+    forgotPassword:(email: string) => post('/auth/forgot-password', { email }),
+    resetPassword: (token: string, newPassword: string) => post('/auth/reset-password', { token, newPassword }),
   },
 
   // ── Dashboard ─────────────────────────────────────────────────

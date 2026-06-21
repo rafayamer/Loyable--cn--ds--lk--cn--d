@@ -168,6 +168,9 @@ const hydrateFromApi=async()=>{
   }catch{}
 };
 
+// ════════════════════════════════════════════════════════════════
+// AUTH PAGES  (Login · Sign Up · Forgot Password)
+// ════════════════════════════════════════════════════════════════
 const OAUTH_ERROR_MSGS:Record<string,string>={
   google_denied:"Google sign-in was cancelled.",
   google_not_configured:"Google sign-in is not set up yet.",
@@ -178,90 +181,498 @@ const OAUTH_ERROR_MSGS:Record<string,string>={
   oauth_invalid:"Invalid sign-in response. Please try again.",
   oauth_state_mismatch:"Sign-in session expired. Please try again.",
 };
-const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
-  const [e,setE]=useState("owner@coffeehouse.com");
-  const [p,setP]=useState("Owner@123!");
+
+const GoogleIcon=()=>(
+  <svg width="18" height="18" viewBox="0 0 24 24">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  </svg>
+);
+const AppleIcon=()=>(
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+  </svg>
+);
+
+type AuthView = "landing"|"login"|"signup"|"forgot"|"forgot-sent";
+
+const AuthBg=()=>(
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.06] blur-3xl" style={{background:"#8b5cf6"}}/>
+    <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full opacity-[0.06] blur-3xl" style={{background:"#06b6d4"}}/>
+    <div className="absolute top-3/4 left-1/4 w-64 h-64 rounded-full opacity-[0.04] blur-3xl" style={{background:"#ec4899"}}/>
+  </div>
+);
+
+const SocialButtons=({loading,socialLoading,onSocial}:{loading:boolean,socialLoading:"google"|"apple"|null,onSocial:(p:"google"|"apple")=>void})=>(
+  <div className="grid grid-cols-2 gap-3 mb-5">
+    {(["google","apple"] as const).map(p=>(
+      <button key={p} onClick={()=>onSocial(p)} disabled={!!socialLoading||loading}
+        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+        style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
+        {socialLoading===p?<RefreshCw size={16} className="animate-spin"/>:(p==="google"?<GoogleIcon/>:<AppleIcon/>)}
+        <span className="capitalize">{p}</span>
+      </button>
+    ))}
+  </div>
+);
+
+const Divider=({text="or continue with email"}:{text?:string})=>(
+  <div className="flex items-center gap-3 mb-5">
+    <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
+    <span className="text-xs text-slate-500">{text}</span>
+    <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
+  </div>
+);
+
+const ErrBox=({msg}:{msg:string})=>msg?(
+  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{msg}</div>
+):null;
+
+const OkBox=({msg}:{msg:string})=>msg?(
+  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-green-400" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.15)"}}>{msg}</div>
+):null;
+
+const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:string,type?:string,value:string,onChange:(v:string)=>void,onEnter?:()=>void,placeholder?:string})=>(
+  <div>
+    <label className="text-xs font-medium text-slate-400 mb-1.5 block">{label}</label>
+    <input value={value} onChange={ev=>onChange(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&onEnter?.()} type={type} placeholder={placeholder} className={inp} style={INP}/>
+  </div>
+);
+
+const Btn=({onClick,disabled,loading:ld,children}:{onClick:()=>void,disabled?:boolean,loading?:boolean,children:React.ReactNode})=>(
+  <button onClick={onClick} disabled={disabled||ld}
+    className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[.98]"
+    style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+    {ld&&<RefreshCw size={14} className="animate-spin"/>}{children}
+  </button>
+);
+
+const TIMEZONES = [
+  {v:"Asia/Karachi",l:"Pakistan (PKT)"},
+  {v:"Asia/Dubai",l:"UAE (GST)"},
+  {v:"America/New_York",l:"US East (EST)"},
+  {v:"America/Chicago",l:"US Central (CST)"},
+  {v:"America/Los_Angeles",l:"US West (PST)"},
+  {v:"Europe/London",l:"London (GMT)"},
+  {v:"Europe/Berlin",l:"Europe (CET)"},
+  {v:"Asia/Kolkata",l:"India (IST)"},
+  {v:"Asia/Singapore",l:"Singapore (SGT)"},
+  {v:"Australia/Sydney",l:"Sydney (AEST)"},
+  {v:"UTC",l:"UTC"},
+];
+const CURRENCIES=[{v:"PKR",l:"PKR – Pakistani Rupee"},{v:"USD",l:"USD – US Dollar"},{v:"EUR",l:"EUR – Euro"},{v:"GBP",l:"GBP – British Pound"},{v:"AED",l:"AED – UAE Dirham"},{v:"INR",l:"INR – Indian Rupee"},{v:"SAR",l:"SAR – Saudi Riyal"},{v:"SGD",l:"SGD – Singapore Dollar"}];
+const COUNTRIES=[{v:"PK",l:"Pakistan"},{v:"US",l:"United States"},{v:"GB",l:"United Kingdom"},{v:"AE",l:"UAE"},{v:"IN",l:"India"},{v:"SA",l:"Saudi Arabia"},{v:"SG",l:"Singapore"},{v:"AU",l:"Australia"},{v:"CA",l:"Canada"},{v:"DE",l:"Germany"}];
+
+// ── Login View ────────────────────────────────────────────────────
+const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>void})=>{
+  const [e,setE]=useState("");
+  const [p,setP]=useState("");
   const oauthErr=new URLSearchParams(window.location.search).get("error");
   const [err,setErr]=useState(oauthErr?OAUTH_ERROR_MSGS[oauthErr]??`Sign-in error: ${oauthErr}`:"");
   const [loading,setLoading]=useState(false);
   const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
   const submit=async()=>{
-    if(!e||!p)return;
+    if(!e||!p){setErr("Please enter your email and password.");return;}
     setErr("");setLoading(true);
     try{
       const d=await api.auth.login(e,p);
       localStorage.setItem("accessToken",d.accessToken);
-      if(d.sessionId)localStorage.setItem("sessionId",d.sessionId);
+      if((d as any).sessionId)localStorage.setItem("sessionId",(d as any).sessionId);
       if(d.user?.id)localStorage.setItem("userId",d.user.id);
       await hydrateFromApi();
       onLogin(d.user);
-    }catch(ex){setErr((ex as Error).message);}
+    }catch(ex){setErr((ex as Error).message==="INVALID_CREDENTIALS"?"Incorrect email or password.":(ex as Error).message);}
     finally{setLoading(false);}
   };
-  const socialLogin=(provider:"google"|"apple")=>{
-    setSocialLoading(provider);
-    // Redirect to backend OAuth — backend will redirect back with token
-    window.location.href=`/api/auth/${provider}`;
-  };
   return(
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{background:BG}}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.07] blur-3xl" style={{background:"#8b5cf6"}}/>
-        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full opacity-[0.07] blur-3xl" style={{background:"#06b6d4"}}/>
-      </div>
-      <div className="w-full max-w-sm relative z-10">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-2xl" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-2xl">L</span></div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Loyable CRM</h1>
-          <p className="text-slate-400 text-sm mt-1.5">Sign in to your workspace</p>
-        </div>
-        <div className="gc rounded-2xl p-6" style={CARD}>
-          {/* Social login */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <button onClick={()=>socialLogin("google")} disabled={!!socialLoading||loading} className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
-              {socialLoading==="google"?<RefreshCw size={16} className="animate-spin"/>:(
-                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              )}
-              <span>Google</span>
-            </button>
-            <button onClick={()=>socialLogin("apple")} disabled={!!socialLoading||loading} className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
-              {socialLoading==="apple"?<RefreshCw size={16} className="animate-spin"/>:(
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              )}
-              <span>Apple</span>
-            </button>
+    <div className="gc rounded-2xl p-6" style={CARD}>
+      <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
+      <Divider/>
+      <div className="space-y-4 mb-5">
+        <Field label="Email" type="email" value={e} onChange={setE} placeholder="you@business.com"/>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-slate-400">Password</label>
+            <button onClick={()=>onView("forgot")} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Forgot password?</button>
           </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
-            <span className="text-xs text-slate-500">or sign in with email</span>
-            <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
-          </div>
-
-          {/* Email/password */}
-          <div className="space-y-4 mb-5">
-            <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Email</label><input value={e} onChange={ev=>setE(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="email" placeholder="owner@business.com" className={inp} style={INP}/></div>
-            <div><label className="text-xs font-medium text-slate-400 mb-1.5 block">Password</label><input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={INP}/></div>
-          </div>
-          {err&&<div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{err}</div>}
-          <button onClick={submit} disabled={loading||!!socialLoading} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading&&<RefreshCw size={14} className="animate-spin"/>}{loading?"Signing in…":"Sign In"}</button>
-          <div className="mt-4 px-3 py-2.5 rounded-xl" style={{background:"rgba(139,92,246,0.07)",border:"1px solid rgba(139,92,246,0.12)"}}><p className="text-[11px] text-slate-500 text-center">Secured with Argon2id · JWT · Rate limiting</p></div>
-        </div>
-
-        {/* Quick access */}
-        <div className="mt-4 gc rounded-xl px-4 py-3" style={CARD}>
-          <p className="text-[11px] text-slate-500 text-center mb-2">Quick access:</p>
-          <div className="space-y-1 text-center">
-            {[{icon:"👑",label:"Platform Admin",email:"admin@cuberetain.com",pass:"Admin@123!"},{icon:"☕",label:"Tenant Owner",email:"owner@coffeehouse.com",pass:"Owner@123!"}].map((q,i)=>(
-              <button key={i} onClick={()=>{setE(q.email);setP(q.pass);}} className="text-[11px] text-slate-400 hover:text-violet-300 transition-colors block w-full">{q.icon} {q.label} — {q.email} / {q.pass}</button>
-            ))}
-          </div>
+          <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={INP}/>
         </div>
       </div>
+      <ErrBox msg={err}/>
+      <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Sign In</Btn>
+      <p className="mt-4 text-center text-xs text-slate-500">Don't have an account? <button onClick={()=>onView("signup")} className="text-violet-400 hover:text-violet-300 font-medium">Sign up free</button></p>
+      <div className="mt-4 px-3 py-2 rounded-xl" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.1)"}}><p className="text-[11px] text-slate-600 text-center">Secured with Argon2id · JWT · Rate limiting</p></div>
     </div>
   );
 };
+
+// ── Sign Up View ──────────────────────────────────────────────────
+const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>void})=>{
+  const [bizName,setBizName]=useState("");
+  const [name,setName]=useState("");
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [confirm,setConfirm]=useState("");
+  const [country,setCountry]=useState("PK");
+  const [tz,setTz]=useState("Asia/Karachi");
+  const [currency,setCurrency]=useState("PKR");
+  const [industry,setIndustry]=useState("restaurant");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
+  const selStyle={...INP,width:"100%",appearance:"none" as const,padding:"10px 16px",borderRadius:"12px",color:"white",fontSize:"14px"};
+  const submit=async()=>{
+    if(!bizName||!name||!email||!pass){setErr("Please fill in all required fields.");return;}
+    if(pass!==confirm){setErr("Passwords do not match.");return;}
+    if(pass.length<8){setErr("Password must be at least 8 characters.");return;}
+    if(!/[A-Z]/.test(pass)){setErr("Password must contain an uppercase letter.");return;}
+    if(!/[0-9]/.test(pass)){setErr("Password must contain a number.");return;}
+    if(!/[^A-Za-z0-9]/.test(pass)){setErr("Password must contain a special character (e.g. ! @ # $).");return;}
+    setErr("");setLoading(true);
+    try{
+      const d=await api.auth.register({businessName:bizName,ownerName:name,ownerEmail:email,ownerPassword:pass,country,timezone:tz,currency,industry});
+      localStorage.setItem("accessToken",d.accessToken);
+      if(d.user?.id)localStorage.setItem("userId",d.user.id);
+      await hydrateFromApi();
+      onLogin(d.user);
+    }catch(ex){
+      const m=(ex as Error).message;
+      setErr(m==="BUSINESS_SLUG_TAKEN"?"A business with that name already exists. Try a different name.":m==="USER_ALREADY_EXISTS_IN_BUSINESS"?"An account with that email already exists. Try signing in.":m);
+    }
+    finally{setLoading(false);}
+  };
+  return(
+    <div className="gc rounded-2xl p-6" style={CARD}>
+      <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
+      <Divider text="or sign up with email"/>
+      <div className="space-y-3 mb-5">
+        <Field label="Business Name *" value={bizName} onChange={setBizName} placeholder="Coffee House, My Salon…"/>
+        <Field label="Your Name *" value={name} onChange={setName} placeholder="Full name"/>
+        <Field label="Email *" type="email" value={email} onChange={setEmail} placeholder="you@business.com"/>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Country</label>
+            <select value={country} onChange={ev=>setCountry(ev.target.value)} style={selStyle}>
+              {COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1035"}}>{c.l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Currency</label>
+            <select value={currency} onChange={ev=>setCurrency(ev.target.value)} style={selStyle}>
+              {CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1035"}}>{c.v}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Timezone</label>
+            <select value={tz} onChange={ev=>setTz(ev.target.value)} style={selStyle}>
+              {TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:"#1a1035"}}>{t.l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Business Type</label>
+            <select value={industry} onChange={ev=>setIndustry(ev.target.value)} style={selStyle}>
+              {[{v:"restaurant",l:"Restaurant"},{v:"salon",l:"Salon / Spa"},{v:"gym",l:"Gym / Fitness"},{v:"retail",l:"Retail"},{v:"cafe",l:"Café"},{v:"pharmacy",l:"Pharmacy"},{v:"other",l:"Other"}].map(o=><option key={o.v} value={o.v} style={{background:"#1a1035"}}>{o.l}</option>)}
+            </select>
+          </div>
+        </div>
+        <Field label="Password *" type="password" value={pass} onChange={setPass} placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"/>
+        <Field label="Confirm Password *" type="password" value={confirm} onChange={setConfirm} onEnter={submit} placeholder="Re-enter password"/>
+      </div>
+      <ErrBox msg={err}/>
+      <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Create Account</Btn>
+      <p className="mt-4 text-center text-xs text-slate-500">Already have an account? <button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 font-medium">Sign in</button></p>
+    </div>
+  );
+};
+
+// ── Forgot Password View ──────────────────────────────────────────
+const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
+  const [email,setEmail]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [sent,setSent]=useState(false);
+  const submit=async()=>{
+    if(!email){setErr("Please enter your email address.");return;}
+    setErr("");setLoading(true);
+    try{
+      await api.auth.forgotPassword(email);
+      setSent(true);
+    }catch(ex){setErr((ex as Error).message);}
+    finally{setLoading(false);}
+  };
+  if(sent)return(
+    <div className="gc rounded-2xl p-8 text-center" style={CARD}>
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.2)"}}>
+        <Mail size={24} className="text-green-400"/>
+      </div>
+      <h3 className="text-white font-semibold text-lg mb-2">Check your inbox</h3>
+      <p className="text-slate-400 text-sm mb-6">If an account exists for <span className="text-white">{email}</span>, you'll receive a password reset link within a few minutes.</p>
+      <button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 text-sm font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={14}/> Back to sign in</button>
+    </div>
+  );
+  return(
+    <div className="gc rounded-2xl p-6" style={CARD}>
+      <div className="mb-5">
+        <h3 className="text-white font-semibold text-base mb-1">Reset your password</h3>
+        <p className="text-slate-400 text-xs">Enter your email and we'll send you a reset link.</p>
+      </div>
+      <div className="mb-5">
+        <Field label="Email address" type="email" value={email} onChange={setEmail} onEnter={submit} placeholder="you@business.com"/>
+      </div>
+      <ErrBox msg={err}/>
+      <Btn onClick={submit} loading={loading}>Send Reset Link</Btn>
+      <p className="mt-4 text-center text-xs text-slate-500"><button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={12}/> Back to sign in</button></p>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// LANDING PAGE  (marketing website)
+// ════════════════════════════════════════════════════════════════
+const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
+  const [view,setView]=useState<AuthView>("landing");
+  const [mobileNav,setMobileNav]=useState(false);
+
+  // scroll to auth card
+  const scrollToAuth=(v:AuthView)=>{
+    setView(v);
+    setTimeout(()=>document.getElementById("auth-card")?.scrollIntoView({behavior:"smooth",block:"center"}),50);
+  };
+
+  const FEATURES=[
+    {icon:"💬",title:"WhatsApp-Native",desc:"Send loyalty messages, campaigns, and receipts directly via WhatsApp — not email."},
+    {icon:"⭐",title:"Smart Loyalty Engine",desc:"Auto-assign points, tiers, and rewards. Customers love collecting and redeeming."},
+    {icon:"⚡",title:"Automation Builder",desc:"Set up win-back, birthday, and tier-upgrade flows in minutes. No code needed."},
+    {icon:"📊",title:"AI-Powered Analytics",desc:"Ask questions in plain English. \"Who are my top 10 customers this month?\""},
+    {icon:"🛒",title:"Built-in POS",desc:"Scan QR codes, process sales, and print WhatsApp receipts right from the browser."},
+    {icon:"📣",title:"Campaign Campaigns",desc:"Blast promotions to targeted segments. Track delivery, read rates, and revenue."},
+  ];
+
+  const STATS=[
+    {n:"500+",l:"Businesses"},
+    {n:"2M+",l:"Messages Sent"},
+    {n:"98%",l:"Delivery Rate"},
+    {n:"4.9★",l:"Avg Rating"},
+  ];
+
+  const PRICING=[
+    {name:"Free",price:"0",desc:"Get started",features:["500 messages/month","1 branch","WhatsApp loyalty","Basic analytics"],cta:"Start Free",highlight:false},
+    {name:"Starter",price:"19",desc:"Growing businesses",features:["2,500 messages/month","3 branches","Campaigns","Automations","Priority support"],cta:"Start 14-day Trial",highlight:true},
+    {name:"Growth",price:"49",desc:"Scale your retention",features:["10,000 messages/month","10 branches","A/B testing","AI analytics","Custom segments"],cta:"Start 14-day Trial",highlight:false},
+  ];
+
+  const AuthSection=()=>(
+    <div id="auth-card" className="w-full max-w-md mx-auto">
+      {view==="landing"&&(
+        <div className="gc rounded-2xl p-8 text-center" style={CARD}>
+          <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-2xl">L</span></div>
+          <h3 className="text-white font-bold text-xl mb-2">Ready to grow?</h3>
+          <p className="text-slate-400 text-sm mb-6">Join thousands of businesses keeping customers loyal with WhatsApp.</p>
+          <button onClick={()=>setView("signup")} className="w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create Free Account</button>
+          <button onClick={()=>setView("login")} className="w-full py-3 rounded-xl text-sm font-medium transition-all hover:opacity-80" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",color:"white"}}>Sign In to Existing Account</button>
+        </div>
+      )}
+      {view==="login"&&(
+        <div>
+          <div className="text-center mb-5">
+            <h2 className="text-2xl font-bold text-white">Welcome back</h2>
+            <p className="text-slate-400 text-sm mt-1">Sign in to your Loyable workspace</p>
+          </div>
+          <LoginView onLogin={onLogin} onView={setView}/>
+        </div>
+      )}
+      {view==="signup"&&(
+        <div>
+          <div className="text-center mb-5">
+            <h2 className="text-2xl font-bold text-white">Create your account</h2>
+            <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
+          </div>
+          <SignupView onLogin={onLogin} onView={setView}/>
+        </div>
+      )}
+      {(view==="forgot"||view==="forgot-sent")&&(
+        <ForgotView onView={setView}/>
+      )}
+    </div>
+  );
+
+  return(
+    <div className="min-h-screen relative overflow-x-hidden" style={{background:BG}}>
+      <AuthBg/>
+
+      {/* ── Nav ───────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50" style={{background:"rgba(8,6,18,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
+            <span className="text-white font-bold text-lg tracking-tight">Loyable</span>
+            <span className="hidden sm:block text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{background:"rgba(139,92,246,0.15)",color:"#a78bfa",border:"1px solid rgba(139,92,246,0.2)"}}>BETA</span>
+          </div>
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-6">
+            {["Features","Pricing","About"].map(l=>(
+              <a key={l} href={`#${l.toLowerCase()}`} className="text-slate-400 hover:text-white text-sm transition-colors">{l}</a>
+            ))}
+          </div>
+          {/* Auth buttons */}
+          <div className="hidden md:flex items-center gap-3">
+            <button onClick={()=>scrollToAuth("login")} className="text-slate-300 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg hover:bg-white/5">Log In</button>
+            <button onClick={()=>scrollToAuth("signup")} className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
+          </div>
+          {/* Mobile hamburger */}
+          <button className="md:hidden text-slate-300 hover:text-white p-1" onClick={()=>setMobileNav(!mobileNav)}>
+            {mobileNav?<X size={22}/>:<Menu size={22}/>}
+          </button>
+        </div>
+        {/* Mobile nav dropdown */}
+        {mobileNav&&(
+          <div className="md:hidden border-t px-4 py-4 space-y-3" style={{background:"rgba(8,6,18,0.97)",borderColor:"rgba(255,255,255,0.06)"}}>
+            {["Features","Pricing","About"].map(l=>(
+              <a key={l} href={`#${l.toLowerCase()}`} onClick={()=>setMobileNav(false)} className="block text-slate-400 hover:text-white text-sm py-1">{l}</a>
+            ))}
+            <div className="pt-2 space-y-2 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
+              <button onClick={()=>{setMobileNav(false);scrollToAuth("login");}} className="w-full text-sm text-white py-2.5 rounded-xl font-medium" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)"}}>Log In</button>
+              <button onClick={()=>{setMobileNav(false);scrollToAuth("signup");}} className="w-full text-sm font-semibold text-white py-2.5 rounded-xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <section className="pt-24 pb-16 px-4 sm:px-6 relative z-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 text-xs font-medium" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"/>
+                WhatsApp-first retention OS for SMBs
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-5 tracking-tight">
+                Turn every customer<br/>
+                <span style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>into a loyal fan</span>
+              </h1>
+              <p className="text-slate-400 text-base sm:text-lg mb-8 leading-relaxed max-w-lg">
+                Loyalty programs, WhatsApp campaigns, AI analytics, and POS — all in one platform built for restaurants, salons, gyms, and retail.
+              </p>
+              <div className="flex flex-wrap gap-3 mb-10">
+                <button onClick={()=>scrollToAuth("signup")} className="px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                  Start Free — No Card Needed
+                </button>
+                <button onClick={()=>scrollToAuth("login")} className="px-6 py-3 rounded-xl text-sm font-medium text-white transition-all hover:opacity-80" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
+                  Sign In
+                </button>
+              </div>
+              {/* Stats row */}
+              <div className="flex flex-wrap gap-6">
+                {STATS.map(s=>(
+                  <div key={s.n}>
+                    <div className="text-xl font-black text-white">{s.n}</div>
+                    <div className="text-xs text-slate-500">{s.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Auth card on the right in hero */}
+            <div className="lg:block">
+              <AuthSection/>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ──────────────────────────────────────────── */}
+      <section id="features" className="py-16 px-4 sm:px-6 relative z-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">Everything you need</h2>
+            <p className="text-slate-400 max-w-md mx-auto">One platform to replace 5 different tools. Cheaper than HubSpot, smarter than Wati.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map((f,i)=>(
+              <div key={i} className="p-5 rounded-2xl transition-all hover:scale-[1.02]" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="text-white font-semibold mb-1.5">{f.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ───────────────────────────────────────────── */}
+      <section id="pricing" className="py-16 px-4 sm:px-6 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">Simple pricing</h2>
+            <p className="text-slate-400">Start free. Upgrade as you grow.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {PRICING.map((plan,i)=>(
+              <div key={i} className="rounded-2xl p-6 flex flex-col relative overflow-hidden" style={{background:plan.highlight?"rgba(139,92,246,0.1)":"rgba(255,255,255,0.04)",border:plan.highlight?"1px solid rgba(139,92,246,0.35)":"1px solid rgba(255,255,255,0.08)"}}>
+                {plan.highlight&&<div className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(139,92,246,0.25)",color:"#a78bfa"}}>POPULAR</div>}
+                <div className="mb-4">
+                  <h3 className="text-white font-bold text-lg">{plan.name}</h3>
+                  <p className="text-slate-500 text-xs mb-3">{plan.desc}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-slate-400 text-sm">$</span>
+                    <span className="text-4xl font-black text-white">{plan.price}</span>
+                    <span className="text-slate-500 text-sm">/mo</span>
+                  </div>
+                </div>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {plan.features.map((f,j)=>(
+                    <li key={j} className="flex items-center gap-2 text-sm text-slate-300">
+                      <Check size={14} className="text-violet-400 shrink-0"/>{f}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={()=>scrollToAuth("signup")} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{background:plan.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.07)",color:"white",border:plan.highlight?"none":"1px solid rgba(255,255,255,0.12)"}}>
+                  {plan.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA Banner ────────────────────────────────────────── */}
+      <section id="about" className="py-16 px-4 sm:px-6 relative z-10">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="gc rounded-3xl p-10 sm:p-14" style={{...CARD,background:"rgba(139,92,246,0.08)"}}>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Start keeping customers today</h2>
+            <p className="text-slate-400 mb-8 max-w-md mx-auto">Setup takes 5 minutes. Connect WhatsApp, add your menu or services, and start rewarding loyal customers.</p>
+            <button onClick={()=>scrollToAuth("signup")} className="px-8 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105 inline-block" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+              Create Your Free Account
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ────────────────────────────────────────────── */}
+      <footer className="py-8 px-4 sm:px-6 relative z-10 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
+            <span className="text-slate-400 text-sm font-medium">Loyable</span>
+          </div>
+          <p className="text-slate-600 text-xs">© 2026 Loyable. WhatsApp-first retention for SMBs.</p>
+          <div className="flex gap-4">
+            {["Privacy","Terms","Contact"].map(l=><a key={l} href="#" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">{l}</a>)}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+// Keep a simple alias for direct auth navigation (used when app is already showing landing but user clicked deep link)
+const LoginPage=({onLogin}:{onLogin:(u:any)=>void})=><LandingPage onLogin={onLogin}/>;
 
 // ════════════════════════════════════════════════════════════════
 // LOADING SKELETON
@@ -2216,7 +2627,7 @@ export default function App({onLogout}:{onLogout?:()=>void}={}){
     return()=>clearInterval(iv);
   },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
-  if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
+  if(!loggedIn)return <LoginPage onLogin={(u:any)=>{if(u?.role)localStorage.setItem("userRole",u.role);setLoggedIn(true);}}/>;
   const nav=p=>{
     // Enforce role restrictions — redirect to POS if not allowed
     const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
