@@ -2645,6 +2645,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       // Hydrate biz_industry / biz_name from server on every session start
       hydrateFromApi();
     }
+    if(!loggedIn)return;
     const check=()=>api.whatsapp.status().then(d=>{setWa(d?.waha?.status==="WORKING"||!!(d?.meta?.configured));}).catch(()=>{});
     check();
     const iv=setInterval(check,15000);

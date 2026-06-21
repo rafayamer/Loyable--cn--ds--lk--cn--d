@@ -30,9 +30,10 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
         return req<T>(path, init);
       }
     } catch {}
+    const hadToken = !!localStorage.getItem('accessToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('sessionId');
-    window.location.href = '/';
+    if (hadToken) window.location.href = '/';
     throw new Error('Unauthenticated');
   }
 
