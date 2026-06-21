@@ -1678,7 +1678,7 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
         const compiledActions=(a.compiledJson?.actions||a.compiledJson||[]);
         const triggerType=a.trigger?.type||a.trigger||(typeof a.compiledJson?.trigger==="object"?a.compiledJson?.trigger?.type:a.compiledJson?.trigger)||"—";
         return(
-        <div key={a.id} className={`rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} className="gc" style={{...CARD,border:`1px solid ${on?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.07)"}`}}>
+        <div key={a.id} className={`gc rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} style={{...CARD,border:`1px solid ${on?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.07)"}`}}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:on?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.05)"}}><Zap size={16} className={on?"text-violet-400":"text-slate-500"}/></div>
