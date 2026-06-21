@@ -251,23 +251,11 @@ export const login = async (
     throw new Error('TENANT_SUSPENDED');
   }
 
-  // Parallel: update lastLoginAt + write audit log (non-critical)
-  await Promise.all([
-    prisma.user.update({
-      where: { id: user.id },
-      data:  { lastLoginAt: new Date() },
-    }),
-    prisma.auditLog.create({
-      data: {
-        businessId: user.businessId,
-        userId:     user.id,
-        action:     'LOGIN',
-        ipAddress,
-        userAgent,
-        metaJson:   { method: 'EMAIL_PASSWORD' },
-      },
-    }),
-  ]);
+  // Non-critical side-effects — must not block or fail login
+  prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+  prisma.auditLog.create({
+    data: { businessId: user.businessId, userId: user.id, action: 'LOGIN', ipAddress, userAgent, metaJson: { method: 'EMAIL_PASSWORD' } },
+  }).catch(() => {});
 
   const tokens = await issueTokenPair({
     sub:              user.id,

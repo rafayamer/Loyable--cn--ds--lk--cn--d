@@ -180,8 +180,11 @@ const handleAuthError = (err: unknown, res: Response): void => {
   const message = err instanceof Error ? err.message : 'UNKNOWN_ERROR';
   const status  = AUTH_ERROR_STATUS[message] ?? 500;
 
-  // Don't leak internal error details on 500s
-  const responseMessage = status === 500 ? 'INTERNAL_SERVER_ERROR' : message;
+  // Don't leak internal error details on 500s in production
+  const isDev = process.env.NODE_ENV !== 'production';
+  const responseMessage = status === 500
+    ? (isDev ? `INTERNAL_SERVER_ERROR: ${message}` : 'INTERNAL_SERVER_ERROR')
+    : message;
 
   if (status === 500) {
     console.error('[auth.controller] Unhandled error:', err);
