@@ -197,6 +197,17 @@ export const api = {
     },
   },
 
+  // ── Customer Portal (public, uses separate portalToken) ──────
+  portal: {
+    info:   (slug: string) => get<any>(`/portal/${slug}/info`),
+    login:  (slug: string, body: { phone: string; name: string }) =>
+              post<{ token: string; customer: { id: string; name: string } }>(`/portal/${slug}/login`, body),
+    me: (portalToken: string) =>
+      req<any>('/portal/me', { headers: { Authorization: `Bearer ${portalToken}` } }),
+    redeem: (portalToken: string, couponCode: string) =>
+      req<any>('/portal/redeem', { method: 'POST', body: JSON.stringify({ couponCode }), headers: { Authorization: `Bearer ${portalToken}`, 'Content-Type': 'application/json' } }),
+  },
+
   // ── POS & FBR ─────────────────────────────────────────────────
   pos: {
     stats:      () => get<any>('/pos/stats'),

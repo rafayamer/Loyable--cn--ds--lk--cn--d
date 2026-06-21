@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import LoyableAdminPanel from './LoyableAdminPanel';
 import CRM from './CRM';
+import CustomerPortal from './CustomerPortal';
 
 type Role = 'PLATFORM_ADMINISTRATOR' | 'TENANT_OWNER' | 'BRANCH_MANAGER' | 'CASHIER' | 'MARKETING_STAFF' | 'CUSTOMER' | null;
 
-export default function App() {
+const isPortal = window.location.pathname.startsWith('/portal');
+
+function AdminOrCRM() {
   const [role, setRole] = useState<Role>(null);
   const [checked, setChecked] = useState(false);
 
@@ -24,14 +27,11 @@ export default function App() {
   };
 
   if (!checked) return null;
-
   if (role === 'PLATFORM_ADMINISTRATOR') return <LoyableAdminPanel />;
+  return <CRM onLogout={handleLogout} onRoleChange={(r: string) => setRole(r as Role)} />;
+}
 
-  // Not logged in OR tenant roles → CRM handles landing page + login + signup
-  return (
-    <CRM
-      onLogout={handleLogout}
-      onRoleChange={(r: string) => setRole(r as Role)}
-    />
-  );
+export default function App() {
+  if (isPortal) return <CustomerPortal />;
+  return <AdminOrCRM />;
 }
