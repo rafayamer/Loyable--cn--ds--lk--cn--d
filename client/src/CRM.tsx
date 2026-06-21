@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { api } from "./api/index";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
 import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon } from "lucide-react";
@@ -198,6 +198,9 @@ const AppleIcon=()=>(
 
 type AuthView = "landing"|"login"|"signup"|"forgot"|"forgot-sent";
 
+const ThemeCtx = createContext<{dark:boolean}>({dark:true});
+const useTheme = ()=>useContext(ThemeCtx);
+
 const AuthBg=()=>(
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.06] blur-3xl" style={{background:"#8b5cf6"}}/>
@@ -206,45 +209,55 @@ const AuthBg=()=>(
   </div>
 );
 
-const SocialButtons=({loading,socialLoading,onSocial}:{loading:boolean,socialLoading:"google"|"apple"|null,onSocial:(p:"google"|"apple")=>void})=>(
-  <div className="grid grid-cols-2 gap-3 mb-5">
-    {(["google","apple"] as const).map(p=>(
-      <button key={p} onClick={()=>onSocial(p)} disabled={!!socialLoading||loading}
-        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
-        style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
-        {socialLoading===p?<RefreshCw size={16} className="animate-spin"/>:(p==="google"?<GoogleIcon/>:<AppleIcon/>)}
-        <span className="capitalize">{p}</span>
-      </button>
-    ))}
-  </div>
-);
+const SocialButtons=({loading,socialLoading,onSocial}:{loading:boolean,socialLoading:"google"|"apple"|null,onSocial:(p:"google"|"apple")=>void})=>{
+  const {dark}=useTheme();
+  return(
+    <div className="flex flex-col gap-3 mb-5">
+      {(["google","apple"] as const).map(p=>(
+        <button key={p} onClick={()=>onSocial(p)} disabled={!!socialLoading||loading}
+          className="flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+          style={{background:dark?"rgba(255,255,255,0.07)":"#ffffff",border:`1px solid ${dark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.1)"}`,color:dark?"white":"#374151"}}>
+          {socialLoading===p?<RefreshCw size={16} className="animate-spin"/>:(p==="google"?<GoogleIcon/>:<svg width="18" height="18" viewBox="0 0 24 24" fill={dark?"white":"#374151"}><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>)}
+          <span>{p==="google"?"Sign up with Google":"Sign up with Apple"}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
 
-const Divider=({text="or continue with email"}:{text?:string})=>(
-  <div className="flex items-center gap-3 mb-5">
-    <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
-    <span className="text-xs text-slate-500">{text}</span>
-    <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
-  </div>
-);
+const Divider=({text="or"}:{text?:string})=>{
+  const {dark}=useTheme();
+  return(
+    <div className="flex items-center gap-3 mb-5">
+      <div className="flex-1 h-px" style={{background:dark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.08)"}}/>
+      <span className="text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>{text}</span>
+      <div className="flex-1 h-px" style={{background:dark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.08)"}}/>
+    </div>
+  );
+};
 
 const ErrBox=({msg}:{msg:string})=>msg?(
-  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{msg}</div>
+  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-red-500" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)"}}>{msg}</div>
 ):null;
 
 const OkBox=({msg}:{msg:string})=>msg?(
-  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-green-400" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.15)"}}>{msg}</div>
+  <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-green-600" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)"}}>{msg}</div>
 ):null;
 
-const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:string,type?:string,value:string,onChange:(v:string)=>void,onEnter?:()=>void,placeholder?:string})=>(
-  <div>
-    <label className="text-xs font-medium text-slate-400 mb-1.5 block">{label}</label>
-    <input value={value} onChange={ev=>onChange(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&onEnter?.()} type={type} placeholder={placeholder} className={inp} style={INP}/>
-  </div>
-);
+const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:string,type?:string,value:string,onChange:(v:string)=>void,onEnter?:()=>void,placeholder?:string})=>{
+  const {dark}=useTheme();
+  const s:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035",transition:"border-color .2s"};
+  return(
+    <div>
+      <label className="text-xs font-medium mb-1.5 block" style={{color:dark?"#94a3b8":"#6b7280"}}>{label}</label>
+      <input value={value} onChange={ev=>onChange(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&onEnter?.()} type={type} placeholder={placeholder} style={s}/>
+    </div>
+  );
+};
 
 const Btn=({onClick,disabled,loading:ld,children}:{onClick:()=>void,disabled?:boolean,loading?:boolean,children:React.ReactNode})=>(
   <button onClick={onClick} disabled={disabled||ld}
-    className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[.98]"
+    className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[.98] shadow-sm"
     style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
     {ld&&<RefreshCw size={14} className="animate-spin"/>}{children}
   </button>
@@ -287,24 +300,26 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     }catch(ex){setErr((ex as Error).message==="INVALID_CREDENTIALS"?"Incorrect email or password.":(ex as Error).message);}
     finally{setLoading(false);}
   };
+  const {dark}=useTheme();
+  const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035"};
   return(
-    <div className="gc rounded-2xl p-6" style={CARD}>
+    <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
       <Divider/>
       <div className="space-y-4 mb-5">
-        <Field label="Email" type="email" value={e} onChange={setE} placeholder="you@business.com"/>
+        <div><label style={fldLbl}>Email Address</label><input value={e} onChange={ev=>setE(ev.target.value)} type="email" placeholder="you@business.com" style={fldInp}/></div>
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-medium text-slate-400">Password</label>
-            <button onClick={()=>onView("forgot")} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Forgot password?</button>
+            <label style={fldLbl}>Password</label>
+            <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
           </div>
-          <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" className={inp} style={INP}/>
+          <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
         </div>
       </div>
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Sign In</Btn>
-      <p className="mt-4 text-center text-xs text-slate-500">Don't have an account? <button onClick={()=>onView("signup")} className="text-violet-400 hover:text-violet-300 font-medium">Sign up free</button></p>
-      <div className="mt-4 px-3 py-2 rounded-xl" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.1)"}}><p className="text-[11px] text-slate-600 text-center">Secured with Argon2id · JWT · Rate limiting</p></div>
+      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Don't have an account? <button onClick={()=>onView("signup")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign up free</button></p>
     </div>
   );
 };
@@ -344,48 +359,41 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
     }
     finally{setLoading(false);}
   };
+  const {dark}=useTheme();
+  const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035"};
+  const selSt={...fldInp,appearance:"none" as const};
+  const optBg=dark?"#1a1035":"white";
   return(
-    <div className="gc rounded-2xl p-6" style={CARD}>
+    <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
       <Divider text="or sign up with email"/>
       <div className="space-y-3 mb-5">
-        <Field label="Business Name *" value={bizName} onChange={setBizName} placeholder="Coffee House, My Salon…"/>
-        <Field label="Your Name *" value={name} onChange={setName} placeholder="Full name"/>
-        <Field label="Email *" type="email" value={email} onChange={setEmail} placeholder="you@business.com"/>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Country</label>
-            <select value={country} onChange={ev=>setCountry(ev.target.value)} style={selStyle}>
-              {COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1035"}}>{c.l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Currency</label>
-            <select value={currency} onChange={ev=>setCurrency(ev.target.value)} style={selStyle}>
-              {CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1035"}}>{c.v}</option>)}
-            </select>
-          </div>
+          <div><label style={fldLbl}>First Name</label><input value={name.split(" ")[0]} onChange={ev=>setName(ev.target.value+" "+(name.split(" ")[1]||""))} placeholder="First Name" style={fldInp}/></div>
+          <div><label style={fldLbl}>Last Name</label><input value={name.split(" ")[1]||""} onChange={ev=>setName((name.split(" ")[0]||"")+" "+ev.target.value)} placeholder="Last Name" style={fldInp}/></div>
+        </div>
+        <div><label style={fldLbl}>Business Name *</label><input value={bizName} onChange={ev=>setBizName(ev.target.value)} placeholder="Your Business Name" style={fldInp}/></div>
+        <div><label style={fldLbl}>Email Address *</label><input value={email} onChange={ev=>setEmail(ev.target.value)} type="email" placeholder="you@example.com" style={fldInp}/></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label style={fldLbl}>Country</label><select value={country} onChange={ev=>setCountry(ev.target.value)} style={selSt}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:optBg}}>{c.l}</option>)}</select></div>
+          <div><label style={fldLbl}>Currency</label><select value={currency} onChange={ev=>setCurrency(ev.target.value)} style={selSt}>{CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:optBg}}>{c.v}</option>)}</select></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Timezone</label>
-            <select value={tz} onChange={ev=>setTz(ev.target.value)} style={selStyle}>
-              {TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:"#1a1035"}}>{t.l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Business Type</label>
-            <select value={industry} onChange={ev=>setIndustry(ev.target.value)} style={selStyle}>
-              {[{v:"restaurant",l:"Restaurant"},{v:"salon",l:"Salon / Spa"},{v:"gym",l:"Gym / Fitness"},{v:"retail",l:"Retail"},{v:"cafe",l:"Café"},{v:"pharmacy",l:"Pharmacy"},{v:"other",l:"Other"}].map(o=><option key={o.v} value={o.v} style={{background:"#1a1035"}}>{o.l}</option>)}
-            </select>
-          </div>
+          <div><label style={fldLbl}>Timezone</label><select value={tz} onChange={ev=>setTz(ev.target.value)} style={selSt}>{TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:optBg}}>{t.l}</option>)}</select></div>
+          <div><label style={fldLbl}>Business Type</label><select value={industry} onChange={ev=>setIndustry(ev.target.value)} style={selSt}>{[{v:"restaurant",l:"Restaurant"},{v:"salon",l:"Salon / Spa"},{v:"gym",l:"Gym / Fitness"},{v:"retail",l:"Retail"},{v:"cafe",l:"Café"},{v:"pharmacy",l:"Pharmacy"},{v:"other",l:"Other"}].map(o=><option key={o.v} value={o.v} style={{background:optBg}}>{o.l}</option>)}</select></div>
         </div>
-        <Field label="Password *" type="password" value={pass} onChange={setPass} placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol"/>
-        <Field label="Confirm Password *" type="password" value={confirm} onChange={setConfirm} onEnter={submit} placeholder="Re-enter password"/>
+        <div><label style={fldLbl}>Password *</label><input value={pass} onChange={ev=>setPass(ev.target.value)} type="password" placeholder="Create a strong password" style={fldInp}/></div>
+        <div><label style={fldLbl}>Confirm Password *</label><input value={confirm} onChange={ev=>setConfirm(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="Confirm your password" style={fldInp}/></div>
       </div>
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Create Account</Btn>
-      <p className="mt-4 text-center text-xs text-slate-500">Already have an account? <button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 font-medium">Sign in</button></p>
+      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Already have an account? <button onClick={()=>onView("login")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign in</button></p>
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
+        {[{icon:"🛡️",l:"GDPR Compliant"},{icon:"🔒",l:"Secure & Encrypted"},{icon:"⭐",l:"Trusted by Businesses"}].map(b=>(
+          <div key={b.l} className="flex items-center gap-1.5 text-[11px]" style={{color:dark?"#64748b":"#9ca3af"}}><span>{b.icon}</span>{b.l}</div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -432,270 +440,492 @@ const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
 };
 
 // ════════════════════════════════════════════════════════════════
-// LANDING PAGE  (marketing website)
+// LANDING PAGE  (marketing website — full redesign)
 // ════════════════════════════════════════════════════════════════
 const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [view,setView]=useState<AuthView>("landing");
+  const [dark,setDark]=useState(true);
   const [mobileNav,setMobileNav]=useState(false);
+  const [pricingYearly,setPricingYearly]=useState(false);
+  const [testimonialIdx,setTestimonialIdx]=useState(0);
 
-  // scroll to auth card
-  const scrollToAuth=(v:AuthView)=>{
-    setView(v);
-    setTimeout(()=>document.getElementById("auth-card")?.scrollIntoView({behavior:"smooth",block:"center"}),50);
-  };
+  const D=dark;
+  const bg    = D?"#0f0a1e":"#f8f7ff";
+  const bg2   = D?"#130d24":"#f0eeff";
+  const card  = D?"rgba(255,255,255,0.06)":"#ffffff";
+  const cardB = D?"rgba(255,255,255,0.1)":"rgba(124,58,237,0.12)";
+  const tx    = D?"#ffffff":"#1a1035";
+  const tx2   = D?"#94a3b8":"#6b7280";
+  const tx3   = D?"#64748b":"#9ca3af";
+  const bdr   = D?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)";
+  const inpBg = D?"rgba(255,255,255,0.07)":"#f9f8ff";
+  const inpBd = D?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)";
+  const navBg = D?"rgba(15,10,30,0.9)":"rgba(255,255,255,0.92)";
 
-  const FEATURES=[
-    {icon:"💬",title:"WhatsApp-Native",desc:"Send loyalty messages, campaigns, and receipts directly via WhatsApp — not email."},
-    {icon:"⭐",title:"Smart Loyalty Engine",desc:"Auto-assign points, tiers, and rewards. Customers love collecting and redeeming."},
-    {icon:"⚡",title:"Automation Builder",desc:"Set up win-back, birthday, and tier-upgrade flows in minutes. No code needed."},
-    {icon:"📊",title:"AI-Powered Analytics",desc:"Ask questions in plain English. \"Who are my top 10 customers this month?\""},
-    {icon:"🛒",title:"Built-in POS",desc:"Scan QR codes, process sales, and print WhatsApp receipts right from the browser."},
-    {icon:"📣",title:"Campaign Campaigns",desc:"Blast promotions to targeted segments. Track delivery, read rates, and revenue."},
+  const LS_FEATURES=[
+    {icon:"🔲",title:"QR Check-In",desc:"Easy QR scanning for customer visits."},
+    {icon:"👥",title:"Loyalty Programs",desc:"Create membership tiers & reward loyalty."},
+    {icon:"⭐",title:"Points System",desc:"Reward points for every visit or purchase."},
+    {icon:"🎟️",title:"Coupons & Offers",desc:"Create powerful coupons & discounts."},
+    {icon:"📣",title:"Automated Campaigns",desc:"WhatsApp, Email & SMS automation."},
+    {icon:"📋",title:"Customer Timeline",desc:"Complete history of customer interactions."},
+    {icon:"🧠",title:"AI Segmentation",desc:"Smart segments to target right customers."},
+    {icon:"🎂",title:"Birthday Rewards",desc:"Automated birthday wishes & rewards."},
+    {icon:"🔗",title:"Referral Program",desc:"Grow your business with referrals."},
+    {icon:"📊",title:"Analytics & Reports",desc:"Real-time insights to grow your business."},
+    {icon:"🏢",title:"Multi-Location",desc:"Manage multiple locations with ease."},
+    {icon:"👤",title:"Staff Management",desc:"Roles & permissions for your team."},
+    {icon:"⭐",title:"Review Management",desc:"Get more reviews and grow reputation."},
+    {icon:"🔌",title:"Integrations",desc:"Connect with POS, APIs & more."},
+    {icon:"📱",title:"Mobile App",desc:"Your customers can view & redeem rewards."},
   ];
 
-  const STATS=[
-    {n:"500+",l:"Businesses"},
-    {n:"2M+",l:"Messages Sent"},
-    {n:"98%",l:"Delivery Rate"},
-    {n:"4.9★",l:"Avg Rating"},
+  const STEPS=[
+    {icon:"🏪",n:"1. Customer Visits",d:"Customer visits your business."},
+    {icon:"📱",n:"2. Scan QR Code",d:"They scan the QR code to check-in."},
+    {icon:"⭐",n:"3. Earn Points",d:"Points are added to their account."},
+    {icon:"🎁",n:"4. Get Rewards",d:"They redeem points & claim rewards."},
+    {icon:"🔄",n:"5. Visit Again",d:"They come back & become loyal."},
+  ];
+
+  const INDUSTRIES=[
+    {icon:"🍽️",l:"Restaurants"},{icon:"☕",l:"Cafés"},{icon:"🍰",l:"Dessert Shops"},
+    {icon:"✂️",l:"Salons"},{icon:"💈",l:"Barbers"},{icon:"🏋️",l:"Gyms"},
+    {icon:"🛍️",l:"Retail Stores"},{icon:"🚗",l:"Car Washes"},{icon:"🏥",l:"Clinics"},{icon:"💆",l:"Spas"},
+  ];
+
+  const TESTIMONIALS=[
+    {stars:5,text:"Loyable increased our repeat customers by 60%. The WhatsApp campaigns and rewards system work like magic!!!!",name:"Michael Brown",biz:"Casa Bistro",avatar:"MB"},
+    {stars:5,text:"Finally, a loyalty platform that is simple, powerful and affordable. Our customers love the rewards!",name:"Sarah Johnson",biz:"The Coffee House",avatar:"SJ"},
+    {stars:5,text:"The analytics help us understand our customers better. Our business has grown 35% since using Loyable.",name:"James Williams",biz:"Urban Cuts Barbershop",avatar:"JW"},
   ];
 
   const PRICING=[
-    {name:"Free",price:"0",desc:"Get started",features:["500 messages/month","1 branch","WhatsApp loyalty","Basic analytics"],cta:"Start Free",highlight:false},
-    {name:"Starter",price:"19",desc:"Growing businesses",features:["2,500 messages/month","3 branches","Campaigns","Automations","Priority support"],cta:"Start 14-day Trial",highlight:true},
-    {name:"Growth",price:"49",desc:"Scale your retention",features:["10,000 messages/month","10 branches","A/B testing","AI analytics","Custom segments"],cta:"Start 14-day Trial",highlight:false},
+    {name:"Free",monthly:0,yearly:0,desc:"Perfect for getting started",features:["Up to 200 Customers","200 Messages / month","QR Check-in","Basic Analytics"],cta:"Get Started",highlight:false},
+    {name:"Starter",monthly:19,yearly:15,desc:"For small businesses",features:["Up to 1,000 Customers","1,000 Messages / month","Campaigns","Coupons & Campaigns","Email Support"],cta:"Start Free Trial",highlight:false},
+    {name:"Growth",monthly:49,yearly:39,desc:"For growing businesses",features:["Up to 10,000 Customers","10,000 Messages / month","Multi-Location","Advanced Analytics","AI Insights","Priority Support"],cta:"Start Free Trial",highlight:true},
+    {name:"Pro",monthly:99,yearly:79,desc:"For large businesses",features:["Unlimited Customers","Unlimited Messages","Multi-Location","AI Insights","White Label","Priority Support"],cta:"Start Free Trial",highlight:false},
   ];
 
-  const AuthSection=()=>(
-    <div id="auth-card" className="w-full max-w-md mx-auto">
-      {view==="landing"&&(
-        <div className="gc rounded-2xl p-8 text-center" style={CARD}>
-          <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-2xl">L</span></div>
-          <h3 className="text-white font-bold text-xl mb-2">Ready to grow?</h3>
-          <p className="text-slate-400 text-sm mb-6">Join thousands of businesses keeping customers loyal with WhatsApp.</p>
-          <button onClick={()=>setView("signup")} className="w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create Free Account</button>
-          <button onClick={()=>setView("login")} className="w-full py-3 rounded-xl text-sm font-medium transition-all hover:opacity-80" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",color:"white"}}>Sign In to Existing Account</button>
-        </div>
-      )}
-      {view==="login"&&(
-        <div>
-          <div className="text-center mb-5">
-            <h2 className="text-2xl font-bold text-white">Welcome back</h2>
-            <p className="text-slate-400 text-sm mt-1">Sign in to your Loyable workspace</p>
-          </div>
-          <LoginView onLogin={onLogin} onView={setView}/>
-        </div>
-      )}
-      {view==="signup"&&(
-        <div>
-          <div className="text-center mb-5">
-            <h2 className="text-2xl font-bold text-white">Create your account</h2>
-            <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
-          </div>
-          <SignupView onLogin={onLogin} onView={setView}/>
-        </div>
-      )}
-      {(view==="forgot"||view==="forgot-sent")&&(
-        <ForgotView onView={setView}/>
-      )}
-    </div>
-  );
+  const BRANDS=["Casa Bistro","The Coffee House","Urban Cuts","FitLife Gym","Blossom Salon","Sweet Treats","AutoShine"];
 
-  // When user switches to login/signup/forgot — show full-screen auth, not the landing page
+  const LightInp:React.CSSProperties={background:inpBg,border:`1px solid ${inpBd}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:tx,transition:"border-color .2s"};
+  const selStyle={...LightInp,appearance:"none" as const};
+
+  const nav=(v:AuthView)=>{setView(v);window.scrollTo({top:0,behavior:"smooth"});};
+
+  // ── Auth form card (right panel) ─────────────────────────────
+  const AuthFormCard=()=>{
+    if(view==="login")return(
+      <div>
+        <h2 className="text-2xl font-bold mb-1" style={{color:tx}}>Welcome Back</h2>
+        <p className="text-sm mb-6" style={{color:tx2}}>Sign in to your Loyable account</p>
+        <LoginView onLogin={onLogin} onView={nav}/>
+      </div>
+    );
+    if(view==="signup")return(
+      <div>
+        <h2 className="text-2xl font-bold mb-1" style={{color:tx}}>Sign Up</h2>
+        <p className="text-sm mb-6" style={{color:tx2}}>Start your 14-day free trial. No credit card required.</p>
+        <SignupView onLogin={onLogin} onView={nav}/>
+      </div>
+    );
+    if(view==="forgot"||view==="forgot-sent")return <ForgotView onView={nav}/>;
+    return null;
+  };
+
+  // ── Split-screen auth layout ─────────────────────────────────
   if(view!=="landing"){
     return(
-      <div className="min-h-screen flex flex-col relative overflow-hidden" style={{background:BG}}>
-        <AuthBg/>
-        {/* Minimal nav */}
-        <div className="relative z-10 flex items-center justify-between px-6 py-4">
-          <button onClick={()=>setView("landing")} className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
-            <span className="text-white font-semibold text-base tracking-tight group-hover:opacity-80 transition-opacity">Loyable</span>
-          </button>
-          {view==="login"&&<button onClick={()=>setView("signup")} className="text-xs text-slate-400 hover:text-white transition-colors">No account? <span className="text-violet-400 font-medium">Sign up free</span></button>}
-          {(view==="signup")&&<button onClick={()=>setView("login")} className="text-xs text-slate-400 hover:text-white transition-colors">Have an account? <span className="text-violet-400 font-medium">Sign in</span></button>}
-          {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>setView("login")} className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors flex items-center gap-1"><ArrowLeft size={12}/>Back to sign in</button>}
+      <ThemeCtx.Provider value={{dark}}>
+      <div className="min-h-screen flex flex-col lg:flex-row" style={{background:bg}}>
+        {/* Left panel — marketing */}
+        <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#6d28d9 0%,#7c3aed 40%,#4f46e5 100%)"}}>
+          <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
+          <div className="relative z-10">
+            <button onClick={()=>setView("landing")} className="flex items-center gap-2 mb-12">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}><span className="text-white font-bold">L</span></div>
+              <span className="text-white font-bold text-xl">Loyable</span>
+            </button>
+            <h1 className="text-3xl font-black text-white mb-3 leading-tight">
+              {view==="signup"?"Create Your Loyable Account":"Welcome Back to Loyable"}
+            </h1>
+            <p className="text-purple-200 text-sm mb-8 leading-relaxed">Join thousands of businesses that are turning one-time customers into loyal customers.</p>
+            {[
+              {icon:"👥",t:"Grow Your Customers",d:"Track visits, understand behavior and build stronger relationships."},
+              {icon:"🎁",t:"Reward Loyalty",d:"Create loyalty programs, points, and exclusive rewards that keep customers coming back."},
+              {icon:"📣",t:"Automate & Save Time",d:"Send automated WhatsApp messages, birthday wishes, offers, and win-back campaigns."},
+              {icon:"📊",t:"Powerful Insights",d:"Get real-time analytics and AI insights to grow your business smarter."},
+            ].map((f,i)=>(
+              <div key={i} className="flex gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg" style={{background:"rgba(255,255,255,0.15)"}}>{f.icon}</div>
+                <div>
+                  <div className="text-white font-semibold text-sm">{f.t}</div>
+                  <div className="text-purple-200 text-xs mt-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:f.d.replace("keep customers coming back","keep <strong>customers coming back</strong>")}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Dashboard mockup preview */}
+          <div className="relative z-10 mt-6 rounded-2xl overflow-hidden shadow-2xl" style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)"}}>
+            <div className="flex items-center gap-2 px-4 py-3 border-b" style={{borderColor:"rgba(255,255,255,0.1)"}}>
+              <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}><span className="text-white font-bold text-[9px]">L</span></div>
+              <span className="text-white text-xs font-semibold">Dashboard</span>
+              <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-purple-200 text-[10px]">Davita ▾</span></div>
+            </div>
+            <div className="p-4 grid grid-cols-4 gap-2">
+              {[{l:"Total Customers",v:"12,458",c:"+12.5%"},{l:"Active Customers",v:"8,215",c:"+8.3%"},{l:"Repeat Customers",v:"6,125",c:"+15.2%"},{l:"Revenue Recovered",v:"£23,560",c:"+18.7%"}].map((k,i)=>(
+                <div key={i} className="rounded-lg p-2" style={{background:"rgba(255,255,255,0.1)"}}>
+                  <div className="text-purple-200 text-[9px]">{k.l}</div>
+                  <div className="text-white font-bold text-sm">{k.v}</div>
+                  <div className="text-green-300 text-[9px]">{k.c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex-1 flex items-center justify-center px-4 py-8 relative z-10">
-          <div className="w-full max-w-md">
-            <AuthSection/>
+        {/* Right panel — form */}
+        <div className="flex-1 flex flex-col" style={{background:bg}}>
+          <div className="flex items-center justify-between px-6 py-4 border-b" style={{borderColor:bdr}}>
+            <button onClick={()=>setView("landing")} className="lg:hidden flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-bold text-xs">L</span></div>
+              <span className="font-bold text-sm" style={{color:tx}}>Loyable</span>
+            </button>
+            <div className="lg:ml-auto flex items-center gap-2">
+              {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
+              {view==="login"&&<><span className="text-sm" style={{color:tx2}}>New to Loyable?</span><button onClick={()=>nav("signup")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Sign up free</button></>}
+              {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>nav("login")} className="text-sm font-semibold flex items-center gap-1" style={{color:"#7c3aed"}}><ArrowLeft size={13}/>Back to login</button>}
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-6 py-10">
+            <div className="w-full max-w-md">
+              <AuthFormCard/>
+            </div>
+          </div>
+          <div className="px-6 py-4 text-center text-xs" style={{color:tx3}}>
+            By signing up, you agree to our <a href="#" className="underline" style={{color:"#7c3aed"}}>Terms</a> and <a href="#" className="underline" style={{color:"#7c3aed"}}>Privacy Policy</a>
           </div>
         </div>
       </div>
+      </ThemeCtx.Provider>
     );
   }
 
+  // ── Full marketing landing page ──────────────────────────────
   return(
-    <div className="min-h-screen relative overflow-x-hidden" style={{background:BG}}>
-      <AuthBg/>
+    <ThemeCtx.Provider value={{dark}}>
+    <div className="min-h-screen overflow-x-hidden" style={{background:bg,color:tx}}>
 
-      {/* ── Nav ───────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50" style={{background:"rgba(8,6,18,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
-            <span className="text-white font-bold text-lg tracking-tight">Loyable</span>
-            <span className="hidden sm:block text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{background:"rgba(139,92,246,0.15)",color:"#a78bfa",border:"1px solid rgba(139,92,246,0.2)"}}>BETA</span>
+      {/* ── Nav ─────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 transition-colors" style={{background:navBg,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${bdr}`}}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[62px] flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-black text-sm">L</span></div>
+            <span className="font-black text-lg tracking-tight" style={{color:tx}}>Loyable</span>
           </div>
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-6">
-            {["Features","Pricing","About"].map(l=>(
-              <a key={l} href={`#${l.toLowerCase()}`} className="text-slate-400 hover:text-white text-sm transition-colors">{l}</a>
+          <div className="hidden lg:flex items-center gap-1 text-sm font-medium" style={{color:tx2}}>
+            {["Home","Features","Pricing"].map(l=>(
+              <a key={l} href={`#${l.toLowerCase()}`} className="px-3 py-2 rounded-lg transition-colors hover:opacity-80" style={{color:tx2}}>{l}</a>
+            ))}
+            {["Industries","Resources","Company"].map(l=>(
+              <button key={l} className="px-3 py-2 rounded-lg transition-colors hover:opacity-80 flex items-center gap-1" style={{color:tx2}}>{l}<ChevronDown size={13}/></button>
             ))}
           </div>
-          {/* Auth buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <button onClick={()=>scrollToAuth("login")} className="text-slate-300 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg hover:bg-white/5">Log In</button>
-            <button onClick={()=>scrollToAuth("signup")} className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>setDark(!dark)} className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:opacity-80" style={{background:D?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:tx2}}>
+              {D?<span className="text-base">☀️</span>:<span className="text-base">🌙</span>}
+            </button>
+            <button onClick={()=>nav("login")} className="hidden sm:block px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{color:tx}}>Log in</button>
+            <button onClick={()=>nav("signup")} className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
+            <button className="lg:hidden p-1.5" onClick={()=>setMobileNav(!mobileNav)} style={{color:tx}}>{mobileNav?<X size={20}/>:<Menu size={20}/>}</button>
           </div>
-          {/* Mobile hamburger */}
-          <button className="md:hidden text-slate-300 hover:text-white p-1" onClick={()=>setMobileNav(!mobileNav)}>
-            {mobileNav?<X size={22}/>:<Menu size={22}/>}
-          </button>
         </div>
-        {/* Mobile nav dropdown */}
         {mobileNav&&(
-          <div className="md:hidden border-t px-4 py-4 space-y-3" style={{background:"rgba(8,6,18,0.97)",borderColor:"rgba(255,255,255,0.06)"}}>
-            {["Features","Pricing","About"].map(l=>(
-              <a key={l} href={`#${l.toLowerCase()}`} onClick={()=>setMobileNav(false)} className="block text-slate-400 hover:text-white text-sm py-1">{l}</a>
+          <div className="lg:hidden border-t px-4 pb-4 pt-3 space-y-2" style={{background:navBg,borderColor:bdr}}>
+            {["Home","Features","Pricing","Industries"].map(l=>(
+              <a key={l} href={`#${l.toLowerCase()}`} onClick={()=>setMobileNav(false)} className="block text-sm py-2" style={{color:tx2}}>{l}</a>
             ))}
-            <div className="pt-2 space-y-2 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
-              <button onClick={()=>{setMobileNav(false);scrollToAuth("login");}} className="w-full text-sm text-white py-2.5 rounded-xl font-medium" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)"}}>Log In</button>
-              <button onClick={()=>{setMobileNav(false);scrollToAuth("signup");}} className="w-full text-sm font-semibold text-white py-2.5 rounded-xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button onClick={()=>{setMobileNav(false);nav("login");}} className="py-2.5 rounded-xl text-sm font-semibold border" style={{color:tx,borderColor:bdr}}>Log in</button>
+              <button onClick={()=>{setMobileNav(false);nav("signup");}} className="py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
             </div>
           </div>
         )}
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="pt-24 pb-16 px-4 sm:px-6 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      {/* ── Hero ────────────────────────────────────────────── */}
+      <section id="home" className="pt-[80px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 text-xs font-medium" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"/>
-                WhatsApp-first retention OS for SMBs
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-5 tracking-tight">
-                Turn every customer<br/>
-                <span style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>into a loyal fan</span>
+              <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-black leading-[1.1] mb-5 tracking-tight" style={{color:tx}}>
+                Turn One-Time Customers Into<br/>
+                <span style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
               </h1>
-              <p className="text-slate-400 text-base sm:text-lg mb-8 leading-relaxed max-w-lg">
-                Loyalty programs, WhatsApp campaigns, AI analytics, and POS — all in one platform built for restaurants, salons, gyms, and retail.
+              <p className="text-base mb-8 leading-relaxed max-w-lg" style={{color:tx2}}>
+                Loyable helps businesses track visits, reward loyalty, automate marketing and bring customers back – all in one powerful platform.
               </p>
-              <div className="flex flex-wrap gap-3 mb-10">
-                <button onClick={()=>scrollToAuth("signup")} className="px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
-                  Start Free — No Card Needed
-                </button>
-                <button onClick={()=>scrollToAuth("login")} className="px-6 py-3 rounded-xl text-sm font-medium text-white transition-all hover:opacity-80" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)"}}>
-                  Sign In
-                </button>
+              <div className="flex flex-wrap gap-3 mb-8">
+                <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-105 shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Start Free Trial</button>
+                <button className="px-6 py-3 rounded-xl text-sm font-bold border-2 transition-all hover:opacity-80" style={{color:tx,borderColor:D?"rgba(255,255,255,0.15)":"rgba(124,58,237,0.3)"}}>Book a Demo</button>
               </div>
-              {/* Stats row */}
-              <div className="flex flex-wrap gap-6">
-                {STATS.map(s=>(
-                  <div key={s.n}>
-                    <div className="text-xl font-black text-white">{s.n}</div>
-                    <div className="text-xs text-slate-500">{s.l}</div>
-                  </div>
+              <div className="flex flex-wrap items-center gap-5 text-xs" style={{color:tx3}}>
+                {["14-Day Free Trial","No Credit Card","Setup in 2 Minutes"].map(l=>(
+                  <span key={l} className="flex items-center gap-1.5"><Check size={13} className="text-violet-500"/>{l}</span>
                 ))}
               </div>
             </div>
-            {/* Auth card on the right in hero */}
-            <div className="lg:block">
-              <AuthSection/>
+            {/* Dashboard hero image */}
+            <div className="relative">
+              <div className="absolute -inset-4 rounded-3xl opacity-20 blur-2xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#1a1035":"#ffffff",borderColor:bdr}}>
+                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.04)":"#f8f7ff",borderColor:bdr}}>
+                  <div className="w-5 h-5 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-bold text-[9px]">L</span></div>
+                  <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
+                  <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {[{l:"Total Customers",v:"12,458",c:"+12.5%"},{l:"Active Customers",v:"8,215",c:"+8.3%"},{l:"Repeat Customers",v:"6,125",c:"+15.2%"},{l:"Revenue Recovered",v:"£23,560",c:"+18.7%"}].map((k,i)=>(
+                      <div key={i} className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.05)":"#f9f8ff",borderColor:bdr}}>
+                        <div className="text-[9px] mb-1" style={{color:tx3}}>{k.l}</div>
+                        <div className="font-bold text-base" style={{color:tx}}>{k.v}</div>
+                        <div className="text-[9px] text-emerald-500 font-semibold">{k.c}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.03)":"#f9f8ff",borderColor:bdr}}>
+                      <div className="text-xs font-semibold mb-2" style={{color:tx}}>Customer Visits Overview</div>
+                      <div className="h-20 flex items-end gap-1">
+                        {[40,55,35,70,50,85,60,75,45,90,65,80].map((h,i)=>(
+                          <div key={i} className="flex-1 rounded-sm opacity-70" style={{height:`${h}%`,background:"linear-gradient(to top,#8b5cf6,#a78bfa)"}}/>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.03)":"#f9f8ff",borderColor:bdr}}>
+                      <div className="text-xs font-semibold mb-2" style={{color:tx}}>Top Campaigns</div>
+                      {[{l:"Birthday Offer",w:75,c:"#8b5cf6"},{l:"Weekend Promo",w:55,c:"#06b6d4"},{l:"Win Back",w:35,c:"#ec4899"},{l:"New Menu",w:20,c:"#f59e0b"}].map((b,i)=>(
+                        <div key={i} className="mb-1.5">
+                          <div className="flex justify-between text-[9px] mb-0.5" style={{color:tx3}}><span>{b.l}</span></div>
+                          <div className="h-1.5 rounded-full" style={{background:D?"rgba(255,255,255,0.06)":"#ede9fe"}}><div className="h-full rounded-full" style={{width:`${b.w}%`,background:b.c}}/></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Floating loyalty card */}
+              <div className="absolute -bottom-4 -left-6 w-36 rounded-2xl p-3 shadow-xl border" style={{background:"linear-gradient(135deg,#7c3aed,#8b5cf6)",borderColor:"rgba(255,255,255,0.2)"}}>
+                <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">Loyable</span></div>
+                <div className="text-white font-black text-lg">2,450</div>
+                <div className="text-purple-200 text-[9px]">Loyalty Points</div>
+                <div className="mt-2 h-1 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}><div className="h-full w-3/4 rounded-full" style={{background:"rgba(255,255,255,0.7)"}}/></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Trusted by */}
+        <div className="border-t border-b py-5 overflow-hidden" style={{borderColor:bdr}}>
+          <div className="max-w-7xl mx-auto px-4">
+            <p className="text-center text-xs font-medium mb-4" style={{color:tx3}}>Trusted by 1,000+ businesses worldwide</p>
+            <div className="flex items-center justify-center flex-wrap gap-8">
+              {BRANDS.map(b=><span key={b} className="text-sm font-bold tracking-tight opacity-40" style={{color:tx}}>{b}</span>)}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Features ──────────────────────────────────────────── */}
-      <section id="features" className="py-16 px-4 sm:px-6 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">Everything you need</h2>
-            <p className="text-slate-400 max-w-md mx-auto">One platform to replace 5 different tools. Cheaper than HubSpot, smarter than Wati.</p>
+      {/* ── Features ────────────────────────────────────────── */}
+      <section id="features" className="py-20 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>POWERFUL FEATURES</p>
+            <h2 className="text-3xl sm:text-4xl font-black mb-3" style={{color:tx}}>Everything You Need to Build Loyalty</h2>
+            <p className="max-w-md mx-auto text-sm" style={{color:tx2}}>All the tools you need to engage, reward and retain your customers.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FEATURES.map((f,i)=>(
-              <div key={i} className="p-5 rounded-2xl transition-all hover:scale-[1.02]" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
-                <div className="text-2xl mb-3">{f.icon}</div>
-                <h3 className="text-white font-semibold mb-1.5">{f.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {LS_FEATURES.map((f,i)=>(
+              <div key={i} className="p-4 rounded-2xl border transition-all hover:shadow-md hover:-translate-y-0.5" style={{background:card,borderColor:bdr}}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 text-lg" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{f.icon}</div>
+                <div className="font-semibold text-sm mb-1" style={{color:tx}}>{f.title}</div>
+                <div className="text-xs leading-relaxed" style={{color:tx2}}>{f.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Pricing ───────────────────────────────────────────── */}
-      <section id="pricing" className="py-16 px-4 sm:px-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">Simple pricing</h2>
-            <p className="text-slate-400">Start free. Upgrade as you grow.</p>
+      {/* ── How it Works ────────────────────────────────────── */}
+      <section className="py-20 px-4 sm:px-6" style={{background:bg2}}>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>HOW IT WORKS</p>
+            <h2 className="text-3xl font-black mb-2" style={{color:tx}}>Simple Steps, Big Results</h2>
+            <p className="text-sm mb-6" style={{color:tx2}}>Loyable makes customer retention easy in just 5 steps.</p>
+            <button onClick={()=>nav("signup")} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Get Started Free</button>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {PRICING.map((plan,i)=>(
-              <div key={i} className="rounded-2xl p-6 flex flex-col relative overflow-hidden" style={{background:plan.highlight?"rgba(139,92,246,0.1)":"rgba(255,255,255,0.04)",border:plan.highlight?"1px solid rgba(139,92,246,0.35)":"1px solid rgba(255,255,255,0.08)"}}>
-                {plan.highlight&&<div className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(139,92,246,0.25)",color:"#a78bfa"}}>POPULAR</div>}
-                <div className="mb-4">
-                  <h3 className="text-white font-bold text-lg">{plan.name}</h3>
-                  <p className="text-slate-500 text-xs mb-3">{plan.desc}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-slate-400 text-sm">$</span>
-                    <span className="text-4xl font-black text-white">{plan.price}</span>
-                    <span className="text-slate-500 text-sm">/mo</span>
-                  </div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {STEPS.map((s,i)=>(
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{s.icon}</div>
+                  <div className="text-xs font-bold mt-2 text-center max-w-[90px]" style={{color:tx}}>{s.n}</div>
+                  <div className="text-[10px] text-center max-w-[90px]" style={{color:tx2}}>{s.d}</div>
                 </div>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {plan.features.map((f,j)=>(
-                    <li key={j} className="flex items-center gap-2 text-sm text-slate-300">
-                      <Check size={14} className="text-violet-400 shrink-0"/>{f}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={()=>scrollToAuth("signup")} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90" style={{background:plan.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.07)",color:"white",border:plan.highlight?"none":"1px solid rgba(255,255,255,0.12)"}}>
-                  {plan.cta}
-                </button>
+                {i<STEPS.length-1&&<ChevronRight size={20} className="text-violet-400 flex-shrink-0 mt-[-28px]"/>}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA Banner ────────────────────────────────────────── */}
-      <section id="about" className="py-16 px-4 sm:px-6 relative z-10">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="gc rounded-3xl p-10 sm:p-14" style={{...CARD,background:"rgba(139,92,246,0.08)"}}>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Start keeping customers today</h2>
-            <p className="text-slate-400 mb-8 max-w-md mx-auto">Setup takes 5 minutes. Connect WhatsApp, add your menu or services, and start rewarding loyal customers.</p>
-            <button onClick={()=>scrollToAuth("signup")} className="px-8 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105 inline-block" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
-              Create Your Free Account
-            </button>
+      {/* ── Industries ──────────────────────────────────────── */}
+      <section id="industries" className="py-20 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto text-center">
+          <h2 className="text-3xl font-black mb-3" style={{color:tx}}>Perfect for Every Business</h2>
+          <div className="flex flex-wrap justify-center gap-8 mt-10">
+            {INDUSTRIES.map(ind=>(
+              <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{ind.icon}</div>
+                <span className="text-xs font-medium" style={{color:tx2}}>{ind.l}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="py-8 px-4 sm:px-6 relative z-10 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
-            <span className="text-slate-400 text-sm font-medium">Loyable</span>
+      {/* ── Testimonials ────────────────────────────────────── */}
+      <section className="py-20 px-4 sm:px-6" style={{background:bg2}}>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>WHAT OUR CUSTOMERS SAY</p>
+            <h2 className="text-3xl font-black" style={{color:tx}}>Loved by Businesses, Trusted by Thousands</h2>
           </div>
-          <p className="text-slate-600 text-xs">© 2026 Loyable. WhatsApp-first retention for SMBs.</p>
-          <div className="flex gap-4">
-            {["Privacy","Terms","Contact"].map(l=><a key={l} href="#" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">{l}</a>)}
+          <div className="grid sm:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t,i)=>(
+              <div key={i} className="p-6 rounded-2xl border" style={{background:card,borderColor:bdr}}>
+                <div className="flex gap-0.5 mb-4">{Array(t.stars).fill(0).map((_,j)=><Star key={j} size={14} className="text-yellow-400 fill-yellow-400"/>)}</div>
+                <p className="text-sm leading-relaxed mb-5" style={{color:tx2}}>"{t.text}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{t.avatar}</div>
+                  <div><div className="text-sm font-semibold" style={{color:tx}}>{t.name}</div><div className="text-xs" style={{color:tx2}}>{t.biz}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-2 mt-6">
+            {TESTIMONIALS.map((_,i)=>(
+              <button key={i} onClick={()=>setTestimonialIdx(i)} className="w-2.5 h-2.5 rounded-full transition-all" style={{background:i===testimonialIdx?"#8b5cf6":"rgba(139,92,246,0.25)"}}/>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ─────────────────────────────────────────── */}
+      <section id="pricing" className="py-20 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>SIMPLE, TRANSPARENT PRICING</p>
+            <h2 className="text-3xl font-black mb-8" style={{color:tx}}>Choose the Perfect Plan for Your Business</h2>
+            {/* Monthly/Yearly toggle */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-xl border" style={{background:D?"rgba(255,255,255,0.05)":"#f3f4f6",borderColor:bdr}}>
+              <button onClick={()=>setPricingYearly(false)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all" style={{background:!pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:!pricingYearly?"white":tx2}}>Monthly</button>
+              <button onClick={()=>setPricingYearly(true)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2" style={{background:pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:pricingYearly?"white":tx2}}>
+                Yearly <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.15)",color:"#22c55e"}}>Save 20%</span>
+              </button>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {PRICING.map((plan,i)=>{
+              const price=pricingYearly?plan.yearly:plan.monthly;
+              return(
+                <div key={i} className="rounded-2xl p-6 flex flex-col relative border transition-all hover:shadow-xl hover:-translate-y-1" style={{background:plan.highlight?"linear-gradient(135deg,rgba(139,92,246,0.1),rgba(124,58,237,0.05))":card,borderColor:plan.highlight?"#8b5cf6":bdr}}>
+                  {plan.highlight&&<div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-black text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Most Popular</div>}
+                  <div className="mb-5">
+                    <h3 className="font-black text-lg mb-0.5" style={{color:tx}}>{plan.name}</h3>
+                    <p className="text-xs mb-4" style={{color:tx2}}>{plan.desc}</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm" style={{color:tx2}}>£</span>
+                      <span className="text-4xl font-black" style={{color:tx}}>{price}</span>
+                      <span className="text-sm" style={{color:tx2}}>/month</span>
+                    </div>
+                  </div>
+                  <ul className="space-y-2.5 flex-1 mb-6">
+                    {plan.features.map((f,j)=>(
+                      <li key={j} className="flex items-start gap-2 text-xs" style={{color:tx2}}>
+                        <Check size={13} className="text-violet-500 mt-0.5 flex-shrink-0"/>{f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button onClick={()=>nav("signup")} className="w-full py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90" style={{background:plan.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:plan.highlight?"white":"#8b5cf6",border:plan.highlight?"none":`2px solid #8b5cf6`}}>
+                    {plan.cta}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA Banner ──────────────────────────────────────── */}
+      <section className="py-16 px-4 sm:px-6" style={{background:"linear-gradient(135deg,#7c3aed 0%,#8b5cf6 50%,#6d28d9 100%)"}}>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Ready to Turn Visitors into Loyal Customers?</h2>
+              <p className="text-purple-200 text-sm">Start your 14-day free trial today. No credit card required.</p>
+              <div className="flex flex-wrap gap-4 mt-3 text-xs text-purple-200">
+                {["14-Day Free Trial","No Credit Card","Cancel Anytime"].map(l=><span key={l} className="flex items-center gap-1.5"><Check size={11}/>{l}</span>)}
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <input type="email" placeholder="Enter your business email" className="flex-1 lg:w-60 px-4 py-3 rounded-xl text-sm outline-none" style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",color:"white"}}/>
+              <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-xl text-sm font-bold text-violet-700 transition-all hover:opacity-90 whitespace-nowrap" style={{background:"#ffffff"}}>Start Free Trial</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────────── */}
+      <footer className="py-14 px-4 sm:px-6 border-t" style={{background:D?"#080510":"#1a1035",borderColor:"rgba(255,255,255,0.06)"}}>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-black text-sm">L</span></div>
+                <span className="text-white font-black text-lg">Loyable</span>
+              </div>
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">The all-in-one loyalty and customer retention marketing platform for businesses that want to grow.</p>
+              <div className="flex gap-3">
+                {["f","in","tw","yt"].map(s=><div key={s} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity" style={{background:"rgba(255,255,255,0.08)"}}><span className="text-white text-xs font-bold">{s}</span></div>)}
+              </div>
+            </div>
+            {[
+              {h:"Product",links:["Features","Pricing","Integrations","Changelog","API"]},
+              {h:"Company",links:["About Us","Careers","Blog","Press","Contact"]},
+              {h:"Legal",links:["Privacy Policy","Terms of Service","GDPR Compliance","Security"]},
+            ].map(col=>(
+              <div key={col.h}>
+                <h4 className="text-white font-bold text-sm mb-4">{col.h}</h4>
+                <ul className="space-y-2">{col.links.map(l=><li key={l}><a href="#" className="text-slate-400 text-xs hover:text-white transition-colors">{l}</a></li>)}</ul>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3" style={{borderColor:"rgba(255,255,255,0.06)"}}>
+            <p className="text-slate-500 text-xs">© 2024 Loyable. All rights reserved.</p>
+            <div className="flex items-center gap-2">
+              <button onClick={()=>setDark(!dark)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity" style={{background:"rgba(255,255,255,0.06)"}}><span className="text-sm">{D?"☀️":"🌙"}</span></button>
+              <span className="text-slate-500 text-xs">Switch to {D?"Light":"Dark"} Mode</span>
+            </div>
           </div>
         </div>
       </footer>
     </div>
+    </ThemeCtx.Provider>
   );
 };
 
-// Keep a simple alias for direct auth navigation (used when app is already showing landing but user clicked deep link)
 const LoginPage=({onLogin}:{onLogin:(u:any)=>void})=><LandingPage onLogin={onLogin}/>;
 
 // ════════════════════════════════════════════════════════════════
