@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { api } from "./api/index";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
-import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon } from "lucide-react";
+import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon, QrCode, ScanLine, ExternalLink, UserCheck } from "lucide-react";
 
 // ════════════════════════════════════════════════════════════════
 // SCHEMA ENUMS (mirrors Prisma schema)
@@ -121,6 +121,7 @@ const NAV_ALL=[
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
   {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER]},
+  {id:"portal",icon:QrCode,label:"Customer Portal",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
@@ -162,9 +163,10 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
 const hydrateFromApi=async()=>{
   try{
     const d=await api.settings.get();
-    const biz=d?.user?.business;
+    const biz=d?.user?.business??d?.business;
     if(biz?.industry)localStorage.setItem("biz_industry",biz.industry);
     if(biz?.name)localStorage.setItem("biz_name",biz.name);
+    if(biz?.slug)localStorage.setItem("biz_slug",biz.slug);
   }catch{}
 };
 
@@ -295,6 +297,9 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
       localStorage.setItem("accessToken",d.accessToken);
       if((d as any).sessionId)localStorage.setItem("sessionId",(d as any).sessionId);
       if(d.user?.id)localStorage.setItem("userId",d.user.id);
+      if((d.user as any)?.businessSlug)localStorage.setItem("biz_slug",(d.user as any).businessSlug);
+      if((d.user as any)?.businessName)localStorage.setItem("biz_name",(d.user as any).businessName);
+      if((d.user as any)?.businessIndustry)localStorage.setItem("biz_industry",(d.user as any).businessIndustry);
       await hydrateFromApi();
       onLogin(d.user);
     }catch(ex){setErr((ex as Error).message==="INVALID_CREDENTIALS"?"Incorrect email or password.":(ex as Error).message);}
@@ -1597,6 +1602,203 @@ const AIPage=()=>{
         {err&&<div className="mt-3 p-3 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{err}</div>}
         {res&&<div className="mt-3 p-4 rounded-xl" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.2)"}}><p className="text-sm text-white leading-relaxed">{res.answer}</p>{res.data&&Array.isArray(res.data)&&res.data.length>0&&<div className="mt-3 space-y-1">{res.data.slice(0,5).map((row:any,i:number)=><div key={i} className="text-xs text-slate-300 font-mono bg-black/20 px-2 py-1 rounded">{JSON.stringify(row)}</div>)}</div>}</div>}
       </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// CUSTOMER PORTAL MANAGEMENT PAGE
+// ════════════════════════════════════════════════════════════════
+const CustomerPortalPage=()=>{
+  const slug=localStorage.getItem("biz_slug")||"";
+  const bizName=localStorage.getItem("biz_name")||"Your Business";
+  const portalUrl=`${window.location.origin}/portal/${slug}`;
+
+  const [copied,setCopied]=useState(false);
+  const [qrDataUrl,setQrDataUrl]=useState("");
+  const [todayCustomers,setTodayCustomers]=useState<any[]>([]);
+  const [todayLoading,setTodayLoading]=useState(true);
+  const [activeTab,setActiveTab]=useState<"qr"|"today">("qr");
+  const canvasRef=useRef<HTMLCanvasElement>(null);
+
+  // Generate QR code using qrcode library
+  useEffect(()=>{
+    if(!slug)return;
+    import("qrcode").then(QRCode=>{
+      QRCode.toDataURL(portalUrl,{width:280,margin:2,color:{dark:"#1e0a3c",light:"#ffffff"}})
+        .then((url:string)=>setQrDataUrl(url)).catch(()=>{});
+    }).catch(()=>{});
+  },[slug]);
+
+  // Load today's portal logins
+  useEffect(()=>{
+    if(!slug)return;
+    api.get?.(`/portal/${slug}/today`)?.then((d:any)=>setTodayCustomers(d?.customers??[])).catch(()=>{}).finally(()=>setTodayLoading(false));
+    // fallback: fetch directly
+    fetch(`/api/portal/${slug}/today`,{headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")}`}})
+      .then(r=>r.json()).then(d=>setTodayCustomers(d?.customers??[])).catch(()=>{}).finally(()=>setTodayLoading(false));
+  },[slug]);
+
+  function copyLink(){
+    navigator.clipboard.writeText(portalUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
+  }
+
+  function downloadQR(){
+    if(!qrDataUrl)return;
+    const a=document.createElement("a");
+    a.href=qrDataUrl;
+    a.download=`${slug}-loyalty-qr.png`;
+    a.click();
+  }
+
+  function printQR(){
+    if(!qrDataUrl)return;
+    const w=window.open("","_blank");
+    if(!w)return;
+    w.document.write(`<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#fff;">
+      <img src="${qrDataUrl}" style="width:280px;height:280px;margin-bottom:16px"/>
+      <h2 style="margin:0 0 4px;color:#1e0a3c;font-size:18px">${bizName}</h2>
+      <p style="margin:0;color:#6b7280;font-size:13px">Scan to view your loyalty rewards</p>
+      <p style="margin:8px 0 0;color:#8b5cf6;font-size:11px;font-family:monospace">${portalUrl}</p>
+    </body></html>`);
+    w.document.close();
+    w.print();
+  }
+
+  const Card=({children,className=""}:{children:any,className?:string})=>(
+    <div className={`rounded-2xl p-5 ${className}`} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{children}</div>
+  );
+
+  if(!slug) return(
+    <div className="p-6"><div className="rounded-2xl p-8 text-center" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+      <QrCode size={40} className="mx-auto mb-3 text-purple-400"/>
+      <h2 className="text-white font-bold mb-2">Business slug not set</h2>
+      <p className="text-slate-400 text-sm">Please log out and log in again to reload your business settings.</p>
+    </div></div>
+  );
+
+  return(
+    <div className="p-4 md:p-6 space-y-5 max-w-3xl">
+      <div>
+        <h1 className="text-xl font-bold text-white flex items-center gap-2"><QrCode size={20} className="text-purple-400"/>Customer Portal</h1>
+        <p className="text-xs text-slate-400 mt-0.5">Print or share the QR code so customers can scan &amp; view their loyalty rewards</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{background:"rgba(255,255,255,0.05)"}}>
+        {([["qr","QR Code & Link"],["today","Today's Customers"]] as const).map(([id,label])=>(
+          <button key={id} onClick={()=>setActiveTab(id)}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={activeTab===id?{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}:{color:"#94a3b8"}}>
+            {label}{id==="today"&&todayCustomers.length>0&&<span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" style={{background:"rgba(139,92,246,0.3)"}}>{todayCustomers.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {activeTab==="qr"&&<>
+        {/* Portal link */}
+        <Card>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Link size={12}/>Portal Link</p>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-3" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+            <span className="flex-1 text-sm text-purple-300 font-mono truncate">{portalUrl}</span>
+            <button onClick={copyLink} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={copied?{background:"rgba(34,197,94,0.2)",color:"#4ade80"}:{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+              {copied?<><Check size={12}/>Copied!</>:<><Copy size={12}/>Copy</>}
+            </button>
+            <a href={portalUrl} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"><ExternalLink size={14}/></a>
+          </div>
+          <p className="text-xs text-slate-500">Share this link via WhatsApp or print the QR code below. Customers can scan it to instantly view their points, rewards, and visit history.</p>
+        </Card>
+
+        {/* QR Code */}
+        <Card>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 flex items-center gap-2"><QrCode size={12}/>QR Code</p>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="rounded-2xl p-4 flex-shrink-0" style={{background:"white",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+              {qrDataUrl
+                ? <img src={qrDataUrl} alt="Portal QR" className="w-[200px] h-[200px]"/>
+                : <div className="w-[200px] h-[200px] flex items-center justify-center text-slate-300"><QrCode size={48}/></div>
+              }
+            </div>
+            <div className="flex-1 space-y-3">
+              <div>
+                <p className="text-white font-bold text-sm mb-1">{bizName}</p>
+                <p className="text-slate-400 text-xs leading-relaxed">Print this QR code and display it at your entrance, tables, or on receipts. When customers scan it, they can view their loyalty points and redeem rewards.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={downloadQR} disabled={!qrDataUrl}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                  style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+                  <Download size={14}/>Save PNG
+                </button>
+                <button onClick={printQR} disabled={!qrDataUrl}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                  style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",color:"white"}}>
+                  <Printer size={14}/>Print
+                </button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* How it works */}
+        <Card>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 flex items-center gap-2"><ScanLine size={12}/>How Customers Use It</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              {n:"1",icon:"📱",t:"Scan QR",d:"Customer scans the QR code at your counter or table"},
+              {n:"2",icon:"📝",t:"Enter Name & Phone",d:"They enter their name and phone number — no password needed"},
+              {n:"3",icon:"🎁",t:"View Rewards",d:"Instantly see their points, tier, and available coupons to redeem"},
+            ].map(s=>(
+              <div key={s.n} className="flex gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">{s.icon}</div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{s.t}</p>
+                  <p className="text-slate-400 text-xs leading-relaxed mt-0.5">{s.d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </>}
+
+      {activeTab==="today"&&<>
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-white font-bold flex items-center gap-2"><UserCheck size={16} className="text-purple-400"/>Today's Customers</p>
+            <span className="text-xs text-slate-400">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</span>
+          </div>
+          {todayLoading?(
+            <div className="text-center py-8 text-slate-500 text-sm">Loading...</div>
+          ):todayCustomers.length===0?(
+            <div className="text-center py-10">
+              <ScanLine size={36} className="mx-auto mb-3 text-slate-600"/>
+              <p className="text-slate-400 font-medium text-sm">No customers have scanned today yet</p>
+              <p className="text-slate-500 text-xs mt-1">Display the QR code so customers can check in</p>
+            </div>
+          ):(
+            <div className="space-y-2">
+              {todayCustomers.map((c:any,i:number)=>(
+                <div key={c.id??i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{background:"rgba(255,255,255,0.04)"}}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+                    {(c.name||"?")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-semibold truncate">{c.name||"Unknown"}</p>
+                    <p className="text-slate-400 text-xs">{c.whatsappNumber||c.phone||""}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-purple-400 text-sm font-bold">{c.pointsBalance??0} pts</p>
+                    <p className="text-slate-500 text-xs">{c.tier||"Member"}</p>
+                  </div>
+                  {c.isNew&&<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.2)",color:"#4ade80"}}>NEW</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </>}
     </div>
   );
 };
@@ -2907,6 +3109,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
     case"analytics":return<AnalyticsPage/>;
+    case"portal":return<CustomerPortalPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};

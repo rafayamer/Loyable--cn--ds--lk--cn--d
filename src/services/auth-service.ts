@@ -229,7 +229,7 @@ export const login = async (
     },
     include: {
       business: {
-        select: { id: true, name: true, slug: true, isActive: true },
+        select: { id: true, name: true, slug: true, isActive: true, currency: true, industry: true },
       },
     },
   });
@@ -273,6 +273,9 @@ export const login = async (
       role:             user.role,
       businessId:       user.businessId,
       businessName:     user.business.name,
+      businessSlug:     user.business.slug,
+      businessCurrency: user.business.currency,
+      businessIndustry: user.business.industry,
       branchLocationId: user.branchLocationId,
     },
   };

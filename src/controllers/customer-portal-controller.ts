@@ -15,6 +15,7 @@ import { Request, Response, Router } from 'express';
 import { z }                         from 'zod';
 import jwt, { SignOptions }          from 'jsonwebtoken';
 import { PrismaClient }              from '@prisma/client';
+import { tenantScope }               from '../middleware/tenant-scope-middleware';
 
 const prisma = new PrismaClient();
 
@@ -89,7 +90,7 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
   res.json({ business: biz, tiers });
 };
 
-/** POST /api/portal/:slug/login — phone + name verification */
+/** POST /api/portal/:slug/login — phone + name → find or create customer */
 const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const parse = LoginSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
@@ -103,36 +104,42 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  // Normalize phone — strip non-digits for fuzzy match
-  const digits = phone.replace(/\D/g, '');
+  // Normalize phone — keep + prefix, strip spaces/dashes
+  const normalized = phone.trim().replace(/[\s\-().]/g, '');
 
-  const customer = await prisma.customer.findFirst({
+  let customer = await prisma.customer.findFirst({
     where: {
       businessId: biz.id,
       OR: [
-        { whatsappNumber: { contains: digits } },
-        { whatsappNumber: digits },
-        { whatsappNumber: `+${digits}` },
+        { whatsappNumber: normalized },
+        { whatsappNumber: normalized.startsWith('+') ? normalized.slice(1) : `+${normalized}` },
       ],
     },
-    select: { id: true, name: true, whatsappNumber: true },
+    select: { id: true, fullName: true, whatsappNumber: true },
   });
 
+  let isNew = false;
   if (!customer) {
-    res.status(404).json({ error: 'No loyalty account found for this phone number. Ask the business to add you.' });
-    return;
+    // Auto-create new customer on first portal visit
+    customer = await prisma.customer.create({
+      data: {
+        businessId:     biz.id,
+        fullName:       name.trim(),
+        whatsappNumber: normalized,
+        segment:        'NEW',
+      },
+      select: { id: true, fullName: true, whatsappNumber: true },
+    });
+    isNew = true;
   }
 
-  // Loose name match — first word or substring
-  const storedFirst = customer.name?.split(' ')[0]?.toLowerCase() ?? '';
-  const inputFirst  = name.trim().split(' ')[0].toLowerCase();
-  if (storedFirst && inputFirst && storedFirst !== inputFirst) {
-    res.status(401).json({ error: 'Name does not match our records. Please check your name.' });
-    return;
-  }
+  // Log this portal visit
+  await prisma.portalLogin.create({
+    data: { customerId: customer.id, businessId: biz.id },
+  }).catch(() => {}); // ignore if table not yet migrated
 
   const token = issuePortalToken(customer.id, biz.id);
-  res.json({ token, customer: { id: customer.id, name: customer.name } });
+  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew });
 };
 
 /** GET /api/portal/me — full loyalty profile */
@@ -143,8 +150,8 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
     prisma.customer.findFirst({
       where: { id: customerId, businessId },
       select: {
-        id: true, name: true, whatsappNumber: true, email: true,
-        pointsBalance: true, tier: true, totalVisits: true, totalSpend: true,
+        id: true, fullName: true, whatsappNumber: true, email: true,
+        currentPointsBalance: true, currentTierId: true, visitCount: true, totalSpend: true,
         referralCode: true, createdAt: true,
         coupons: {
           where:   { status: 'ACTIVE' },
@@ -169,21 +176,28 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
 
   if (!customer) { res.status(404).json({ error: 'Customer not found' }); return; }
 
+  // Resolve tier name from currentTierId
+  const tierRecord = customer.currentTierId
+    ? await prisma.tierConfig.findUnique({ where: { id: customer.currentTierId }, select: { name: true } }).catch(() => null)
+    : null;
+  const tierName = tierRecord?.name ?? 'Member';
+
   // Referral stats
   const referralCount = await prisma.customer.count({
     where: { businessId, referredByCode: customer.referralCode ?? '' },
   }).catch(() => 0);
 
   // Next tier progress
-  const currentTierIdx = tiers.findIndex(t => t.name === customer.tier);
+  const pts = customer.currentPointsBalance ?? 0;
+  const currentTierIdx = tiers.findIndex(t => t.name === tierName);
   const nextTier = tiers[currentTierIdx + 1] ?? null;
   const progressToNext = nextTier
-    ? Math.min(100, Math.round(((customer.pointsBalance - (tiers[currentTierIdx]?.minPoints ?? 0)) /
+    ? Math.min(100, Math.round(((pts - (tiers[currentTierIdx]?.minPoints ?? 0)) /
         (nextTier.minPoints - (tiers[currentTierIdx]?.minPoints ?? 0))) * 100))
     : 100;
 
   res.json({
-    customer,
+    customer: { ...customer, name: customer.fullName, tier: tierName, pointsBalance: customer.currentPointsBalance, totalVisits: customer.visitCount },
     tiers,
     visits:       recentVisits,
     referralCount,
@@ -218,13 +232,60 @@ const redeemHandler = async (req: Request, res: Response): Promise<void> => {
   res.json({ ok: true, coupon: { id: coupon.id, code: coupon.code, value: coupon.value } });
 };
 
+/** GET /api/portal/:slug/today — today's portal logins (requires tenant JWT) */
+const todayHandler = async (req: Request, res: Response): Promise<void> => {
+  const { slug } = req.params;
+  const biz = await prisma.business.findFirst({
+    where: { slug, isActive: true },
+    select: { id: true },
+  });
+  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  // Try PortalLogin table first; fall back to customers created/updated today
+  let customers: any[] = [];
+  try {
+    const logins = await prisma.portalLogin.findMany({
+      where: { businessId: biz.id, createdAt: { gte: start } },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['customerId'],
+      include: {
+        customer: {
+          select: { id: true, fullName: true, whatsappNumber: true, currentPointsBalance: true, currentTierId: true, createdAt: true },
+        },
+      },
+    });
+    customers = logins.map(l => ({
+      ...l.customer,
+      name: l.customer.fullName,
+      pointsBalance: l.customer.currentPointsBalance,
+      tier: l.customer.currentTierId ?? 'Member',
+      isNew: l.customer.createdAt >= start,
+      loginAt: l.createdAt,
+    }));
+  } catch {
+    // PortalLogin table not yet migrated — show customers created today
+    const newToday = await prisma.customer.findMany({
+      where: { businessId: biz.id, createdAt: { gte: start } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, fullName: true, whatsappNumber: true, currentPointsBalance: true, createdAt: true },
+    });
+    customers = newToday.map(c => ({ ...c, name: c.fullName, pointsBalance: c.currentPointsBalance, tier: 'Member', isNew: true }));
+  }
+
+  res.json({ customers, date: start });
+};
+
 // ================================================================
 // ROUTER
 // ================================================================
 
 export const customerPortalRouter = Router();
 
-customerPortalRouter.get('/:slug/info',  infoHandler);
+customerPortalRouter.get('/:slug/info',   infoHandler);
 customerPortalRouter.post('/:slug/login', loginHandler);
-customerPortalRouter.get('/me',          portalAuth, meHandler);
-customerPortalRouter.post('/redeem',     portalAuth, redeemHandler);
+customerPortalRouter.get('/:slug/today',  todayHandler);
+customerPortalRouter.get('/me',           portalAuth, meHandler);
+customerPortalRouter.post('/redeem',      portalAuth, redeemHandler);

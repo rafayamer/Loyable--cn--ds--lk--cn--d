@@ -195,6 +195,7 @@ model Business {
   coupons              Coupon[]
   posWebhookLogs       PosWebhookLog[]
   consentChangeLogs    ConsentChangeLog[]
+  portalLogins         PortalLogin[]
 
   @@map("businesses")
 }
@@ -342,6 +343,7 @@ model Customer {
   consentChangeLogs        ConsentChangeLog[]
   tierHistory              CustomerTierHistory[]
   segmentHistory           CustomerSegmentHistory[]
+  portalLogins             PortalLogin[]
 
   @@unique([whatsappNumber, businessId])
   @@unique([email, businessId])
@@ -1120,4 +1122,18 @@ model WebsitePageView {
   createdAt DateTime @default(now())
   @@index([page, createdAt])
   @@map("website_page_views")
+}
+
+model PortalLogin {
+  id         String   @id @default(cuid())
+  customerId String
+  businessId String
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@map("portal_logins")
 }
