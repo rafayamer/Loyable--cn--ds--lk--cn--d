@@ -236,7 +236,8 @@ model User {
   businessId       String
   branchLocationId String?         // NULL = access to all branches (Owner/Marketing)
   email            String
-  passwordHash     String?         // Argon2id hash
+  passwordHash     String?         // Argon2id hash; null for social-login-only accounts
+  googleId         String?         // Google OAuth2 subject identifier
   name             String
   phone            String?
   role             Role

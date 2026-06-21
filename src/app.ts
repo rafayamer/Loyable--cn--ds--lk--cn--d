@@ -51,6 +51,7 @@ async function bootstrap() {
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
   await loadRouter('./controllers/whatsapp-controller',  'whatsappRouter',    '/api/whatsapp');
   await loadRouter('./controllers/messages-controller',  'messagesRouter',    '/api/messages');
+  await loadRouter('./controllers/oauth-controller',     'oauthRouter',       '/api/auth');
 
   // WAHA inbound webhook (not behind tenantScope — WAHA posts here directly)
   app.use('/api/webhooks/waha', wahaWebhookRouter);

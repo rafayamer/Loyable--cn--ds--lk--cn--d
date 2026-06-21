@@ -168,10 +168,21 @@ const hydrateFromApi=async()=>{
   }catch{}
 };
 
+const OAUTH_ERROR_MSGS:Record<string,string>={
+  google_denied:"Google sign-in was cancelled.",
+  google_not_configured:"Google sign-in is not set up yet.",
+  google_email_not_verified:"Your Google account email is not verified.",
+  apple_not_configured:"Apple sign-in is not set up yet.",
+  apple_not_implemented:"Apple sign-in is coming soon.",
+  oauth_failed:"Social sign-in failed. Please try email instead.",
+  oauth_invalid:"Invalid sign-in response. Please try again.",
+  oauth_state_mismatch:"Sign-in session expired. Please try again.",
+};
 const LoginPage=({onLogin}: {onLogin:(user:any)=>void})=>{
   const [e,setE]=useState("owner@coffeehouse.com");
   const [p,setP]=useState("Owner@123!");
-  const [err,setErr]=useState("");
+  const oauthErr=new URLSearchParams(window.location.search).get("error");
+  const [err,setErr]=useState(oauthErr?OAUTH_ERROR_MSGS[oauthErr]??`Sign-in error: ${oauthErr}`:"");
   const [loading,setLoading]=useState(false);
   const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
   const submit=async()=>{
@@ -2166,7 +2177,28 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
 // ════════════════════════════════════════════════════════════════
 
 export default function App({onLogout}:{onLogout?:()=>void}={}){
-  const [loggedIn,setLoggedIn]=useState(()=>!!localStorage.getItem("accessToken"));
+  const [loggedIn,setLoggedIn]=useState(()=>{
+    // Handle OAuth redirect: /api/auth/google redirects back with ?accessToken=...&sessionId=...&userId=...
+    const params=new URLSearchParams(window.location.search);
+    const oauthToken=params.get("accessToken");
+    const oauthSession=params.get("sessionId");
+    const oauthUserId=params.get("userId");
+    const oauthError=params.get("error");
+    if(oauthError){
+      // Show error briefly — LoginPage will handle display
+      console.warn("[oauth] Error from provider:",oauthError);
+    }
+    if(oauthToken){
+      localStorage.setItem("accessToken",oauthToken);
+      if(oauthSession)localStorage.setItem("sessionId",oauthSession);
+      if(oauthUserId)localStorage.setItem("userId",oauthUserId);
+      // Strip OAuth params from URL without adding a history entry
+      const clean=window.location.pathname+(window.location.hash||"");
+      window.history.replaceState({},"",clean);
+      return true;
+    }
+    return!!localStorage.getItem("accessToken");
+  });
   const role=useRole();
   const [page,setPage]=useState(()=>{
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
