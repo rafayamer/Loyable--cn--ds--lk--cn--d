@@ -128,8 +128,8 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
   return(
   <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"rgba(8,5,18,0.85)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
     <div className={`flex items-center gap-3 p-4 mb-2 ${col?"justify-center":""}`}>
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-sm">L</span></div>
-      {!col&&<div className="flex-1 min-w-0"><div className="text-white font-bold text-sm tracking-tight">Loyable</div><div className="text-slate-600 text-[10px]">by Abdul Rafay Amer</div></div>}
+      <img src="/logo.svg" alt="Loyable" className="w-9 h-9 flex-shrink-0 object-contain"/>
+      {!col&&<div className="flex-1 min-w-0"><div className="text-slate-600 text-[10px]">by Abdul Rafay Amer</div></div>}
       <button onClick={()=>setCol(!col)} className={`text-slate-600 hover:text-slate-300 transition-colors ${col?"hidden":""}`}><ChevronLeft size={15}/></button>
       {col&&<button onClick={()=>setCol(!col)} className="absolute right-2 text-slate-600 hover:text-slate-300 transition-colors"><ChevronRight size={15}/></button>}
     </div>
@@ -544,8 +544,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
           <div className="relative z-10">
             <button onClick={()=>setView("landing")} className="flex items-center gap-2 mb-12">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}><span className="text-white font-bold">L</span></div>
-              <span className="text-white font-bold text-xl">Loyable</span>
+              <img src="/logo.svg" alt="Loyable" className="w-10 h-10 object-contain"/>
             </button>
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
               {view==="signup"?"Create Your Loyable Account":"Welcome Back to Loyable"}
@@ -569,7 +568,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           {/* Dashboard mockup preview */}
           <div className="relative z-10 mt-6 rounded-2xl overflow-hidden shadow-2xl" style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)"}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{borderColor:"rgba(255,255,255,0.1)"}}>
-              <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}><span className="text-white font-bold text-[9px]">L</span></div>
+              <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
               <span className="text-white text-xs font-semibold">Dashboard</span>
               <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-purple-200 text-[10px]">Davita ▾</span></div>
             </div>
@@ -588,8 +587,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="flex-1 flex flex-col" style={{background:bg}}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{borderColor:bdr}}>
             <button onClick={()=>setView("landing")} className="lg:hidden flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-bold text-xs">L</span></div>
-              <span className="font-bold text-sm" style={{color:tx}}>Loyable</span>
+              <img src="/logo.svg" alt="Loyable" className="w-8 h-8 object-contain"/>
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
               {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
@@ -620,8 +618,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <nav className="fixed top-0 left-0 right-0 z-50 transition-colors" style={{background:navBg,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${bdr}`}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[62px] flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-black text-sm">L</span></div>
-            <span className="font-black text-lg tracking-tight" style={{color:tx}}>Loyable</span>
+            <img src="/logo.svg" alt="Loyable" className="w-9 h-9 object-contain"/>
           </div>
           <div className="hidden lg:flex items-center gap-1 text-sm font-medium" style={{color:tx2}}>
             {["Home","Features","Pricing"].map(l=>(
@@ -680,7 +677,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
               <div className="absolute -inset-4 rounded-3xl opacity-20 blur-2xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#1a1035":"#ffffff",borderColor:bdr}}>
                 <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.04)":"#f8f7ff",borderColor:bdr}}>
-                  <div className="w-5 h-5 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-bold text-[9px]">L</span></div>
+                  <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
                   <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
                   <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
                 </div>
@@ -893,8 +890,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><span className="text-white font-black text-sm">L</span></div>
-                <span className="text-white font-black text-lg">Loyable</span>
+                <img src="/logo.svg" alt="Loyable" className="w-9 h-9 object-contain"/>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed mb-4">The all-in-one loyalty and customer retention marketing platform for businesses that want to grow.</p>
               <div className="flex gap-3">
@@ -2955,8 +2951,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xs">L</span></div>
-          <span className="text-white font-bold text-sm">Loyable</span>
+          <img src="/logo.svg" alt="Loyable" className="w-8 h-8 object-contain"/>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 capitalize">{NAV_ALL.find(n=>n.id===page)?.label||""}</span>

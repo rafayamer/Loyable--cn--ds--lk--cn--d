@@ -1087,7 +1087,7 @@ export const LoyableAdminPanel: React.FC = () => {
       <aside className="w-56 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">L</div>
+            <img src="/logo.svg" alt="Loyable" className="h-8 w-8 object-contain"/>
             <div>
               <p className="text-sm font-bold text-slate-800 leading-tight">Loyable</p>
               <p className="text-xs text-slate-400">Platform Admin</p>
