@@ -976,3 +976,148 @@ model PosWebhookLog {
   @@index([businessId, status])
   @@map("pos_webhook_logs")
 }
+
+// ================================================================
+// WEBSITE CMS — Public Landing Page Content
+// ================================================================
+
+model WebsiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  @@map("website_settings")
+}
+
+model WebsiteSection {
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  label   String
+  visible Boolean @default(true)
+  order   Int     @default(0)
+  @@map("website_sections")
+}
+
+model FeatureCard {
+  id        String   @id @default(cuid())
+  icon      String
+  title     String
+  desc      String   @db.Text
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  @@map("feature_cards")
+}
+
+model PricingPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String
+  monthlyPrice Int      @default(0)
+  yearlyPrice  Int      @default(0)
+  currency     String   @default("GBP")
+  features     Json
+  ctaText      String   @default("Get Started")
+  highlighted  Boolean  @default(false)
+  visible      Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  @@map("pricing_plans")
+}
+
+model CmsTestimonial {
+  id        String   @id @default(cuid())
+  name      String
+  business  String
+  avatarUrl String?
+  text      String   @db.Text
+  stars     Int      @default(5)
+  visible   Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  @@map("cms_testimonials")
+}
+
+model PartnerBusiness {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String?
+  website     String?
+  industry    String?
+  location    String?
+  description String?  @db.Text
+  active      Boolean  @default(true)
+  featured    Boolean  @default(false)
+  showOnHome  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  @@map("partner_businesses")
+}
+
+model PublicReview {
+  id          String    @id @default(cuid())
+  authorName  String
+  authorEmail String?
+  avatarUrl   String?
+  bizType     String?
+  stars       Int
+  comment     String    @db.Text
+  status      String    @default("PENDING")
+  pinned      Boolean   @default(false)
+  hidden      Boolean   @default(false)
+  replyText   String?   @db.Text
+  repliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([status])
+  @@index([createdAt])
+  @@map("public_reviews")
+}
+
+model BlogPost {
+  id         String   @id @default(cuid())
+  title      String
+  slug       String   @unique
+  summary    String   @db.Text
+  content    String   @db.Text
+  coverImage String?
+  published  Boolean  @default(false)
+  tags       Json     @default("[]")
+  seoTitle   String?
+  seoDesc    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@map("blog_posts")
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String   @db.Text
+  answer    String   @db.Text
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  @@map("faq_items")
+}
+
+model AnnouncementBanner {
+  id       String    @id @default(cuid())
+  text     String    @db.Text
+  linkText String?
+  linkUrl  String?
+  type     String    @default("INFO")
+  active   Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+  createdAt DateTime @default(now())
+  @@map("announcement_banners")
+}
+
+model WebsitePageView {
+  id        String   @id @default(cuid())
+  page      String
+  event     String   @default("PAGE_VIEW")
+  referer   String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+  @@index([page, createdAt])
+  @@map("website_page_views")
+}
