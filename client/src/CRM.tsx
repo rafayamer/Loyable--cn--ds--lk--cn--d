@@ -485,35 +485,41 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const secPillTx  = D?"#818cf8":"#4f46e5";
 
   const LS_FEATURES=[
-    {icon:"🔲",title:"QR Check-In",desc:"Easy QR scanning for customer visits."},
-    {icon:"👥",title:"Loyalty Programs",desc:"Create membership tiers & reward loyalty."},
-    {icon:"⭐",title:"Points System",desc:"Reward points for every visit or purchase."},
-    {icon:"🎟️",title:"Coupons & Offers",desc:"Create powerful coupons & discounts."},
-    {icon:"📣",title:"Automated Campaigns",desc:"WhatsApp, Email & SMS automation."},
-    {icon:"📋",title:"Customer Timeline",desc:"Complete history of customer interactions."},
-    {icon:"🧠",title:"AI Segmentation",desc:"Smart segments to target right customers."},
-    {icon:"🎂",title:"Birthday Rewards",desc:"Automated birthday wishes & rewards."},
-    {icon:"🔗",title:"Referral Program",desc:"Grow your business with referrals."},
-    {icon:"📊",title:"Analytics & Reports",desc:"Real-time insights to grow your business."},
-    {icon:"🏢",title:"Multi-Location",desc:"Manage multiple locations with ease."},
-    {icon:"👤",title:"Staff Management",desc:"Roles & permissions for your team."},
-    {icon:"⭐",title:"Review Management",desc:"Get more reviews and grow reputation."},
-    {icon:"🔌",title:"Integrations",desc:"Connect with POS, APIs & more."},
-    {icon:"📱",title:"Mobile App",desc:"Your customers can view & redeem rewards."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,title:"QR Check-In",desc:"Instant QR scanning for seamless customer check-ins."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,title:"Loyalty Programs",desc:"Create membership tiers and reward loyal customers."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,title:"Points System",desc:"Reward points automatically for every visit or purchase."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,title:"Coupons & Offers",desc:"Create powerful discount coupons and exclusive offers."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,title:"Automated Campaigns",desc:"WhatsApp and email campaigns on autopilot."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,title:"Customer Timeline",desc:"Full history of every customer interaction and visit."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16z"/><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-2.6"/></svg>,title:"AI Segmentation",desc:"Smart audience segments to target the right customers."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,title:"Birthday Rewards",desc:"Automated birthday messages and rewards that delight."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,title:"Referral Program",desc:"Turn your customers into brand ambassadors."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,title:"Analytics & Reports",desc:"Real-time insights and reports to grow your business."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,title:"Multi-Location",desc:"Manage all your locations from a single dashboard."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,title:"Staff Management",desc:"Role-based access and permissions for your entire team."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,title:"Review Management",desc:"Collect reviews and build your online reputation."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,title:"Mobile App",desc:"Customers view points and redeem rewards on their phone."},
   ];
 
   const STEPS=[
-    {icon:"🏪",n:"1. Customer Visits",d:"Customer visits your business."},
-    {icon:"📱",n:"2. Scan QR Code",d:"They scan the QR code to check-in."},
-    {icon:"⭐",n:"3. Earn Points",d:"Points are added to their account."},
-    {icon:"🎁",n:"4. Get Rewards",d:"They redeem points & claim rewards."},
-    {icon:"🔄",n:"5. Visit Again",d:"They come back & become loyal."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>,n:"Customer Visits",d:"Customer walks into your business."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,n:"Scans QR Code",d:"They scan to check in instantly."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,n:"Earns Points",d:"Points are credited automatically."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,n:"Redeems Rewards",d:"They claim discounts and rewards."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,n:"Comes Back",d:"They return and become truly loyal."},
   ];
 
   const INDUSTRIES=[
-    {icon:"🍽️",l:"Restaurants"},{icon:"☕",l:"Cafés"},{icon:"🍰",l:"Dessert Shops"},
-    {icon:"✂️",l:"Salons"},{icon:"💈",l:"Barbers"},{icon:"🏋️",l:"Gyms"},
-    {icon:"🛍️",l:"Retail Stores"},{icon:"🚗",l:"Car Washes"},{icon:"🏥",l:"Clinics"},{icon:"💆",l:"Spas"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>,l:"Restaurants"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,l:"Cafés"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/><path d="M12 8v4l3 3"/></svg>,l:"Dessert Shops"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,l:"Salons"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,l:"Barbers"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,l:"Gyms"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,l:"Retail Stores"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,l:"Car Washes"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,l:"Clinics"},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,l:"Spas"},
   ];
 
   const TESTIMONIALS=[
@@ -573,16 +579,16 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             </h1>
             <p className="text-purple-200 text-sm mb-8 leading-relaxed">Join thousands of businesses that are turning one-time customers into loyal customers.</p>
             {[
-              {icon:"👥",t:"Grow Your Customers",d:"Track visits, understand behavior and build stronger relationships."},
-              {icon:"🎁",t:"Reward Loyalty",d:"Create loyalty programs, points, and exclusive rewards that keep customers coming back."},
-              {icon:"📣",t:"Automate & Save Time",d:"Send automated WhatsApp messages, birthday wishes, offers, and win-back campaigns."},
-              {icon:"📊",t:"Powerful Insights",d:"Get real-time analytics and AI insights to grow your business smarter."},
+              {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,t:"Grow Your Customers",d:"Track visits, understand behavior and build stronger relationships."},
+              {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,t:"Reward Loyalty",d:"Points, tiers, and exclusive rewards that keep customers coming back."},
+              {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,t:"Automate & Save Time",d:"Send automated WhatsApp messages, birthday wishes and win-back campaigns."},
+              {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,t:"Powerful Insights",d:"Real-time analytics and AI insights to grow your business smarter."},
             ].map((f,i)=>(
               <div key={i} className="flex gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg" style={{background:"rgba(255,255,255,0.15)"}}>{f.icon}</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white" style={{background:"rgba(255,255,255,0.15)"}}>{f.icon}</div>
                 <div>
                   <div className="text-white font-semibold text-sm">{f.t}</div>
-                  <div className="text-purple-200 text-xs mt-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:f.d.replace("keep customers coming back","keep <strong>customers coming back</strong>")}}/>
+                  <div className="text-purple-200 text-xs mt-0.5 leading-relaxed">{f.d}</div>
                 </div>
               </div>
             ))}
@@ -636,7 +642,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     {q:"What is Loyable?",a:"Loyable is an all-in-one WhatsApp-first loyalty and customer retention platform. It lets businesses track visits, reward customers with points, automate WhatsApp campaigns, and grow repeat revenue — without technical knowledge."},
     {q:"Is there a free trial available?",a:"Yes! We offer a 14-day free trial with full access to all features. No credit card is required to start."},
     {q:"Can I change my subscription plan later?",a:"Absolutely. You can upgrade or downgrade your plan at any time from your account settings. Changes take effect immediately."},
-    {q:"How do customers earn and redeem points?",a:"Customers scan your QR code at each visit or purchase. Points are credited automatically. They can redeem points via the customer portal or through staff on your POS for discounts and rewards."},
+    {q:"How do customers earn and redeem points?",a:"Customers scan your QR code at each visit or purchase. Points are credited automatically. They can redeem points via the customer portal or directly through staff for discounts and rewards."},
     {q:"Do I need technical knowledge to set up Loyable?",a:"No. Loyable is designed for non-technical business owners. Setup takes under 2 minutes — connect WhatsApp, add your QR code, and you are live."},
     {q:"Is my customer data secure?",a:"Yes. All data is encrypted, stored securely, and GDPR-compliant. Each business account is fully isolated — your data is never shared with other tenants."},
   ];
@@ -828,7 +834,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="flex flex-wrap items-center justify-center gap-5 mt-12 max-w-6xl mx-auto">
           {LS_FEATURES.map((f,i)=>(
             <div key={i} className="p-6 rounded-xl space-y-3 border text-left transition-all hover:shadow-md hover:-translate-y-0.5 w-64" style={{border:`1px solid ${bdr}`,background:card}}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{f.icon}</div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe",color:"#8b5cf6"}}>{f.icon}</div>
               <h3 className="text-sm font-semibold" style={{color:tx}}>{f.title}</h3>
               <p className="text-xs leading-relaxed" style={{color:tx2}}>{f.desc}</p>
             </div>
@@ -846,7 +852,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             {STEPS.map((s,i)=>(
               <div key={i} className="flex items-center gap-3">
                 <div className="flex flex-col items-center">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{s.icon}</div>
+                  <div className="text-[10px] font-bold mb-1 text-violet-400">0{i+1}</div>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{s.icon}</div>
                   <div className="text-xs font-bold mt-2 text-center max-w-[90px]" style={{color:tx}}>{s.n}</div>
                   <div className="text-[10px] text-center max-w-[90px] mt-0.5" style={{color:tx2}}>{s.d}</div>
                 </div>
@@ -866,7 +873,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="flex flex-wrap justify-center gap-8 mt-12 max-w-3xl mx-auto">
           {INDUSTRIES.map(ind=>(
             <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.12)":"#ede9fe",border:`1px solid ${bdr}`}}>{ind.icon}</div>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.12)":"#ede9fe",border:`1px solid ${bdr}`,color:"#8b5cf6"}}>{ind.icon}</div>
               <span className="text-xs font-medium" style={{color:tx2}}>{ind.l}</span>
             </div>
           ))}
