@@ -438,7 +438,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
         load();
       } catch (e: any) {
         if (e.message === 'TOO_FAR') setCheckInMsg({ ok: false, text: `You're too far from this location to check in` });
-        else if (e.message === 'ALREADY_CHECKED_IN_TODAY') setCheckInMsg({ ok: false, text: 'You've already checked in today' });
+        else if (e.message === 'ALREADY_CHECKED_IN_TODAY') setCheckInMsg({ ok: false, text: "You've already checked in today" });
         else setCheckInMsg({ ok: false, text: e.message ?? 'Check-in failed' });
       } finally { setCheckingIn(false); }
     }, () => {
