@@ -120,7 +120,6 @@ const NAV_ALL=[
   {id:"loyalty",icon:Award,label:"Loyalty & Points",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
-  {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER]},
   {id:"portal",icon:QrCode,label:"Customer Portal",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
@@ -677,6 +676,10 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
+              <div className="flex items-center gap-3 mb-6">
+                <img src="/logo.svg" alt="Loyable" className="w-14 h-14 object-contain"/>
+                <span className="text-3xl font-black" style={{color:tx}}>Loyable</span>
+              </div>
               <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-black leading-[1.1] mb-5 tracking-tight" style={{color:tx}}>
                 Turn One-Time Customers Into<br/>
                 <span style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
@@ -960,9 +963,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const [dash,setDash]=useState<any>(null);
   const [loading,setLoading]=useState(true);
   const [customers,setCustomers]=useState<any[]>([]);
+  const [snapshot,setSnapshot]=useState<any[]>([]);
+  const [analyticsLoading,setAnalyticsLoading]=useState(true);
   useEffect(()=>{
     api.dashboard.get().then(setDash).catch(()=>{}).finally(()=>setLoading(false));
     api.customers.list({segment:"AT_RISK",limit:4}).then(d=>setCustomers(d.customers.map(mapCustomer))).catch(()=>{});
+    api.analytics.snapshot(30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setAnalyticsLoading(false));
   },[]);
   const k=dash?.kpis;
   const visitTrend=(dash?.visitTrend??[]).map((d:any)=>({day:d.day?.slice(5),v:d.visits,r:d.revenue}));
@@ -1008,6 +1014,45 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
             <div className="text-right"><div className={`text-sm font-bold ${c.churnRisk>75?"text-red-400":c.churnRisk>50?"text-amber-400":"text-green-400"}`}>{c.churnRisk}%</div><div className="text-xs text-slate-500">risk</div></div>
           </div>
         ))}</div>}
+      </div>
+      {/* Analytics section */}
+      <div className="pt-2 border-t border-white/5">
+        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><BarChart3 size={14} className="text-violet-400"/>Analytics</h2>
+        {(()=>{
+          const latest=snapshot[snapshot.length-1]??{};
+          const msgPerf=snapshot.slice(-8).map((s:any)=>({w:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),sent:s.messagesSent||0,del:s.messagesDelivered||0,read:s.messagesRead||0}));
+          const growthData=snapshot.slice(-6).map((s:any)=>({m:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),c:s.totalCustomers||0,ret:s.loyalCustomers||0}));
+          const retRate=latest.retentionRate!=null?`${Math.round(Number(latest.retentionRate))}%`:"-";
+          const avgLtv=latest.averageLtv!=null?`£${Math.round(Number(latest.averageLtv))}`:"-";
+          const avgFreq=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
+          return(<>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              {analyticsLoading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
+                <KPI icon={Heart} label="Retention Rate" value={retRate} color={C.pink}/>
+                <KPI icon={TrendingUp} label="Avg. LTV" value={avgLtv} color={C.amber}/>
+                <KPI icon={Clock} label="Avg. Frequency" value={avgFreq} color={C.accent}/>
+                <KPI icon={Users} label="Loyal + VIP" value={((latest.loyalCustomers??0)+(latest.vipCustomers??0)).toLocaleString()||"-"} color={C.green}/>
+              </>}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="gc rounded-xl p-4" style={CARD}>
+                <h3 className="text-sm font-semibold text-white mb-3">Customer Segments</h3>
+                {analyticsLoading?<Skeleton h="h-[180px]"/>:segData.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No segment data yet</div>:
+                <div className="flex items-center gap-4"><ResponsiveContainer width="45%" height={180}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" stroke="none">{segData.map((e:any,i:number)=><Cell key={i} fill={e.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="space-y-1 flex-1">{segData.map((s:any,i:number)=><div key={i} className="flex items-center justify-between text-xs"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:s.color}}/><span className="text-slate-300">{s.name}</span></span><span className="text-white font-medium">{s.value}</span></div>)}</div></div>}
+              </div>
+              <div className="gc rounded-xl p-4" style={CARD}>
+                <h3 className="text-sm font-semibold text-white mb-3">Message Performance (30 days)</h3>
+                {analyticsLoading?<Skeleton h="h-[180px]"/>:msgPerf.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
+                <ResponsiveContainer width="100%" height={180}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[3,3,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[3,3,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer>}
+              </div>
+            </div>
+            <div className="gc rounded-xl p-4 mt-4" style={CARD}>
+              <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
+              {analyticsLoading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
+              <ResponsiveContainer width="100%" height={200}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="c" name="Total Customers" fill="#8b5cf6" radius={[4,4,0,0]}/><Bar dataKey="ret" name="Active" fill="#22c55e" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}
+            </div>
+          </>);
+        })()}
       </div>
     </div>
   );
@@ -1644,7 +1689,7 @@ const CustomerPortalPage=()=>{
   const canvasRef=useRef<HTMLCanvasElement>(null);
 
   // Portal content settings state
-  const [ps,setPs]=useState<any>({showMenu:false,menuImageUrl:"",showWifi:false,wifiName:"",wifiPassword:"",showAnnouncement:false,announcementText:"",showReferral:true,showVisitHistory:true,customSections:[]});
+  const [ps,setPs]=useState<any>({showMenu:false,menuImageUrl:"",showWifi:false,wifiName:"",wifiPassword:"",showAnnouncement:false,announcementText:"",showReferral:true,showVisitHistory:true,customSections:[],bgImageMobile:"",bgImageTablet:"",bgImageDesktop:""});
   const [psLoading,setPsLoading]=useState(true);
   const [psSaving,setPsSaving]=useState(false);
   const [psSaved,setPsSaved]=useState(false);
@@ -1911,6 +1956,33 @@ const CustomerPortalPage=()=>{
                 )}
               </div>
             )}
+          </PortalCard>
+
+          {/* Background Images */}
+          <PortalCard>
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <Image size={14} className="text-violet-400"/>Background Images
+            </h3>
+            <p className="text-xs text-slate-400 mb-3">Upload custom backgrounds for different screen sizes. Customers will see these behind the portal.</p>
+            {(["Mobile","Tablet","Desktop"] as const).map(device=>{
+              const key = `bgImage${device}` as "bgImageMobile"|"bgImageTablet"|"bgImageDesktop";
+              return(
+                <div key={device} className="mb-3">
+                  <label className="text-xs text-slate-400 mb-1 block">{device} Background</label>
+                  <label className="flex items-center justify-center gap-2 py-2 rounded-xl cursor-pointer transition-all" style={{background:"rgba(139,92,246,0.08)",border:"1px dashed rgba(139,92,246,0.3)",color:"#c4b5fd"}}>
+                    <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
+                      onChange={async e=>{
+                        const f=e.target.files?.[0]; if(!f) return;
+                        if(f.size>5*1024*1024){alert("Max 5 MB"); return;}
+                        try{ const r=await api.upload.menu(f); setPs((p:any)=>({...p,[key]:r.url})); }
+                        catch(err:any){alert(err.message??'Upload failed');}
+                      }}/>
+                    <span className="text-sm">📸 Upload {device} BG</span>
+                  </label>
+                  {ps[key]&&<p className="text-xs text-green-400 mt-1 truncate">✓ {ps[key].split('/').pop()}</p>}
+                </div>
+              );
+            })}
           </PortalCard>
 
           {/* WiFi */}
@@ -3460,7 +3532,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   };
   const render=()=>{
     // Block non-owner from owner-only pages
-    if(!can(role,"viewAnalytics")&&(page==="dashboard"||page==="analytics"||page==="ai"||page==="datahub"))return<POSPage role={role}/>;
+    if(!can(role,"viewAnalytics")&&(page==="dashboard"||page==="ai"||page==="datahub"))return<POSPage role={role}/>;
     switch(page){
     case"dashboard":return<DashboardPage setPage={nav}/>;
     case"customers":return<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
@@ -3474,7 +3546,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"loyalty":return<LoyaltyPage/>;
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
-    case"analytics":return<AnalyticsPage/>;
+    case"analytics":return<DashboardPage setPage={nav}/>;
     case"portal":return<CustomerPortalPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
@@ -3486,7 +3558,6 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
-    {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER]},
     {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ];

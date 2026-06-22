@@ -405,7 +405,8 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 }) {
   const [data,        setData]        = useState<any>(null);
   const [loading,     setLoading]     = useState(true);
-  const [tab,         setTab]         = useState<string>('rewards');
+  const [tab,         setTab]         = useState<string>(()=>localStorage.getItem('portal_tab')?? 'rewards');
+  const switchTab = (id: string) => { setTab(id); localStorage.setItem('portal_tab', id); };
   const [err,         setErr]         = useState('');
   const [checkingIn,  setCheckingIn]  = useState(false);
   const [checkInMsg,  setCheckInMsg]  = useState<{ ok: boolean; text: string } | null>(null);
@@ -502,9 +503,10 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   const activeTab = TABS.find(t => t.id === tab) ? tab : (TABS[0]?.id ?? 'rewards');
 
   const visibleCustomSections = (ps.customSections ?? []).filter((s: any) => s.visible);
+  const bgImage = ps.bgImageMobile || ps.bgImageDesktop || ps.bgImageTablet || '';
 
   return (
-    <div className="min-h-[100dvh]" style={{ background: '#f8fafc' }}>
+    <div className="min-h-[100dvh]" style={{ background: bgImage ? `url(${bgImage}) center/cover no-repeat` : '#f8fafc' }}>
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e8f0' }}>
         <div className="flex items-center gap-2">
@@ -597,7 +599,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
             {TABS.map(t => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => switchTab(t.id)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
                 style={activeTab === t.id
                   ? { background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }
