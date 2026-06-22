@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from './api/index';
 
+// Plain fetch for portal public endpoints — avoids the auth wrapper's
+// redirect-to-/ behaviour which would kick customers off on mobile.
+const portalGet = (path: string) =>
+  fetch(`/api${path}`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+
 // ── Icons (inline SVG) ────────────────────────────────────────────
 const Icon = {
   star:   () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
@@ -72,7 +77,12 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
     setErr('');
     setLoading(true);
     try {
-      const res = await api.portal.login(slug, { phone, name });
+      const res = await fetch(`/api/portal/${slug}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, name }),
+      }).then(r => r.json());
+      if (!res.token) throw new Error(res.error ?? 'Login failed');
       saveSession(slug, res.token, res.customer.name);
       onLogin(res.token, res.customer.name);
     } catch (e: any) {
@@ -378,12 +388,22 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
   const [err,     setErr]     = useState('');
   const ps = portalSettings ?? {};
 
+  const portalFetch = useCallback((path: string, init: RequestInit = {}) =>
+    fetch(`/api${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
+    }).then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error ?? `HTTP ${r.status}`);
+      return d;
+    }), [token]);
+
   const load = useCallback(async () => {
     try {
-      const d = await api.portal.me(token);
+      const d = await portalFetch('/portal/me');
       setData(d);
     } catch (e: any) {
-      if (e.message?.includes('Unauthenticated') || e.message?.includes('expired')) {
+      if (e.message?.includes('expired') || e.message?.includes('Invalid') || e.message?.includes('401')) {
         clearSession();
         onLogout();
       } else {
@@ -392,12 +412,12 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [portalFetch]);
 
   useEffect(() => { load(); }, [load]);
 
   async function handleRedeem(couponCode: string) {
-    await api.portal.redeem(token, couponCode);
+    await portalFetch('/portal/redeem', { method: 'POST', body: JSON.stringify({ couponCode }) });
     load();
   }
 
@@ -545,7 +565,7 @@ export default function CustomerPortal() {
     const session = loadSession(slug);
     if (session) setToken(session.token);
 
-    api.portal.info(slug)
+    portalGet(`/portal/${slug}/info`)
       .then(d => { setBiz(d); setPortalSettings(d.portalSettings ?? {}); })
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -562,7 +582,11 @@ export default function CustomerPortal() {
       <div className="text-center text-white">
         <img src="/logo.svg" alt="Loyable" className="w-14 h-14 object-contain mx-auto mb-4"/>
         <h1 className="font-black text-xl mb-2">Loyalty Portal</h1>
-        <p className="text-purple-300 text-sm">This link doesn't match any active loyalty program.</p>
+        {slug
+          ? <p className="text-purple-300 text-sm">The loyalty program <span className="font-mono bg-white/10 px-1 rounded">/{slug}</span> was not found or is inactive.</p>
+          : <p className="text-purple-300 text-sm">No loyalty program specified in the link.</p>
+        }
+        <p className="text-purple-400/60 text-xs mt-3">Please ask your business for the correct QR code or link.</p>
       </div>
     </div>
   );
