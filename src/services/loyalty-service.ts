@@ -623,7 +623,7 @@ export const getCustomerLoyaltyProfile = async (
   customerId: string,
   businessId: string
 ) => {
-  const [customer, tiers, ledger, referralStats] = await Promise.all([
+  const [customer, tiers, ledger] = await Promise.all([
     prisma.customer.findFirst({
       where:  { id: customerId, businessId },
       select: {
@@ -644,10 +644,11 @@ export const getCustomerLoyaltyProfile = async (
       orderBy: { createdAt: 'desc' },
       take:    25,
     }),
-    prisma.customer.count({
-      where: { businessId, referredByCode: customer?.referralCode },
-    }),
   ]);
+
+  const referralStats = await prisma.customer.count({
+    where: { businessId, referredByCode: customer?.referralCode ?? '' },
+  });
 
   return { customer, tiers, ledger, referralCount: referralStats };
 };
