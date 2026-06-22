@@ -4,6 +4,19 @@ WhatsApp-first retention OS for SMBs — loyalty + automation + campaigns + AI i
 
 ---
 
+## Recent Improvements
+
+- **Loyalty points now actually accrue on every POS sale.** `POST /api/pos/sale` previously created a Visit but never credited points; it now calls `accruePointsForVisit` and returns `pointsEarned` (shown in the POS UI after *Mark as Paid*).
+- **Phone numbers normalise to E.164 (+44 default) everywhere** — POS, portal login, and customer matching — so a customer entered as `07…`, `+44…`, or `0044…` always resolves to the same record.
+- **Business logo + currency are configurable** in *Settings → Business*; the logo prints on receipts and the currency is used consistently across POS, receipts, and dashboard.
+- **Campaign Builder is fully functional** — it now saves a real campaign (`layoutJson`), lets you pick the audience segment/channel/schedule, and **Save & Launch** queues messages immediately. The campaigns list shows live sent/delivered/read stats.
+- **Transactional email actually sends** via Resend, SendGrid, or SMTP (auto-detected from env) with branded HTML templates. See [Email Setup](#email-setup).
+- **Marketing site upgraded** — 10 emotional customer success stories, scroll-reveal animations, clearer non-technical copy, and a working light/dark theme toggle.
+- **Bug fixes:** revenue-attribution queries referenced a non-existent `automationId` column (now `automationRunId`); CSV birthday parsing compared regex objects by reference (always false); broken `automationTrigger`/queue imports in the loyalty controller.
+- **Verified at 1,000,000 customers across 20 tenants** — see [Load Testing](#load-testing). Added a covering index `(businessId, segment, lastVisitAt)` so large tenants never fall back to a sequential scan.
+
+---
+
 ## Quick Start (Codespace / Fresh Terminal)
 
 Every time you open a new Codespace or terminal session, run the single startup script:
@@ -186,6 +199,48 @@ NODE_ENV=development
 WAHA_BASE_URL="http://localhost:3001"
 WAHA_API_KEY="loyable"
 ```
+
+---
+
+## Email Setup
+
+Transactional email (password resets, staff invites, quota/billing alerts) is sent by
+`src/utils/email.util.ts`. It auto-detects a provider from the environment — set **one**:
+
+| Provider | Env vars | Notes |
+|----------|----------|-------|
+| **Resend** (recommended) | `RESEND_API_KEY`, `EMAIL_FROM` | Pure HTTPS, no extra deps |
+| **SendGrid** | `SENDGRID_API_KEY`, `EMAIL_FROM` | Pure HTTPS, no extra deps |
+| **SMTP** (Gmail, etc.) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Requires `npm i nodemailer` |
+
+With no provider set, emails are logged to the console in development and skipped (with a
+warning) in production — a failed send never crashes the calling flow. See `.env.example`.
+
+---
+
+## Load Testing
+
+A multi-tenant load + isolation harness lives at `scripts/load-test.ts`. It seeds many
+tenants each with many customers, then measures insert throughput and tenant-scoped query
+latency, and **verifies tenant isolation** (a query scoped to tenant A never returns tenant
+B's rows; scoped writes never touch other tenants).
+
+```bash
+# ~1,000,000 customers across 20 tenants (default)
+DATABASE_URL=postgres://… BUSINESSES=20 CUSTOMERS_PER_BIZ=50000 npx ts-node scripts/load-test.ts
+
+# smaller smoke run
+BUSINESSES=5 CUSTOMERS_PER_BIZ=2000 npx ts-node scripts/load-test.ts
+
+# keep the seeded data for manual EXPLAIN inspection
+KEEP=1 … npx ts-node scripts/load-test.ts
+```
+
+Verified result at **1,000,000 customers / 20 tenants** (local Postgres 16): bulk insert
+~6,300 rows/s; tenant-scoped list/lookup/aggregate queries stay well within interactive
+latency; **isolation PASSED** (Σ per-tenant counts = global count; 0 cross-tenant writes).
+Takeaway baked back into the schema: segment-filtered list views need the
+`(businessId, segment, lastVisitAt)` covering index to avoid sequential scans on large tenants.
 
 ---
 

@@ -150,8 +150,19 @@ const handleCampaignError = (err: unknown, res: Response): void => {
 /** GET /api/campaigns */
 const listHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const campaigns = await listCampaigns(req.tenantContext.businessId);
-    res.status(200).json(campaigns);
+    const rows = await listCampaigns(req.tenantContext.businessId);
+    // Shape denormalized counters into a `stats` object the client expects
+    const campaigns = (rows as any[]).map((c) => ({
+      ...c,
+      stats: {
+        sent:      c.sentCount      ?? 0,
+        delivered: c.deliveredCount ?? 0,
+        read:      c.readCount      ?? 0,
+        failed:    c.failedCount    ?? 0,
+        dropped:   c.droppedCount   ?? 0,
+      },
+    }));
+    res.status(200).json({ campaigns, total: campaigns.length });
   } catch (err) { handleCampaignError(err, res); }
 };
 

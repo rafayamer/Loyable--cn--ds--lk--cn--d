@@ -71,12 +71,15 @@ export interface LoginInput {
 
 export interface AuthResult extends TokenPair {
   user: {
-    id:           string;
-    name:         string;
-    email:        string;
-    role:         Role;
-    businessId:   string;
-    businessName: string;
+    id:               string;
+    name:             string;
+    email:            string;
+    role:             Role;
+    businessId:       string;
+    businessName:     string;
+    businessSlug?:     string;
+    businessCurrency?: string;
+    businessIndustry?: string | null;
     branchLocationId: string | null;
   };
 }

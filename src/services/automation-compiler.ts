@@ -227,7 +227,7 @@ export const compileGraph = (graphJson: unknown): CompilationResult => {
   // ── Find trigger node ─────────────────────────────────────────
   const triggerNodes = nodes.filter(n => n.type === 'triggerNode');
   const triggerNode  = triggerNodes[0];
-  const triggerData  = triggerNode.data as TriggerNodeData;
+  const triggerData  = triggerNode.data as unknown as TriggerNodeData;
 
   // ── Build adjacency list ──────────────────────────────────────
   const adjacency = buildAdjacency(edges);
@@ -482,7 +482,7 @@ const traverseGraph = (
 
       case 'delayNode': {
         // Accumulate delay and pass to children
-        const d = node.data as DelayNodeData;
+        const d = node.data as unknown as DelayNodeData;
         const newDelay = accDelayMinutes + (d.delayMinutes ?? 0);
         for (const { targetId } of outgoing) {
           queue.push({ nodeId: targetId, accDelayMinutes: newDelay, branchConditions });
@@ -491,7 +491,7 @@ const traverseGraph = (
       }
 
       case 'actionNode': {
-        const d = node.data as ActionNodeData;
+        const d = node.data as unknown as ActionNodeData;
         actions.push({
           order:            order++,
           nodeId:           node.id,
@@ -508,7 +508,7 @@ const traverseGraph = (
       }
 
       case 'conditionNode': {
-        const d = node.data as ConditionNodeData;
+        const d = node.data as unknown as ConditionNodeData;
         // Each outgoing edge is tagged with 'yes' or 'no' via sourceHandle
         for (const { targetId, handle } of outgoing) {
           const branch = (handle === 'no' ? 'no' : 'yes') as 'yes' | 'no';

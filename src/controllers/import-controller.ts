@@ -212,20 +212,22 @@ const normaliseBirthday = (raw: string | undefined): Date | null => {
     /^(\d{2})\.(\d{2})\.(\d{4})$/,   // DD.MM.YYYY
   ];
 
-  for (const pattern of formats) {
-    const match = raw.match(pattern);
+  for (let i = 0; i < formats.length; i++) {
+    const match = raw.match(formats[i]);
     if (match) {
       const [, a, b, c] = match;
       let year: number, month: number, day: number;
 
-      if (pattern === /^(\d{4})-(\d{2})-(\d{2})$/) {
+      // formats[1] is the ISO YYYY-MM-DD pattern → first group is the year
+      if (i === 1) {
         year = parseInt(a); month = parseInt(b) - 1; day = parseInt(c);
       } else {
         day = parseInt(a); month = parseInt(b) - 1; year = parseInt(c);
       }
 
       const date = new Date(year, month, day);
-      if (!isNaN(date.getTime()) && year > 1900 && year < 2015) return date;
+      const thisYear = new Date().getFullYear();
+      if (!isNaN(date.getTime()) && year > 1900 && year <= thisYear) return date;
     }
   }
 

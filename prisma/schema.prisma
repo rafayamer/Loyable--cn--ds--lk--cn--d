@@ -362,6 +362,9 @@ model Customer {
   @@index([businessId])
   @@index([businessId, segment])
   @@index([businessId, lastVisitAt])
+  // Covers the Customers list/segment view (filter by segment, sort by recency)
+  // so large tenants never fall back to a sequential scan + sort at scale.
+  @@index([businessId, segment, lastVisitAt])
   @@index([businessId, whatsappNumber])
   @@index([businessId, referralCode])
   @@index([businessId, isActive, id])     // Cursor-based pagination in cron jobs

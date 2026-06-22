@@ -340,7 +340,7 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
     const recentMsg = await prisma.messageQueue.findFirst({
       where: { customerId, businessId, status: { in: ['SENT', 'DELIVERED', 'READ'] }, createdAt: { gte: ATTR_WINDOW } },
       orderBy: { createdAt: 'desc' },
-      select:  { campaignId: true, automationId: true },
+      select:  { campaignId: true, automationRunId: true },
     }).catch(() => null);
 
     // Create visit
@@ -354,8 +354,8 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
           source:                 source ?? 'QR_CHECKIN',
           notes,
           visitedAt:              new Date(),
-          attributedCampaignId:   recentMsg?.campaignId   ?? null,
-          attributedAutomationId: recentMsg?.automationId ?? null,
+          attributedCampaignId:   recentMsg?.campaignId      ?? null,
+          attributedAutomationId: recentMsg?.automationRunId ?? null,
         } as any,
       });
 
@@ -455,25 +455,15 @@ const checkVisitMilestone = async (
 
   if (!wf) return;
 
-  await prisma.automationTrigger?.create?.({
-    data: {
-      workflowId:  wf.id,
-      businessId,
-      customerId,
-      triggeredAt: new Date(),
-    },
-  }).catch(() => {}); // Table may not exist yet — safe to ignore
-
-  // Enqueue via BullMQ
-  import('../queues/messaging.queue').then(({ enqueueAutomationTrigger }) =>
-    enqueueAutomationTrigger({
-      workflowId:     wf.id,
-      businessId,
-      customerId,
-      triggerType:    'VISIT_MILESTONE',
-      triggerPayload: { visitCount },
-    })
-  ).catch(console.error);
+  // Enqueue via BullMQ (messaging-queue owns the AutomationRun lifecycle)
+  const { enqueueAutomationTrigger } = await import('../services/messaging-queue');
+  await enqueueAutomationTrigger({
+    workflowId:     wf.id,
+    businessId,
+    customerId,
+    triggerType:    'VISIT_MILESTONE',
+    triggerPayload: { visitCount },
+  }).catch(console.error);
 };
 
 // ================================================================

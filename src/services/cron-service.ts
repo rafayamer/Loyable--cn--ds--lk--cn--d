@@ -567,7 +567,7 @@ const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
           }),
           prisma.rewardPointsLedger.create({
             data: {
-              businessId,
+              businessId:   biz.id,
               customerId:   c.id,
               type:         'DEBIT',
               points:       pts,

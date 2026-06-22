@@ -323,7 +323,7 @@ const processTransaction = async (
   const recentMsg = await prisma.messageQueue.findFirst({
     where: { customerId, businessId, status: { in: ['SENT', 'DELIVERED', 'READ'] }, createdAt: { gte: attributionSince } },
     orderBy: { createdAt: 'desc' },
-    select:  { campaignId: true, automationId: true },
+    select:  { campaignId: true, automationRunId: true },
   }).catch(() => null);
 
   const visit = await prisma.visit.create({
@@ -335,8 +335,8 @@ const processTransaction = async (
       amountSpent:             amountPence / 100,
       source:                  'POS_WEBHOOK',
       visitedAt:               timestamp,
-      attributedCampaignId:   recentMsg?.campaignId   ?? null,
-      attributedAutomationId: recentMsg?.automationId ?? null,
+      attributedCampaignId:   recentMsg?.campaignId      ?? null,
+      attributedAutomationId: recentMsg?.automationRunId ?? null,
     } as any,
   });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { api } from "./api/index";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
-import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon, QrCode, ScanLine, ExternalLink, UserCheck } from "lucide-react";
+import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon, QrCode, ScanLine, ExternalLink, UserCheck, Upload } from "lucide-react";
 
 // ════════════════════════════════════════════════════════════════
 // SCHEMA ENUMS (mirrors Prisma schema)
@@ -490,6 +490,22 @@ const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
 // ════════════════════════════════════════════════════════════════
 // LANDING PAGE  (marketing website — full redesign)
 // ════════════════════════════════════════════════════════════════
+
+// Scroll-reveal wrapper — fades + slides children in when they enter the viewport.
+const Reveal=({children,delay=0,y=24,className="",style={}}:{children:React.ReactNode;delay?:number;y?:number;className?:string;style?:React.CSSProperties})=>{
+  const ref=useRef<HTMLDivElement>(null);
+  const [shown,setShown]=useState(false);
+  useEffect(()=>{
+    const el=ref.current;if(!el)return;
+    if(typeof IntersectionObserver==="undefined"){setShown(true);return;}
+    const io=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{if(e.isIntersecting){setShown(true);io.disconnect();}});
+    },{threshold:0.12,rootMargin:"0px 0px -40px 0px"});
+    io.observe(el);return()=>io.disconnect();
+  },[]);
+  return <div ref={ref} className={className} style={{...style,opacity:shown?1:0,transform:shown?"translateY(0)":`translateY(${y}px)`,transition:`opacity .6s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .6s cubic-bezier(.16,1,.3,1) ${delay}ms`,willChange:"opacity,transform"}}>{children}</div>;
+};
+
 const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [view,setView]=useState<AuthView>("landing");
   const [dark,setDark]=useState(false);
@@ -557,6 +573,50 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     {stars:5,text:"Loyable increased our repeat customers by 60%. The WhatsApp campaigns and rewards system work like magic!!!!",name:"Michael Brown",biz:"Casa Bistro",avatar:"MB"},
     {stars:5,text:"Finally, a loyalty platform that is simple, powerful and affordable. Our customers love the rewards!",name:"Sarah Johnson",biz:"The Coffee House",avatar:"SJ"},
     {stars:5,text:"The analytics help us understand our customers better. Our business has grown 35% since using Loyable.",name:"James Williams",biz:"Urban Cuts Barbershop",avatar:"JW"},
+  ];
+
+  // Emotional, story-driven case studies
+  const CASE_STUDIES=[
+    {emoji:"☕",biz:"The Corner Café",owner:"Amara",city:"Manchester",color:"#8b5cf6",
+      stat:"+62%",statLabel:"repeat visits in 4 months",
+      story:"Amara nearly closed her café after the chain across the street opened. Loyable helped her remember every regular's name and order. When her quietest customers drifted away, automatic 'we miss you' messages with a free-coffee reward brought them back. Today her café is the busiest on the street again.",
+      result:"From 30 to 480 loyal regulars — and a 6-month waitlist for her weekend brunch."},
+    {emoji:"💈",biz:"Kingsman Barbers",owner:"Deon",city:"Birmingham",color:"#06b6d4",
+      stat:"3,200",statLabel:"bookings recovered",
+      story:"Deon's chairs sat empty on weekdays. He couldn't afford ads. With Loyable, every haircut earned points and a friendly WhatsApp reminder when it was time for the next trim. Clients who used to vanish for months now come back every three weeks — like clockwork.",
+      result:"£41,000 in extra revenue in a single year, with zero ad spend."},
+    {emoji:"🍰",biz:"Sweet Layla's Bakery",owner:"Layla",city:"London",color:"#ec4899",
+      stat:"4.9★",statLabel:"average review, up from 3.8",
+      story:"Layla poured her heart into every cake, but unhappy customers stayed silent and never returned. Loyable quietly asked each customer how their visit went. Now she hears the problems first — and fixes them before they ever hit Google. Her happiest customers became her loudest fans.",
+      result:"Reviews jumped from 3.8 to 4.9 stars and online orders tripled."},
+    {emoji:"🏋️",biz:"Iron Pulse Gym",owner:"Marcus",city:"Leeds",color:"#f59e0b",
+      stat:"-48%",statLabel:"member drop-off",
+      story:"Half of Marcus's New Year members quit by March. Loyable spotted who was slipping — people who hadn't checked in for two weeks — and nudged them with a personal message and a guest-pass for a friend. Members felt noticed. They stayed. They brought friends.",
+      result:"Cancellations cut in half and 900 referrals from existing members."},
+    {emoji:"💅",biz:"Bloom Nail Studio",owner:"Priya",city:"Glasgow",color:"#a855f7",
+      stat:"+£28k",statLabel:"yearly revenue",
+      story:"Priya's calendar had gaps she couldn't explain. Loyable showed her that clients loved her but simply forgot to rebook. A gentle birthday treat and a 'your nails are due' reminder filled those empty slots. Her quietest weeks became fully booked.",
+      result:"From half-empty Tuesdays to a fully-booked studio, six days a week."},
+    {emoji:"🍔",biz:"Smashville Burgers",owner:"Tom & Jess",city:"Bristol",color:"#22c55e",
+      stat:"19,000",statLabel:"loyalty members",
+      story:"Tom and Jess ran a tiny burger joint with big dreams. Every order added a customer to their loyalty list automatically — no apps, no plastic cards. When they launched a new menu, one WhatsApp campaign sold it out by lunchtime. Their customers feel like part of the family.",
+      result:"A second location opened, funded entirely by repeat customers."},
+    {emoji:"🌸",biz:"Serenity Day Spa",owner:"Hannah",city:"Edinburgh",color:"#14b8a6",
+      stat:"+71%",statLabel:"rebooking rate",
+      story:"Hannah's spa was a place people visited once for a treat and forgot about. Loyable turned that one visit into a relationship — points, tiers, and a thank-you message that felt personal. First-timers became monthly regulars who looked forward to their 'me time'.",
+      result:"7 in 10 first-time guests now return within 30 days."},
+    {emoji:"🛍️",biz:"Thread & Co Boutique",owner:"Olivia",city:"Cardiff",color:"#f43f5e",
+      stat:"2.4×",statLabel:"customer lifetime value",
+      story:"Olivia competed with giant online retailers and felt invisible. Loyable gave her something Amazon never could — a real connection. Early access to new arrivals for her VIPs made shoppers feel special. They stopped scrolling online and started coming in.",
+      result:"Loyal shoppers now spend more than double what walk-ins do."},
+    {emoji:"🍕",biz:"Nonna's Pizzeria",owner:"Giovanni",city:"Liverpool",color:"#ef4444",
+      stat:"+340",statLabel:"orders every month",
+      story:"Giovanni's family recipes deserved a full house. Loyable helped him reward every tenth pizza and win back families who hadn't ordered in a while. 'Friday is pizza night' became a habit for hundreds of homes — all from one weekly WhatsApp.",
+      result:"Friday revenue doubled and delivery orders now book out by 7pm."},
+    {emoji:"🚗",biz:"ShinePro Car Wash",owner:"Ben",city:"Newcastle",color:"#3b82f6",
+      stat:"5,800",statLabel:"members in year one",
+      story:"Ben's car wash was a one-time stop for most drivers. Loyable turned it into a habit — a loyalty card on every phone and a reminder when the rain stopped. Drivers who came once a year now come once a month, rain or shine.",
+      result:"Membership revenue now covers his rent before the month even starts."},
   ];
 
   const PRICING=[
@@ -690,6 +750,13 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         .lyl-track:hover{animation-play-state:paused}
         @keyframes lyl-cube-spin{0%{transform:rotateX(15deg) rotateY(0deg)}100%{transform:rotateX(15deg) rotateY(360deg)}}
         @keyframes lyl-cube-float{0%,100%{transform:translateY(0px) rotateX(15deg) rotateY(0deg)}50%{transform:translateY(-16px) rotateX(15deg) rotateY(180deg)}}
+        @keyframes lyl-cs-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        .lyl-cs-track{display:flex;width:max-content;gap:20px;animation:lyl-cs-marquee 60s linear infinite}
+        .lyl-cs-track:hover{animation-play-state:paused}
+        @keyframes lyl-pulse-ring{0%{transform:scale(.9);opacity:.7}70%{transform:scale(1.3);opacity:0}100%{opacity:0}}
+        @keyframes lyl-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        .lyl-grad-text{background:linear-gradient(90deg,#8b5cf6,#ec4899,#06b6d4,#8b5cf6);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lyl-shimmer 6s linear infinite}
+        @media (prefers-reduced-motion: reduce){.lyl-cs-track,.lyl-track,.lyl-steps-track,.lyl-cube,.lyl-grad-text{animation:none !important}}
         .lyl-cube{width:90px;height:90px;transform-style:preserve-3d;animation:lyl-cube-float 12s ease-in-out infinite;position:relative}
         .lyl-cube-face{position:absolute;width:90px;height:90px;border:1px solid rgba(167,139,250,0.4);background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(109,40,217,0.04))}
         .lyl-cube-face.front {transform:translateZ(45px)}
@@ -709,10 +776,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-8 lg:gap-12">
-          {["home","features","pricing"].map(l=>(
+          {["home","features"].map(l=>(
             <a key={l} href={`#${l}`} className="text-sm capitalize font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>{l}</a>
           ))}
           <a href="#how-it-works" className="text-sm font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>How it Works</a>
+          <a href="#stories" className="text-sm font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>Stories</a>
+          <a href="#pricing" className="text-sm font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>Pricing</a>
         </div>
 
         {/* Desktop right actions */}
@@ -731,7 +800,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         {/* Mobile drawer */}
         {mobileNav&&(
           <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 text-lg font-medium md:hidden transition duration-300 z-[100]" style={{background:D?"rgba(9,9,11,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(12px)"}}>
-            {["home","features","pricing"].map(l=>(
+            {["home","features","stories","pricing"].map(l=>(
               <a key={l} href={`#${l}`} onClick={()=>setMobileNav(false)} className="capitalize transition-opacity hover:opacity-70" style={{color:tx}}>{l}</a>
             ))}
             <a href="#how-it-works" onClick={()=>setMobileNav(false)} style={{color:tx}}>How it Works</a>
@@ -945,6 +1014,73 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── Case Studies ────────────────────────────────────── */}
+      <div id="stories" className="py-20 px-4 relative overflow-hidden">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)"}}/>
+        <Reveal className="text-center mb-3 relative">
+          <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Success Stories</p>
+          <h2 className="text-3xl md:text-4xl font-black mt-1" style={{color:tx}}>Real Businesses. <span className="lyl-grad-text">Real Comebacks.</span></h2>
+          <p className="mt-3 max-w-xl mx-auto text-sm" style={{color:tx2}}>Behind every number is an owner who almost gave up — and the customers who came back.</p>
+        </Reveal>
+
+        {/* Headline metrics */}
+        <Reveal delay={80} className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 mb-14 relative">
+          {[{n:"2.3M+",l:"customers retained"},{n:"£18M+",l:"revenue recovered"},{n:"47%",l:"avg. repeat-visit lift"},{n:"1,000+",l:"happy businesses"}].map((m,i)=>(
+            <div key={i} className="text-center px-4">
+              <div className="text-2xl sm:text-3xl font-black" style={{color:"#8b5cf6"}}>{m.n}</div>
+              <div className="text-xs mt-0.5" style={{color:tx2}}>{m.l}</div>
+            </div>
+          ))}
+        </Reveal>
+
+        {/* Featured story */}
+        <Reveal delay={120} className="max-w-5xl mx-auto mb-12 relative">
+          <div className="rounded-3xl p-8 md:p-10 border relative overflow-hidden" style={D?{background:"linear-gradient(145deg,rgba(139,92,246,0.12),rgba(236,72,153,0.06))",borderColor:"rgba(139,92,246,0.25)"}:{background:"linear-gradient(145deg,#faf5ff,#fff1f7)",borderColor:"#eaddff"}}>
+            <div className="absolute -top-10 -right-10 text-[160px] leading-none opacity-10 pointer-events-none select-none">{CASE_STUDIES[0].emoji}</div>
+            <div className="relative grid md:grid-cols-3 gap-8 items-center">
+              <div className="md:col-span-2">
+                <div className="flex gap-0.5 mb-4">{Array(5).fill(0).map((_,j)=><Star key={j} size={16} className="text-yellow-400 fill-yellow-400"/>)}</div>
+                <p className="text-lg md:text-xl font-medium leading-relaxed mb-5" style={{color:tx}}>"{CASE_STUDIES[0].story}"</p>
+                <p className="text-sm font-semibold mb-1" style={{color:"#8b5cf6"}}>✦ {CASE_STUDIES[0].result}</p>
+                <div className="flex items-center gap-3 mt-5">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style={{background:`linear-gradient(135deg,${CASE_STUDIES[0].color},#7c3aed)`}}>{CASE_STUDIES[0].owner[0]}</div>
+                  <div><div className="text-sm font-bold" style={{color:tx}}>{CASE_STUDIES[0].owner} · {CASE_STUDIES[0].biz}</div><div className="text-xs" style={{color:tx2}}>{CASE_STUDIES[0].city}</div></div>
+                </div>
+              </div>
+              <div className="text-center md:border-l md:pl-8" style={{borderColor:D?"rgba(255,255,255,0.1)":"#eaddff"}}>
+                <div className="text-5xl md:text-6xl font-black" style={{color:CASE_STUDIES[0].color}}>{CASE_STUDIES[0].stat}</div>
+                <div className="text-xs mt-2" style={{color:tx2}}>{CASE_STUDIES[0].statLabel}</div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Scrolling story strip */}
+        <div className="relative overflow-hidden w-full">
+          <div className="absolute left-0 top-0 h-full w-16 sm:w-28 z-10 pointer-events-none" style={{background:`linear-gradient(to right,${bg},transparent)`}}/>
+          <div className="absolute right-0 top-0 h-full w-16 sm:w-28 z-10 pointer-events-none" style={{background:`linear-gradient(to left,${bg},transparent)`}}/>
+          <div className="lyl-cs-track py-2">
+            {[...CASE_STUDIES.slice(1),...CASE_STUDIES.slice(1)].map((c,i)=>(
+              <div key={i} className="w-[300px] flex-shrink-0 p-5 rounded-2xl border flex flex-col" style={{background:card,borderColor:bdr,boxShadow:D?"none":"0 4px 24px rgba(0,0,0,0.04)"}}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl" style={{background:c.color+"1a"}}>{c.emoji}</div>
+                  <div className="text-right"><div className="text-xl font-black" style={{color:c.color}}>{c.stat}</div><div className="text-[10px]" style={{color:tx3}}>{c.statLabel}</div></div>
+                </div>
+                <p className="text-xs leading-relaxed mb-3 flex-1" style={{color:tx2}}>"{c.story.length>180?c.story.slice(0,180)+"…":c.story}"</p>
+                <p className="text-[11px] font-semibold mb-3" style={{color:c.color}}>✦ {c.result}</p>
+                <div className="flex items-center gap-2 pt-3 border-t" style={{borderColor:bdr}}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{background:`linear-gradient(135deg,${c.color},#7c3aed)`}}>{c.owner[0]}</div>
+                  <div><div className="text-xs font-semibold" style={{color:tx}}>{c.owner} · {c.biz}</div><div className="text-[10px]" style={{color:tx3}}>{c.city}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Reveal delay={60} className="text-center mt-12">
+          <button onClick={()=>nav("signup")} className="px-7 py-3 rounded-md text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] shadow-lg" style={{background:"#8b5cf6"}}>Write Your Comeback Story →</button>
+        </Reveal>
       </div>
 
       {/* ── Pricing ─────────────────────────────────────────── */}
@@ -1545,25 +1681,81 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
 // ════════════════════════════════════════════════════════════════
 const BLOCK_PALETTE=[{type:"TEXT",icon:Type,label:"Text Block",color:"#3b82f6"},{type:"IMAGE",icon:Image,label:"Image Block",color:"#22c55e"},{type:"COUPON",icon:Tag,label:"Coupon Block",color:"#f59e0b"},{type:"URL_BUTTON",icon:Link,label:"URL Button",color:"#ec4899"},{type:"AI_ASSIST",icon:Brain,label:"AI Assistant",color:"#8b5cf6"}];
 const CampaignBuilderPage=({onBack})=>{
-  const [blocks,setBlocks]=useState([{id:"b1",type:"TEXT",content:"Hey {name}! 👋 We have something special for you at The Coffee House."},{id:"b2",type:"COUPON",content:"20% OFF — Code: SUMMER20"}]);
-  const [dragType,setDragType]=useState(null);const [selBlock,setSelBlock]=useState(null);const [aiPrompt,setAiPrompt]=useState("");const [aiLoading,setAiLoading]=useState(false);
+  const bizName=localStorage.getItem("biz_name")||"Your Business";
+  const [blocks,setBlocks]=useState<any[]>([{id:"b1",type:"TEXT",content:`Hey {name}! 👋 We have something special for you at ${bizName}.`},{id:"b2",type:"COUPON",content:"SUMMER20 · 20% off"}]);
+  const [dragType,setDragType]=useState<string|null>(null);const [selBlock,setSelBlock]=useState<string|null>(null);const [aiPrompt,setAiPrompt]=useState("");const [aiLoading,setAiLoading]=useState(false);
+  // Campaign config (controlled)
+  const [cName,setCName]=useState("Summer Win-Back");
+  const [cSegment,setCSegment]=useState("AT_RISK");
+  const [cChannel,setCChannel]=useState("WHATSAPP_WAHA");
+  const [cSchedule,setCSchedule]=useState("");
+  const [saving,setSaving]=useState<""|"draft"|"launch">("");
+  const [saveMsg,setSaveMsg]=useState<{ok:boolean;text:string}|null>(null);
   const dropRef=useRef(null);
-  const onDragStart=(type)=>setDragType(type);
-  const onDrop=e=>{e.preventDefault();if(!dragType)return;const nb={id:`b${Date.now()}`,type:dragType,content:dragType==="TEXT"?"Enter your text here...":dragType==="IMAGE"?"https://your-image-url.jpg":dragType==="COUPON"?"COUPON_CODE · 10% off":dragType==="URL_BUTTON"?"Book Now → https://...":"AI-generated content..."};setBlocks(p=>[...p,nb]);setDragType(null);};
+  const onDragStart=(type:string)=>setDragType(type);
+  const onDrop=(e:React.DragEvent)=>{e.preventDefault();if(!dragType)return;const nb={id:`b${Date.now()}`,type:dragType,content:dragType==="TEXT"?"Enter your text here...":dragType==="IMAGE"?"https://example.com/image.jpg":dragType==="COUPON"?"SAVE10 · 10% off":dragType==="URL_BUTTON"?"Book Now → https://example.com":"AI-generated content..."};setBlocks(p=>[...p,nb]);setSelBlock(nb.id);setDragType(null);};
+  const updateBlock=(id:string,content:string)=>setBlocks(p=>p.map(b=>b.id===id?{...b,content}:b));
+
+  // Transform canvas blocks → backend layoutJson (sanitised so it always validates)
+  const buildLayout=()=>{
+    const isUrl=(s:string)=>/^https?:\/\/\S+$/i.test(s.trim());
+    const blk:any[]=[];
+    blocks.forEach((b,i)=>{
+      const order=blk.length;
+      if(b.type==="IMAGE"){
+        if(isUrl(b.content))blk.push({id:b.id,type:"IMAGE",order,mediaUrl:b.content.trim()});
+        else blk.push({id:b.id,type:"TEXT",order,content:b.content});
+      }else if(b.type==="URL_BUTTON"){
+        const m=b.content.split(/→|->|\|/);const label=(m[0]||"Open").trim().slice(0,25);const url=(m[1]||"").trim();
+        if(isUrl(url))blk.push({id:b.id,type:"URL_BUTTON",order,label,url});
+        else blk.push({id:b.id,type:"TEXT",order,content:b.content});
+      }else if(b.type==="COUPON"){
+        const m=b.content.split(/·|\|/);const code=(m[0]||"").trim().slice(0,50)||"OFFER";const disc=(m[1]||"Special offer").trim().slice(0,200);
+        blk.push({id:b.id,type:"COUPON",order,couponCode:code,discountText:disc});
+      }else{
+        blk.push({id:b.id,type:b.type==="AI_ASSIST"?"AI_ASSIST":"TEXT",order,content:b.content||" "});
+      }
+    });
+    return {blocks:blk.length?blk:[{id:"b1",type:"TEXT",order:0,content:"Hello {name}!"}]};
+  };
+
+  const save=async(launch:boolean)=>{
+    if(!cName.trim()){setSaveMsg({ok:false,text:"Give your campaign a name first."});return;}
+    setSaving(launch?"launch":"draft");setSaveMsg(null);
+    try{
+      const body:any={name:cName.trim(),targetSegment:cSegment,channel:cChannel,layoutJson:buildLayout()};
+      if(cSchedule)body.scheduledFor=new Date(cSchedule).toISOString();
+      const created=await api.campaigns.create(body);
+      const id=created?.id;
+      if(launch&&id){
+        await api.campaigns.launch(id);
+        setSaveMsg({ok:true,text:`🚀 Campaign launched! Messages are being queued for the ${cSegment} segment.`});
+      }else{
+        setSaveMsg({ok:true,text:cSchedule?`✅ Campaign saved & scheduled.`:`✅ Campaign saved as draft. Launch it any time from the Campaigns page.`});
+      }
+      setTimeout(()=>onBack(),1400);
+    }catch(e:any){
+      const msg=e?.message||"Failed to save campaign";
+      setSaveMsg({ok:false,text:msg==="FEATURE_NOT_AVAILABLE"?"Campaigns aren't included in your current plan — upgrade in Settings → Billing.":`Error: ${msg}`});
+    }finally{setSaving("");}
+  };
+
   const runAI=async()=>{
     if(!aiPrompt.trim())return;
     setAiLoading(true);
     try{
-      const d=await api.ai.query(`Write a WhatsApp marketing message for: ${aiPrompt}. Keep it under 100 words, include an emoji, be friendly and personal.`);
+      const d=await api.ai.query(`Write a WhatsApp marketing message for: ${aiPrompt}. Keep it under 100 words, include an emoji, be friendly and personal. Use {name} for the customer's name.`);
       const text=d.answer||"Your message here...";
       const nb={id:`b${Date.now()}`,type:"TEXT",content:text};
       setBlocks(p=>[...p,nb]);setAiPrompt("");
     }catch(e){const nb={id:`b${Date.now()}`,type:"TEXT",content:`✨ ${aiPrompt} — special offer inside!`};setBlocks(p=>[...p,nb]);setAiPrompt("");}
     finally{setAiLoading(false);}
   };
+  const SEGMENTS=["ALL","NEW","LOYAL","VIP","AT_RISK","LOST","BIG_SPENDER","COUPON_HUNTER"];
+  const selectedBlock=blocks.find(b=>b.id===selBlock);
   return(
     <div className="space-y-4">
-      <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Campaign Builder</h1><p className="text-xs text-slate-400 mt-0.5">Drag blocks into the phone preview · layoutJson saved to Prisma Campaign model</p></div></div>
+      <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Campaign Builder</h1><p className="text-xs text-slate-400 mt-0.5">Build your message, pick who receives it, then save or launch.</p></div></div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Block Palette */}
         <div className="gc rounded-xl p-4" style={CARD}>
@@ -1581,7 +1773,7 @@ const CampaignBuilderPage=({onBack})=>{
           <div className="w-60 rounded-3xl p-2" style={{background:"#1a1a2e",border:"2px solid rgba(255,255,255,0.1)"}}>
             <div className="h-5 flex items-center justify-center mb-1"><div className="w-16 h-1.5 rounded-full bg-white/20"/></div>
             <div className="rounded-2xl overflow-hidden" style={{background:"#0b1628"}}>
-              <div className="flex items-center gap-2 p-2.5" style={{background:"#1e3a2f"}}><div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">C</div><div className="text-xs text-white font-medium">The Coffee House</div><div className="ml-auto text-green-400 text-xs">●</div></div>
+              <div className="flex items-center gap-2 p-2.5" style={{background:"#1e3a2f"}}><div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">{bizName.slice(0,1).toUpperCase()}</div><div className="text-xs text-white font-medium truncate max-w-[140px]">{bizName}</div><div className="ml-auto text-green-400 text-xs">●</div></div>
               <div ref={dropRef} onDragOver={e=>e.preventDefault()} onDrop={onDrop} className="min-h-48 p-2 space-y-2" style={{background:"url('data:image/svg+xml,%3Csvg width=20 height=20 viewBox=0 0 20 20 xmlns=http://www.w3.org/2000/svg%3E%3Ccircle cx=1 cy=1 r=0.5 fill=%23ffffff08/%3E%3C/svg%3E')"}}>
                 {blocks.length===0&&<div className="flex flex-col items-center justify-center h-32 text-slate-600 text-xs text-center"><MousePointer size={20} className="mb-2 opacity-50"/>Drop blocks here</div>}
                 {blocks.map((b,i)=>(
@@ -1595,14 +1787,43 @@ const CampaignBuilderPage=({onBack})=>{
               <div className="p-2 flex gap-1.5" style={{background:"#1e3a2f"}}><div className="flex-1 rounded-full text-xs px-2 py-1.5 text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Type a message...</div><div className="w-7 h-7 rounded-full flex items-center justify-center" style={{background:"#25D366"}}><Send size={12} className="text-white"/></div></div>
             </div>
           </div>
-          <button className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save & Schedule Campaign →</button>
+          <div className="text-[10px] text-slate-500 text-center max-w-[220px]">Tap a block above to edit its text. Tokens like <span className="text-violet-300 font-mono">{"{name}"}</span> are filled in per customer.</div>
         </div>
         {/* Properties Panel */}
         <div className="gc rounded-xl p-4" style={CARD}>
-          <h3 className="text-sm font-semibold text-white mb-3">Campaign Config</h3>
-          <div className="space-y-3">{[{l:"Campaign Name",v:"Summer Win-Back 2026"},{l:"Target Segment",v:"AT_RISK"},{l:"Schedule",v:"Jun 20, 2026 · 10:00 AM"},{l:"Cooldown Override",v:"72h (default)"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}</div>
-          <div className="mt-4 pt-4 border-t border-white/5"><div className="text-xs font-medium text-white mb-2">Payload preview (layoutJson → Prisma)</div><pre className="text-xs text-violet-300 overflow-x-auto p-2 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontSize:10}}>{JSON.stringify({blocks:blocks.map(b=>({id:b.id,type:b.type,order:blocks.indexOf(b)}))},null,2)}</pre></div>
-          <div className="mt-4 pt-4 border-t border-white/5"><div className="text-xs font-medium text-white mb-2">Canvas blocks ({blocks.length})</div>{blocks.map((b,i)=><div key={b.id} className="flex items-center gap-2 py-1.5 text-xs text-slate-300"><span className="w-4 h-4 rounded text-center text-slate-500" style={{background:"rgba(255,255,255,0.05)",fontSize:9}}>{i+1}</span><span className="text-violet-300 font-mono">{b.type}</span><span className="flex-1 truncate text-slate-500">{b.content?.substring(0,25)}...</span></div>)}</div>
+          <h3 className="text-sm font-semibold text-white mb-3">Campaign Settings</h3>
+          <div className="space-y-3">
+            <div><label className="text-xs text-slate-400 mb-1 block">Campaign Name</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. Summer Win-Back" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Who receives it</label>
+              <select value={cSegment} onChange={e=>setCSegment(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {SEGMENTS.map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s==="ALL"?"All customers":s.replace(/_/g," ")}</option>)}
+              </select>
+            </div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Send via</label>
+              <select value={cChannel} onChange={e=>setCChannel(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                <option value="WHATSAPP_WAHA" style={{background:"#1a1030"}}>WhatsApp</option>
+                <option value="EMAIL" style={{background:"#1a1030"}}>Email</option>
+                <option value="SMS" style={{background:"#1a1030"}}>SMS</option>
+              </select>
+            </div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Schedule (optional)</label><input type="datetime-local" value={cSchedule} onChange={e=>setCSchedule(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-[10px] text-slate-500 mt-1">Leave empty to save as a draft you can launch any time.</div></div>
+          </div>
+
+          {/* Inline editor for the selected block */}
+          {selectedBlock&&(
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <div className="text-xs font-medium text-white mb-2 flex items-center gap-1.5">Editing <span className="text-violet-300 font-mono">{selectedBlock.type}</span> block</div>
+              <textarea value={selectedBlock.content} onChange={e=>updateBlock(selectedBlock.id,e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.3)"}}/>
+              <div className="text-[10px] text-slate-500 mt-1">{selectedBlock.type==="COUPON"?"Format: CODE · description":selectedBlock.type==="URL_BUTTON"?"Format: Button label → https://link":selectedBlock.type==="IMAGE"?"Paste a public image URL (https://…)":"Plain text. Use {name} for personalisation."}</div>
+            </div>
+          )}
+
+          {/* Save / Launch actions */}
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+            {saveMsg&&<div className="text-xs px-3 py-2 rounded-lg" style={{background:saveMsg.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:saveMsg.ok?"#4ade80":"#f87171"}}>{saveMsg.text}</div>}
+            <button onClick={()=>save(true)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{saving==="launch"?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}{saving==="launch"?"Launching…":cSchedule?"Save & Schedule":"Save & Launch Now"}</button>
+            <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2 rounded-xl text-xs font-medium text-violet-200 disabled:opacity-50" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.25)"}}>{saving==="draft"?"Saving…":"Save as Draft"}</button>
+          </div>
         </div>
       </div>
     </div>

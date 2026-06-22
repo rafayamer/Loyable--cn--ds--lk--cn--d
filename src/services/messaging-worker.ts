@@ -590,7 +590,7 @@ const dispatchAutomationMessage = async (
     },
   });
 
-  const { enqueueScheduledMessage } = await import('../queues/messaging.queue');
+  const { enqueueScheduledMessage } = await import('../services/messaging-queue');
   await enqueueScheduledMessage(
     {
       messageQueueId:   record.id,

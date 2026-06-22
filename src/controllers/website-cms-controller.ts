@@ -86,7 +86,7 @@ async function upsertSetting(key: string, value: string) {
 // ═══════════════════════════════════════════════════════════════
 
 // GET /api/website/public — Single call that returns everything needed for landing page
-websiteCmsRouter.get('/public', async (_req, res) => {
+websiteCmsRouter.get('/public', async (_req: Request, res: Response) => {
   const [settings, sections, features, pricing, testimonials, partners, faq, banners, reviews] = await Promise.all([
     getAllSettings(),
     prisma.websiteSection.findMany({ orderBy: { order: 'asc' } }),
@@ -125,7 +125,7 @@ websiteCmsRouter.get('/public', async (_req, res) => {
 });
 
 // GET /api/website/reviews — paginated approved reviews
-websiteCmsRouter.get('/reviews', async (req, res) => {
+websiteCmsRouter.get('/reviews', async (req: Request, res: Response) => {
   const page  = Number(req.query.page ?? 1);
   const limit = Number(req.query.limit ?? 12);
   const sort  = (req.query.sort as string) ?? 'newest';
@@ -147,7 +147,7 @@ websiteCmsRouter.get('/reviews', async (req, res) => {
 });
 
 // POST /api/website/reviews — submit review
-websiteCmsRouter.post('/reviews', async (req, res) => {
+websiteCmsRouter.post('/reviews', async (req: Request, res: Response) => {
   const { authorName, authorEmail, avatarUrl, bizType, stars, comment } = req.body;
   if (!authorName || !comment || !stars) return err(res, 'Name, comment and stars are required');
   if (stars < 1 || stars > 5) return err(res, 'Stars must be 1-5');
@@ -161,7 +161,7 @@ websiteCmsRouter.post('/reviews', async (req, res) => {
 });
 
 // GET /api/website/partners
-websiteCmsRouter.get('/partners', async (_req, res) => {
+websiteCmsRouter.get('/partners', async (_req: Request, res: Response) => {
   const partners = await prisma.partnerBusiness.findMany({
     where: { active: true },
     orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
@@ -170,7 +170,7 @@ websiteCmsRouter.get('/partners', async (_req, res) => {
 });
 
 // GET /api/website/blog
-websiteCmsRouter.get('/blog', async (req, res) => {
+websiteCmsRouter.get('/blog', async (req: Request, res: Response) => {
   const page  = Number(req.query.page ?? 1);
   const limit = Number(req.query.limit ?? 9);
   const [posts, total] = await Promise.all([
@@ -181,13 +181,13 @@ websiteCmsRouter.get('/blog', async (req, res) => {
 });
 
 // GET /api/website/faq
-websiteCmsRouter.get('/faq', async (_req, res) => {
+websiteCmsRouter.get('/faq', async (_req: Request, res: Response) => {
   const items = await prisma.faqItem.findMany({ where: { visible: true }, orderBy: { order: 'asc' } });
   ok(res, { items });
 });
 
 // POST /api/website/analytics/track
-websiteCmsRouter.post('/analytics/track', async (req, res) => {
+websiteCmsRouter.post('/analytics/track', async (req: Request, res: Response) => {
   const { page, event, referer } = req.body;
   await prisma.websitePageView.create({ data: { page: page ?? '/', event: event ?? 'PAGE_VIEW', referer } });
   ok(res, { ok: true });
@@ -199,11 +199,11 @@ websiteCmsRouter.post('/analytics/track', async (req, res) => {
 const adminGuard = [tenantScope, requirePlatformAdmin];
 
 // ── Settings ──────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/settings', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/settings', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await getAllSettings());
 });
 
-websiteCmsRouter.put('/admin/settings', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/settings', adminGuard, async (req: Request, res: Response) => {
   const updates = req.body as Record<string, string>;
   await Promise.all(Object.entries(updates).map(([k, v]) => upsertSetting(k, String(v ?? ''))));
   ok(res, await getAllSettings());
@@ -224,7 +224,7 @@ const DEFAULT_SECTION_LIST = [
   { slug:'footer',       label:'Footer',              order:10 },
 ];
 
-websiteCmsRouter.get('/admin/sections', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/sections', adminGuard, async (_req: Request, res: Response) => {
   // Ensure all default sections exist
   await Promise.all(DEFAULT_SECTION_LIST.map(s =>
     prisma.websiteSection.upsert({ where: { slug: s.slug }, create: { ...s, visible: true }, update: {} })
@@ -233,7 +233,7 @@ websiteCmsRouter.get('/admin/sections', adminGuard, async (_req, res) => {
   ok(res, { sections });
 });
 
-websiteCmsRouter.put('/admin/sections/:slug', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/sections/:slug', adminGuard, async (req: Request, res: Response) => {
   const { slug } = req.params;
   const { visible } = req.body;
   const s = await prisma.websiteSection.upsert({
@@ -245,82 +245,82 @@ websiteCmsRouter.put('/admin/sections/:slug', adminGuard, async (req, res) => {
 });
 
 // ── Feature Cards ─────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/features', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/features', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.featureCard.findMany({ orderBy: { order: 'asc' } }));
 });
-websiteCmsRouter.post('/admin/features', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/features', adminGuard, async (req: Request, res: Response) => {
   const { icon, title, desc, order } = req.body;
   ok(res, await prisma.featureCard.create({ data: { icon, title, desc, order: order ?? 0 } }));
 });
-websiteCmsRouter.put('/admin/features/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/features/:id', adminGuard, async (req: Request, res: Response) => {
   const { icon, title, desc, order, visible } = req.body;
   ok(res, await prisma.featureCard.update({ where: { id: req.params.id }, data: { icon, title, desc, order, visible } }));
 });
-websiteCmsRouter.delete('/admin/features/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/features/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.featureCard.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Pricing Plans ─────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/pricing', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/pricing', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.pricingPlan.findMany({ orderBy: { order: 'asc' } }));
 });
-websiteCmsRouter.post('/admin/pricing', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/pricing', adminGuard, async (req: Request, res: Response) => {
   const { name, description, monthlyPrice, yearlyPrice, currency, features, ctaText, highlighted, order } = req.body;
   ok(res, await prisma.pricingPlan.create({ data: { name, description, monthlyPrice, yearlyPrice, currency: currency ?? 'GBP', features: features ?? [], ctaText: ctaText ?? 'Get Started', highlighted: !!highlighted, order: order ?? 0 } }));
 });
-websiteCmsRouter.put('/admin/pricing/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/pricing/:id', adminGuard, async (req: Request, res: Response) => {
   const { name, description, monthlyPrice, yearlyPrice, currency, features, ctaText, highlighted, visible, order } = req.body;
   ok(res, await prisma.pricingPlan.update({ where: { id: req.params.id }, data: { name, description, monthlyPrice, yearlyPrice, currency, features, ctaText, highlighted, visible, order } }));
 });
-websiteCmsRouter.delete('/admin/pricing/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/pricing/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.pricingPlan.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Testimonials ──────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/testimonials', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/testimonials', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.cmsTestimonial.findMany({ orderBy: { order: 'asc' } }));
 });
-websiteCmsRouter.post('/admin/testimonials', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/testimonials', adminGuard, async (req: Request, res: Response) => {
   const { name, business, avatarUrl, text, stars, order } = req.body;
   ok(res, await prisma.cmsTestimonial.create({ data: { name, business, avatarUrl, text, stars: stars ?? 5, order: order ?? 0 } }));
 });
-websiteCmsRouter.put('/admin/testimonials/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/testimonials/:id', adminGuard, async (req: Request, res: Response) => {
   const { name, business, avatarUrl, text, stars, visible, order } = req.body;
   ok(res, await prisma.cmsTestimonial.update({ where: { id: req.params.id }, data: { name, business, avatarUrl, text, stars, visible, order } }));
 });
-websiteCmsRouter.delete('/admin/testimonials/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/testimonials/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.cmsTestimonial.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Partners ──────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/partners', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/partners', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.partnerBusiness.findMany({ orderBy: { createdAt: 'desc' } }));
 });
-websiteCmsRouter.post('/admin/partners', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/partners', adminGuard, async (req: Request, res: Response) => {
   const { name, logoUrl, website, industry, location, description, active, featured, showOnHome } = req.body;
   ok(res, await prisma.partnerBusiness.create({ data: { name, logoUrl, website, industry, location, description, active: active !== false, featured: !!featured, showOnHome: showOnHome !== false } }));
 });
-websiteCmsRouter.put('/admin/partners/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/partners/:id', adminGuard, async (req: Request, res: Response) => {
   const { name, logoUrl, website, industry, location, description, active, featured, showOnHome } = req.body;
   ok(res, await prisma.partnerBusiness.update({ where: { id: req.params.id }, data: { name, logoUrl, website, industry, location, description, active, featured, showOnHome } }));
 });
-websiteCmsRouter.delete('/admin/partners/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/partners/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.partnerBusiness.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Reviews ───────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/reviews', adminGuard, async (req, res) => {
+websiteCmsRouter.get('/admin/reviews', adminGuard, async (req: Request, res: Response) => {
   const status = (req.query.status as string) ?? undefined;
   const where: any = status ? { status } : {};
   const reviews = await prisma.publicReview.findMany({ where, orderBy: { createdAt: 'desc' } });
   ok(res, { reviews });
 });
 
-websiteCmsRouter.put('/admin/reviews/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/reviews/:id', adminGuard, async (req: Request, res: Response) => {
   const { status, pinned, hidden, replyText, comment } = req.body;
   const update: any = {};
   if (status !== undefined)    update.status  = status;
@@ -331,65 +331,65 @@ websiteCmsRouter.put('/admin/reviews/:id', adminGuard, async (req, res) => {
   ok(res, await prisma.publicReview.update({ where: { id: req.params.id }, data: update }));
 });
 
-websiteCmsRouter.delete('/admin/reviews/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/reviews/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.publicReview.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Blog ──────────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/blog', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/blog', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.blogPost.findMany({ orderBy: { createdAt: 'desc' } }));
 });
-websiteCmsRouter.post('/admin/blog', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/blog', adminGuard, async (req: Request, res: Response) => {
   const { title, slug, summary, content, coverImage, published, tags, seoTitle, seoDesc } = req.body;
   const s = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   ok(res, await prisma.blogPost.create({ data: { title, slug: s, summary, content, coverImage, published: !!published, tags: tags ?? [], seoTitle, seoDesc } }));
 });
-websiteCmsRouter.put('/admin/blog/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/blog/:id', adminGuard, async (req: Request, res: Response) => {
   const { title, slug, summary, content, coverImage, published, tags, seoTitle, seoDesc } = req.body;
   ok(res, await prisma.blogPost.update({ where: { id: req.params.id }, data: { title, slug, summary, content, coverImage, published, tags, seoTitle, seoDesc } }));
 });
-websiteCmsRouter.delete('/admin/blog/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/blog/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.blogPost.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── FAQ ───────────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/faq', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/faq', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.faqItem.findMany({ orderBy: { order: 'asc' } }));
 });
-websiteCmsRouter.post('/admin/faq', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/faq', adminGuard, async (req: Request, res: Response) => {
   const { question, answer, order } = req.body;
   ok(res, await prisma.faqItem.create({ data: { question, answer, order: order ?? 0 } }));
 });
-websiteCmsRouter.put('/admin/faq/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/faq/:id', adminGuard, async (req: Request, res: Response) => {
   const { question, answer, order, visible } = req.body;
   ok(res, await prisma.faqItem.update({ where: { id: req.params.id }, data: { question, answer, order, visible } }));
 });
-websiteCmsRouter.delete('/admin/faq/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/faq/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.faqItem.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Banners ───────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/banners', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/banners', adminGuard, async (_req: Request, res: Response) => {
   ok(res, await prisma.announcementBanner.findMany({ orderBy: { createdAt: 'desc' } }));
 });
-websiteCmsRouter.post('/admin/banners', adminGuard, async (req, res) => {
+websiteCmsRouter.post('/admin/banners', adminGuard, async (req: Request, res: Response) => {
   const { text, linkText, linkUrl, type, active, startsAt, endsAt } = req.body;
   ok(res, await prisma.announcementBanner.create({ data: { text, linkText, linkUrl, type: type ?? 'INFO', active: active !== false, startsAt: startsAt ? new Date(startsAt) : null, endsAt: endsAt ? new Date(endsAt) : null } }));
 });
-websiteCmsRouter.put('/admin/banners/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.put('/admin/banners/:id', adminGuard, async (req: Request, res: Response) => {
   const { text, linkText, linkUrl, type, active, startsAt, endsAt } = req.body;
   ok(res, await prisma.announcementBanner.update({ where: { id: req.params.id }, data: { text, linkText, linkUrl, type, active, startsAt: startsAt ? new Date(startsAt) : null, endsAt: endsAt ? new Date(endsAt) : null } }));
 });
-websiteCmsRouter.delete('/admin/banners/:id', adminGuard, async (req, res) => {
+websiteCmsRouter.delete('/admin/banners/:id', adminGuard, async (req: Request, res: Response) => {
   await prisma.announcementBanner.delete({ where: { id: req.params.id } });
   ok(res, { ok: true });
 });
 
 // ── Analytics ─────────────────────────────────────────────────────
-websiteCmsRouter.get('/admin/analytics', adminGuard, async (_req, res) => {
+websiteCmsRouter.get('/admin/analytics', adminGuard, async (_req: Request, res: Response) => {
   const now   = new Date();
   const day30 = new Date(now.getTime() - 30 * 86400000);
   const day7  = new Date(now.getTime() - 7  * 86400000);

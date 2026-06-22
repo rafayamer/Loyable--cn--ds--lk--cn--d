@@ -227,7 +227,7 @@ export const launchCampaign = async (
 
   const layout   = campaign.layoutJson as unknown as CampaignLayout;
   const provider = business?.messagingProvider ?? 'META';
-  const channel  = (campaign.channel as string) ?? (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META');
+  const channel  = (campaign.channel ?? (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META')) as Prisma.MessageQueueCreateManyInput['channel'];
 
   const jobs:    OutboundMessageJobData[] = [];
   const records: Prisma.MessageQueueCreateManyInput[] = [];
@@ -333,7 +333,7 @@ export const scheduleCampaign = async (
   });
 
   // Enqueue a single "campaign launcher" job — the worker calls launchCampaign
-  const { enqueueMessage } = await import('../queues/messaging.queue');
+  const { enqueueMessage } = await import('../services/messaging-queue');
 
   // We reuse the message queue with a special system payload type
   const delayMs = scheduledFor.getTime() - Date.now();
@@ -520,7 +520,7 @@ const enqueueScheduledCampaignLaunch = async (
   businessId:  string,
   delayMs:     number
 ): Promise<void> => {
-  const { getMessageQueue } = await import('../queues/messaging.queue');
+  const { getMessageQueue } = await import('../services/messaging-queue');
   const queue = getMessageQueue();
 
   await queue.add(
