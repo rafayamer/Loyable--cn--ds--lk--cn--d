@@ -162,28 +162,33 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  // Normalize phone — keep + prefix, strip spaces/dashes
-  const normalized = phone.trim().replace(/[\s\-().]/g, '');
+  // Normalize phone to E.164 — default country UK (+44)
+  const rawDigits = phone.trim().replace(/[^\d+]/g, '');
+  let normalized: string;
+  if (rawDigits.startsWith('+'))       normalized = rawDigits;
+  else if (rawDigits.startsWith('00')) normalized = '+' + rawDigits.slice(2);
+  else if (rawDigits.startsWith('0'))  normalized = '+44' + rawDigits.slice(1);
+  else if (rawDigits.length === 10)    normalized = '+44' + rawDigits;
+  else                                 normalized = '+' + rawDigits;
+
+  // Search both normalized and the original stripped input to handle legacy records
+  const searchVariants = [...new Set([normalized, rawDigits, phone.trim().replace(/[\s\-().]/g, '')])];
 
   let customer = await prisma.customer.findFirst({
     where: {
       businessId: biz.id,
-      OR: [
-        { whatsappNumber: normalized },
-        { whatsappNumber: normalized.startsWith('+') ? normalized.slice(1) : `+${normalized}` },
-      ],
+      OR: searchVariants.map(v => ({ whatsappNumber: v })),
     },
     select: { id: true, fullName: true, whatsappNumber: true },
   });
 
   let isNew = false;
   if (!customer) {
-    // Auto-create new customer on first portal visit
     customer = await prisma.customer.create({
       data: {
         businessId:     biz.id,
         fullName:       name.trim(),
-        whatsappNumber: normalized,
+        whatsappNumber: normalized,  // always stored as E.164
         segment:        'NEW',
       },
       select: { id: true, fullName: true, whatsappNumber: true },

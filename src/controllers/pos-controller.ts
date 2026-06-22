@@ -14,6 +14,18 @@ import {
   buildFBRInvoice,
   SaleItem,
 } from '../services/fbr-service';
+import { accruePointsForVisit } from '../services/loyalty-service';
+
+/** Normalise any phone number format to E.164. Defaults to +44 (UK). */
+function normalisePhone(raw: string): string {
+  const digits = raw.trim().replace(/[^\d+]/g, '');
+  if (digits.startsWith('+'))  return digits;
+  if (digits.startsWith('00')) return '+' + digits.slice(2);
+  if (digits.startsWith('0'))  return '+44' + digits.slice(1);
+  if (digits.length === 10)    return '+44' + digits;
+  if (digits.length === 11 && !digits.startsWith('+')) return '+' + digits;
+  return digits.startsWith('+') ? digits : '+' + digits;
+}
 
 export const posRouter = Router();
 
@@ -183,16 +195,14 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
     // Find or create customer
     let customerId: string | null = null;
     if (customerPhone) {
-      const normalizedPhone = customerPhone.startsWith('+')
-        ? customerPhone
-        : `+${customerPhone}`;
+      const normalizedPhone = normalisePhone(customerPhone);
 
       let customer = await prisma.customer.findFirst({
         where: {
           businessId,
           OR: [
             { whatsappNumber: normalizedPhone },
-            { whatsappNumber: customerPhone },
+            { whatsappNumber: customerPhone.trim() },
           ],
         },
       });
@@ -286,9 +296,19 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
         visitCount:    { increment: 1 },
         totalSpend:    { increment: new Prisma.Decimal(totalAmount.toFixed(2)) },
         lastVisitAt:   new Date(),
-        firstVisitAt:  undefined,
       },
     });
+
+    // Accrue loyalty points for this visit
+    let pointsEarned = 0;
+    let pointsBalance = 0;
+    try {
+      const pts = await accruePointsForVisit(visit.id, businessId, customerId, totalAmount);
+      pointsEarned  = pts.pointsEarned;
+      pointsBalance = pts.newBalance;
+    } catch (ptsErr) {
+      console.error('[pos] points accrual failed (non-fatal):', ptsErr);
+    }
 
     res.status(201).json({
       visit,
@@ -297,6 +317,8 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
       gstAmount,
       totalAmount,
       transactionId,
+      pointsEarned,
+      pointsBalance,
     });
   } catch (err) {
     console.error('[pos] create sale error', err);
@@ -378,7 +400,7 @@ posRouter.get('/receipt/:id', async (req: Request, res: Response) => {
 
     const business = await prisma.business.findUnique({
       where:  { id: businessId },
-      select: { name: true, ntn: true, strn: true, currency: true },
+      select: { name: true, ntn: true, strn: true, currency: true, logoUrl: true },
     });
 
     const gst       = Number(visit.gstAmount ?? 0);
@@ -388,6 +410,7 @@ posRouter.get('/receipt/:id', async (req: Request, res: Response) => {
     const qrUrl     = visit.fbrQrCode ?? '';
     const invoiceNo = visit.fbrInvoiceNumber ?? 'PENDING';
 
+    const curr = business?.currency ?? 'GBP';
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -402,9 +425,11 @@ posRouter.get('/receipt/:id', async (req: Request, res: Response) => {
   .qr{margin:12px auto;display:block;}
   .badge{background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;}
   .fail-badge{background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;}
+  img.logo{max-height:60px;max-width:200px;margin:0 auto 8px;display:block;}
 </style>
 </head>
 <body>
+${business?.logoUrl ? `<img src="${business.logoUrl}" class="logo" alt="logo"/>` : ''}
 <div class="center bold" style="font-size:16px">${business?.name ?? 'POS Receipt'}</div>
 ${business?.ntn  ? `<div class="center" style="font-size:11px">NTN: ${business.ntn}</div>`  : ''}
 ${business?.strn ? `<div class="center" style="font-size:11px">STRN: ${business.strn}</div>` : ''}
@@ -415,10 +440,10 @@ ${visit.branch?.name ? `<div class="center" style="font-size:11px">${visit.branc
 <div class="row"><span>Payment</span><span>${visit.paymentMode ?? 'N/A'}</span></div>
 ${visit.customer?.fullName ? `<div class="row"><span>Customer</span><span>${visit.customer.fullName}</span></div>` : ''}
 <div class="divider"></div>
-<div class="row"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-<div class="row"><span>GST (17%)</span><span>${gst.toFixed(2)}</span></div>
+<div class="row"><span>Subtotal</span><span>${curr} ${subtotal.toFixed(2)}</span></div>
+<div class="row"><span>GST (17%)</span><span>${curr} ${gst.toFixed(2)}</span></div>
 <div class="divider"></div>
-<div class="row bold"><span>TOTAL</span><span>${total.toFixed(2)}</span></div>
+<div class="row bold"><span>TOTAL</span><span>${curr} ${total.toFixed(2)}</span></div>
 <div class="divider"></div>
 <div class="center" style="font-size:11px;margin:8px 0">
   FBR Status: ${visit.fbrSubmittedAt

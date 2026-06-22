@@ -389,6 +389,8 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
             name:          true,
             slug:          true,
             industry:      true,
+            currency:      true,
+            logoUrl:       true,
             customDomain:  true,
             brandingColors:true,
             subscription: {
@@ -413,15 +415,17 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-/** PUT /api/auth/me  — update business profile (industry, name) */
+/** PUT /api/auth/me  — update business profile */
 const UpdateMeSchema = z.object({
-  industry: z.string().max(80).optional(),
-  name:     z.string().min(2).max(100).optional(),
-  ntn:      z.string().max(20).optional(),
-  strn:     z.string().max(20).optional(),
-  fbrPosId: z.number().int().optional(),
-  fbrToken: z.string().max(200).optional(),
-  gstRate:  z.number().min(0).max(100).optional(),
+  industry:   z.string().max(80).optional(),
+  name:       z.string().min(2).max(100).optional(),
+  currency:   z.string().length(3).optional(),
+  logoUrl:    z.string().url().optional().or(z.literal('')),
+  ntn:        z.string().max(20).optional(),
+  strn:       z.string().max(20).optional(),
+  fbrPosId:   z.number().int().optional(),
+  fbrToken:   z.string().max(200).optional(),
+  gstRate:    z.number().min(0).max(100).optional(),
   fbrEnabled: z.boolean().optional(),
 });
 
@@ -434,6 +438,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
       data: {
         ...(body.industry   !== undefined && { industry:   body.industry }),
         ...(body.name       !== undefined && { name:       body.name }),
+        ...(body.currency   !== undefined && { currency:   body.currency }),
+        ...(body.logoUrl    !== undefined && { logoUrl:    body.logoUrl || null }),
         ...(body.ntn        !== undefined && { ntn:        body.ntn }),
         ...(body.strn       !== undefined && { strn:       body.strn }),
         ...(body.fbrPosId   !== undefined && { fbrPosId:   body.fbrPosId }),
@@ -441,7 +447,7 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.gstRate    !== undefined && { gstRate:    body.gstRate }),
         ...(body.fbrEnabled !== undefined && { fbrEnabled: body.fbrEnabled }),
       },
-      select: { id: true, name: true, industry: true },
+      select: { id: true, name: true, industry: true, currency: true, logoUrl: true },
     });
     res.json({ business: updated });
   } catch (err) {

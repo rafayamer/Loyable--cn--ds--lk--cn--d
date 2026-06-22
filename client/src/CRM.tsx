@@ -189,6 +189,8 @@ const hydrateFromApi=async()=>{
     if(biz?.industry)localStorage.setItem("biz_industry",biz.industry);
     if(biz?.name)localStorage.setItem("biz_name",biz.name);
     if(biz?.slug)localStorage.setItem("biz_slug",biz.slug);
+    if(biz?.currency)localStorage.setItem("biz_currency",biz.currency);
+    if(biz?.logoUrl)localStorage.setItem("biz_logo",biz.logoUrl);
   }catch{}
 };
 
@@ -1796,13 +1798,23 @@ const LoyaltyPage=()=>{
 // ════════════════════════════════════════════════════════════════
 // DATA HUB
 // ════════════════════════════════════════════════════════════════
+const TARGET_FIELDS=["fullName","whatsappNumber","email","birthday","gender","address"];
+const TARGET_LABELS:Record<string,string>={fullName:"Full Name",whatsappNumber:"WhatsApp Number",email:"Email",birthday:"Birthday",gender:"Gender",address:"Address"};
+
 const DataHubPage=()=>{
   const [tab,setTab]=useState("queue");
   const [queueMsgs,setQueueMsgs]=useState<any[]>([]);
   const [queueLoading,setQueueLoading]=useState(true);
-  const [uploadedFiles,setUploadedFiles]=useState<{name:string,rows:number,uploadedAt:string}[]>([]);
+  // import flow state
+  const [step,setStep]=useState<"upload"|"map"|"done">("upload");
+  const [fileObj,setFileObj]=useState<File|null>(null);
+  const [headers,setHeaders]=useState<string[]>([]);
+  const [sampleRows,setSampleRows]=useState<any[]>([]);
+  const [rowCount,setRowCount]=useState(0);
+  const [mapping,setMapping]=useState<Record<string,string>>({});
   const [uploading,setUploading]=useState(false);
-  const [uploadMsg,setUploadMsg]=useState("");
+  const [importMsg,setImportMsg]=useState<{text:string;ok:boolean}|null>(null);
+  const [importResult,setImportResult]=useState<any>(null);
 
   useEffect(()=>{
     if(tab==="queue"){
@@ -1811,18 +1823,58 @@ const DataHubPage=()=>{
     }
   },[tab]);
 
-  const handleCsvUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+  // Step 1: upload file → get headers
+  const handleFileSelect=async(e:React.ChangeEvent<HTMLInputElement>)=>{
     const f=e.target.files?.[0]; if(!f)return;
-    if(!f.name.endsWith(".csv")&&!f.name.endsWith(".xlsx")){setUploadMsg("Only .csv or .xlsx files are supported.");return;}
-    setUploading(true);setUploadMsg("");
+    if(!f.name.endsWith(".csv")&&!f.name.endsWith(".xlsx")&&!f.name.endsWith(".xls")){
+      setImportMsg({text:"Only .csv or .xlsx files are supported.",ok:false});return;
+    }
+    setUploading(true);setImportMsg(null);setFileObj(f);
     try{
       const form=new FormData();form.append("file",f);
-      await fetch("/api/import/customers/preview",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""}`},body:form});
-      setUploadedFiles(p=>[...p,{name:f.name,rows:0,uploadedAt:new Date().toLocaleTimeString()}]);
-      setUploadMsg("File uploaded. Go to Customers to review and confirm.");
-    }catch(err:any){setUploadMsg("Error: "+(err.message??"Upload failed"));}
+      const res=await fetch("/api/import/preview-headers",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""}` },body:form});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.error||"Preview failed");
+      setHeaders(data.headers??[]);
+      setSampleRows(data.sampleRows??[]);
+      setRowCount(data.rowCount??0);
+      // Auto-map obvious column names
+      const auto:Record<string,string>={};
+      (data.headers??[]).forEach((h:string)=>{
+        const hl=h.toLowerCase().replace(/[\s_-]/g,"");
+        if(hl.includes("name"))auto[h]="fullName";
+        else if(hl.includes("phone")||hl.includes("whatsapp")||hl.includes("mobile")||hl.includes("number"))auto[h]="whatsappNumber";
+        else if(hl.includes("email"))auto[h]="email";
+        else if(hl.includes("birth")||hl.includes("dob"))auto[h]="birthday";
+        else if(hl.includes("gender"))auto[h]="gender";
+        else if(hl.includes("address")||hl.includes("location"))auto[h]="address";
+      });
+      setMapping(auto);
+      setStep("map");
+    }catch(err:any){setImportMsg({text:"Error: "+(err.message??"Could not read file"),ok:false});}
     finally{setUploading(false);e.target.value="";}
   };
+
+  // Step 2: confirm mapping → import
+  const handleImport=async()=>{
+    if(!fileObj)return;
+    const hasPhone=Object.values(mapping).includes("whatsappNumber");
+    const hasEmail=Object.values(mapping).includes("email");
+    if(!hasPhone&&!hasEmail){setImportMsg({text:"Map at least WhatsApp Number or Email before importing.",ok:false});return;}
+    setUploading(true);setImportMsg(null);
+    try{
+      const form=new FormData();form.append("file",fileObj);form.append("mapping",JSON.stringify(mapping));
+      const res=await fetch("/api/import/customers",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""}` },body:form});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.error||"Import failed");
+      setImportResult(data);
+      setImportMsg({text:`Imported ${data.created??0} new · Updated ${data.updated??0} · Skipped ${data.skipped??0} of ${data.processed??rowCount} rows.`,ok:true});
+      setStep("done");
+    }catch(err:any){setImportMsg({text:"Error: "+(err.message??"Import failed"),ok:false});}
+    finally{setUploading(false);}
+  };
+
+  const resetImport=()=>{setStep("upload");setFileObj(null);setHeaders([]);setSampleRows([]);setMapping({});setImportMsg(null);setImportResult(null);};
 
   const CUSTOMER_COLS=[
     {col:"fullName",type:"text",required:true,example:"John Smith",desc:"Customer's full name"},
@@ -1884,20 +1936,63 @@ const DataHubPage=()=>{
       </div>}
 
       {tab==="import"&&<div className="space-y-4">
-        <div className="gc rounded-xl p-5" style={CARD}>
+        {/* Step 1: Upload */}
+        {step==="upload"&&<div className="gc rounded-xl p-5" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Download size={14} className="text-violet-400"/>Import Customers via CSV / XLSX</h3>
-          <p className="text-xs text-slate-400 mb-4">Upload a spreadsheet with your customer data. Switch to the "Column Format" tab to see the exact columns and format required.</p>
+          <p className="text-xs text-slate-400 mb-4">Upload a spreadsheet. We'll read the column headers and let you map them to the right fields before importing.</p>
           <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-xl cursor-pointer transition-all" style={{background:"rgba(139,92,246,0.05)",border:"2px dashed rgba(139,92,246,0.3)"}}>
-            <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleCsvUpload} disabled={uploading}/>
+            <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} disabled={uploading}/>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.15)"}}><Download size={24} className="text-violet-400"/></div>
-            <div className="text-center"><div className="text-sm font-semibold text-white">{uploading?"Uploading…":"Drop CSV or XLSX here"}</div><div className="text-xs text-slate-400 mt-1">or click to browse · max 10 MB</div></div>
+            <div className="text-center"><div className="text-sm font-semibold text-white">{uploading?"Reading file…":"Drop CSV or XLSX here"}</div><div className="text-xs text-slate-400 mt-1">or click to browse · max 10 MB</div></div>
           </label>
-          {uploadMsg&&<p className="text-xs mt-3 text-center" style={{color:uploadMsg.startsWith("Error")?"#ef4444":"#22c55e"}}>{uploadMsg}</p>}
-          {uploadedFiles.length>0&&<div className="mt-4 space-y-2">
-            <h4 className="text-xs font-semibold text-slate-400">Uploaded this session</h4>
-            {uploadedFiles.map((f,i)=><div key={i} className="flex items-center gap-3 p-2.5 rounded-lg" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.15)"}}><FileText size={14} className="text-green-400 flex-shrink-0"/><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{f.name}</div><div className="text-xs text-slate-500">Uploaded at {f.uploadedAt}</div></div><Badge color="#22c55e">Uploaded</Badge></div>)}
+          {importMsg&&<p className="text-xs mt-3 text-center" style={{color:importMsg.ok?"#22c55e":"#ef4444"}}>{importMsg.text}</p>}
+        </div>}
+
+        {/* Step 2: Map columns */}
+        {step==="map"&&<div className="space-y-4">
+          <div className="gc rounded-xl p-5" style={CARD}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2"><FileText size={14} className="text-violet-400"/>Map Columns — {rowCount} rows detected</h3>
+              <button onClick={resetImport} className="text-xs text-slate-400 hover:text-white"><X size={13}/></button>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Match each column from your file to the correct field. At least <span className="text-violet-300 font-medium">WhatsApp Number</span> must be mapped.</p>
+            <div className="space-y-2 mb-4">
+              {headers.map(h=>(
+                <div key={h} className="flex items-center gap-3">
+                  <div className="flex-1 text-xs text-white font-mono truncate px-3 py-2 rounded-lg" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>{h}{sampleRows[0]&&sampleRows[0][h]!==undefined&&<span className="text-slate-500 ml-2">e.g. {String(sampleRows[0][h]).slice(0,20)}</span>}</div>
+                  <select value={mapping[h]||""} onChange={e=>{const v=e.target.value;setMapping(p=>({...p,[h]:v}));}} className="text-xs text-white px-2 py-2 rounded-lg outline-none" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)"}}>
+                    <option value="" style={{background:"#1a1030"}}>— Skip —</option>
+                    {TARGET_FIELDS.map(f=><option key={f} value={f} style={{background:"#1a1030"}}>{TARGET_LABELS[f]}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            {importMsg&&<p className="text-xs mb-3" style={{color:importMsg.ok?"#22c55e":"#ef4444"}}>{importMsg.text}</p>}
+            <div className="flex gap-2">
+              <button onClick={handleImport} disabled={uploading} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                {uploading?<RefreshCw size={12} className="animate-spin"/>:<Upload size={12}/>}{uploading?"Importing…":`Import ${rowCount} rows`}
+              </button>
+              <button onClick={resetImport} className="px-4 py-2.5 rounded-xl text-xs text-slate-400 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
+            </div>
+          </div>
+        </div>}
+
+        {/* Step 3: Done */}
+        {step==="done"&&<div className="gc rounded-xl p-5" style={CARD}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(34,197,94,0.15)"}}><CheckCircle size={20} className="text-green-400"/></div>
+            <div><div className="text-sm font-semibold text-white">Import Complete</div><div className="text-xs text-slate-400 mt-0.5">{importMsg?.text}</div></div>
+          </div>
+          {importResult&&<div className="grid grid-cols-3 gap-3 mb-4">
+            {[{l:"Created",v:importResult.created??0,c:"#22c55e"},{l:"Updated",v:importResult.updated??0,c:"#8b5cf6"},{l:"Skipped",v:importResult.skipped??0,c:"#94a3b8"}].map(s=>(
+              <div key={s.l} className="text-center p-3 rounded-xl" style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${s.c}22`}}>
+                <div className="text-xl font-bold" style={{color:s.c}}>{s.v}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">{s.l}</div>
+              </div>
+            ))}
           </div>}
-        </div>
+          <button onClick={resetImport} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Import Another File</button>
+        </div>}
       </div>}
 
       {tab==="format"&&<div className="space-y-4">
@@ -2696,11 +2791,23 @@ const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
+  const [currencyVal,setCurrencyVal]=useState(()=>localStorage.getItem("biz_currency")||"GBP");
+  const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
+  const [bizSaved,setBizSaved]=useState(false);
   const [inviteEmail,setInviteEmail]=useState("");
   const [inviteRole,setInviteRole]=useState("MARKETING_STAFF");
   const [inviting,setInviting]=useState(false);
   const [inviteMsg,setInviteMsg]=useState("");
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
+  const saveBizSettings=async()=>{
+    try{
+      await api.settings.update({name:bizNameVal,currency:currencyVal,logoUrl:logoUrlVal||undefined,industry});
+      localStorage.setItem("biz_name",bizNameVal);
+      localStorage.setItem("biz_currency",currencyVal);
+      if(logoUrlVal)localStorage.setItem("biz_logo",logoUrlVal);
+      setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
+    }catch{}
+  };
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
     <div className="space-y-4">
@@ -2709,12 +2816,19 @@ const SettingsPage=({wa,onConnect})=>{
       <div className="gc rounded-xl p-5" style={CARD}>
         {tab==="business"&&<div className="space-y-4">
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">TC</span></div>
-            <div><button className="text-xs text-violet-400 hover:text-violet-300">Change Logo</button><div className="text-xs text-slate-500 mt-1">businessId: biz_the_coffee_house</div></div>
+            {logoUrlVal
+              ?<img src={logoUrlVal} className="w-16 h-16 rounded-2xl object-contain" style={{background:"rgba(255,255,255,0.08)"}} alt="logo"/>
+              :<div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">{bizNameVal.slice(0,2).toUpperCase()||"BZ"}</span></div>
+            }
+            <div>
+              <div className="text-xs font-semibold text-white">{bizNameVal||"Your Business"}</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Logo URL appears on receipts and customer portal</div>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>{setBizNameVal(e.target.value);localStorage.setItem("biz_name",e.target.value);}} onBlur={e=>api.settings.update({name:e.target.value}).catch(()=>{})} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-            {[{l:"Country (ISO 3166-1)",v:"GB"},{l:"Currency (ISO 4217)",v:"GBP"},{l:"Timezone (IANA)",v:"Europe/London"},{l:"Custom Domain (white-label)",v:"loyalty.coffeehouse.com"},{l:"Loyal Days Window",v:"7"},{l:"Irregular Gap Days",v:"14"},{l:"Lost Days Threshold",v:"60"},{l:"Message Cooldown (hours)",v:"72"}].map((f,i)=><div key={i}><label className="text-xs text-slate-400 mb-1 block">{f.l}</label><input defaultValue={f.v} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>)}
+            <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>setBizNameVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Logo URL (for receipts & portal)</label><input value={logoUrlVal} onChange={e=>setLogoUrlVal(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Currency (ISO 4217)</label><input value={currencyVal} onChange={e=>setCurrencyVal(e.target.value.toUpperCase())} placeholder="GBP" maxLength={3} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
               <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
@@ -2725,7 +2839,10 @@ const SettingsPage=({wa,onConnect})=>{
               </div>
             </div>
           </div>
-          <button className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+          <div className="flex items-center gap-3">
+            <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+            {bizSaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
+          </div>
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
@@ -3184,10 +3301,12 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
     }
   };
 
+  const [ptsEarned,setPtsEarned]=useState<number|null>(null);
   const markPaid=async()=>{
-    setPaying(true);setErr("");
+    setPaying(true);setErr("");setPtsEarned(null);
     try{
-      await api.pos.createSale({customerPhone:order.phone?normPhone(order.phone):undefined,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
+      const r=await api.pos.createSale({customerPhone:order.phone?normPhone(order.phone):undefined,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
+      if(r?.pointsEarned)setPtsEarned(r.pointsEarned);
       // Deduct inventory
       order.items.forEach(i=>deductStock(bizType,i.name,i.qty));
       updateOrder(order.id,{status:"PAID"});
@@ -3291,6 +3410,11 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
             <span>Paid · {order.payMode}</span>
             <button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button>
           </div>
+          {ptsEarned!=null&&ptsEarned>0&&(
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold" style={{background:"rgba(245,158,11,0.08)",borderRadius:8,padding:"4px 8px"}}>
+              ⭐ +{ptsEarned} loyalty points earned{order.cname?` for ${order.cname}`:""}
+            </div>
+          )}
           {order.phone&&(
             <div className="flex items-center gap-2 text-xs">
               {waSent==="sending"&&<><RefreshCw size={11} className="animate-spin text-slate-400"/><span className="text-slate-400">Sending WhatsApp receipt…</span></>}
@@ -3601,7 +3725,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for receipt)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+92…" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+44xxxxxxxxx" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
           </div>
           <div className="flex gap-2 mb-4">
@@ -3763,7 +3887,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
   const [tab,setTab]=useState<"pos"|"kds"|"inventory"|"history"|"fbr">(
     ()=>can(role,"viewKitchen")&&!can(role,"newSale")?"kds":"pos"
   );
-  const [currency]=useState("PKR");
+  const currency=localStorage.getItem("biz_currency")||"GBP";
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
 
   // Build tab list based on biz type and role
