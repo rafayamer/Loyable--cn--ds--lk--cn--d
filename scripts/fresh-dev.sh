@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 # ============================================================
 #  fresh-dev.sh
-#  Kill any stale dev processes and start a clean full stack:
-#    - backend API      (port 4000)
-#    - WAHA WhatsApp API (port 3001)
+#  Kill stale processes, install all deps, and start dev stack:
+#    - backend API       (port 4000)
 #    - Vite client       (port 3000)
+#    - WAHA WhatsApp API (port 3001)  — skipped if unavailable
 #
-#  Usage:  npm run fresh      (preferred)
+#  Usage:  npm run fresh
 #     or:  bash scripts/fresh-dev.sh
 # ============================================================
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 
-echo "🧹  Clearing old dev processes…"
+echo "🧹  Stopping old dev processes..."
 
-# 1) Kill anything listening on our dev ports.
 for PORT in 4000 3001 3000; do
   PIDS=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
   if [ -n "${PIDS}" ]; then
@@ -24,25 +23,33 @@ for PORT in 4000 3001 3000; do
   fi
 done
 
-# 2) Kill leftover dev runners by name (ts-node-dev, vite, waha, concurrently).
-pkill -9 -f "ts-node-dev" 2>/dev/null || true
-pkill -9 -f "vite"        2>/dev/null || true
-pkill -9 -f "nest start"  2>/dev/null || true
-pkill -9 -f "start:dev"   2>/dev/null || true
+pkill -9 -f "ts-node-dev"  2>/dev/null || true
+pkill -9 -f "vite"         2>/dev/null || true
+pkill -9 -f "nest start"   2>/dev/null || true
+pkill -9 -f "start:dev"    2>/dev/null || true
 pkill -9 -f "concurrently" 2>/dev/null || true
 
-# 3) Give the OS a moment to release the sockets.
 sleep 1
 
-echo "📦  Pulling latest code…"
-git pull origin "$(git rev-parse --abbrev-ref HEAD)" 2>&1 | sed 's/^/   /'
+echo "📦  Installing root dependencies..."
+npm install --legacy-peer-deps 2>&1 | tail -5
 
-echo "📦  Installing dependencies…"
-npm install --legacy-peer-deps 2>&1 | tail -3
+echo "📦  Installing client dependencies..."
+npm --prefix client install --legacy-peer-deps 2>&1 | tail -5
 
-echo "🔄  Regenerating Prisma client…"
+echo "🔄  Regenerating Prisma client..."
 npm run db:generate 2>&1 | tail -3
 
-echo "✅  Clean. Starting fresh dev session (backend + WAHA + client)…"
+echo ""
+echo "✅  All dependencies installed. Starting dev servers..."
+echo "   → API:     http://localhost:4000"
+echo "   → Client:  http://localhost:3000"
 echo "------------------------------------------------------------"
-exec npm run dev:all
+
+# Try full stack (with WAHA); fall back to no-waha if waha dir missing or yarn not set up
+if [ -f "waha/package.json" ] && command -v yarn &>/dev/null; then
+  exec npm run dev:all
+else
+  echo "⚠️  WAHA not available — starting API + client only"
+  exec npm run dev:no-waha
+fi
