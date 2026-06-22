@@ -958,99 +958,153 @@ const Skeleton=({h="h-4",w="w-full",className=""}:{h?:string,w?:string,className
 // DASHBOARD
 // ════════════════════════════════════════════════════════════════
 const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
+  const today=new Date();
+  const fmt=(d:Date)=>d.toISOString().slice(0,10);
+  const [dateFrom,setDateFrom]=useState(fmt(new Date(today.getTime()-29*86400000)));
+  const [dateTo,setDateTo]=useState(fmt(today));
+  const [preset,setPreset]=useState<"7d"|"30d"|"90d"|"custom">("30d");
   const [dash,setDash]=useState<any>(null);
   const [loading,setLoading]=useState(true);
-  const [customers,setCustomers]=useState<any[]>([]);
   const [snapshot,setSnapshot]=useState<any[]>([]);
   const [analyticsLoading,setAnalyticsLoading]=useState(true);
-  useEffect(()=>{
+  const [atRisk,setAtRisk]=useState<any[]>([]);
+
+  const applyPreset=(p:"7d"|"30d"|"90d")=>{
+    const days=p==="7d"?7:p==="30d"?30:90;
+    setDateFrom(fmt(new Date(today.getTime()-days*86400000)));
+    setDateTo(fmt(today));
+    setPreset(p);
+  };
+
+  const load=useCallback(()=>{
+    setLoading(true);
     api.dashboard.get().then(setDash).catch(()=>{}).finally(()=>setLoading(false));
-    api.customers.list({segment:"AT_RISK",limit:4}).then(d=>setCustomers(d.customers.map(mapCustomer))).catch(()=>{});
-    api.analytics.snapshot(30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setAnalyticsLoading(false));
-  },[]);
+    api.customers.list({segment:"AT_RISK",limit:5}).then(d=>setAtRisk(d.customers.map(mapCustomer))).catch(()=>{});
+    api.analytics.snapshot(preset==="7d"?7:preset==="90d"?90:30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setAnalyticsLoading(false));
+  },[preset]);
+
+  useEffect(()=>{load();},[load]);
   const k=dash?.kpis;
   const visitTrend=(dash?.visitTrend??[]).map((d:any)=>({day:d.day?.slice(5),v:d.visits,r:d.revenue}));
   const segData=(dash?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#8b5cf6"}));
   const quotaPct=k&&k.quotaTotal>0?Math.round((k.quotaUsed/k.quotaTotal)*100):0;
+  const latest=snapshot[snapshot.length-1]??{};
+  const msgPerf=snapshot.slice(-8).map((s:any)=>({w:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),sent:s.messagesSent||0,del:s.messagesDelivered||0,read:s.messagesRead||0}));
+  const growthData=snapshot.slice(-6).map((s:any)=>({m:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),c:s.totalCustomers||0,ret:s.loyalCustomers||0}));
+  const retRate=latest.retentionRate!=null?`${Math.round(Number(latest.retentionRate))}%`:"-";
+  const avgLtv=latest.averageLtv!=null?`£${Math.round(Number(latest.averageLtv))}`:"-";
+  const churnRate=latest.churnRate!=null?`${Math.round(Number(latest.churnRate))}%`:"-";
+  const repeatRate=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
+
   return(
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Dashboard</h1><p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</p></div><div className="flex items-center gap-2"><Badge color={C.green}>Live</Badge></div></div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        {loading?[...Array(6)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
-          <KPI icon={Users} label="Total Customers" value={k?.totalCustomers?.toLocaleString()??"-"} change={`+${k?.newThisMonth??0} this month`} positive color={C.primary}/>
-          <KPI icon={Eye} label="Active Customers" value={k?.activeCustomers?.toLocaleString()??"-"} change="30-day window" positive color={C.accent}/>
-          <KPI icon={TrendingUp} label="Revenue (30d)" value={`£${(k?.revenue??0).toLocaleString()}`} change={`${k?.revenueChange>=0?"+":""}${k?.revenueChange??0}%`} positive={k?.revenueChange>=0} color={C.green}/>
-          <KPI icon={Send} label="Messages (30d)" value={k?.messagesThisMonth?.toLocaleString()??"-"} change={`${quotaPct}% quota used`} positive={quotaPct<80} color={C.blue}/>
-          <KPI icon={AlertTriangle} label="At Risk" value={segData.find((s:any)=>s.name==="AT_RISK")?.value??"-"} change="need attention" positive={false} color={C.red}/>
-          <KPI icon={Heart} label="Retention Score" value={k&&k.totalCustomers>0?`${Math.round((k.activeCustomers/k.totalCustomers)*100)}%`:"-"} change="active/total ratio" positive color={C.pink}/>
+      {/* Header + date picker */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["7d","30d","90d"] as const).map(p=>(
+            <button key={p} onClick={()=>applyPreset(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${preset===p?"text-white":"text-slate-400 hover:text-white"}`} style={preset===p?{background:"rgba(139,92,246,0.25)"}:{background:"rgba(255,255,255,0.03)"}}>{p}</button>
+          ))}
+          <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPreset("custom");}} className="bg-transparent text-slate-300 outline-none text-xs w-[110px]"/>
+            <span className="text-slate-600">→</span>
+            <input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPreset("custom");}} className="bg-transparent text-slate-300 outline-none text-xs w-[110px]"/>
+          </div>
+          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/><span className="text-xs text-slate-400">Live</span></div>
+        </div>
+      </div>
+
+      {/* Quota warning banner */}
+      {k&&quotaPct>=80&&(
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:quotaPct>=95?"rgba(239,68,68,0.12)":"rgba(245,158,11,0.12)",border:`1px solid ${quotaPct>=95?"rgba(239,68,68,0.3)":"rgba(245,158,11,0.3)"}`}}>
+          <AlertTriangle size={16} className={quotaPct>=95?"text-red-400":"text-amber-400"}/>
+          <div className="flex-1">
+            <span className={`text-sm font-semibold ${quotaPct>=95?"text-red-400":"text-amber-400"}`}>{quotaPct>=95?"⚠️ Quota almost full":"📊 Approaching quota limit"}</span>
+            <span className="text-xs text-slate-400 ml-2">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()} messages used ({quotaPct}%)</span>
+          </div>
+          <button onClick={()=>setPage("settings")} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex-shrink-0" style={{background:quotaPct>=95?"linear-gradient(135deg,#ef4444,#dc2626)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>Upgrade Plan</button>
+        </div>
+      )}
+
+      {/* Primary KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {loading?[...Array(8)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
+          <KPI icon={Users} label="Total Customers" value={k?.totalCustomers?.toLocaleString()??"-"} change={`+${k?.newThisMonth??0} new`} positive color={C.primary}/>
+          <KPI icon={Eye} label="Active (30d)" value={k?.activeCustomers?.toLocaleString()??"-"} change="visited this month" positive color={C.accent}/>
+          <KPI icon={TrendingUp} label="Revenue (period)" value={`£${(k?.revenue??0).toLocaleString()}`} change={`${(k?.revenueChange??0)>=0?"+":""}${k?.revenueChange??0}% vs prev`} positive={(k?.revenueChange??0)>=0} color={C.green}/>
+          <KPI icon={Send} label="Messages sent" value={k?.messagesThisMonth?.toLocaleString()??"-"} change={`${quotaPct}% quota`} positive={quotaPct<80} color={C.blue}/>
+          <KPI icon={Heart} label="Retention Rate" value={retRate} change="loyal / total" positive color={C.pink}/>
+          <KPI icon={AlertTriangle} label="Churn Rate" value={churnRate} change="lost this period" positive={false} color={C.red}/>
+          <KPI icon={TrendingUp} label="Avg. LTV" value={avgLtv} change="lifetime spend" positive color={C.amber}/>
+          <KPI icon={Repeat} label="Repeat Visit Rate" value={repeatRate} change="came back" positive color={C.green}/>
         </>}
       </div>
-      {/* Quota bar */}
-      {k&&k.quotaTotal>0&&<div className="gc rounded-xl p-4" style={CARD}>
-        <div className="flex items-center justify-between mb-2"><span className="text-xs text-slate-400">Monthly Message Quota</span><span className="text-xs font-medium text-white">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()}</span></div>
-        <div className="h-2 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full transition-all" style={{width:`${Math.min(quotaPct,100)}%`,background:quotaPct>90?"#ef4444":quotaPct>75?"#f59e0b":"#8b5cf6"}}/></div>
-        {quotaPct>80&&<p className="text-xs text-amber-400 mt-1">⚠️ {quotaPct}% quota used — consider upgrading</p>}
+
+      {/* Quota bar (compact) */}
+      {k&&k.quotaTotal>0&&<div className="gc rounded-xl px-4 py-3" style={CARD}>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-400 flex-shrink-0">Monthly Quota</span>
+          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${Math.min(quotaPct,100)}%`,background:quotaPct>90?"#ef4444":quotaPct>75?"#f59e0b":"#8b5cf6"}}/></div>
+          <span className="text-xs font-mono text-white flex-shrink-0">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()}</span>
+          <span className={`text-xs font-bold flex-shrink-0 ${quotaPct>90?"text-red-400":quotaPct>75?"text-amber-400":"text-slate-400"}`}>{quotaPct}%</span>
+        </div>
       </div>}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="gc rounded-xl p-4" style={CARD}>
-          <h3 className="text-sm font-semibold text-white mb-3">Visits & Revenue (7 days)</h3>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 gc rounded-xl p-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-3">Visits & Revenue</h3>
           {loading?<Skeleton h="h-[200px]"/>:<ResponsiveContainer width="100%" height={200}><AreaChart data={visitTrend.length?visitTrend:[{day:"No data",v:0,r:0}]}><defs><linearGradient id="gv2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="gr2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.3}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="day" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="v" name="Visits" stroke="#8b5cf6" fill="url(#gv2)" strokeWidth={2}/><Area type="monotone" dataKey="r" name="Revenue £" stroke="#06b6d4" fill="url(#gr2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
         <div className="gc rounded-xl p-4" style={CARD}>
-          <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-white">Customer Segments</h3></div>
+          <h3 className="text-sm font-semibold text-white mb-3">Segments</h3>
           {loading?<Skeleton h="h-[200px]"/>:segData.length>0?(
-            <ResponsiveContainer width="100%" height={200}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" nameKey="name">{segData.map((s:any,i:number)=><Cell key={i} fill={s.color}/>)}</Pie><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/></PieChart></ResponsiveContainer>
-          ):<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No segment data yet — add customers first</div>}
+            <div className="flex flex-col gap-2">
+              <ResponsiveContainer width="100%" height={130}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">{segData.map((s:any,i:number)=><Cell key={i} fill={s.color}/>)}</Pie><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/></PieChart></ResponsiveContainer>
+              <div className="space-y-1">{segData.slice(0,5).map((s:any,i:number)=><div key={i} className="flex items-center justify-between text-xs"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full flex-shrink-0" style={{background:s.color}}/><span className="text-slate-300 truncate">{s.name}</span></span><span className="text-white font-medium">{s.value}</span></div>)}</div>
+            </div>
+          ):<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No data yet</div>}
         </div>
       </div>
+
+      {/* Message performance + growth */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-3">Message Performance</h3>
+          {analyticsLoading?<Skeleton h="h-[160px]"/>:msgPerf.length===0?<div className="h-[160px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
+          <ResponsiveContainer width="100%" height={160}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[2,2,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[2,2,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
+        </div>
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-3">Customer Growth</h3>
+          {analyticsLoading?<Skeleton h="h-[160px]"/>:growthData.length===0?<div className="h-[160px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
+          <ResponsiveContainer width="100%" height={160}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Bar dataKey="c" name="Total" fill="#8b5cf6" radius={[2,2,0,0]}/><Bar dataKey="ret" name="Loyal" fill="#22c55e" radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
+        </div>
+      </div>
+
+      {/* At-risk customers */}
       <div className="gc rounded-xl p-4" style={CARD}>
-        <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-white">High Churn Risk Customers</h3><button onClick={()=>setPage("customers")} className="text-xs text-violet-400">View all →</button></div>
-        {customers.length===0?<p className="text-xs text-slate-500 text-center py-4">No at-risk customers found</p>:<div className="space-y-2">{customers.filter(c=>c.churnRisk>0).sort((a:any,b:any)=>b.churnRisk-a.churnRisk).slice(0,4).map((c:any,i:number)=>(
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2"><AlertTriangle size={13} className="text-red-400"/>At-Risk Customers</h3>
+          <button onClick={()=>setPage("customers")} className="text-xs text-violet-400">View all →</button>
+        </div>
+        {atRisk.length===0?<p className="text-xs text-slate-500 text-center py-4">No at-risk customers — great retention! 🎉</p>:
+        <div className="space-y-2">{atRisk.slice(0,5).map((c:any,i:number)=>(
           <div key={i} className="flex items-center gap-3 p-2 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"},${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
-            <div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{c.name}</div><div className="text-xs text-slate-500">{c.segment} · {c.lastVisit}</div></div>
-            <div className="text-right"><div className={`text-sm font-bold ${c.churnRisk>75?"text-red-400":c.churnRisk>50?"text-amber-400":"text-green-400"}`}>{c.churnRisk}%</div><div className="text-xs text-slate-500">risk</div></div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"},${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-white font-medium truncate">{c.name}</div>
+              <div className="text-xs text-slate-500">{c.segment} · Last visit: {c.lastVisit}</div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className={`text-sm font-bold ${c.churnRisk>75?"text-red-400":c.churnRisk>50?"text-amber-400":"text-green-400"}`}>{c.churnRisk}%</div>
+              <div className="text-xs text-slate-500">churn risk</div>
+            </div>
+            <button onClick={()=>setPage("messages")} className="flex-shrink-0 p-1.5 rounded-lg text-xs text-white" style={{background:"rgba(139,92,246,0.2)"}} title="Send message"><Send size={12}/></button>
           </div>
         ))}</div>}
-      </div>
-      {/* Analytics section */}
-      <div className="pt-2 border-t border-white/5">
-        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><BarChart3 size={14} className="text-violet-400"/>Analytics</h2>
-        {(()=>{
-          const latest=snapshot[snapshot.length-1]??{};
-          const msgPerf=snapshot.slice(-8).map((s:any)=>({w:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),sent:s.messagesSent||0,del:s.messagesDelivered||0,read:s.messagesRead||0}));
-          const growthData=snapshot.slice(-6).map((s:any)=>({m:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),c:s.totalCustomers||0,ret:s.loyalCustomers||0}));
-          const retRate=latest.retentionRate!=null?`${Math.round(Number(latest.retentionRate))}%`:"-";
-          const avgLtv=latest.averageLtv!=null?`£${Math.round(Number(latest.averageLtv))}`:"-";
-          const avgFreq=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
-          return(<>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              {analyticsLoading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
-                <KPI icon={Heart} label="Retention Rate" value={retRate} color={C.pink}/>
-                <KPI icon={TrendingUp} label="Avg. LTV" value={avgLtv} color={C.amber}/>
-                <KPI icon={Clock} label="Avg. Frequency" value={avgFreq} color={C.accent}/>
-                <KPI icon={Users} label="Loyal + VIP" value={((latest.loyalCustomers??0)+(latest.vipCustomers??0)).toLocaleString()||"-"} color={C.green}/>
-              </>}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="gc rounded-xl p-4" style={CARD}>
-                <h3 className="text-sm font-semibold text-white mb-3">Customer Segments</h3>
-                {analyticsLoading?<Skeleton h="h-[180px]"/>:segData.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No segment data yet</div>:
-                <div className="flex items-center gap-4"><ResponsiveContainer width="45%" height={180}><PieChart><Pie data={segData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" stroke="none">{segData.map((e:any,i:number)=><Cell key={i} fill={e.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="space-y-1 flex-1">{segData.map((s:any,i:number)=><div key={i} className="flex items-center justify-between text-xs"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:s.color}}/><span className="text-slate-300">{s.name}</span></span><span className="text-white font-medium">{s.value}</span></div>)}</div></div>}
-              </div>
-              <div className="gc rounded-xl p-4" style={CARD}>
-                <h3 className="text-sm font-semibold text-white mb-3">Message Performance (30 days)</h3>
-                {analyticsLoading?<Skeleton h="h-[180px]"/>:msgPerf.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
-                <ResponsiveContainer width="100%" height={180}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[3,3,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[3,3,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer>}
-              </div>
-            </div>
-            <div className="gc rounded-xl p-4 mt-4" style={CARD}>
-              <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
-              {analyticsLoading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
-              <ResponsiveContainer width="100%" height={200}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="c" name="Total Customers" fill="#8b5cf6" radius={[4,4,0,0]}/><Bar dataKey="ret" name="Active" fill="#22c55e" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}
-            </div>
-          </>);
-        })()}
       </div>
     </div>
   );
@@ -1115,7 +1169,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
     <div className="gc rounded-xl p-5" style={CARD}>
       <div className="flex items-start gap-4 flex-wrap">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
-        <div className="flex-1 min-w-48"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><Badge color={TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}>{c.tier}</Badge></div><div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone}</span><span className="flex items-center gap-1"><Mail size={10}/>{c.email}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span></div></div>
+        <div className="flex-1 min-w-48"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><span className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style={{background:(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"22",border:`1px solid ${TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}44`,color:TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}}><Crown size={10}/>{c.tier||"No Tier"}</span></div><div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone}</span><span className="flex items-center gap-1"><Mail size={10}/>{c.email}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span></div></div>
         <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
       </div>
     </div>
