@@ -112,15 +112,13 @@ const getPosBizType=():string=>{
 // ════════════════════════════════════════════════════════════════
 const NAV_ALL=[
   {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER]},
-  {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"customers",icon:Users,label:"Customers & Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN]},
   {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
-  {id:"loyalty",icon:Award,label:"Loyalty & Points",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
-  {id:"portal",icon:QrCode,label:"Customer Portal",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
@@ -1391,11 +1389,10 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
       <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       {byStatus.length>0&&<div className="flex flex-wrap gap-2">{byStatus.map(({s,c,n})=><div key={s} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{background:c+"14",border:`1px solid ${c}30`}}><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-300">{s}</span><span className="font-bold ml-1" style={{color:c}}>{n}</span></div>)}</div>}
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
-        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Template</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Sent</th></tr></thead>
-          <tbody>{loading?[...Array(6)].map((_,i)=><tr key={i}><td colSpan={5} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):messages.length===0?<tr><td colSpan={5} className="py-8 text-center text-slate-500">No messages found</td></tr>:messages.map((m:any)=>(
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Sent</th></tr></thead>
+          <tbody>{loading?[...Array(6)].map((_,i)=><tr key={i}><td colSpan={4} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):messages.length===0?<tr><td colSpan={4} className="py-8 text-center text-slate-500">No messages found</td></tr>:messages.map((m:any)=>(
             <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
               <td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td>
-              <td className="py-2.5 px-3 font-mono text-violet-300">{m.templateName||"—"}</td>
               <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
               <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono truncate max-w-[120px]">{m.providerId||<span className="text-slate-700">—</span>}</td>
               <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
@@ -1542,10 +1539,31 @@ const LoyaltyPage=()=>{
   const [saving,setSaving]=useState(false);
   const [saved,setSaved]=useState(false);
   const [dashKpis,setDashKpis]=useState<any>(null);
+  const [pointsConfig,setPointsConfig]=useState({pointsPerPound:1,referralBonusPoints:50,referralReferrerPoints:25,pointsExpiryDays:365,minRedeemPoints:100,redeemRate:100});
+  const [savingConfig,setSavingConfig]=useState(false);
+  const [savedConfig,setSavedConfig]=useState(false);
   useEffect(()=>{
     api.analytics.tiers().then(d=>setTiers(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
     api.dashboard.get().then(d=>setDashKpis(d?.kpis)).catch(()=>{});
+    api.settings.get().then((d:any)=>{
+      const b=d?.user?.business??d?.business??{};
+      setPointsConfig(p=>({...p,
+        pointsPerPound:b.pointsPerPound??1,
+        referralBonusPoints:b.referralBonusPoints??50,
+        referralReferrerPoints:b.referralReferrerPoints??25,
+        pointsExpiryDays:b.pointsExpiryDays??365,
+        minRedeemPoints:b.minRedeemPoints??100,
+        redeemRate:b.redeemRate??100,
+      }));
+    }).catch(()=>{});
   },[]);
+  const saveConfig=async()=>{
+    setSavingConfig(true);
+    try{
+      await api.settings.update(pointsConfig);
+      setSavedConfig(true);setTimeout(()=>setSavedConfig(false),2500);
+    }catch{}finally{setSavingConfig(false);}
+  };
   const update=(i:number,field:string,val:any)=>setTiers(p=>p.map((t,j)=>j===i?{...t,[field]:val}:t));
   const save=async()=>{
     setSaving(true);
@@ -1581,6 +1599,39 @@ const LoyaltyPage=()=>{
             {perks.length>0&&<div className="mt-3 space-y-1">{perks.map((p:string,j:number)=><div key={j} className="flex items-center gap-1 text-xs text-slate-300"><Check size={10} style={{color:col}}/>{p}</div>)}</div>}
           </div>
         )})}</div>}
+      </div>
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Sliders size={14} className="text-violet-400"/>Points & Referral Settings</h3>
+          <button onClick={saveConfig} disabled={savingConfig} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:savedConfig?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+            {savingConfig?<RefreshCw size={12} className="animate-spin"/>:savedConfig?<Check size={12}/>:null}
+            {savingConfig?"Saving…":savedConfig?"Saved!":"Save Settings"}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            {key:"pointsPerPound",label:"Points per £1 spent",min:1,max:10,step:1,icon:"⭐"},
+            {key:"referralBonusPoints",label:"Points for new referral (referee)",min:0,max:500,step:10,icon:"🎁"},
+            {key:"referralReferrerPoints",label:"Points for referring (referrer)",min:0,max:500,step:10,icon:"🤝"},
+            {key:"pointsExpiryDays",label:"Points expiry (days)",min:30,max:730,step:30,icon:"⏱️"},
+            {key:"minRedeemPoints",label:"Min points to redeem",min:10,max:1000,step:10,icon:"🔑"},
+            {key:"redeemRate",label:"Points per £1 discount",min:10,max:500,step:10,icon:"💰"},
+          ].map(({key,label,min,max,step,icon})=>(
+            <div key={key} className="p-3 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span>{icon}</span>
+                <span className="text-xs text-slate-300 font-medium">{label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="range" min={min} max={max} step={step}
+                  value={(pointsConfig as any)[key]}
+                  onChange={e=>setPointsConfig(p=>({...p,[key]:Number(e.target.value)}))}
+                  className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer" style={{accentColor:"#8b5cf6"}}/>
+                <span className="text-sm font-bold text-violet-400 min-w-[40px] text-right">{(pointsConfig as any)[key]}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Info size={14} className="text-violet-400"/>How Points Work</h3>
@@ -2183,6 +2234,35 @@ const CustomerPortalPage=()=>{
           </button>
         </div>}
       </>}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// CUSTOMERS UNIFIED (Customers + Loyalty + Portal tabs)
+// ════════════════════════════════════════════════════════════════
+const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(p:string)=>void})=>{
+  const [tab,setTab]=useState(()=>localStorage.getItem("customers_tab")??"customers");
+  const switchTab=(t:string)=>{setTab(t);localStorage.setItem("customers_tab",t);};
+  const tabs=[
+    {id:"customers",label:"Customers",icon:Users},
+    {id:"loyalty",label:"Loyalty & Points",icon:Award},
+    {id:"portal",label:"Customer Portal",icon:QrCode},
+  ];
+  return(
+    <div className="space-y-4">
+      <div className="flex gap-1 p-1 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>switchTab(t.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all ${tab===t.id?"text-white":"text-slate-400 hover:text-slate-200"}`}
+            style={tab===t.id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}>
+            <t.icon size={13}/>{t.label}
+          </button>
+        ))}
+      </div>
+      {tab==="customers"&&<CustomersPage onSelect={onSelect}/>}
+      {tab==="loyalty"&&<LoyaltyPage/>}
+      {tab==="portal"&&<CustomerPortalPage/>}
     </div>
   );
 };
@@ -3502,7 +3582,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
     if(r===ROLES.KITCHEN)return"pos";
     const saved=localStorage.getItem("crm_page");
-    const safePgs=["dashboard","customers","messages","campaigns","automations","analytics","settings","loyalty","portal","pos","ai-bi"];
+    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
@@ -3535,19 +3615,19 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     if(!can(role,"viewAnalytics")&&(page==="dashboard"||page==="ai"||page==="datahub"))return<POSPage role={role}/>;
     switch(page){
     case"dashboard":return<DashboardPage setPage={nav}/>;
-    case"customers":return<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
-    case"profile":return selC?<CustomerProfile customer={selC} onBack={()=>nav("customers")} onMsg={c=>{setSelC(c);setPage("messages");}}/>:<CustomersPage onSelect={c=>{setSelC(c);setPage("profile");}}/>;
+    case"customers":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
+    case"profile":return selC?<CustomerProfile customer={selC} onBack={()=>nav("customers")} onMsg={c=>{setSelC(c);setPage("messages");}}/>:<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"pos":return<POSPage role={role}/>;
     case"messages":return<MessagesPage onConnect={()=>setPage("settings")}/>;
     case"campaigns":return<CampaignsPage onBuilder={()=>setPage("campaign-builder")}/>;
     case"campaign-builder":return<CampaignBuilderPage onBack={()=>setPage("campaigns")}/>;
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
     case"automation-builder":return<AutomationBuilderPage onBack={()=>setPage("automations")}/>;
-    case"loyalty":return<LoyaltyPage/>;
+    case"loyalty":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
     case"analytics":return<DashboardPage setPage={nav}/>;
-    case"portal":return<CustomerPortalPage/>;
+    case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
@@ -3558,7 +3638,6 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
-    {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ];
   const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
