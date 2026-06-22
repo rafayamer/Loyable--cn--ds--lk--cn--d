@@ -1679,8 +1679,8 @@ const DataHubPage=()=>{
       const form=new FormData();form.append("file",f);
       await fetch("/api/import/customers/preview",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""`}},body:form});
       setUploadedFiles(p=>[...p,{name:f.name,rows:0,uploadedAt:new Date().toLocaleTimeString()}]);
-      setUploadMsg("✅ File uploaded. Go to Customers → Import to review and confirm.");
-    }catch(err:any){setUploadMsg(`❌ ${err.message??"Upload failed"}`);}
+      setUploadMsg("File uploaded. Go to Customers to review and confirm.");
+    }catch(err:any){setUploadMsg("Error: "+(err.message??"Upload failed"));}
     finally{setUploading(false);e.target.value="";}
   };
 
@@ -1752,7 +1752,7 @@ const DataHubPage=()=>{
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.15)"}}><Download size={24} className="text-violet-400"/></div>
             <div className="text-center"><div className="text-sm font-semibold text-white">{uploading?"Uploading…":"Drop CSV or XLSX here"}</div><div className="text-xs text-slate-400 mt-1">or click to browse · max 10 MB</div></div>
           </label>
-          {uploadMsg&&<p className="text-xs mt-3 text-center" style={{color:uploadMsg.startsWith("✅")?"#22c55e":"#ef4444"}}>{uploadMsg}</p>}
+          {uploadMsg&&<p className="text-xs mt-3 text-center" style={{color:uploadMsg.startsWith("Error")?"#ef4444":"#22c55e"}}>{uploadMsg}</p>}
           {uploadedFiles.length>0&&<div className="mt-4 space-y-2">
             <h4 className="text-xs font-semibold text-slate-400">Uploaded this session</h4>
             {uploadedFiles.map((f,i)=><div key={i} className="flex items-center gap-3 p-2.5 rounded-lg" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.15)"}}><FileText size={14} className="text-green-400 flex-shrink-0"/><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{f.name}</div><div className="text-xs text-slate-500">Uploaded at {f.uploadedAt}</div></div><Badge color="#22c55e">Uploaded</Badge></div>)}
@@ -2626,10 +2626,10 @@ const SettingsPage=({wa,onConnect})=>{
                 <option value="KITCHEN_STAFF">Kitchen / Cashier</option>
               </select>
             </div>
-            <button disabled={inviting||!inviteEmail.includes("@")} onClick={async()=>{setInviting(true);setInviteMsg("");try{await fetch("/api/staff/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""`},body:JSON.stringify({email:inviteEmail,role:inviteRole})}});setInviteMsg(`✅ Invite sent to ${inviteEmail}`);setInviteEmail("");}catch(e:any){setInviteMsg(`❌ ${e.message??'Failed to send invite'}`);}finally{setInviting(false);}}} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+            <button disabled={inviting||!inviteEmail.includes("@")} onClick={async()=>{setInviting(true);setInviteMsg("");try{await fetch("/api/staff/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""`},body:JSON.stringify({email:inviteEmail,role:inviteRole})}});setInviteMsg("Invite sent to "+inviteEmail);setInviteEmail("");}catch(e:any){setInviteMsg("Error: "+(e.message??'Failed to send invite'));}finally{setInviting(false);}}} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
               {inviting?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{inviting?"Sending…":"Send Invite"}
             </button>
-            {inviteMsg&&<p className="text-xs" style={{color:inviteMsg.startsWith("✅")?"#22c55e":"#ef4444"}}>{inviteMsg}</p>}
+            {inviteMsg&&<p className="text-xs" style={{color:inviteMsg.startsWith("Error")?"#ef4444":"#22c55e"}}>{inviteMsg}</p>}
           </div>
 
           {/* Note about login */}
