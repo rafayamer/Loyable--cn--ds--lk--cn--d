@@ -317,16 +317,27 @@ const processTransaction = async (
   }
 
   // ── 4. Create visit (idempotent — transactionId as unique key) ─
+  // Revenue attribution: find most recent campaign/automation message sent within 48h
+  const ATTRIBUTION_WINDOW_MS = 48 * 3_600_000;
+  const attributionSince = new Date(timestamp.getTime() - ATTRIBUTION_WINDOW_MS);
+  const recentMsg = await prisma.messageQueue.findFirst({
+    where: { customerId, businessId, status: { in: ['SENT', 'DELIVERED', 'READ'] }, createdAt: { gte: attributionSince } },
+    orderBy: { createdAt: 'desc' },
+    select:  { campaignId: true, automationId: true },
+  }).catch(() => null);
+
   const visit = await prisma.visit.create({
     data: {
       businessId,
       customerId,
       branchLocationId,
       transactionId,
-      amountSpent:   amountPence / 100,
-      source:        'POS_WEBHOOK',
-      visitedAt:     timestamp,
-    },
+      amountSpent:             amountPence / 100,
+      source:                  'POS_WEBHOOK',
+      visitedAt:               timestamp,
+      attributedCampaignId:   recentMsg?.campaignId   ?? null,
+      attributedAutomationId: recentMsg?.automationId ?? null,
+    } as any,
   });
 
   // Increment customer counters

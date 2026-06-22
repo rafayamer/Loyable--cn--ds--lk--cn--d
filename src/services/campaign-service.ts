@@ -146,13 +146,18 @@ export const getCampaignById = async (id: string, businessId: string) => {
 };
 
 export const getCampaignStats = async (id: string, businessId: string) => {
-  const [campaign, msgStats] = await Promise.all([
+  const [campaign, msgStats, attribution] = await Promise.all([
     prisma.campaign.findFirst({ where: { id, businessId } }),
     prisma.messageQueue.groupBy({
       by:    ['status'],
       where: { campaignId: id, businessId },
       _count: { id: true },
     }),
+    prisma.visit.aggregate({
+      where:  { attributedCampaignId: id, businessId } as any,
+      _sum:   { amountSpent: true },
+      _count: { id: true },
+    }).catch(() => ({ _sum: { amountSpent: null }, _count: { id: 0 } })),
   ]);
 
   if (!campaign) throw new Error('CAMPAIGN_NOT_FOUND');
@@ -164,9 +169,11 @@ export const getCampaignStats = async (id: string, businessId: string) => {
     campaign,
     stats,
     total,
-    deliveryRate:  total > 0 ? ((stats['DELIVERED'] ?? 0) + (stats['READ'] ?? 0)) / total * 100 : 0,
-    readRate:      total > 0 ? (stats['READ'] ?? 0) / total * 100 : 0,
-    dropRate:      total > 0 ? ((stats['DROPPED_COOLDOWN'] ?? 0) + (stats['CONSENT_REVOKED'] ?? 0)) / total * 100 : 0,
+    deliveryRate:      total > 0 ? ((stats['DELIVERED'] ?? 0) + (stats['READ'] ?? 0)) / total * 100 : 0,
+    readRate:          total > 0 ? (stats['READ'] ?? 0) / total * 100 : 0,
+    dropRate:          total > 0 ? ((stats['DROPPED_COOLDOWN'] ?? 0) + (stats['CONSENT_REVOKED'] ?? 0)) / total * 100 : 0,
+    attributedRevenue: Number(attribution._sum.amountSpent ?? 0),
+    attributedVisits:  attribution._count.id,
   };
 };
 

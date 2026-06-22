@@ -393,6 +393,11 @@ model Visit {
   gstAmount        Decimal?        @db.Decimal(10, 2)  // GST charged
   paymentMode      String?         // CASH | CARD | WALLET
 
+  // Revenue attribution: if this visit happened within 48h of a campaign/automation message
+  attributedCampaignId   String?
+  attributedAutomationId String?
+  attributionWindowHours Int?    @default(48)
+
   customer         Customer        @relation(fields: [customerId], references: [id])
   branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])
 

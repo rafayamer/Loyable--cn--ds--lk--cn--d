@@ -334,18 +334,28 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Revenue attribution: most recent campaign/automation message within 48h
+    const ATTR_WINDOW = new Date(Date.now() - 48 * 3_600_000);
+    const recentMsg = await prisma.messageQueue.findFirst({
+      where: { customerId, businessId, status: { in: ['SENT', 'DELIVERED', 'READ'] }, createdAt: { gte: ATTR_WINDOW } },
+      orderBy: { createdAt: 'desc' },
+      select:  { campaignId: true, automationId: true },
+    }).catch(() => null);
+
     // Create visit
     const visit = await prisma.$transaction(async (tx) => {
       const v = await tx.visit.create({
         data: {
           businessId,
           customerId,
-          branchLocationId: effectiveBranch,
+          branchLocationId:       effectiveBranch,
           amountSpent,
-          source:           source ?? 'QR_CHECKIN',
+          source:                 source ?? 'QR_CHECKIN',
           notes,
-          visitedAt:        new Date(),
-        },
+          visitedAt:              new Date(),
+          attributedCampaignId:   recentMsg?.campaignId   ?? null,
+          attributedAutomationId: recentMsg?.automationId ?? null,
+        } as any,
       });
 
       // Increment customer counters
