@@ -130,7 +130,7 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
       <div className="relative flex-shrink-0">
         <div className="absolute inset-0 rounded-xl blur-md opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}/>
         <div className="relative w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))",border:"1px solid rgba(139,92,246,0.3)"}}>
-          <img src="/logo.svg" alt="Loyable" className="w-6 h-6 object-contain"/>
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
         </div>
       </div>
       {!col&&<div className="flex-1 min-w-0">
@@ -566,7 +566,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
           <div className="relative z-10">
             <button onClick={()=>setView("landing")} className="flex items-center gap-2 mb-12">
-              <img src="/logo.svg" alt="Loyable" className="w-10 h-10 object-contain"/>
+              <svg width="40" height="40" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
             </button>
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
               {view==="signup"?"Create Your Loyable Account":"Welcome Back to Loyable"}
@@ -590,7 +590,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           {/* Dashboard mockup preview */}
           <div className="relative z-10 mt-6 rounded-2xl overflow-hidden shadow-2xl" style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)"}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{borderColor:"rgba(255,255,255,0.1)"}}>
-              <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
               <span className="text-white text-xs font-semibold">Dashboard</span>
               <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-purple-200 text-[10px]">Davita ▾</span></div>
             </div>
@@ -609,7 +609,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="flex-1 flex flex-col" style={{background:bg}}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{borderColor:bdr}}>
             <button onClick={()=>setView("landing")} className="lg:hidden flex items-center gap-2">
-              <img src="/logo.svg" alt="Loyable" className="w-8 h-8 object-contain"/>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
               {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
@@ -1003,7 +1003,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="relative flex flex-col md:flex-row justify-between w-full gap-10 border-b pb-10 mb-6" style={{borderColor:bdr}}>
           <div className="max-w-xs">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.svg" alt="Loyable" className="h-8 w-auto object-contain"/>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
               <span className="font-black text-base" style={{color:tx}}>Loyable</span>
             </div>
             <p className="text-xs leading-relaxed mb-4" style={{color:tx2}}>The all-in-one loyalty and customer retention platform for businesses that want to grow. WhatsApp-first, SMB-focused.</p>
@@ -3915,7 +3915,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Loyable" className="w-8 h-8 object-contain"/>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 capitalize">{NAV_ALL.find(n=>n.id===page)?.label||""}</span>
