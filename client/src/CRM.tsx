@@ -1609,6 +1609,11 @@ const AIPage=()=>{
 // ════════════════════════════════════════════════════════════════
 // CUSTOMER PORTAL MANAGEMENT PAGE
 // ════════════════════════════════════════════════════════════════
+// Card must be defined OUTSIDE the component so its reference is stable across re-renders.
+// Defining it inside would cause React to unmount/remount it on every keystroke, losing input focus.
+const PortalCard=({children,className=""}:{children:any,className?:string})=>(
+  <div className={`rounded-2xl p-5 ${className}`} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{children}</div>
+);
 const CustomerPortalPage=()=>{
   const slug=localStorage.getItem("biz_slug")||"";
   const bizName=localStorage.getItem("biz_name")||"Your Business";
@@ -1711,10 +1716,6 @@ const CustomerPortalPage=()=>{
     w.print();
   }
 
-  const Card=({children,className=""}:{children:any,className?:string})=>(
-    <div className={`rounded-2xl p-5 ${className}`} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{children}</div>
-  );
-
   if(!slug) return(
     <div className="p-6"><div className="rounded-2xl p-8 text-center" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
       <QrCode size={40} className="mx-auto mb-3 text-purple-400"/>
@@ -1743,7 +1744,7 @@ const CustomerPortalPage=()=>{
 
       {activeTab==="qr"&&<>
         {/* Portal link */}
-        <Card>
+        <PortalCard>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Link size={12}/>Portal Link</p>
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-3" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
             <span className="flex-1 text-sm text-purple-300 font-mono truncate">{portalUrl}</span>
@@ -1754,10 +1755,10 @@ const CustomerPortalPage=()=>{
             <a href={portalUrl} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"><ExternalLink size={14}/></a>
           </div>
           <p className="text-xs text-slate-500">Share this link via WhatsApp or print the QR code below. Customers can scan it to instantly view their points, rewards, and visit history.</p>
-        </Card>
+        </PortalCard>
 
         {/* QR Code */}
-        <Card>
+        <PortalCard>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 flex items-center gap-2"><QrCode size={12}/>QR Code</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="rounded-2xl p-4 flex-shrink-0" style={{background:"white",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
@@ -1785,10 +1786,10 @@ const CustomerPortalPage=()=>{
               </div>
             </div>
           </div>
-        </Card>
+        </PortalCard>
 
         {/* How it works */}
-        <Card>
+        <PortalCard>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 flex items-center gap-2"><ScanLine size={12}/>How Customers Use It</p>
           <div className="grid sm:grid-cols-3 gap-4">
             {[
@@ -1805,11 +1806,11 @@ const CustomerPortalPage=()=>{
               </div>
             ))}
           </div>
-        </Card>
+        </PortalCard>
       </>}
 
       {activeTab==="today"&&<>
-        <Card>
+        <PortalCard>
           <div className="flex items-center justify-between mb-4">
             <p className="text-white font-bold flex items-center gap-2"><UserCheck size={16} className="text-purple-400"/>Today's Customers</p>
             <span className="text-xs text-slate-400">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</span>
@@ -1843,13 +1844,13 @@ const CustomerPortalPage=()=>{
               ))}
             </div>
           )}
-        </Card>
+        </PortalCard>
       </>}
 
       {activeTab==="content"&&<>
         {psLoading?<div className="text-center py-10 text-slate-500 text-sm">Loading settings…</div>:<div className="space-y-4">
           {/* Menu */}
-          <Card>
+          <PortalCard>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">📋 Menu</p>
@@ -1893,10 +1894,10 @@ const CustomerPortalPage=()=>{
                 )}
               </div>
             )}
-          </Card>
+          </PortalCard>
 
           {/* WiFi */}
-          <Card>
+          <PortalCard>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">📶 WiFi Password</p>
@@ -1927,10 +1928,10 @@ const CustomerPortalPage=()=>{
                 </div>
               </div>
             )}
-          </Card>
+          </PortalCard>
 
           {/* Announcement */}
-          <Card>
+          <PortalCard>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">📢 Announcement Banner</p>
@@ -1950,10 +1951,10 @@ const CustomerPortalPage=()=>{
                 className="w-full mt-3 px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none resize-none"
                 style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             )}
-          </Card>
+          </PortalCard>
 
           {/* Built-in toggles */}
-          <Card>
+          <PortalCard>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Show / Hide Sections</p>
             <div className="space-y-3">
               {[
@@ -1974,10 +1975,10 @@ const CustomerPortalPage=()=>{
                 </div>
               ))}
             </div>
-          </Card>
+          </PortalCard>
 
           {/* Custom sections */}
-          <Card>
+          <PortalCard>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">✨ Custom Info Sections</p>
@@ -2020,10 +2021,10 @@ const CustomerPortalPage=()=>{
                 </div>
               ))}
             </div>
-          </Card>
+          </PortalCard>
 
           {/* Check-in Location */}
-          <Card>
+          <PortalCard>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">📍 Check-in Location</p>
@@ -2083,7 +2084,7 @@ const CustomerPortalPage=()=>{
               style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",color:"#c4b5fd"}}>
               {locSaving?"Saving…":locSaved?"✓ Saved!":"Save Location"}
             </button>
-          </Card>
+          </PortalCard>
 
           {/* Save button */}
           <button onClick={savePortalSettings} disabled={psSaving}

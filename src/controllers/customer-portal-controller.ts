@@ -91,7 +91,7 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
   const biz = await prisma.business.findFirst({
     where:  { slug },  // isActive not required — portal should always be accessible
-    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true } as any,
+    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true, portalSettings: true, latitude: true, longitude: true, checkInRadiusMeters: true } as any,
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
@@ -135,15 +135,13 @@ const updateSettingsHandler = async (req: Request, res: Response): Promise<void>
   const parse = settingsSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
 
-  const biz = await prisma.business.findFirst({
+  const biz = await (prisma.business as any).findFirst({
     where:  { slug, isActive: true },
-    select: { id: true } as any,
+    select: { id: true, portalSettings: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  // Read current portalSettings separately
-  const bizFull = await (prisma.business as any).findUnique({ where: { id: biz.id }, select: { portalSettings: true } });
-  const current = (bizFull?.portalSettings as Record<string, any>) ?? {};
+  const current = (biz.portalSettings as Record<string, any>) ?? {};
   const merged  = { ...current, ...parse.data };
 
   await (prisma.business as any).update({ where: { id: biz.id }, data: { portalSettings: merged } });
