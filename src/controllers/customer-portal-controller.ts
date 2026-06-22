@@ -205,7 +205,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
       where:   { customerId, businessId },
       orderBy: { visitedAt: 'desc' },
       take:    20,
-      select:  { id: true, visitedAt: true, spend: true, pointsEarned: true, checkInMethod: true },
+      select:  { id: true, visitedAt: true, amountSpent: true, source: true },
     }),
   ]);
 
