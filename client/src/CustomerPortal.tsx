@@ -491,6 +491,9 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
   const { customer, tiers, visits, referralCount, nextTier, progressToNext } = data;
 
+  const [portalDark, setPortalDark] = useState(() => localStorage.getItem('portal_theme') === 'dark');
+  const toggleTheme = () => { const next = !portalDark; setPortalDark(next); localStorage.setItem('portal_theme', next ? 'dark' : 'light'); };
+
   // Build tab list based on portalSettings visibility
   const TABS = [
     ps.showMenu && ps.menuImageUrl ? { id: 'menu',    label: 'Menu',    icon: '🍽️' } : null,
@@ -506,14 +509,17 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   const bgImage = ps.bgImageMobile || ps.bgImageDesktop || ps.bgImageTablet || '';
 
   return (
-    <div className="min-h-[100dvh]" style={{ background: bgImage ? `url(${bgImage}) center/cover no-repeat` : '#f8fafc' }}>
+    <div className={`min-h-[100dvh] ${portalDark ? 'portal-dark' : ''}`} style={{ background: bgImage ? `url(${bgImage}) center/cover no-repeat` : portalDark ? 'linear-gradient(160deg,#0f0a1e,#1a0f35,#0d1a2e)' : '#f8fafc', color: portalDark ? '#f1f5f9' : '#1e293b' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e8f0' }}>
+      <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: portalDark ? 'rgba(15,10,30,0.95)' : 'rgba(248,250,252,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
         <div className="flex items-center gap-2">
           <img src="/logo.svg" alt="Loyable" className="w-7 h-7 object-contain"/>
-          <span className="font-bold text-slate-800 text-sm">{bizName}</span>
+          <span className={`font-bold text-sm ${portalDark ? 'text-white' : 'text-slate-800'}`}>{bizName}</span>
         </div>
-        <button onClick={() => { clearSession(); onLogout(); }} className="text-xs text-slate-400 hover:text-slate-600">Sign out</button>
+        <div className="flex items-center gap-3">
+          <button onClick={toggleTheme} className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all ${portalDark ? 'bg-white/10' : 'bg-slate-100'}`}>{portalDark ? '☀️' : '🌙'}</button>
+          <button onClick={() => { clearSession(); onLogout(); }} className={`text-xs ${portalDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>Sign out</button>
+        </div>
       </div>
 
       <div className="max-w-sm mx-auto px-4 py-4 space-y-4">

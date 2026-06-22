@@ -1131,7 +1131,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2"><div><h1 className="text-xl font-bold text-white">Customers</h1><p className="text-xs text-slate-400 mt-0.5">{loading?"Loading…":`${total} total · 7 segments`}</p></div></div>
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search name or phone..." className="w-full pl-9 pr-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name or phone…" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
         <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       </div>
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
@@ -1173,7 +1173,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
         <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
       </div>
     </div>
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{[{l:"Visits",v:c.visits},{l:"Total Spent",v:`£${c.spent.toLocaleString()}`},{l:"Avg. Order",v:`£${c.avg}`},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Points Balance",v:c.points.toLocaleString()}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[{l:"Visits",v:c.visits},{l:"Total Spent",v:`£${c.spent.toLocaleString()}`},{l:"Points Balance",v:c.points.toLocaleString()},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Tier",v:c.tier||"—"},{l:"Referrals",v:c.referralCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Points Ledger (Append-Only)</h3>
@@ -1316,85 +1316,23 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
 // ── Live two-way WhatsApp inbox (pulls real chats from WAHA) ──────
 const chatTime=(ts:number|null)=>{if(!ts)return"";const d=new Date(ts);const now=new Date();const sameDay=d.toDateString()===now.toDateString();return sameDay?d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString([],{day:"2-digit",month:"short"});};
 const ackLabel=(a:number|null)=>a==null?"":a>=3?"✓✓":a===2?"✓✓":a===1?"✓":"…";
-const InboxView=({connected}:{connected:boolean})=>{
-  const [convos,setConvos]=useState<any[]>([]);
-  const [loadingList,setLoadingList]=useState(true);
-  const [active,setActive]=useState<any>(null);
-  const [thread,setThread]=useState<any[]>([]);
-  const [loadingThread,setLoadingThread]=useState(false);
-  const [reply,setReply]=useState("");
-  const [sending,setSending]=useState(false);
-  const [err,setErr]=useState("");
-  const scrollRef=useRef<HTMLDivElement>(null);
-  const loadList=useCallback(()=>{api.messages.inbox().then(d=>setConvos(d.conversations??[])).catch(()=>{}).finally(()=>setLoadingList(false));},[]);
-  const loadThread=useCallback((chatId:string,quiet=false)=>{if(!quiet)setLoadingThread(true);api.messages.thread(chatId,3).then(d=>setThread(d.messages??[])).catch(()=>{}).finally(()=>setLoadingThread(false));},[]);
-  useEffect(()=>{if(!connected)return;loadList();const t=setInterval(loadList,15000);return()=>clearInterval(t);},[connected,loadList]);
-  useEffect(()=>{if(!active)return;loadThread(active.chatId);const t=setInterval(()=>loadThread(active.chatId,true),8000);return()=>clearInterval(t);},[active,loadThread]);
-  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[thread]);
-  const send=async()=>{
-    if(!reply.trim()||!active)return;
-    setSending(true);setErr("");
-    const text=reply.trim();
-    setReply("");
-    // optimistic append
-    setThread(p=>[...p,{id:`tmp${Date.now()}`,body:text,fromMe:true,timestamp:Date.now(),ack:0,type:"chat"}]);
-    try{
-      await api.messages.send({chatId:active.chatId,message:text});
-      loadThread(active.chatId,true);loadList();
-    }catch(e:any){setErr(e?.message||"Send failed");}
-    finally{setSending(false);}
-  };
-  if(!connected)return<div className="gc rounded-xl p-10 text-center text-slate-500" style={CARD}>Connect WhatsApp in Settings → WhatsApp API to load your inbox.</div>;
-  return(
-    <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-3" style={{height:"calc(100vh - 220px)",minHeight:"480px"}}>
-      {/* Conversation list */}
-      <div className="gc rounded-xl overflow-hidden flex flex-col" style={CARD}>
-        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between"><span className="text-xs font-semibold text-slate-300">Conversations</span><button onClick={loadList} className="text-slate-500 hover:text-white"><RefreshCw size={13}/></button></div>
-        <div className="flex-1 overflow-y-auto">
-          {loadingList?[...Array(6)].map((_,i)=><div key={i} className="p-3"><Skeleton h="h-10"/></div>):
-           convos.length===0?<div className="p-6 text-center text-xs text-slate-500">No conversations in the last 3 days</div>:
-           convos.map(c=>(
-            <button key={c.chatId} onClick={()=>setActive(c)} className={`w-full text-left px-3 py-2.5 border-b border-white/3 flex items-center gap-3 transition-colors ${active?.chatId===c.chatId?"bg-white/5":"hover:bg-white/2"}`}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{(c.name||"?").slice(0,1).toUpperCase()}</div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-white truncate">{c.name}</span><span className="text-xs text-slate-500 shrink-0">{chatTime(c.timestamp)}</span></div>
-                <div className="flex items-center gap-1"><span className="text-xs text-slate-400 truncate">{c.lastFromMe?"You: ":""}{c.lastText||"—"}</span>{c.unread>0&&<span className="ml-auto shrink-0 text-xs font-bold text-white rounded-full px-1.5" style={{background:"#25D366"}}>{c.unread}</span>}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* Thread */}
-      <div className="gc rounded-xl overflow-hidden flex flex-col" style={CARD}>
-        {!active?<div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Select a conversation</div>:(
-          <>
-            <div className="px-4 py-3 border-b border-white/5 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{(active.name||"?").slice(0,1).toUpperCase()}</div>
-              <div><div className="text-sm font-semibold text-white">{active.name}</div><div className="text-xs text-slate-500">{active.phone}</div></div>
-            </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2" style={{background:"rgba(15,15,25,0.4)"}}>
-              {loadingThread?[...Array(5)].map((_,i)=><Skeleton key={i} h="h-8"/>):
-               thread.length===0?<div className="text-center text-xs text-slate-500 py-6">No messages in the last 3 days</div>:
-               thread.map(m=>(
-                <div key={m.id} className={`flex ${m.fromMe?"justify-end":"justify-start"}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-xs ${m.fromMe?"text-white":"text-slate-100"}`} style={{background:m.fromMe?"linear-gradient(135deg,#25D366,#128C7E)":"rgba(255,255,255,0.07)"}}>
-                    <div className="whitespace-pre-wrap break-words">{m.body}</div>
-                    <div className={`text-xs mt-0.5 flex items-center gap-1 justify-end ${m.fromMe?"text-white/70":"text-slate-500"}`}>{chatTime(m.timestamp)} {m.fromMe&&<span>{ackLabel(m.ack)}</span>}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {err&&<div className="px-4 py-1.5 text-xs text-red-400">{err}</div>}
-            <div className="p-3 border-t border-white/5 flex items-center gap-2">
-              <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Type a message…" className="flex-1 px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-              <button onClick={send} disabled={sending||!reply.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>{sending?<RefreshCw size={13} className="animate-spin"/>:<Send size={13}/>}Send</button>
-            </div>
-          </>
-        )}
-      </div>
+const InboxView=({connected}:{connected:boolean})=>(
+  <div className="gc rounded-xl p-12 flex flex-col items-center justify-center text-center" style={CARD}>
+    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.2)"}}>
+      <MessageSquare size={28} className="text-violet-400"/>
     </div>
-  );
-};
+    <h3 className="text-white font-bold text-lg mb-2">WhatsApp Inbox</h3>
+    <p className="text-slate-400 text-sm max-w-xs mb-4">Live inbox with real-time conversations, read receipts and direct replies is coming soon.</p>
+    <div className="flex flex-wrap gap-2 justify-center mb-6">
+      {["Real-time messages","Read receipts","Quick replies","Media support","Conversation history"].map(f=>(
+        <span key={f} className="px-2.5 py-1 rounded-lg text-xs text-violet-300" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.15)"}}>{f}</span>
+      ))}
+    </div>
+    <div className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))"}}>
+      🚀 Coming Soon
+    </div>
+  </div>
+);
 
 const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const [messages,setMessages]=useState<any[]>([]);
