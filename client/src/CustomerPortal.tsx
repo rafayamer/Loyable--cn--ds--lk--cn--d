@@ -532,7 +532,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
         {/* Geo Check-in */}
         {checkInConfig?.enabled && (
-          <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-slate-800 text-sm">📍 Check In</p>
@@ -558,7 +558,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
         {/* WiFi */}
         {ps.showWifi && (ps.wifiName || ps.wifiPassword) && (
-          <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+          <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
             <div className="flex items-center gap-2 mb-2 text-purple-700">
               <Icon.wifi/><span className="font-bold text-sm">Free WiFi</span>
             </div>
@@ -584,7 +584,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
         {/* Tier perks */}
         {tiers.length > 0 && (
-          <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+          <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Your {customer.tier} Perks</p>
             <div className="space-y-1.5">
               {(tiers.find((t: any) => t.name === customer.tier)?.perks ?? []).map((perk: string, i: number) => (
@@ -601,7 +601,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
         {/* Tabs */}
         {TABS.length > 1 && (
-          <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+          <div className="flex gap-1 p-1 rounded-2xl" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
             {TABS.map(t => (
               <button
                 key={t.id}
