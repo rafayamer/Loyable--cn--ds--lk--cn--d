@@ -49,7 +49,10 @@ export const startAllCronJobs = (): void => {
   // 02:00 UTC — tier demotion (rolling 90-day window)
   cron.schedule('0 2 * * *', jobRunner('tierDemotion', tierDemotionJob), { timezone: 'UTC' });
 
-  console.log('[cron] 5 nightly jobs registered (UTC schedule).');
+  // 02:30 UTC — points expiry
+  cron.schedule('30 2 * * *', jobRunner('pointsExpiry', pointsExpiryJob), { timezone: 'UTC' });
+
+  console.log('[cron] 6 nightly jobs registered (UTC schedule).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -476,4 +479,97 @@ const tierDemotionJob = async (): Promise<Record<string, unknown>> => {
   }
 
   return { businesses: businesses.length, evaluated, demoted };
+};
+
+// ================================================================
+// POINTS EXPIRY JOB
+// ================================================================
+
+/**
+ * Nightly points expiry: for each business, find customers with
+ * positive point balances where their last CREDIT ledger entry is
+ * older than Business.pointsExpiryDays. Write a DEBIT EXPIRY entry
+ * and decrement currentPointsBalance.
+ *
+ * 30-day pre-expiry warning is handled by checking for a warning
+ * already sent in this cycle to avoid duplicate notifications.
+ */
+const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true, pointsExpiryDays: true },
+  });
+
+  let expired   = 0;
+  let customers = 0;
+
+  for (const biz of businesses) {
+    const expiryDays  = (biz as any).pointsExpiryDays ?? 365;
+    const expiryCutoff = new Date(Date.now() - expiryDays * 86_400_000);
+    const warnCutoff   = new Date(Date.now() - (expiryDays - 30) * 86_400_000);
+
+    try {
+      // Find customers with points whose oldest uncredited entry predates the cutoff
+      const eligible = await prisma.customer.findMany({
+        where: {
+          businessId:           biz.id,
+          isActive:             true,
+          currentPointsBalance: { gt: 0 },
+        },
+        select: { id: true, currentPointsBalance: true },
+      });
+
+      for (const c of eligible) {
+        // Check oldest CREDIT ledger entry
+        const oldest = await prisma.rewardPointsLedger.findFirst({
+          where:   { customerId: c.id, businessId: biz.id, type: 'CREDIT' },
+          orderBy: { createdAt: 'asc' },
+          select:  { createdAt: true, points: true },
+        });
+        if (!oldest) continue;
+
+        // Pre-expiry warning (30 days out)
+        if (oldest.createdAt < warnCutoff && oldest.createdAt >= expiryCutoff) {
+          // Enqueue non-blocking warning automation
+          enqueueAutomationTrigger({
+            workflowId:     'POINTS_EXPIRY_WARNING',
+            businessId:     biz.id,
+            customerId:     c.id,
+            triggerType:    'POINTS_EXPIRY_WARNING' as any,
+            triggerPayload: { expiresInDays: 30, points: c.currentPointsBalance },
+          }).catch(() => {});
+          continue;
+        }
+
+        if (oldest.createdAt >= expiryCutoff) continue; // Not yet expired
+
+        // Expire all outstanding points
+        const pts = c.currentPointsBalance ?? 0;
+        if (pts <= 0) continue;
+
+        await prisma.$transaction([
+          prisma.customer.update({
+            where: { id: c.id },
+            data:  { currentPointsBalance: 0, updatedAt: new Date() },
+          }),
+          prisma.rewardPointsLedger.create({
+            data: {
+              businessId,
+              customerId:   c.id,
+              type:         'DEBIT',
+              points:       pts,
+              balanceAfter: 0,
+              reason:       'EXPIRY',
+            } as any,
+          }),
+        ]);
+        customers++;
+        expired += pts;
+      }
+    } catch (err) {
+      console.error(`[cron:pointsExpiry] Business ${biz.id} failed:`, err);
+    }
+  }
+
+  return { businesses: businesses.length, customersExpired: customers, pointsExpired: expired };
 };

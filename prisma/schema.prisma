@@ -172,6 +172,7 @@ model Business {
   loyalDaysWindow      Int               @default(7)    // Loyal classification threshold
   irregularGapDays     Int               @default(14)   // "We Miss You" trigger threshold
   lostDaysThreshold    Int               @default(60)   // Lost classification threshold
+  pointsExpiryDays     Int               @default(365)  // Points earned before this many days ago expire nightly
 
   isActive             Boolean           @default(true)
   createdAt            DateTime          @default(now())
