@@ -1626,15 +1626,12 @@ const CustomerPortalPage=()=>{
   const [psLoading,setPsLoading]=useState(true);
   const [psSaving,setPsSaving]=useState(false);
   const [psSaved,setPsSaved]=useState(false);
-
-  // Announcement WhatsApp send state
-  const [annSendMode,setAnnSendMode]=useState<"none"|"segment"|"individual">("none");
-  const [annSegment,setAnnSegment]=useState("ALL");
-  const [annCustSearch,setAnnCustSearch]=useState("");
-  const [annCustResults,setAnnCustResults]=useState<any[]>([]);
-  const [annSelected,setAnnSelected]=useState<any[]>([]);
-  const [annSending,setAnnSending]=useState(false);
-  const [annSendResult,setAnnSendResult]=useState<{sent:number;failed:number}|null>(null);
+  const [locLat,setLocLat]=useState<string>("");
+  const [locLon,setLocLon]=useState<string>("");
+  const [locRadius,setLocRadius]=useState<string>("30");
+  const [locSaving,setLocSaving]=useState(false);
+  const [locSaved,setLocSaved]=useState(false);
+  const [locDetecting,setLocDetecting]=useState(false);
 
   // Generate QR code using qrcode library
   useEffect(()=>{
@@ -1659,7 +1656,12 @@ const CustomerPortalPage=()=>{
     if(!slug)return;
     fetch(`/api/portal/${slug}/info`)
       .then(r=>r.json())
-      .then(d=>{if(d?.portalSettings)setPs((prev:any)=>({...prev,...d.portalSettings}));})
+      .then(d=>{
+        if(d?.portalSettings)setPs((prev:any)=>({...prev,...d.portalSettings}));
+        if(d?.business?.latitude)setLocLat(String(d.business.latitude));
+        if(d?.business?.longitude)setLocLon(String(d.business.longitude));
+        if(d?.business?.checkInRadiusMeters)setLocRadius(String(d.business.checkInRadiusMeters));
+      })
       .catch(()=>{})
       .finally(()=>setPsLoading(false));
   },[slug]);
@@ -1942,123 +1944,11 @@ const CustomerPortalPage=()=>{
               </button>
             </div>
             {ps.showAnnouncement&&(
-              <div className="mt-3 space-y-3">
-                <textarea value={ps.announcementText||""} onChange={e=>setPs((p:any)=>({...p,announcementText:e.target.value}))}
-                  placeholder="e.g. 🎉 Happy Hour every Friday 5–8pm! 20% off all drinks."
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none resize-none"
-                  style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-
-                {/* WhatsApp send section */}
-                <div className="rounded-xl p-3 space-y-3" style={{background:"rgba(37,211,102,0.08)",border:"1px solid rgba(37,211,102,0.2)"}}>
-                  <p className="text-xs font-semibold text-green-400">📲 Send via WhatsApp</p>
-                  <div className="flex gap-2">
-                    {[["none","Don't send"],["segment","By category"],["individual","Pick customers"]].map(([v,l])=>(
-                      <button key={v} onClick={()=>{setAnnSendMode(v as any);setAnnSendResult(null);}}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{background:annSendMode===v?"rgba(37,211,102,0.25)":"rgba(255,255,255,0.05)",
-                          border:annSendMode===v?"1px solid rgba(37,211,102,0.5)":"1px solid rgba(255,255,255,0.08)",
-                          color:annSendMode===v?"#4ade80":"#94a3b8"}}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-
-                  {annSendMode==="segment"&&(
-                    <div className="space-y-2">
-                      <p className="text-xs text-slate-400">Select customer category</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {[["ALL","All Customers"],["NEW","New"],["LOYAL","Loyal"],["VIP","VIP"],["AT_RISK","At Risk"],["BIG_SPENDER","Big Spenders"],["LOST","Lost"]].map(([v,l])=>(
-                          <button key={v} onClick={()=>setAnnSegment(v)}
-                            className="py-1.5 px-2 rounded-lg text-xs font-medium text-left transition-all"
-                            style={{background:annSegment===v?"rgba(139,92,246,0.25)":"rgba(255,255,255,0.05)",
-                              border:annSegment===v?"1px solid rgba(139,92,246,0.5)":"1px solid rgba(255,255,255,0.08)",
-                              color:annSegment===v?"#c4b5fd":"#94a3b8"}}>
-                            {l}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {annSendMode==="individual"&&(
-                    <div className="space-y-2">
-                      <input value={annCustSearch} onChange={async e=>{
-                          setAnnCustSearch(e.target.value);
-                          if(e.target.value.length>1){
-                            const r=await api.customers.list({q:e.target.value,limit:10}).catch(()=>({customers:[]}));
-                            setAnnCustResults(r.customers);
-                          } else setAnnCustResults([]);
-                        }}
-                        placeholder="Search by name or phone…"
-                        className="w-full px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none"
-                        style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-                      {annCustResults.length>0&&(
-                        <div className="rounded-lg overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.08)"}}>
-                          {annCustResults.map((c:any)=>{
-                            const sel=annSelected.some((s:any)=>s.id===c.id);
-                            return(
-                              <button key={c.id} onClick={()=>setAnnSelected((prev:any[])=>sel?prev.filter((s:any)=>s.id!==c.id):[...prev,c])}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-left transition-all"
-                                style={{background:sel?"rgba(139,92,246,0.15)":"transparent",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                                <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                                  style={{background:sel?"#8b5cf6":"rgba(255,255,255,0.1)",border:sel?"none":"1px solid rgba(255,255,255,0.2)"}}>
-                                  {sel&&<span className="text-white text-xs">✓</span>}
-                                </div>
-                                <div>
-                                  <p className="text-xs text-white font-medium">{c.fullName||c.name}</p>
-                                  <p className="text-xs text-slate-500">{c.whatsappNumber||c.phone}</p>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {annSelected.length>0&&(
-                        <div className="flex flex-wrap gap-1">
-                          {annSelected.map((c:any)=>(
-                            <span key={c.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-                              style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)",color:"#c4b5fd"}}>
-                              {c.fullName||c.name}
-                              <button onClick={()=>setAnnSelected(p=>p.filter((s:any)=>s.id!==c.id))} className="ml-0.5 opacity-60 hover:opacity-100">×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {annSendMode!=="none"&&(
-                    <button disabled={annSending||!ps.announcementText?.trim()||(annSendMode==="individual"&&annSelected.length===0)}
-                      onClick={async()=>{
-                        if(!ps.announcementText?.trim()) return;
-                        setAnnSending(true); setAnnSendResult(null);
-                        try{
-                          const body:any={message:ps.announcementText};
-                          if(annSendMode==="segment") body.segment=annSegment;
-                          else body.customerIds=annSelected.map((c:any)=>c.id);
-                          const r=await api.messages.broadcast(body);
-                          setAnnSendResult({sent:r.sent,failed:r.failed});
-                        }catch{setAnnSendResult({sent:0,failed:-1});}
-                        setAnnSending(false);
-                      }}
-                      className="w-full py-2 rounded-xl text-sm font-semibold transition-all"
-                      style={{background:annSending?"rgba(37,211,102,0.2)":"rgba(37,211,102,0.3)",
-                        border:"1px solid rgba(37,211,102,0.4)",color:"#4ade80",
-                        opacity:(annSending||!ps.announcementText?.trim()||(annSendMode==="individual"&&annSelected.length===0))?0.5:1}}>
-                      {annSending?"Sending…":"📤 Send Now"}
-                    </button>
-                  )}
-
-                  {annSendResult&&(
-                    <p className="text-xs text-center" style={{color:annSendResult.failed===-1?"#f87171":annSendResult.sent>0?"#4ade80":"#94a3b8"}}>
-                      {annSendResult.failed===-1?"Failed to send — check WhatsApp connection"
-                        :`✓ Sent to ${annSendResult.sent} customer${annSendResult.sent!==1?"s":""}`
-                        +(annSendResult.failed>0?` · ${annSendResult.failed} failed`:"")}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <textarea value={ps.announcementText||""} onChange={e=>setPs((p:any)=>({...p,announcementText:e.target.value}))}
+                placeholder="e.g. 🎉 Happy Hour every Friday 5–8pm! 20% off all drinks."
+                rows={3}
+                className="w-full mt-3 px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none resize-none"
+                style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             )}
           </Card>
 
@@ -2130,6 +2020,69 @@ const CustomerPortalPage=()=>{
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* Check-in Location */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">📍 Check-in Location</p>
+                <p className="text-slate-500 text-xs mt-0.5">Customers must be within the set radius to check in</p>
+              </div>
+              <button onClick={()=>{
+                  setLocDetecting(true);
+                  navigator.geolocation.getCurrentPosition(p=>{
+                    setLocLat(p.coords.latitude.toFixed(7));
+                    setLocLon(p.coords.longitude.toFixed(7));
+                    setLocDetecting(false);
+                  },()=>setLocDetecting(false),{enableHighAccuracy:true,timeout:10000});
+                }}
+                disabled={locDetecting}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-50"
+                style={{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+                {locDetecting?"Detecting…":"📡 Use My Location"}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Latitude</label>
+                <input value={locLat} onChange={e=>setLocLat(e.target.value)} placeholder="e.g. 51.5074"
+                  className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                  style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Longitude</label>
+                <input value={locLon} onChange={e=>setLocLon(e.target.value)} placeholder="e.g. -0.1278"
+                  className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                  style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs text-slate-400 block mb-1">Allowed Radius (metres)</label>
+              <input type="number" min={10} max={500} value={locRadius} onChange={e=>setLocRadius(e.target.value)} placeholder="30"
+                className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              <p className="text-xs text-slate-500 mt-1">Default is 30 m. Min 10 m, max 500 m.</p>
+            </div>
+            <button onClick={async()=>{
+                const lat=parseFloat(locLat), lon=parseFloat(locLon), r=parseInt(locRadius)||30;
+                if(isNaN(lat)||isNaN(lon)){alert("Enter valid latitude and longitude");return;}
+                setLocSaving(true);
+                try{
+                  await fetch(`/api/portal/${slug}/location`,{
+                    method:"PATCH",
+                    headers:{"Content-Type":"application/json","Authorization":`Bearer ${localStorage.getItem("loyable_token")??""}`},
+                    body:JSON.stringify({latitude:lat,longitude:lon,checkInRadiusMeters:r}),
+                  });
+                  setLocSaved(true); setTimeout(()=>setLocSaved(false),2500);
+                }catch{}
+                setLocSaving(false);
+              }}
+              disabled={locSaving||!locLat||!locLon}
+              className="w-full mt-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+              style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",color:"#c4b5fd"}}>
+              {locSaving?"Saving…":locSaved?"✓ Saved!":"Save Location"}
+            </button>
           </Card>
 
           {/* Save button */}

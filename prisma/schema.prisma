@@ -152,6 +152,11 @@ model Business {
   // JSONB shape: { showMenu: bool, menuImageUrl: string, showWifi: bool, wifiName: string, wifiPassword: string,
   //                showAnnouncement: bool, announcementText: string, showReferral: bool, showVisitHistory: bool, customSections: [{title,body,icon,visible}] }
 
+  // Geolocation check-in
+  latitude             Float?
+  longitude            Float?
+  checkInRadiusMeters  Int     @default(30)
+
 
   // Messaging provider configuration (dual gateway: Meta OR WAHA)
   messagingProvider    MessagingProvider @default(META)

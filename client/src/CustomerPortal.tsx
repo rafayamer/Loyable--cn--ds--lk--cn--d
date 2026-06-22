@@ -399,13 +399,16 @@ function CustomSectionCard({ section }: { section: any }) {
 // ================================================================
 // MAIN DASHBOARD
 // ================================================================
-function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
-  token: string; bizName: string; currency: string; portalSettings: any; onLogout: () => void;
+function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, onLogout }: {
+  token: string; bizName: string; currency: string; portalSettings: any;
+  checkInConfig: { enabled: boolean; radiusMeters: number }; onLogout: () => void;
 }) {
-  const [data,    setData]    = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState<string>('rewards');
-  const [err,     setErr]     = useState('');
+  const [data,        setData]        = useState<any>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [tab,         setTab]         = useState<string>('rewards');
+  const [err,         setErr]         = useState('');
+  const [checkingIn,  setCheckingIn]  = useState(false);
+  const [checkInMsg,  setCheckInMsg]  = useState<{ ok: boolean; text: string } | null>(null);
   const ps = portalSettings ?? {};
 
   const portalFetch = useCallback((path: string, init: RequestInit = {}) =>
@@ -417,6 +420,32 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
       if (!r.ok) throw new Error(d?.error ?? `HTTP ${r.status}`);
       return d;
     }), [token]);
+
+  const handleCheckIn = async () => {
+    setCheckingIn(true);
+    setCheckInMsg(null);
+    if (!navigator.geolocation) {
+      setCheckInMsg({ ok: false, text: 'Geolocation is not supported by your browser' });
+      setCheckingIn(false); return;
+    }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const r = await portalFetch('/portal/checkin', {
+          method: 'POST',
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        });
+        setCheckInMsg({ ok: true, text: `✓ Checked in! +${r.pointsEarned ?? 0} pts (${r.distanceMetres ?? 0} m away)` });
+        load();
+      } catch (e: any) {
+        if (e.message === 'TOO_FAR') setCheckInMsg({ ok: false, text: `You're too far from this location to check in` });
+        else if (e.message === 'ALREADY_CHECKED_IN_TODAY') setCheckInMsg({ ok: false, text: 'You've already checked in today' });
+        else setCheckInMsg({ ok: false, text: e.message ?? 'Check-in failed' });
+      } finally { setCheckingIn(false); }
+    }, () => {
+      setCheckInMsg({ ok: false, text: 'Location permission denied. Please allow location access.' });
+      setCheckingIn(false);
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  };
 
   const load = useCallback(async () => {
     try {
@@ -490,6 +519,29 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
         {ps.showAnnouncement && ps.announcementText && (
           <div className="px-4 py-3 rounded-2xl text-sm font-medium" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }}>
             📢 {ps.announcementText}
+          </div>
+        )}
+
+        {/* Geo Check-in */}
+        {checkInConfig?.enabled && (
+          <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-slate-800 text-sm">📍 Check In</p>
+                <p className="text-xs text-slate-500 mt-0.5">Tap to record your visit and earn points</p>
+              </div>
+              <button onClick={handleCheckIn} disabled={checkingIn}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-60 transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+                {checkingIn ? '…' : 'Check In'}
+              </button>
+            </div>
+            {checkInMsg && (
+              <p className="mt-2 text-xs font-medium rounded-lg px-3 py-2"
+                style={{ background: checkInMsg.ok ? '#f0fdf4' : '#fff1f2', color: checkInMsg.ok ? '#16a34a' : '#dc2626' }}>
+                {checkInMsg.text}
+              </p>
+            )}
           </div>
         )}
 
@@ -579,6 +631,7 @@ export default function CustomerPortal() {
   const [portalSettings, setPortalSettings] = useState<any>({});
   const [token,          setToken]          = useState<string | null>(null);
   const [loaded,         setLoaded]         = useState(false);
+  const [checkInConfig,  setCheckInConfig]  = useState<{ enabled: boolean; radiusMeters: number }>({ enabled: false, radiusMeters: 30 });
 
   useEffect(() => {
     if (!slug) { setLoaded(true); return; }
@@ -586,7 +639,7 @@ export default function CustomerPortal() {
     if (session) setToken(session.token);
 
     portalGet(`/portal/${slug}/info`)
-      .then(d => { setBiz(d); setPortalSettings(d.portalSettings ?? {}); })
+      .then(d => { setBiz(d); setPortalSettings(d.portalSettings ?? {}); if (d.checkIn) setCheckInConfig(d.checkIn); })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, [slug]);
@@ -626,6 +679,7 @@ export default function CustomerPortal() {
       bizName={biz.business?.name ?? slug}
       currency={biz.business?.currency ?? 'GBP'}
       portalSettings={portalSettings}
+      checkInConfig={checkInConfig}
       onLogout={() => setToken(null)}
     />
   );

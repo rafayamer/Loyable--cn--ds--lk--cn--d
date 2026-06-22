@@ -68,6 +68,21 @@ const RedeemSchema = z.object({
   couponCode: z.string().min(1),
 });
 
+const CheckInSchema = z.object({
+  latitude:  z.number(),
+  longitude: z.number(),
+});
+
+// Haversine distance in metres
+function distanceMetres(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ================================================================
 // HANDLERS
 // ================================================================
@@ -77,7 +92,7 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
   const biz = await prisma.business.findFirst({
     where:  { slug },  // isActive not required — portal should always be accessible
-    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, portalSettings: true, isActive: true },
+    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true } as any,
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
@@ -86,7 +101,15 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
     orderBy: { rank: 'asc' },
   });
 
-  res.json({ business: biz, tiers, portalSettings: biz.portalSettings ?? {} });
+  res.json({
+    business: biz,
+    tiers,
+    portalSettings: biz.portalSettings ?? {},
+    checkIn: {
+      enabled:       !!(biz.latitude && biz.longitude),
+      radiusMeters:  (biz as any).checkInRadiusMeters ?? 30,
+    },
+  });
 };
 
 /** PATCH /api/portal/:slug/settings — update portal content settings (tenant auth required) */
@@ -115,14 +138,16 @@ const updateSettingsHandler = async (req: Request, res: Response): Promise<void>
 
   const biz = await prisma.business.findFirst({
     where:  { slug, isActive: true },
-    select: { id: true, portalSettings: true },
+    select: { id: true } as any,
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  const current = (biz.portalSettings as Record<string, any>) ?? {};
+  // Read current portalSettings separately
+  const bizFull = await (prisma.business as any).findUnique({ where: { id: biz.id }, select: { portalSettings: true } });
+  const current = (bizFull?.portalSettings as Record<string, any>) ?? {};
   const merged  = { ...current, ...parse.data };
 
-  await prisma.business.update({ where: { id: biz.id }, data: { portalSettings: merged } });
+  await (prisma.business as any).update({ where: { id: biz.id }, data: { portalSettings: merged } });
   res.json({ ok: true, portalSettings: merged });
 };
 
@@ -313,6 +338,75 @@ const todayHandler = async (req: Request, res: Response): Promise<void> => {
   res.json({ customers, date: start });
 };
 
+/** POST /api/portal/checkin — geo-gated self check-in from customer portal */
+const checkInPortalHandler = async (req: Request, res: Response): Promise<void> => {
+  const parse = CheckInSchema.safeParse(req.body);
+  if (!parse.success) { res.status(400).json({ error: 'latitude and longitude required' }); return; }
+
+  const { customerId, businessId } = (req as any).portalCtx;
+  const { latitude: custLat, longitude: custLon } = parse.data;
+
+  // Load business location + radius
+  const biz = await (prisma.business as any).findUnique({
+    where:  { id: businessId },
+    select: { latitude: true, longitude: true, checkInRadiusMeters: true },
+  }) as { latitude: number | null; longitude: number | null; checkInRadiusMeters: number } | null;
+  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+  if (!biz.latitude || !biz.longitude) {
+    res.status(400).json({ error: 'Check-in location not configured by this business' }); return;
+  }
+
+  const dist = distanceMetres(custLat, custLon, biz.latitude, biz.longitude);
+  const radius = (biz as any).checkInRadiusMeters ?? 30;
+  if (dist > radius) {
+    res.status(403).json({ error: 'TOO_FAR', distanceMetres: Math.round(dist), radiusMetres: radius }); return;
+  }
+
+  // Idempotency: one check-in per customer per day
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const existing = await prisma.visit.findFirst({
+    where: { businessId, customerId, source: 'QR_CHECKIN', visitedAt: { gte: dayStart } },
+    select: { id: true },
+  });
+  if (existing) {
+    res.status(409).json({ error: 'ALREADY_CHECKED_IN_TODAY' }); return;
+  }
+
+  // Create visit then accrue points
+  const visit = await prisma.visit.create({
+    data: { businessId, customerId, source: 'QR_CHECKIN', amountSpent: 0, visitedAt: new Date() } as any,
+    select: { id: true },
+  });
+
+  const { accruePointsForVisit } = await import('../services/loyalty-service');
+  const result = await accruePointsForVisit(visit.id, businessId, customerId, 0).catch(() => ({ pointsEarned: 0, newBalance: 0 }));
+
+  res.json({ ok: true, pointsEarned: (result as any).pointsEarned ?? 0, newBalance: (result as any).newBalance ?? 0, distanceMetres: Math.round(dist) });
+};
+
+/** PATCH /api/portal/:slug/location — set business check-in location (tenant auth) */
+const locationSchema = z.object({
+  latitude:            z.number().min(-90).max(90),
+  longitude:           z.number().min(-180).max(180),
+  checkInRadiusMeters: z.number().int().min(10).max(500).optional(),
+});
+
+const updateLocationHandler = async (req: Request, res: Response): Promise<void> => {
+  const parse = locationSchema.safeParse(req.body);
+  if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
+
+  const { slug } = req.params;
+  const biz = await prisma.business.findFirst({ where: { slug }, select: { id: true } });
+  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+  await prisma.business.update({
+    where: { id: biz.id },
+    data:  { latitude: parse.data.latitude, longitude: parse.data.longitude, ...(parse.data.checkInRadiusMeters ? { checkInRadiusMeters: parse.data.checkInRadiusMeters } : {}) } as any,
+  });
+  res.json({ ok: true });
+};
+
 // ================================================================
 // ROUTER
 // ================================================================
@@ -323,5 +417,7 @@ customerPortalRouter.get('/:slug/info',         infoHandler);
 customerPortalRouter.post('/:slug/login',        loginHandler);
 customerPortalRouter.get('/:slug/today',         todayHandler);
 customerPortalRouter.patch('/:slug/settings',    tenantScope, updateSettingsHandler);
+customerPortalRouter.patch('/:slug/location',    tenantScope, updateLocationHandler);
 customerPortalRouter.get('/me',                  portalAuth, meHandler);
 customerPortalRouter.post('/redeem',             portalAuth, redeemHandler);
+customerPortalRouter.post('/checkin',            portalAuth, checkInPortalHandler);
