@@ -23,11 +23,11 @@
 
 import { Request, Response, Router } from 'express';
 import { z, ZodError }               from 'zod';
-import { PrismaClient }              from '@prisma/client';
+import { }              from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { Role }                      from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // QUERY LIBRARY — Read-only Prisma wrappers

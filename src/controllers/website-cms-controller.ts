@@ -26,10 +26,9 @@
 // ================================================================
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope, requirePlatformAdmin } from '../middleware/tenant-scope-middleware';
 
-const prisma = new PrismaClient();
 export const websiteCmsRouter = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────

@@ -21,7 +21,8 @@
 //  For WAHA: always freeform text/image.
 // ================================================================
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import {
   enqueueBulkCampaign,
   enqueueScheduledMessage,
@@ -33,7 +34,6 @@ import {
   MessagePayload,
 } from '../services/messaging-queue';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // LAYOUT TYPES (what @dnd-kit/core canvas serialises)

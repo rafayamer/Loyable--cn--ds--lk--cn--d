@@ -4,7 +4,8 @@
 // ================================================================
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
 import {
   submitInvoice,
@@ -14,7 +15,6 @@ import {
   SaleItem,
 } from '../services/fbr-service';
 
-const prisma = new PrismaClient();
 export const posRouter = Router();
 
 // All POS routes require a valid tenant JWT

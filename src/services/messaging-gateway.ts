@@ -7,12 +7,11 @@
 
 import axios, { AxiosError }  from 'axios';
 import { Router, Request, Response } from 'express';
-import { PrismaClient }        from '@prisma/client';
+import { prisma } from '../config/prisma';
 import type { MessagePayload, TemplatePayload, TextPayload } from '../services/messaging-queue';
-import { getRedisConnection }  from '../config/redis';
+import { getRedisConnection, getRedisClient } from '../config/redis';
 import { processFeedbackReply } from './feedback-service';
 
-const prisma = new PrismaClient();
 
 const WAHA_TIMEOUT_MS = 15_000;
 
@@ -39,10 +38,29 @@ export const routeMessage = async (opts: {
 }): Promise<GatewayResult> => {
   const { businessId, recipientPhone, payload } = opts;
 
-  const business = await prisma.business.findUnique({
-    where:  { id: businessId },
-    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-  });
+  // Cache WAHA config in Redis (5-min TTL) to avoid a DB hit on every message send
+  const redis = getRedisClient();
+  const cacheKey = `waha_cfg:${businessId}`;
+  type WahaCfg = { wahaBaseUrl: string | null; wahaSessionId: string | null; wahaApiKey: string | null };
+  let business: WahaCfg | null = null;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      business = JSON.parse(cached) as WahaCfg;
+    } else {
+      business = await prisma.business.findUnique({
+        where:  { id: businessId },
+        select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+      });
+      if (business) await redis.set(cacheKey, JSON.stringify(business), { EX: 300 });
+    }
+  } catch {
+    // Redis unavailable — fall through to direct DB query
+    business = await prisma.business.findUnique({
+      where:  { id: businessId },
+      select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+    });
+  }
 
   if (!business) return { success: false, error: 'BUSINESS_NOT_FOUND' };
   if (!business.wahaBaseUrl || !business.wahaSessionId) {

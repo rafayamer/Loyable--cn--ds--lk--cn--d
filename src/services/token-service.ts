@@ -17,10 +17,10 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import argon2 from 'argon2';
 import crypto from 'crypto';
 import type { Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { revokeToken } from '../middleware/tenant-scope-middleware';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // CONSTANTS

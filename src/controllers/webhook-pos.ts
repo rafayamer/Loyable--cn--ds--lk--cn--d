@@ -25,11 +25,11 @@
 
 import { Request, Response, Router } from 'express';
 import crypto                         from 'crypto';
-import { PrismaClient }               from '@prisma/client';
+import { }               from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { accruePointsForVisit, evaluateCustomerSegment } from '../services/loyalty-service';
 import { enqueueAutomationTrigger }   from '../services/messaging-queue';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // NORMALISED TRANSACTION SHAPE

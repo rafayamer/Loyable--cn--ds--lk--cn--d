@@ -28,11 +28,11 @@ import multer                          from 'multer';
 import csvParser                       from 'csv-parser';
 import { Readable }                    from 'stream';
 import { z, ZodError }                 from 'zod';
-import { PrismaClient, Prisma }        from '@prisma/client';
+import { Prisma }        from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { Role }                        from '@prisma/client';
 import { tenantScope, requireRoles }   from '../middleware/tenant-scope-middleware';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // CONSTANTS

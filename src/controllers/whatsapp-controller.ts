@@ -4,13 +4,12 @@
 // ================================================================
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { WahaGateway } from '../services/messaging-gateway';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 
-const prisma = new PrismaClient();
 export const whatsappRouter = Router();
 
 async function getWahaConfig(bizId: string) {

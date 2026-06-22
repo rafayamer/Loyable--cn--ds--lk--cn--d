@@ -1,8 +1,7 @@
 // ================================================================
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma';
 
-const prisma = new PrismaClient();
 
 /**
  * Generate a URL-safe, unique slug from a business name.

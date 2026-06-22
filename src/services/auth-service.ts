@@ -14,7 +14,8 @@
 // ================================================================
 
 import crypto from 'crypto';
-import { PrismaClient, Role, SubscriptionTier } from '@prisma/client';
+import { Role, SubscriptionTier } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import {
   hashPassword,
   verifyPassword,
@@ -29,7 +30,6 @@ import { getRedisClient } from '../config/redis';
 import { sendEmail } from '../utils/email.util';
 import { generateBusinessSlug } from '../utils/slug.util';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // CONSTANTS

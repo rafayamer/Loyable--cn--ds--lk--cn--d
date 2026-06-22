@@ -21,6 +21,7 @@ import { z, ZodError }  from 'zod';
 import rateLimit        from 'express-rate-limit';
 import { RedisStore }   from 'rate-limit-redis';
 import { Role }         from '@prisma/client';
+import { prisma } from '../config/prisma';
 import jwt              from 'jsonwebtoken';
 
 import {
@@ -47,9 +48,8 @@ import {
 } from '../middleware/tenant-scope-middleware';
 
 import { getRedisClient } from '../config/redis';
-import { PrismaClient }   from '@prisma/client';
+import { }   from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // ZOD REQUEST SCHEMAS — Runtime validation + type inference

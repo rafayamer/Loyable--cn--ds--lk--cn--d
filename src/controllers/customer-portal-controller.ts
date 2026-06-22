@@ -14,10 +14,9 @@
 import { Request, Response, Router } from 'express';
 import { z }                         from 'zod';
 import jwt, { SignOptions }          from 'jsonwebtoken';
-import { PrismaClient }              from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope }               from '../middleware/tenant-scope-middleware';
 
-const prisma = new PrismaClient();
 
 // ── Portal JWT helpers ────────────────────────────────────────────
 const PORTAL_SECRET = () => {

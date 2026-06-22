@@ -4,12 +4,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './config/prisma';
 import { initRedis } from './config/redis';
 import { initRedis as initTenantRedis } from './middleware/tenant-scope-middleware';
 import { wahaWebhookRouter } from './services/messaging-gateway';
 
-const prisma = new PrismaClient();
 const app = express();
 
 async function bootstrap() {

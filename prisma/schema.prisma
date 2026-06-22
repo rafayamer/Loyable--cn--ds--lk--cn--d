@@ -364,6 +364,7 @@ model Customer {
   @@index([businessId, lastVisitAt])
   @@index([businessId, whatsappNumber])
   @@index([businessId, referralCode])
+  @@index([businessId, isActive, id])     // Cursor-based pagination in cron jobs
   @@map("customers")
 }
 
@@ -490,7 +491,9 @@ model RewardPointsLedger {
 
   @@index([businessId, customerId])
   @@index([businessId, createdAt])
-  @@index([customerId, createdAt])      // Customer timeline feed
+  @@index([customerId, createdAt])           // Customer timeline feed
+  @@index([customerId, type, createdAt])     // Points expiry: oldest CREDIT per customer
+  @@index([businessId, customerId, type])    // Batch expiry queries scoped to business
   @@map("reward_points_ledger")
 }
 
@@ -624,8 +627,10 @@ model MessageQueue {
   @@index([businessId, customerId])
   @@index([businessId, status])
   @@index([businessId, scheduledFor])
-  // Compound index for cooldown interceptor query performance:
+  // Cooldown interceptor query:
   @@index([businessId, customerId, isPromotional, createdAt])
+  // Status-filtered delivery queries:
+  @@index([businessId, customerId, isPromotional, status, createdAt])
   @@map("message_queue")
 }
 
@@ -736,6 +741,7 @@ model AutomationRun {
 
   @@index([businessId, workflowId])
   @@index([businessId, customerId])
+  @@index([businessId, workflowId, status, triggeredAt])  // Deduplication lookups
   @@map("automation_runs")
 }
 

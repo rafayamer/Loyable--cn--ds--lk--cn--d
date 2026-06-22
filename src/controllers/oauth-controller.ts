@@ -23,12 +23,12 @@
 
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { issueTokenPair, setRefreshCookie } from '../services/token-service';
 import { generateBusinessSlug } from '../utils/slug.util';
 import { getRedisClient } from '../config/redis';
 
-const prisma = new PrismaClient();
 export const oauthRouter = Router();
 
 // ── Helpers ──────────────────────────────────────────────────────

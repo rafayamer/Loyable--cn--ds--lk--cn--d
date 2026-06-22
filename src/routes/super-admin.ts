@@ -21,7 +21,8 @@
 
 import { Request, Response, Router }     from 'express';
 import { z, ZodError }                   from 'zod';
-import { PrismaClient }                  from '@prisma/client';
+import { }                  from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { Role }                          from '@prisma/client';
 import os                                from 'os';
 
@@ -33,7 +34,6 @@ import { markBusinessSuspendedInCache, invalidateBusinessCache } from '../middle
 import { getRedisClient }                from '../config/redis';
 import { purgeCustomerData }             from '../services/gdpr-service';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // MRR TABLE (mirrors stripe.service.ts TIER_QUOTA)

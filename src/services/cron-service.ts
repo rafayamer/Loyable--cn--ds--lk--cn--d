@@ -18,12 +18,12 @@
 // ================================================================
 
 import cron                         from 'node-cron';
-import { PrismaClient, Prisma }     from '@prisma/client';
+import { Prisma }     from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { processBirthdayAutomations, evaluateAndDowngradeTier } from './loyalty-service';
-import { enqueueAutomationTrigger }   from '../services/messaging-queue';
+import { enqueueAutomationTrigger, getAutomationQueue } from '../services/messaging-queue';
 import { dispatchFeedbackRequests }   from './feedback-service';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // STARTUP ENTRY POINT
@@ -399,6 +399,13 @@ const inactivityQueueJob = async (): Promise<Record<string, unknown>> => {
 
       const excludeIds = alreadyMessaged.map(r => r.customerId);
 
+      // Backpressure: skip this business if queue is already heavily loaded
+      const queueDepth = await getAutomationQueue().getWaitingCount().catch(() => 0);
+      if (queueDepth > 50_000) {
+        console.warn(`[cron:inactivityQueue] Queue depth ${queueDepth} exceeds 50k — skipping biz ${biz.id} to prevent overload`);
+        continue;
+      }
+
       // Paginate in chunks of 500 to handle large customer bases
       const CHUNK = 500;
       let cursor: string | undefined;
@@ -441,6 +448,8 @@ const inactivityQueueJob = async (): Promise<Record<string, unknown>> => {
     } catch (err) {
       console.error(`[cron:inactivityQueue] Business ${biz.id} failed:`, err);
     }
+    // Yield between businesses to prevent Redis/DB saturation
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   return { businesses: businesses.length, evaluated, queued };

@@ -14,7 +14,8 @@
 //     credit either both commit or both roll back — no partial state
 // ================================================================
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { verifyPassword, hashPassword } from './token-service';
 import {
   enqueueMessage,
@@ -22,7 +23,6 @@ import {
   enqueueOutboundWebhook,
 } from '../services/messaging-queue';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // CONFIGURABLE CONSTANTS

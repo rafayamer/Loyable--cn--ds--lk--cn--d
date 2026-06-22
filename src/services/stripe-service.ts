@@ -17,11 +17,10 @@
 // ================================================================
 
 import Stripe                  from 'stripe';
-import { PrismaClient }        from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { getRedisClient }      from '../config/redis';
 import { resumeTenantQueue }   from '../services/messaging-queue';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // STRIPE CLIENT (singleton)

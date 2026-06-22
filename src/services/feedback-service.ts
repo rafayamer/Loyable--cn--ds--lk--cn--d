@@ -11,10 +11,9 @@
 //      automation trigger fired
 // ================================================================
 
-import { PrismaClient }            from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { enqueueAutomationTrigger, enqueueMessage } from './messaging-queue';
 
-const prisma = new PrismaClient();
 
 const FEEDBACK_WINDOW_MS  = 4 * 3_600_000;   // Send 4h after visit
 const LOOKBACK_WINDOW_MS  = 2 * 3_600_000;   // Process visits 4–6h old

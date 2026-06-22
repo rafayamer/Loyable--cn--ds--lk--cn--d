@@ -12,9 +12,9 @@
 
 import { Request, Response, NextFunction, Router } from 'express';
 import { z, ZodError }                             from 'zod';
-import { PrismaClient, Role }                      from '@prisma/client';
+import { Role }                      from '@prisma/client';
+import { prisma } from '../config/prisma';
 
-const prisma = new PrismaClient();
 
 import {
   createCampaign,

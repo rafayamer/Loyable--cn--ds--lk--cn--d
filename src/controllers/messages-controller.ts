@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
 import { WahaGateway, toChatId } from '../services/messaging-gateway';
 
-const prisma = new PrismaClient();
 export const messagesRouter = Router();
 
 // Resolve a business's WAHA connection config (DB → env → defaults).

@@ -19,7 +19,8 @@
 import { Request, Response, Router } from 'express';
 import { z, ZodError }               from 'zod';
 import { Role }                      from '@prisma/client';
-import { PrismaClient }              from '@prisma/client';
+import { prisma } from '../config/prisma';
+import { }              from '@prisma/client';
 
 import {
   getCustomerLoyaltyProfile,
@@ -37,7 +38,6 @@ import {
   getBranchScopedWhere,
 } from '../middleware/tenant-scope-middleware';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // ZOD SCHEMAS

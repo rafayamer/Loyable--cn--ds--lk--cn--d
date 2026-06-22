@@ -18,7 +18,8 @@
 // ================================================================
 
 import { Worker, Job, UnrecoverableError } from 'bullmq';
-import { PrismaClient, MessageStatus }     from '@prisma/client';
+import { MessageStatus }     from '@prisma/client';
+import { prisma } from '../config/prisma';
 import {
   OutboundMessageJobData,
   QUEUE_NAMES,
@@ -33,7 +34,6 @@ import { getRedisConnection } from '../config/redis';
 import { sendEmail }          from '../utils/email.util';
 import type { ConnectionOptions } from 'bullmq';
 
-const prisma = new PrismaClient();
 
 // Concurrency: 20 simultaneous jobs per worker instance.
 // Horizontal scale: run multiple instances behind a load balancer.
@@ -659,5 +659,3 @@ export const gracefulShutdown = async (
   ]);
   console.log('[workers] All workers shut down cleanly.');
 };
-
-import { getRedisConnection } from '../config/redis';

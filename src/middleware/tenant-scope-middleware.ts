@@ -16,7 +16,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { createClient, RedisClientType } from 'redis';
 
 // ================================================================
@@ -56,7 +57,6 @@ interface AccessTokenPayload {
 // INFRASTRUCTURE SINGLETONS
 // ================================================================
 
-const prisma = new PrismaClient();
 
 // Redis client — shared singleton (initialized once at app startup)
 let redisClient: RedisClientType | null = null;

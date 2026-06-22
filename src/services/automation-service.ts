@@ -12,7 +12,8 @@
 //     so the worker and service always share identical logic
 // ================================================================
 
-import { PrismaClient, Prisma }             from '@prisma/client';
+import { Prisma }             from '@prisma/client';
+import { prisma } from '../config/prisma';
 import {
   compileGraph,
   validateCompiledWorkflow,
@@ -29,7 +30,6 @@ import {
 }                                            from '../services/messaging-queue';
 import { hashPassword }                      from './token-service';
 
-const prisma = new PrismaClient();
 
 // ================================================================
 // TYPES
