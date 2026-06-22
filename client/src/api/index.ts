@@ -206,6 +206,8 @@ export const api = {
       req<any>('/portal/me', { headers: { Authorization: `Bearer ${portalToken}` } }),
     redeem: (portalToken: string, couponCode: string) =>
       req<any>('/portal/redeem', { method: 'POST', body: JSON.stringify({ couponCode }), headers: { Authorization: `Bearer ${portalToken}`, 'Content-Type': 'application/json' } }),
+    updateSettings: (slug: string, settings: any) =>
+      req<any>(`/portal/${slug}/settings`, { method: 'PATCH', body: JSON.stringify(settings) }),
   },
 
   // ── POS & FBR ─────────────────────────────────────────────────

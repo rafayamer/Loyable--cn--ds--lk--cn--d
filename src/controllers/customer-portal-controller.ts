@@ -72,12 +72,12 @@ const RedeemSchema = z.object({
 // HANDLERS
 // ================================================================
 
-/** GET /api/portal/:slug/info — business branding + tier config */
+/** GET /api/portal/:slug/info — business branding + tier config + portal settings */
 const infoHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
   const biz = await prisma.business.findFirst({
     where:  { slug, isActive: true },
-    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true },
+    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, portalSettings: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
@@ -87,7 +87,44 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
     select:  { name: true, minPoints: true, maxPoints: true, color: true, discountPct: true, perks: true },
   });
 
-  res.json({ business: biz, tiers });
+  res.json({ business: biz, tiers, portalSettings: biz.portalSettings ?? {} });
+};
+
+/** PATCH /api/portal/:slug/settings — update portal content settings (tenant auth required) */
+const settingsSchema = z.object({
+  showMenu:          z.boolean().optional(),
+  menuImageUrl:      z.string().optional(),
+  showWifi:          z.boolean().optional(),
+  wifiName:          z.string().max(100).optional(),
+  wifiPassword:      z.string().max(200).optional(),
+  showAnnouncement:  z.boolean().optional(),
+  announcementText:  z.string().max(500).optional(),
+  showReferral:      z.boolean().optional(),
+  showVisitHistory:  z.boolean().optional(),
+  customSections:    z.array(z.object({
+    title:   z.string().max(100),
+    body:    z.string().max(1000),
+    icon:    z.string().max(10).optional(),
+    visible: z.boolean(),
+  })).optional(),
+});
+
+const updateSettingsHandler = async (req: Request, res: Response): Promise<void> => {
+  const { slug } = req.params;
+  const parse = settingsSchema.safeParse(req.body);
+  if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
+
+  const biz = await prisma.business.findFirst({
+    where:  { slug, isActive: true },
+    select: { id: true, portalSettings: true },
+  });
+  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+  const current = (biz.portalSettings as Record<string, any>) ?? {};
+  const merged  = { ...current, ...parse.data };
+
+  await prisma.business.update({ where: { id: biz.id }, data: { portalSettings: merged } });
+  res.json({ ok: true, portalSettings: merged });
 };
 
 /** POST /api/portal/:slug/login — phone + name → find or create customer */
@@ -284,8 +321,9 @@ const todayHandler = async (req: Request, res: Response): Promise<void> => {
 
 export const customerPortalRouter = Router();
 
-customerPortalRouter.get('/:slug/info',   infoHandler);
-customerPortalRouter.post('/:slug/login', loginHandler);
-customerPortalRouter.get('/:slug/today',  todayHandler);
-customerPortalRouter.get('/me',           portalAuth, meHandler);
-customerPortalRouter.post('/redeem',      portalAuth, redeemHandler);
+customerPortalRouter.get('/:slug/info',         infoHandler);
+customerPortalRouter.post('/:slug/login',        loginHandler);
+customerPortalRouter.get('/:slug/today',         todayHandler);
+customerPortalRouter.patch('/:slug/settings',    tenantScope, updateSettingsHandler);
+customerPortalRouter.get('/me',                  portalAuth, meHandler);
+customerPortalRouter.post('/redeem',             portalAuth, redeemHandler);

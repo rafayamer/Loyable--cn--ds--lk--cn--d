@@ -147,6 +147,12 @@ model Business {
   brandingColors       Json?
   // JSONB shape: { "primary": "#hex", "secondary": "#hex", "accent": "#hex", "background": "#hex" }
 
+  // Customer portal content + visibility settings
+  portalSettings       Json?
+  // JSONB shape: { showMenu: bool, menuImageUrl: string, showWifi: bool, wifiName: string, wifiPassword: string,
+  //                showAnnouncement: bool, announcementText: string, showReferral: bool, showVisitHistory: bool, customSections: [{title,body,icon,visible}] }
+
+
   // Messaging provider configuration (dual gateway: Meta OR WAHA)
   messagingProvider    MessagingProvider @default(META)
 

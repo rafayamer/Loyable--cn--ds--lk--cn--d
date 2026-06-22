@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from './api/index';
 
-// ── Icons (inline SVG to avoid adding dependencies) ───────────────
+// ── Icons (inline SVG) ────────────────────────────────────────────
 const Icon = {
   star:   () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
   gift:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M20 12v10H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>,
   clock:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
   share:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>,
   check:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4"><path d="M20 6L9 17l-5-5"/></svg>,
-  trophy: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M6 9H4.5a2.5 2.5 0 010-5H6M18 9h1.5a2.5 2.5 0 000-5H18M4 22h16M8 22V11.93M16 22V11.93"/><rect x="6" y="2" width="12" height="12" rx="2"/></svg>,
   copy:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
   phone:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.22 1.18 2 2 0 012.22 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z"/></svg>,
   user:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  wifi:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>,
+  menu:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>,
+  info:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>,
+  eye:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
 };
 
 // ── Tier colour map ───────────────────────────────────────────────
@@ -48,7 +51,6 @@ function saveSession(slug: string, token: string, name: string) {
 function loadSession(slug: string) {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-    // Expire after 7 days
     if (s.slug === slug && s.token && Date.now() - s.ts < 7 * 86400 * 1000) return s;
   } catch {}
   return null;
@@ -58,11 +60,12 @@ function clearSession() { localStorage.removeItem(STORAGE_KEY); }
 // ================================================================
 // LOGIN SCREEN
 // ================================================================
-function LoginScreen({ slug, bizName, onLogin }: { slug: string; bizName: string; onLogin: (token: string, name: string) => void }) {
+function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string; bizName: string; portalSettings: any; onLogin: (token: string, name: string) => void }) {
   const [phone, setPhone] = useState('');
   const [name,  setName]  = useState('');
   const [err,   setErr]   = useState('');
   const [loading, setLoading] = useState(false);
+  const ps = portalSettings ?? {};
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,11 +86,29 @@ function LoginScreen({ slug, bizName, onLogin }: { slug: string; bizName: string
     <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c 0%,#2d1052 50%,#3d1a6e 100%)' }}>
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <img src="/logo.svg" alt="Loyable" className="w-16 h-16 object-contain mx-auto mb-3"/>
           <h1 className="text-white font-black text-2xl">{bizName}</h1>
           <p className="text-purple-300 text-sm mt-1">Your Loyalty Rewards</p>
         </div>
+
+        {/* Announcement banner (public, shown before login too) */}
+        {ps.showAnnouncement && ps.announcementText && (
+          <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-white" style={{ background: 'rgba(139,92,246,0.3)', border: '1px solid rgba(139,92,246,0.5)' }}>
+            📢 {ps.announcementText}
+          </div>
+        )}
+
+        {/* WiFi info (public) */}
+        {ps.showWifi && (ps.wifiName || ps.wifiPassword) && (
+          <div className="mb-4 rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <div className="flex items-center gap-2 text-white mb-2">
+              <Icon.wifi/><span className="font-bold text-sm">Free WiFi</span>
+            </div>
+            {ps.wifiName && <p className="text-purple-200 text-xs">Network: <span className="font-mono font-bold text-white">{ps.wifiName}</span></p>}
+            {ps.wifiPassword && <p className="text-purple-200 text-xs mt-0.5">Password: <span className="font-mono font-bold text-white">{ps.wifiPassword}</span></p>}
+          </div>
+        )}
 
         <div className="rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
           <h2 className="text-white font-bold text-lg mb-1">Check your rewards</h2>
@@ -98,37 +119,18 @@ function LoginScreen({ slug, bizName, onLogin }: { slug: string; bizName: string
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Icon.phone />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="+44 7700 900000"
-                  required
-                  className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"
-                />
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44 7700 900000" required className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
             <div>
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">First Name</label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Icon.user />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Your first name"
-                  required
-                  className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"
-                />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}
-            >
+            <button type="submit" disabled={loading} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
               {loading ? 'Checking...' : 'View My Rewards →'}
             </button>
           </form>
@@ -142,14 +144,12 @@ function LoginScreen({ slug, bizName, onLogin }: { slug: string; bizName: string
 // ================================================================
 // LOYALTY CARD
 // ================================================================
-function LoyaltyCard({ customer, nextTier, progressToNext, bizName, currency }: any) {
+function LoyaltyCard({ customer, nextTier, progressToNext }: any) {
   const grad = tierGrad(customer.tier);
   return (
     <div className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: grad, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-      {/* Decorative circles */}
       <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }}/>
       <div className="absolute -bottom-12 -left-8 w-40 h-40 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}/>
-
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -161,7 +161,6 @@ function LoyaltyCard({ customer, nextTier, progressToNext, bizName, currency }: 
             <p className="font-black text-base">{customer.tier ?? 'Member'}</p>
           </div>
         </div>
-
         <div className="flex items-end justify-between">
           <div>
             <p className="text-white/70 text-xs mb-0.5">Points Balance</p>
@@ -173,7 +172,6 @@ function LoyaltyCard({ customer, nextTier, progressToNext, bizName, currency }: 
             <p className="font-black text-2xl">{customer.totalVisits ?? 0}</p>
           </div>
         </div>
-
         {nextTier && (
           <div className="mt-4">
             <div className="flex justify-between text-xs text-white/70 mb-1">
@@ -185,6 +183,30 @@ function LoyaltyCard({ customer, nextTier, progressToNext, bizName, currency }: 
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
+// TAB: MENU
+// ================================================================
+function MenuTab({ menuImageUrl }: { menuImageUrl: string }) {
+  const [zoomed, setZoomed] = useState(false);
+  return (
+    <div>
+      <p className="text-xs text-slate-500 mb-3 text-center">Tap image to zoom</p>
+      <div
+        className={`rounded-2xl overflow-hidden cursor-zoom-in transition-all ${zoomed ? 'fixed inset-2 z-50 cursor-zoom-out rounded-3xl' : ''}`}
+        style={zoomed ? { background: 'rgba(0,0,0,0.9)' } : { border: '1px solid #f1f5f9' }}
+        onClick={() => setZoomed(z => !z)}
+      >
+        {zoomed && <div className="absolute inset-0 bg-black/80 z-0" onClick={() => setZoomed(false)}/>}
+        <img
+          src={menuImageUrl}
+          alt="Menu"
+          className={`w-full object-contain ${zoomed ? 'max-h-screen relative z-10' : 'max-h-[70vh]'}`}
+        />
       </div>
     </div>
   );
@@ -239,12 +261,7 @@ function RewardsTab({ coupons, onRedeem, currency }: any) {
             </div>
             {redeemed.has(c.code)
               ? <div className="flex items-center gap-1 text-green-600 text-xs font-semibold"><Icon.check/> Used</div>
-              : <button
-                  onClick={() => handleRedeem(c.code)}
-                  disabled={!!redeeming}
-                  className="text-xs font-bold px-3 py-1.5 rounded-xl text-white transition-opacity disabled:opacity-60"
-                  style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}
-                >
+              : <button onClick={() => handleRedeem(c.code)} disabled={!!redeeming} className="text-xs font-bold px-3 py-1.5 rounded-xl text-white transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
                   {redeeming === c.code ? '...' : 'Redeem'}
                 </button>
             }
@@ -265,7 +282,6 @@ function VisitsTab({ visits, currency }: any) {
       <p className="text-slate-500 font-medium">No visits yet</p>
     </div>
   );
-
   return (
     <div className="space-y-2">
       {visits.map((v: any) => (
@@ -311,7 +327,6 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
           </button>
         </div>
       </div>
-
       <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
@@ -323,7 +338,6 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
           </div>
         </div>
       </div>
-
       <button
         onClick={() => navigator.share?.({ title: `Join ${bizName} loyalty!`, text: `Use my referral code to join the loyalty program!`, url: referralUrl })}
         className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
@@ -336,13 +350,33 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
 }
 
 // ================================================================
+// CUSTOM SECTION (info cards configured by business)
+// ================================================================
+function CustomSectionCard({ section }: { section: any }) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+      <div className="flex items-start gap-3">
+        {section.icon && <span className="text-2xl flex-shrink-0">{section.icon}</span>}
+        <div>
+          <p className="font-bold text-slate-800 text-sm mb-1">{section.title}</p>
+          <p className="text-slate-600 text-sm whitespace-pre-wrap">{section.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // MAIN DASHBOARD
 // ================================================================
-function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizName: string; currency: string; onLogout: () => void }) {
+function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
+  token: string; bizName: string; currency: string; portalSettings: any; onLogout: () => void;
+}) {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState<'rewards'|'history'|'referral'>('rewards');
+  const [tab,     setTab]     = useState<string>('rewards');
   const [err,     setErr]     = useState('');
+  const ps = portalSettings ?? {};
 
   const load = useCallback(async () => {
     try {
@@ -387,11 +421,18 @@ function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizN
 
   const { customer, tiers, visits, referralCount, nextTier, progressToNext } = data;
 
+  // Build tab list based on portalSettings visibility
   const TABS = [
+    ps.showMenu && ps.menuImageUrl ? { id: 'menu',    label: 'Menu',    icon: '🍽️' } : null,
     { id: 'rewards',  label: 'Rewards',  icon: '🎁', count: customer.coupons?.length },
-    { id: 'history',  label: 'History',  icon: '📋', count: visits?.length },
-    { id: 'referral', label: 'Refer',    icon: '🎉', count: null },
-  ] as const;
+    ps.showVisitHistory !== false   ? { id: 'history',  label: 'History',  icon: '📋' } : null,
+    ps.showReferral    !== false     ? { id: 'referral', label: 'Refer',    icon: '🎉' } : null,
+  ].filter(Boolean) as { id: string; label: string; icon: string; count?: number }[];
+
+  // Default to first tab if current tab is hidden
+  const activeTab = TABS.find(t => t.id === tab) ? tab : (TABS[0]?.id ?? 'rewards');
+
+  const visibleCustomSections = (ps.customSections ?? []).filter((s: any) => s.visible);
 
   return (
     <div className="min-h-screen" style={{ background: '#f8fafc' }}>
@@ -405,8 +446,41 @@ function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizN
       </div>
 
       <div className="max-w-sm mx-auto px-4 py-4 space-y-4">
+        {/* Announcement */}
+        {ps.showAnnouncement && ps.announcementText && (
+          <div className="px-4 py-3 rounded-2xl text-sm font-medium" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }}>
+            📢 {ps.announcementText}
+          </div>
+        )}
+
         {/* Loyalty Card */}
-        <LoyaltyCard customer={customer} nextTier={nextTier} progressToNext={progressToNext} bizName={bizName} currency={currency}/>
+        <LoyaltyCard customer={customer} nextTier={nextTier} progressToNext={progressToNext}/>
+
+        {/* WiFi */}
+        {ps.showWifi && (ps.wifiName || ps.wifiPassword) && (
+          <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+            <div className="flex items-center gap-2 mb-2 text-purple-700">
+              <Icon.wifi/><span className="font-bold text-sm">Free WiFi</span>
+            </div>
+            {ps.wifiName && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Network</span>
+                <span className="font-mono font-bold text-sm text-slate-800">{ps.wifiName}</span>
+              </div>
+            )}
+            {ps.wifiPassword && (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-slate-500">Password</span>
+                <span className="font-mono font-bold text-sm text-slate-800">{ps.wifiPassword}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Custom info sections */}
+        {visibleCustomSections.map((section: any, i: number) => (
+          <CustomSectionCard key={i} section={section}/>
+        ))}
 
         {/* Tier perks */}
         {tiers.length > 0 && (
@@ -415,8 +489,7 @@ function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizN
             <div className="space-y-1.5">
               {(tiers.find((t: any) => t.name === customer.tier)?.perks ?? []).map((perk: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-slate-700">
-                  <span className="text-purple-500"><Icon.check/></span>
-                  {perk}
+                  <span className="text-purple-500"><Icon.check/></span>{perk}
                 </div>
               ))}
               {!tiers.find((t: any) => t.name === customer.tier)?.perks?.length && (
@@ -427,26 +500,31 @@ function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizN
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
-              style={tab === t.id
-                ? { background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }
-                : { color: '#64748b' }}
-            >
-              {t.icon} {t.label}
-              {t.count != null && t.count > 0 && <span className="ml-0.5 px-1.5 rounded-full text-[10px]" style={tab === t.id ? { background: 'rgba(255,255,255,0.25)' } : { background: '#ede9fe', color: '#7c3aed' }}>{t.count}</span>}
-            </button>
-          ))}
-        </div>
+        {TABS.length > 1 && (
+          <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
+                style={activeTab === t.id
+                  ? { background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }
+                  : { color: '#64748b' }}
+              >
+                {t.icon} {t.label}
+                {(t as any).count != null && (t as any).count > 0 && (
+                  <span className="ml-0.5 px-1.5 rounded-full text-[10px]" style={activeTab === t.id ? { background: 'rgba(255,255,255,0.25)' } : { background: '#ede9fe', color: '#7c3aed' }}>{(t as any).count}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Tab content */}
-        {tab === 'rewards'  && <RewardsTab coupons={customer.coupons} onRedeem={handleRedeem} currency={currency}/>}
-        {tab === 'history'  && <VisitsTab visits={visits} currency={currency}/>}
-        {tab === 'referral' && <ReferralTab customer={customer} referralCount={referralCount} bizName={bizName}/>}
+        {activeTab === 'menu'    && <MenuTab menuImageUrl={ps.menuImageUrl}/>}
+        {activeTab === 'rewards' && <RewardsTab coupons={customer.coupons} onRedeem={handleRedeem} currency={currency}/>}
+        {activeTab === 'history' && <VisitsTab visits={visits} currency={currency}/>}
+        {activeTab === 'referral'&& <ReferralTab customer={customer} referralCount={referralCount} bizName={bizName}/>}
       </div>
     </div>
   );
@@ -457,18 +535,18 @@ function Dashboard({ token, bizName, currency, onLogout }: { token: string; bizN
 // ================================================================
 export default function CustomerPortal() {
   const slug = getSlug();
-  const [biz, setBiz] = useState<any>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [biz,            setBiz]            = useState<any>(null);
+  const [portalSettings, setPortalSettings] = useState<any>({});
+  const [token,          setToken]          = useState<string | null>(null);
+  const [loaded,         setLoaded]         = useState(false);
 
   useEffect(() => {
     if (!slug) { setLoaded(true); return; }
-    // Try to restore session
     const session = loadSession(slug);
     if (session) setToken(session.token);
 
     api.portal.info(slug)
-      .then(d => setBiz(d))
+      .then(d => { setBiz(d); setPortalSettings(d.portalSettings ?? {}); })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, [slug]);
@@ -493,6 +571,7 @@ export default function CustomerPortal() {
     <LoginScreen
       slug={slug}
       bizName={biz.business?.name ?? slug}
+      portalSettings={portalSettings}
       onLogin={(t) => setToken(t)}
     />
   );
@@ -502,6 +581,7 @@ export default function CustomerPortal() {
       token={token}
       bizName={biz.business?.name ?? slug}
       currency={biz.business?.currency ?? 'GBP'}
+      portalSettings={portalSettings}
       onLogout={() => setToken(null)}
     />
   );

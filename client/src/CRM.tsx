@@ -1618,8 +1618,14 @@ const CustomerPortalPage=()=>{
   const [qrDataUrl,setQrDataUrl]=useState("");
   const [todayCustomers,setTodayCustomers]=useState<any[]>([]);
   const [todayLoading,setTodayLoading]=useState(true);
-  const [activeTab,setActiveTab]=useState<"qr"|"today">("qr");
+  const [activeTab,setActiveTab]=useState<"qr"|"today"|"content">("qr");
   const canvasRef=useRef<HTMLCanvasElement>(null);
+
+  // Portal content settings state
+  const [ps,setPs]=useState<any>({showMenu:false,menuImageUrl:"",showWifi:false,wifiName:"",wifiPassword:"",showAnnouncement:false,announcementText:"",showReferral:true,showVisitHistory:true,customSections:[]});
+  const [psLoading,setPsLoading]=useState(true);
+  const [psSaving,setPsSaving]=useState(false);
+  const [psSaved,setPsSaved]=useState(false);
 
   // Generate QR code using qrcode library
   useEffect(()=>{
@@ -1638,6 +1644,35 @@ const CustomerPortalPage=()=>{
     fetch(`/api/portal/${slug}/today`,{headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")}`}})
       .then(r=>r.json()).then(d=>setTodayCustomers(d?.customers??[])).catch(()=>{}).finally(()=>setTodayLoading(false));
   },[slug]);
+
+  // Load portal settings
+  useEffect(()=>{
+    if(!slug)return;
+    fetch(`/api/portal/${slug}/info`)
+      .then(r=>r.json())
+      .then(d=>{if(d?.portalSettings)setPs((prev:any)=>({...prev,...d.portalSettings}));})
+      .catch(()=>{})
+      .finally(()=>setPsLoading(false));
+  },[slug]);
+
+  async function savePortalSettings(){
+    setPsSaving(true);
+    try{
+      await api.portal.updateSettings(slug,ps);
+      setPsSaved(true);setTimeout(()=>setPsSaved(false),2500);
+    }catch(e:any){alert(e?.message??"Failed to save");}
+    finally{setPsSaving(false);}
+  }
+
+  function addCustomSection(){
+    setPs((p:any)=>({...p,customSections:[...(p.customSections||[]),{title:"",body:"",icon:"📌",visible:true}]}));
+  }
+  function updateSection(i:number,field:string,val:any){
+    setPs((p:any)=>{const s=[...(p.customSections||[])];s[i]={...s[i],[field]:val};return{...p,customSections:s};});
+  }
+  function removeSection(i:number){
+    setPs((p:any)=>({...p,customSections:(p.customSections||[]).filter((_:any,idx:number)=>idx!==i)}));
+  }
 
   function copyLink(){
     navigator.clipboard.writeText(portalUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
@@ -1686,8 +1721,8 @@ const CustomerPortalPage=()=>{
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl w-fit" style={{background:"rgba(255,255,255,0.05)"}}>
-        {([["qr","QR Code & Link"],["today","Today's Customers"]] as const).map(([id,label])=>(
-          <button key={id} onClick={()=>setActiveTab(id)}
+        {([["qr","QR Code & Link"],["today","Today's Customers"],["content","Portal Content"]] as const).map(([id,label])=>(
+          <button key={id} onClick={()=>setActiveTab(id as any)}
             className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={activeTab===id?{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}:{color:"#94a3b8"}}>
             {label}{id==="today"&&todayCustomers.length>0&&<span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" style={{background:"rgba(139,92,246,0.3)"}}>{todayCustomers.length}</span>}
@@ -1798,6 +1833,170 @@ const CustomerPortalPage=()=>{
             </div>
           )}
         </Card>
+      </>}
+
+      {activeTab==="content"&&<>
+        {psLoading?<div className="text-center py-10 text-slate-500 text-sm">Loading settings…</div>:<div className="space-y-4">
+          {/* Menu */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">📋 Menu</p>
+                <p className="text-slate-500 text-xs mt-0.5">Show a menu image customers can view on the portal</p>
+              </div>
+              <button onClick={()=>setPs((p:any)=>({...p,showMenu:!p.showMenu}))}
+                className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
+                style={{background:ps.showMenu?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
+                  style={{left:ps.showMenu?"calc(100% - 22px)":"2px"}}/>
+              </button>
+            </div>
+            {ps.showMenu&&(
+              <div className="mt-3 space-y-2">
+                <label className="text-xs text-slate-400">Menu Image URL</label>
+                <input value={ps.menuImageUrl||""} onChange={e=>setPs((p:any)=>({...p,menuImageUrl:e.target.value}))}
+                  placeholder="https://example.com/menu.jpg"
+                  className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                  style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                <p className="text-xs text-slate-500">Paste a direct link to your menu image (JPG, PNG, or WebP). Customers will tap to view it full screen.</p>
+              </div>
+            )}
+          </Card>
+
+          {/* WiFi */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">📶 WiFi Password</p>
+                <p className="text-slate-500 text-xs mt-0.5">Show your WiFi details on the customer portal</p>
+              </div>
+              <button onClick={()=>setPs((p:any)=>({...p,showWifi:!p.showWifi}))}
+                className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
+                style={{background:ps.showWifi?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
+                  style={{left:ps.showWifi?"calc(100% - 22px)":"2px"}}/>
+              </button>
+            </div>
+            {ps.showWifi&&(
+              <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Network Name (SSID)</label>
+                  <input value={ps.wifiName||""} onChange={e=>setPs((p:any)=>({...p,wifiName:e.target.value}))}
+                    placeholder="My Restaurant WiFi"
+                    className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                    style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Password</label>
+                  <input value={ps.wifiPassword||""} onChange={e=>setPs((p:any)=>({...p,wifiPassword:e.target.value}))}
+                    placeholder="Enter password"
+                    className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                    style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Announcement */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">📢 Announcement Banner</p>
+                <p className="text-slate-500 text-xs mt-0.5">Pin a message visible to all customers at the top</p>
+              </div>
+              <button onClick={()=>setPs((p:any)=>({...p,showAnnouncement:!p.showAnnouncement}))}
+                className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
+                style={{background:ps.showAnnouncement?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
+                  style={{left:ps.showAnnouncement?"calc(100% - 22px)":"2px"}}/>
+              </button>
+            </div>
+            {ps.showAnnouncement&&(
+              <textarea value={ps.announcementText||""} onChange={e=>setPs((p:any)=>({...p,announcementText:e.target.value}))}
+                placeholder="e.g. 🎉 Happy Hour every Friday 5–8pm! 20% off all drinks."
+                rows={3}
+                className="w-full mt-3 px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none resize-none"
+                style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+            )}
+          </Card>
+
+          {/* Built-in toggles */}
+          <Card>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Show / Hide Sections</p>
+            <div className="space-y-3">
+              {[
+                {key:"showReferral",label:"🎁 Referral Programme",desc:"Let customers see their referral code and share it"},
+                {key:"showVisitHistory",label:"🕐 Visit History",desc:"Show a list of past visits with points earned"},
+              ].map(item=>(
+                <div key={item.key} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white text-sm font-medium">{item.label}</p>
+                    <p className="text-slate-500 text-xs">{item.desc}</p>
+                  </div>
+                  <button onClick={()=>setPs((p:any)=>({...p,[item.key]:!p[item.key]}))}
+                    className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
+                    style={{background:ps[item.key]?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                    <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
+                      style={{left:ps[item.key]?"calc(100% - 22px)":"2px"}}/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Custom sections */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">✨ Custom Info Sections</p>
+                <p className="text-slate-500 text-xs mt-0.5">Add any extra info: opening hours, events, offers, etc.</p>
+              </div>
+              <button onClick={addCustomSection}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+                <Plus size={12}/>Add Section
+              </button>
+            </div>
+            {(ps.customSections||[]).length===0&&(
+              <p className="text-slate-500 text-xs text-center py-4">No custom sections yet. Click "Add Section" to create one.</p>
+            )}
+            <div className="space-y-3">
+              {(ps.customSections||[]).map((sec:any,i:number)=>(
+                <div key={i} className="rounded-xl p-3 space-y-2" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
+                  <div className="flex items-center gap-2">
+                    <input value={sec.icon||""} onChange={e=>updateSection(i,"icon",e.target.value)}
+                      className="w-10 text-center px-1 py-1.5 rounded-lg text-sm outline-none"
+                      style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}
+                      placeholder="📌" maxLength={4}/>
+                    <input value={sec.title||""} onChange={e=>updateSection(i,"title",e.target.value)}
+                      placeholder="Section title"
+                      className="flex-1 px-3 py-1.5 rounded-lg text-sm text-white placeholder-slate-500 outline-none"
+                      style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                    <button onClick={()=>updateSection(i,"visible",!sec.visible)}
+                      className="w-9 h-5 rounded-full transition-all flex-shrink-0 relative"
+                      style={{background:sec.visible?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                      <span className="absolute top-0.5 transition-all w-4 h-4 rounded-full bg-white shadow"
+                        style={{left:sec.visible?"calc(100% - 18px)":"2px"}}/>
+                    </button>
+                    <button onClick={()=>removeSection(i)} className="text-slate-500 hover:text-red-400 transition-colors"><X size={14}/></button>
+                  </div>
+                  <textarea value={sec.body||""} onChange={e=>updateSection(i,"body",e.target.value)}
+                    placeholder="Section content…"
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-white placeholder-slate-500 outline-none resize-none"
+                    style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Save button */}
+          <button onClick={savePortalSettings} disabled={psSaving}
+            className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+            {psSaving?"Saving…":psSaved?<><Check size={16}/>Saved!</>:"Save Portal Settings"}
+          </button>
+        </div>}
       </>}
     </div>
   );
