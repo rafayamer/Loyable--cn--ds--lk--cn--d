@@ -174,6 +174,78 @@ messagesRouter.get('/inbox/:chatId', tenantScope, async (req: Request, res: Resp
   res.json({ chatId, days, messages });
 });
 
+// ── POST /api/messages/broadcast ─────────────────────────────────
+// Send an announcement to a set of customers: by segment OR by an
+// explicit list of customerIds.
+messagesRouter.post('/broadcast', tenantScope, async (req: Request, res: Response) => {
+  const { businessId } = (req as any).tenantContext;
+  const { message, segment, customerIds } = req.body as {
+    message:      string;
+    segment?:     string;        // 'ALL' or segment name
+    customerIds?: string[];
+  };
+
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+  if (!segment && (!customerIds || customerIds.length === 0)) {
+    return res.status(400).json({ error: 'Provide segment or customerIds' });
+  }
+
+  // Build recipient list
+  let recipients: { id: string; whatsappNumber: string | null }[] = [];
+  if (customerIds && customerIds.length > 0) {
+    recipients = await prisma.customer.findMany({
+      where:  { id: { in: customerIds }, businessId, isSuppressed: false, marketingConsentWhatsapp: true },
+      select: { id: true, whatsappNumber: true },
+    });
+  } else {
+    recipients = await prisma.customer.findMany({
+      where: {
+        businessId,
+        isSuppressed:              false,
+        marketingConsentWhatsapp:  true,
+        whatsappNumber:            { not: '' },
+        ...(segment && segment !== 'ALL' ? { segment: segment as any } : {}),
+      },
+      select: { id: true, whatsappNumber: true },
+    });
+  }
+
+  if (recipients.length === 0) {
+    return res.json({ ok: true, sent: 0, failed: 0 });
+  }
+
+  const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
+  let sent = 0; let failed = 0;
+
+  for (const c of recipients) {
+    if (!c.whatsappNumber) { failed++; continue; }
+    const chatId = toChatId(c.whatsappNumber);
+    const result = await WahaGateway.sendText(chatId, message, baseUrl, sessionId, apiKey);
+    if (result.success) {
+      sent++;
+      prisma.messageQueue.create({
+        data: {
+          businessId,
+          customerId:        c.id,
+          channel:           'WHATSAPP_WAHA',
+          provider:          'WAHA',
+          status:            'SENT',
+          payloadJson:       { type: 'TEXT', body: message } as any,
+          providerMessageId: result.messageId ?? null,
+          sentAt:            new Date(),
+          isPromotional:     true,
+        },
+      }).catch(() => {});
+    } else {
+      failed++;
+    }
+  }
+
+  res.json({ ok: true, sent, failed, total: recipients.length });
+});
+
 // ── GET /api/messages ─────────────────────────────────────────────
 // Outbound delivery log (campaign/automation sends).
 messagesRouter.get('/', tenantScope, async (req: Request, res: Response) => {

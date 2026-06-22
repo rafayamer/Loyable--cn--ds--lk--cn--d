@@ -103,6 +103,8 @@ export const api = {
     inbox:  () => get<{ conversations: any[] }>(`/messages/inbox?_t=${Date.now()}`),
     thread: (chatId: string, days = 3) =>
       get<{ chatId: string; days: number; messages: any[] }>(`/messages/inbox/${encodeURIComponent(chatId)}?days=${days}&_t=${Date.now()}`),
+    broadcast: (body: { message: string; segment?: string; customerIds?: string[] }) =>
+      post<{ ok: boolean; sent: number; failed: number; total: number }>('/messages/broadcast', body),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────
