@@ -249,7 +249,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
 
   // Next tier progress
   const pts = customer.currentPointsBalance ?? 0;
-  const currentTierIdx = tiers.findIndex(t => t.name === tierName);
+  const currentTierIdx = tiers.findIndex((t: any) => t.name === tierName);
   const nextTier = tiers[currentTierIdx + 1] ?? null;
   const progressToNext = nextTier
     ? Math.min(100, Math.round(((pts - (tiers[currentTierIdx]?.minPoints ?? 0)) /
