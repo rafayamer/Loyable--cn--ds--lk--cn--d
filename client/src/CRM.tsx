@@ -1867,7 +1867,28 @@ const CustomerPortalPage=()=>{
                   placeholder="https://example.com/menu.jpg or menu.pdf"
                   className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
                   style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-                <p className="text-xs text-slate-500">Paste a direct link to your menu — image (JPG, PNG, WebP) or PDF (max 10 MB). Customers will tap to view it full screen.</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
+                  <span className="text-xs text-slate-500">or upload file</span>
+                  <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
+                </div>
+                <label className="flex items-center justify-center gap-2 py-2.5 rounded-xl cursor-pointer transition-all"
+                  style={{background:"rgba(139,92,246,0.12)",border:"1px dashed rgba(139,92,246,0.4)",color:"#c4b5fd"}}>
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="hidden"
+                    onChange={async e=>{
+                      const f=e.target.files?.[0]; if(!f) return;
+                      if(f.size>10*1024*1024){alert("File too large (max 10 MB)"); return;}
+                      try{
+                        const r=await api.upload.menu(f);
+                        setPs((p:any)=>({...p,menuImageUrl:r.url}));
+                      }catch(err:any){alert(err.message??'Upload failed');}
+                    }}/>
+                  <span className="text-sm">📎 Upload JPG, PNG, WebP or PDF</span>
+                  <span className="text-xs opacity-60">max 10 MB</span>
+                </label>
+                {ps.menuImageUrl&&(
+                  <p className="text-xs text-green-400 truncate">✓ {ps.menuImageUrl.split('/').pop()}</p>
+                )}
               </div>
             )}
           </Card>

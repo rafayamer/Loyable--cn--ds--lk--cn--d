@@ -213,6 +213,18 @@ export const api = {
       req<any>(`/portal/${slug}/settings`, { method: 'PATCH', body: JSON.stringify(settings) }),
   },
 
+  // ── File Upload ───────────────────────────────────────────────
+  upload: {
+    menu: async (file: File): Promise<{ url: string }> => {
+      const form = new FormData();
+      form.append('file', file);
+      const token = localStorage.getItem('loyable_token') ?? '';
+      const r = await fetch('/api/upload/menu', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      if (!r.ok) throw new Error((await r.json()).error ?? 'Upload failed');
+      return r.json();
+    },
+  },
+
   // ── POS & FBR ─────────────────────────────────────────────────
   pos: {
     stats:      () => get<any>('/pos/stats'),

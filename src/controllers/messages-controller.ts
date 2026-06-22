@@ -196,16 +196,15 @@ messagesRouter.post('/broadcast', tenantScope, async (req: Request, res: Respons
   let recipients: { id: string; whatsappNumber: string | null }[] = [];
   if (customerIds && customerIds.length > 0) {
     recipients = await prisma.customer.findMany({
-      where:  { id: { in: customerIds }, businessId, isSuppressed: false, marketingConsentWhatsapp: true },
+      where:  { id: { in: customerIds }, businessId, isSuppressed: false },
       select: { id: true, whatsappNumber: true },
     });
   } else {
     recipients = await prisma.customer.findMany({
       where: {
         businessId,
-        isSuppressed:              false,
-        marketingConsentWhatsapp:  true,
-        whatsappNumber:            { not: '' },
+        isSuppressed:   false,
+        whatsappNumber: { not: '' },
         ...(segment && segment !== 'ALL' ? { segment: segment as any } : {}),
       },
       select: { id: true, whatsappNumber: true },

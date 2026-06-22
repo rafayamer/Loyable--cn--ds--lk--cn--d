@@ -54,6 +54,12 @@ async function bootstrap() {
   await loadRouter('./controllers/oauth-controller',     'oauthRouter',       '/api/auth');
   await loadRouter('./controllers/website-cms-controller',    'websiteCmsRouter',      '/api/website');
   await loadRouter('./controllers/customer-portal-controller','customerPortalRouter',  '/api/portal');
+  await loadRouter('./controllers/upload-controller',          'uploadRouter',          '/api/upload');
+
+  // Serve uploaded files (menu images / PDFs)
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  if (!require('fs').existsSync(uploadsDir)) require('fs').mkdirSync(uploadsDir, { recursive: true });
+  app.use('/uploads', express.static(uploadsDir));
 
   // WAHA inbound webhook (not behind tenantScope — WAHA posts here directly)
   app.use('/api/webhooks/waha', wahaWebhookRouter);

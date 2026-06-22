@@ -93,7 +93,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c 0%,#2d1052 50%,#3d1a6e 100%)' }}>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c 0%,#2d1052 50%,#3d1a6e 100%)' }}>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
@@ -129,14 +129,14 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Icon.phone />
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44 7700 900000" required className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+                <input type="tel" inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44 7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
             <div>
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">First Name</label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Icon.user />
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+                <input type="text" inputMode="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required autoComplete="given-name" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
@@ -442,7 +442,7 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f8fafc' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: '#f8fafc' }}>
       <div className="text-center">
         <img src="/logo.svg" alt="" className="w-12 h-12 mx-auto mb-3 animate-pulse object-contain"/>
         <p className="text-slate-500 text-sm">Loading your rewards...</p>
@@ -451,7 +451,7 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
   );
 
   if (err) return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f8fafc' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: '#f8fafc' }}>
       <div className="text-center">
         <p className="text-red-500 font-medium mb-3">{err}</p>
         <button onClick={load} className="px-4 py-2 rounded-xl text-white text-sm" style={{ background: '#8b5cf6' }}>Retry</button>
@@ -475,7 +475,7 @@ function Dashboard({ token, bizName, currency, portalSettings, onLogout }: {
   const visibleCustomSections = (ps.customSections ?? []).filter((s: any) => s.visible);
 
   return (
-    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+    <div className="min-h-[100dvh]" style={{ background: '#f8fafc' }}>
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e8f0' }}>
         <div className="flex items-center gap-2">
@@ -592,13 +592,13 @@ export default function CustomerPortal() {
   }, [slug]);
 
   if (!loaded) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
       <img src="/logo.svg" alt="" className="w-12 h-12 object-contain animate-pulse"/>
     </div>
   );
 
   if (!slug || !biz) return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
       <div className="text-center text-white">
         <img src="/logo.svg" alt="Loyable" className="w-14 h-14 object-contain mx-auto mb-4"/>
         <h1 className="font-black text-xl mb-2">Loyalty Portal</h1>
