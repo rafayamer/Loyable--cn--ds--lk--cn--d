@@ -1149,3 +1149,20 @@ model PortalLogin {
   @@index([customerId])
   @@map("portal_logins")
 }
+
+model FeedbackResponse {
+  id         String   @id @default(cuid())
+  businessId String
+  customerId String
+  visitId    String?
+  score      Int      // 1–5 star rating from WhatsApp quick-reply
+  comment    String?  // Optional follow-up message
+  channel    String   @default("WHATSAPP") // WHATSAPP | SMS | EMAIL
+  sentAt     DateTime // When the rating request was sent
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@index([businessId, score])
+  @@map("feedback_responses")
+}

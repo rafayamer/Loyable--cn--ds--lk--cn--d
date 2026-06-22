@@ -21,6 +21,7 @@ import cron                         from 'node-cron';
 import { PrismaClient, Prisma }     from '@prisma/client';
 import { processBirthdayAutomations, evaluateAndDowngradeTier } from './loyalty-service';
 import { enqueueAutomationTrigger }   from '../services/messaging-queue';
+import { dispatchFeedbackRequests }   from './feedback-service';
 
 const prisma = new PrismaClient();
 
@@ -52,7 +53,10 @@ export const startAllCronJobs = (): void => {
   // 02:30 UTC — points expiry
   cron.schedule('30 2 * * *', jobRunner('pointsExpiry', pointsExpiryJob), { timezone: 'UTC' });
 
-  console.log('[cron] 6 nightly jobs registered (UTC schedule).');
+  // Every hour — post-visit feedback requests (sent ~4h after each visit)
+  cron.schedule('0 * * * *', jobRunner('feedbackDispatch', feedbackDispatchJob), { timezone: 'UTC' });
+
+  console.log('[cron] 7 jobs registered (6 nightly + 1 hourly).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -572,4 +576,13 @@ const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
   }
 
   return { businesses: businesses.length, customersExpired: customers, pointsExpired: expired };
+};
+
+// ================================================================
+// FEEDBACK DISPATCH JOB
+// ================================================================
+
+const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
+  const result = await dispatchFeedbackRequests();
+  return result;
 };

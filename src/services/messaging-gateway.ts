@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient }        from '@prisma/client';
 import type { MessagePayload, TemplatePayload, TextPayload } from '../services/messaging-queue';
 import { getRedisConnection }  from '../config/redis';
+import { processFeedbackReply } from './feedback-service';
 
 const prisma = new PrismaClient();
 
@@ -305,7 +306,14 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
       if (OPT_OUT_KEYWORDS.has(body)) {
         await processOptOut(phone, businessId, event.payload.body);
       } else {
-        await processInboundSentiment(phone, businessId, event.payload.body);
+        // Check if this is a feedback rating reply (digit 1–5)
+        const isFeedback = await processFeedbackReply(businessId,
+          (await prisma.customer.findFirst({ where: { whatsappNumber: phone, businessId }, select: { id: true } }))?.id ?? '',
+          event.payload.body
+        ).catch(() => false);
+        if (!isFeedback) {
+          await processInboundSentiment(phone, businessId, event.payload.body);
+        }
       }
     }
   } catch (err) {
