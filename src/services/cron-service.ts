@@ -19,7 +19,7 @@
 
 import cron                         from 'node-cron';
 import { PrismaClient, Prisma }     from '@prisma/client';
-import { processBirthdayAutomations } from './loyalty-service';
+import { processBirthdayAutomations, evaluateAndDowngradeTier } from './loyalty-service';
 import { enqueueAutomationTrigger }   from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
@@ -46,7 +46,10 @@ export const startAllCronJobs = (): void => {
   // 01:15 UTC — inactivity win-back
   cron.schedule('15 1 * * *', jobRunner('inactivityQueue', inactivityQueueJob), { timezone: 'UTC' });
 
-  console.log('[cron] 4 nightly jobs registered (UTC schedule).');
+  // 02:00 UTC — tier demotion (rolling 90-day window)
+  cron.schedule('0 2 * * *', jobRunner('tierDemotion', tierDemotionJob), { timezone: 'UTC' });
+
+  console.log('[cron] 5 nightly jobs registered (UTC schedule).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -434,4 +437,43 @@ const inactivityQueueJob = async (): Promise<Record<string, unknown>> => {
   }
 
   return { businesses: businesses.length, evaluated, queued };
+};
+
+// ================================================================
+// TIER DEMOTION JOB
+// ================================================================
+
+/**
+ * Nightly job: re-evaluate every customer with a tier against their
+ * rolling 90-day visit activity. Demote if they no longer qualify.
+ */
+const tierDemotionJob = async (): Promise<Record<string, unknown>> => {
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true },
+  });
+
+  let evaluated = 0;
+  let demoted   = 0;
+
+  for (const biz of businesses) {
+    try {
+      // Only customers who currently have a tier assigned
+      const customers = await prisma.customer.findMany({
+        where:   { businessId: biz.id, isActive: true, currentTierId: { not: null } },
+        select:  { id: true },
+        orderBy: { id: 'asc' },
+      });
+
+      for (const c of customers) {
+        evaluated++;
+        const wasDemoted = await evaluateAndDowngradeTier(c.id, biz.id);
+        if (wasDemoted) demoted++;
+      }
+    } catch (err) {
+      console.error(`[cron:tierDemotion] Business ${biz.id} failed:`, err);
+    }
+  }
+
+  return { businesses: businesses.length, evaluated, demoted };
 };

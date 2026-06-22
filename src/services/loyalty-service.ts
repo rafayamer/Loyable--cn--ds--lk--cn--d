@@ -653,6 +653,70 @@ export const getCustomerLoyaltyProfile = async (
   return { customer, tiers, ledger, referralCount: referralStats };
 };
 
+/**
+ * Nightly tier demotion: if a customer's 90-day spend/visits no longer
+ * meet their current tier threshold, drop them to the highest tier they
+ * still qualify for. Sends a "We miss you" message via TIER_DOWNGRADE
+ * automation trigger (bypasses marketing cooldown — transactional).
+ */
+export const evaluateAndDowngradeTier = async (
+  customerId: string,
+  businessId: string
+): Promise<boolean> => {
+  const WINDOW_DAYS = 90;
+  const windowStart = new Date(Date.now() - WINDOW_DAYS * 86_400_000);
+
+  const [customer, tiers, recentVisitCount] = await Promise.all([
+    prisma.customer.findUnique({
+      where:  { id: customerId },
+      select: { currentTierId: true, visitCount: true, totalSpend: true },
+    }),
+    prisma.loyaltyTier.findMany({ where: { businessId }, orderBy: { rank: 'desc' } }),
+    prisma.visit.count({ where: { customerId, businessId, visitedAt: { gte: windowStart } } }),
+  ]);
+
+  if (!customer || tiers.length === 0 || !customer.currentTierId) return false;
+
+  // Evaluate against rolling 90-day visit count (spend is cumulative lifetime)
+  const qualifyingTier = tiers.find(t => {
+    const meetsVisits = t.minVisitCount === null || recentVisitCount >= (t.minVisitCount ?? 0);
+    const meetsSpend  = !t.minTotalSpend || Number(customer.totalSpend ?? 0) >= Number(t.minTotalSpend);
+    return meetsVisits && meetsSpend;
+  });
+
+  const lowestTier = tiers[tiers.length - 1];
+  const targetTier = qualifyingTier ?? lowestTier;
+  if (!targetTier || targetTier.id === customer.currentTierId) return false;
+
+  // Check the target is actually lower rank than current
+  const currentTier = tiers.find(t => t.id === customer.currentTierId);
+  if (!currentTier || targetTier.rank >= currentTier.rank) return false;
+
+  await prisma.$transaction([
+    prisma.customer.update({
+      where: { id: customerId },
+      data:  { currentTierId: targetTier.id, updatedAt: new Date() },
+    }),
+    prisma.customerTierHistory.create({
+      data: { businessId, customerId, tierId: targetTier.id, reason: 'DEMOTION', changedAt: new Date() },
+    }),
+  ]);
+
+  // Fire TIER_DOWNGRADE automation non-blocking
+  try {
+    const { enqueueAutomationTrigger } = await import('./messaging-queue');
+    await enqueueAutomationTrigger({
+      workflowId:     'TIER_DOWNGRADE',
+      businessId,
+      customerId,
+      triggerType:    'TIER_DOWNGRADE' as any,
+      triggerPayload: { fromTier: currentTier.name, toTier: targetTier.name },
+    });
+  } catch { /* no automation configured — silent */ }
+
+  return true;
+};
+
 export const getTierConfiguration = async (businessId: string) =>
   prisma.loyaltyTier.findMany({
     where:   { businessId },
