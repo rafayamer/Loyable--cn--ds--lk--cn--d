@@ -463,23 +463,26 @@ const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
 // ════════════════════════════════════════════════════════════════
 const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [view,setView]=useState<AuthView>("landing");
-  const [dark,setDark]=useState(true);
+  const [dark,setDark]=useState(false);
   const [mobileNav,setMobileNav]=useState(false);
   const [pricingYearly,setPricingYearly]=useState(false);
   const [testimonialIdx,setTestimonialIdx]=useState(0);
+  const [faqOpen,setFaqOpen]=useState<number|null>(null);
 
   const D=dark;
-  const bg    = D?"#0f0a1e":"#f8f7ff";
-  const bg2   = D?"#130d24":"#f0eeff";
-  const card  = D?"rgba(255,255,255,0.06)":"#ffffff";
-  const cardB = D?"rgba(255,255,255,0.1)":"rgba(124,58,237,0.12)";
-  const tx    = D?"#ffffff":"#1a1035";
-  const tx2   = D?"#94a3b8":"#6b7280";
-  const tx3   = D?"#64748b":"#9ca3af";
-  const bdr   = D?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.07)";
+  const bg    = D?"#09090b":"#ffffff";
+  const bg2   = D?"#0f0f17":"#f8fafc";
+  const card  = D?"rgba(255,255,255,0.04)":"#ffffff";
+  const tx    = D?"#ffffff":"#0f172a";
+  const tx2   = D?"#94a3b8":"#64748b";
+  const tx3   = D?"#64748b":"#94a3b8";
+  const bdr   = D?"#1e293b":"#e2e8f0";
   const inpBg = D?"rgba(255,255,255,0.07)":"#f9f8ff";
   const inpBd = D?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)";
-  const navBg = D?"rgba(15,10,30,0.9)":"rgba(255,255,255,0.92)";
+  const navBg = D?"rgba(9,9,11,0.88)":"rgba(255,255,255,0.88)";
+  const secPillBg  = D?"#0f172a":"#f8fafc";
+  const secPillBdr = D?"#334155":"#cbd5e1";
+  const secPillTx  = D?"#818cf8":"#4f46e5";
 
   const LS_FEATURES=[
     {icon:"🔲",title:"QR Check-In",desc:"Easy QR scanning for customer visits."},
@@ -628,207 +631,232 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     );
   }
 
-  // ── Full marketing landing page ──────────────────────────────
+  // ── Full marketing landing page (PrebuiltUI template design) ───
+  const FAQS=[
+    {q:"What is Loyable?",a:"Loyable is an all-in-one WhatsApp-first loyalty and customer retention platform. It lets businesses track visits, reward customers with points, automate WhatsApp campaigns, and grow repeat revenue — without technical knowledge."},
+    {q:"Is there a free trial available?",a:"Yes! We offer a 14-day free trial with full access to all features. No credit card is required to start."},
+    {q:"Can I change my subscription plan later?",a:"Absolutely. You can upgrade or downgrade your plan at any time from your account settings. Changes take effect immediately."},
+    {q:"How do customers earn and redeem points?",a:"Customers scan your QR code at each visit or purchase. Points are credited automatically. They can redeem points via the customer portal or through staff on your POS for discounts and rewards."},
+    {q:"Do I need technical knowledge to set up Loyable?",a:"No. Loyable is designed for non-technical business owners. Setup takes under 2 minutes — connect WhatsApp, add your QR code, and you are live."},
+    {q:"Is my customer data secure?",a:"Yes. All data is encrypted, stored securely, and GDPR-compliant. Each business account is fully isolated — your data is never shared with other tenants."},
+  ];
   return(
     <ThemeCtx.Provider value={{dark}}>
     <div className="min-h-screen overflow-x-hidden" style={{background:bg,color:tx}}>
 
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 transition-colors" style={{background:navBg,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${bdr}`}}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[62px] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/logo.svg" alt="Loyable" className="w-9 h-9 object-contain"/>
-          </div>
-          <div className="hidden lg:flex items-center gap-1 text-sm font-medium" style={{color:tx2}}>
-            {["Home","Features","Pricing"].map(l=>(
-              <a key={l} href={`#${l.toLowerCase()}`} className="px-3 py-2 rounded-lg transition-colors hover:opacity-80" style={{color:tx2}}>{l}</a>
-            ))}
-            {["Industries","Resources","Company"].map(l=>(
-              <button key={l} className="px-3 py-2 rounded-lg transition-colors hover:opacity-80 flex items-center gap-1" style={{color:tx2}}>{l}<ChevronDown size={13}/></button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={()=>setDark(!dark)} className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:opacity-80" style={{background:D?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:tx2}}>
-              {D?<span className="text-base">☀️</span>:<span className="text-base">🌙</span>}
-            </button>
-            <button onClick={()=>nav("login")} className="hidden sm:block px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-80" style={{color:tx}}>Log in</button>
-            <button onClick={()=>nav("signup")} className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
-            <button className="lg:hidden p-1.5" onClick={()=>setMobileNav(!mobileNav)} style={{color:tx}}>{mobileNav?<X size={20}/>:<Menu size={20}/>}</button>
-          </div>
+      {/* ── Marquee keyframes ─────────────────────────────── */}
+      <style>{`@keyframes lyl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}} .lyl-track{display:flex;width:max-content;animation:lyl-marquee 28s linear infinite;} .lyl-track:hover{animation-play-state:paused}`}</style>
+
+      {/* ── Navbar ──────────────────────────────────────────── */}
+      <nav className="flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 py-4" style={{backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",background:navBg,borderBottom:`1px solid ${bdr}`}}>
+        <button onClick={()=>nav("landing")} className="flex items-center gap-2.5 flex-shrink-0">
+          <img src="/logo.svg" alt="Loyable" className="h-9 w-auto object-contain"/>
+          <span className="font-black text-lg" style={{color:tx}}>Loyable</span>
+        </button>
+
+        {/* Desktop nav links */}
+        <div className="hidden md:flex items-center gap-8 lg:gap-12">
+          {["home","features","pricing"].map(l=>(
+            <a key={l} href={`#${l}`} className="text-sm capitalize font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>{l}</a>
+          ))}
+          <a href="#how-it-works" className="text-sm font-medium transition-opacity hover:opacity-70" style={{color:tx2}}>How it Works</a>
         </div>
+
+        {/* Desktop right actions */}
+        <div className="flex items-center gap-3 md:gap-4">
+          <button onClick={()=>setDark(!dark)} className="flex items-center justify-center size-9 rounded-full transition-colors" style={{background:D?"rgba(255,255,255,0.1)":"rgba(15,23,42,0.06)"}} title="Toggle theme">
+            {D
+              ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:tx2}}><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:tx2}}><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+            }
+          </button>
+          <button onClick={()=>nav("login")} className="hidden md:block px-4 py-2 rounded-md text-sm font-medium border transition-colors hover:opacity-80" style={{borderColor:"#8b5cf6",color:tx}}>Sign in</button>
+          <button onClick={()=>nav("signup")} className="px-4 py-2 rounded-md text-sm font-medium text-white transition-colors hover:opacity-90" style={{background:"#8b5cf6"}}>Get started</button>
+          <button className="md:hidden" onClick={()=>setMobileNav(!mobileNav)} style={{color:tx}}>{mobileNav?<X size={22}/>:<Menu size={22}/>}</button>
+        </div>
+
+        {/* Mobile drawer */}
         {mobileNav&&(
-          <div className="lg:hidden border-t px-4 pb-4 pt-3 space-y-2" style={{background:navBg,borderColor:bdr}}>
-            {["Home","Features","Pricing","Industries"].map(l=>(
-              <a key={l} href={`#${l.toLowerCase()}`} onClick={()=>setMobileNav(false)} className="block text-sm py-2" style={{color:tx2}}>{l}</a>
+          <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 text-lg font-medium md:hidden transition duration-300 z-[100]" style={{background:D?"rgba(9,9,11,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(12px)"}}>
+            {["home","features","pricing"].map(l=>(
+              <a key={l} href={`#${l}`} onClick={()=>setMobileNav(false)} className="capitalize transition-opacity hover:opacity-70" style={{color:tx}}>{l}</a>
             ))}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button onClick={()=>{setMobileNav(false);nav("login");}} className="py-2.5 rounded-xl text-sm font-semibold border" style={{color:tx,borderColor:bdr}}>Log in</button>
-              <button onClick={()=>{setMobileNav(false);nav("signup");}} className="py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Sign Up Free</button>
-            </div>
+            <a href="#how-it-works" onClick={()=>setMobileNav(false)} style={{color:tx}}>How it Works</a>
+            <button onClick={()=>{setMobileNav(false);nav("login");}} className="transition-opacity hover:opacity-70" style={{color:tx}}>Sign in</button>
+            <button onClick={()=>{setMobileNav(false);nav("signup");}} className="px-8 py-2.5 rounded-md text-white text-base font-medium" style={{background:"#8b5cf6"}}>Get started</button>
+            <button onClick={()=>setMobileNav(false)} className="aspect-square size-10 flex items-center justify-center text-white rounded-md" style={{background:"#8b5cf6"}}><X size={20}/></button>
           </div>
         )}
       </nav>
 
       {/* ── Hero ────────────────────────────────────────────── */}
-      <section id="home" className="pt-[80px]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <img src="/logo.svg" alt="Loyable" className="w-14 h-14 object-contain"/>
-                <span className="text-3xl font-black" style={{color:tx}}>Loyable</span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-black leading-[1.1] mb-5 tracking-tight" style={{color:tx}}>
-                Turn One-Time Customers Into<br/>
-                <span style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
-              </h1>
-              <p className="text-base mb-8 leading-relaxed max-w-lg" style={{color:tx2}}>
-                Loyable helps businesses track visits, reward loyalty, automate marketing and bring customers back – all in one powerful platform.
-              </p>
-              <div className="flex flex-wrap gap-3 mb-8">
-                <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-105 shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Start Free Trial</button>
-                <button className="px-6 py-3 rounded-xl text-sm font-bold border-2 transition-all hover:opacity-80" style={{color:tx,borderColor:D?"rgba(255,255,255,0.15)":"rgba(124,58,237,0.3)"}}>Book a Demo</button>
-              </div>
-              <div className="flex flex-wrap items-center gap-5 text-xs" style={{color:tx3}}>
-                {["14-Day Free Trial","No Credit Card","Setup in 2 Minutes"].map(l=>(
-                  <span key={l} className="flex items-center gap-1.5"><Check size={13} className="text-violet-500"/>{l}</span>
-                ))}
-              </div>
-            </div>
-            {/* Dashboard hero image */}
-            <div className="relative">
-              <div className="absolute -inset-4 rounded-3xl opacity-20 blur-2xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#1a1035":"#ffffff",borderColor:bdr}}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.04)":"#f8f7ff",borderColor:bdr}}>
-                  <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
-                  <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
-                  <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
-                </div>
-                <div className="p-4">
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    {[{l:"Total Customers",v:"12,458",c:"+12.5%"},{l:"Active Customers",v:"8,215",c:"+8.3%"},{l:"Repeat Customers",v:"6,125",c:"+15.2%"},{l:"Revenue Recovered",v:"£23,560",c:"+18.7%"}].map((k,i)=>(
-                      <div key={i} className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.05)":"#f9f8ff",borderColor:bdr}}>
-                        <div className="text-[9px] mb-1" style={{color:tx3}}>{k.l}</div>
-                        <div className="font-bold text-base" style={{color:tx}}>{k.v}</div>
-                        <div className="text-[9px] text-emerald-500 font-semibold">{k.c}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.03)":"#f9f8ff",borderColor:bdr}}>
-                      <div className="text-xs font-semibold mb-2" style={{color:tx}}>Customer Visits Overview</div>
-                      <div className="h-20 flex items-end gap-1">
-                        {[40,55,35,70,50,85,60,75,45,90,65,80].map((h,i)=>(
-                          <div key={i} className="flex-1 rounded-sm opacity-70" style={{height:`${h}%`,background:"linear-gradient(to top,#8b5cf6,#a78bfa)"}}/>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.03)":"#f9f8ff",borderColor:bdr}}>
-                      <div className="text-xs font-semibold mb-2" style={{color:tx}}>Top Campaigns</div>
-                      {[{l:"Birthday Offer",w:75,c:"#8b5cf6"},{l:"Weekend Promo",w:55,c:"#06b6d4"},{l:"Win Back",w:35,c:"#ec4899"},{l:"New Menu",w:20,c:"#f59e0b"}].map((b,i)=>(
-                        <div key={i} className="mb-1.5">
-                          <div className="flex justify-between text-[9px] mb-0.5" style={{color:tx3}}><span>{b.l}</span></div>
-                          <div className="h-1.5 rounded-full" style={{background:D?"rgba(255,255,255,0.06)":"#ede9fe"}}><div className="h-full rounded-full" style={{width:`${b.w}%`,background:b.c}}/></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Floating loyalty card */}
-              <div className="absolute -bottom-4 -left-6 w-36 rounded-2xl p-3 shadow-xl border" style={{background:"linear-gradient(135deg,#7c3aed,#8b5cf6)",borderColor:"rgba(255,255,255,0.2)"}}>
-                <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">Loyable</span></div>
-                <div className="text-white font-black text-lg">2,450</div>
-                <div className="text-purple-200 text-[9px]">Loyalty Points</div>
-                <div className="mt-2 h-1 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}><div className="h-full w-3/4 rounded-full" style={{background:"rgba(255,255,255,0.7)"}}/></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Trusted by */}
-        <div className="border-t border-b py-5 overflow-hidden" style={{borderColor:bdr}}>
-          <div className="max-w-7xl mx-auto px-4">
-            <p className="text-center text-xs font-medium mb-4" style={{color:tx3}}>Trusted by 1,000+ businesses worldwide</p>
-            <div className="flex items-center justify-center flex-wrap gap-8">
-              {BRANDS.map(b=><span key={b} className="text-sm font-bold tracking-tight opacity-40" style={{color:tx}}>{b}</span>)}
-            </div>
-          </div>
-        </div>
-      </section>
+      <div id="home" className="flex flex-col items-center justify-center text-center px-4 pt-36 pb-20 relative overflow-hidden">
+        {/* Gradient bg blobs */}
+        <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.25) 0%,transparent 70%)":"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.12) 0%,transparent 70%)"}}/>
+        <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.1) 0%,transparent 60%)":"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.06) 0%,transparent 60%)"}}/>
 
-      {/* ── Features ────────────────────────────────────────── */}
-      <section id="features" className="py-20 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>POWERFUL FEATURES</p>
-            <h2 className="text-3xl sm:text-4xl font-black mb-3" style={{color:tx}}>Everything You Need to Build Loyalty</h2>
-            <p className="max-w-md mx-auto text-sm" style={{color:tx2}}>All the tools you need to engage, reward and retain your customers.</p>
-          </div>
-          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {LS_FEATURES.map((f,i)=>(
-              <div key={i} className="p-4 rounded-2xl border transition-all hover:shadow-md hover:-translate-y-0.5" style={{background:card,borderColor:bdr}}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 text-lg" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{f.icon}</div>
-                <div className="font-semibold text-sm mb-1" style={{color:tx}}>{f.title}</div>
-                <div className="text-xs leading-relaxed" style={{color:tx2}}>{f.desc}</div>
-              </div>
+        {/* Social proof pill */}
+        <div className="relative flex flex-wrap items-center justify-center gap-3 p-1.5 pr-5 mb-6 rounded-full border" style={{border:`1px solid ${bdr}`,background:D?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.8)"}}>
+          <div className="flex items-center -space-x-2.5">
+            {[["#8b5cf6","MB"],["#06b6d4","SJ"],["#ec4899","JW"]].map(([c,initials],i)=>(
+              <div key={i} className="size-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2" style={{background:c,ringColor:bg}}>{initials}</div>
             ))}
           </div>
+          <p className="text-xs font-medium" style={{color:tx2}}>Trusted by 1,000+ businesses worldwide</p>
         </div>
-      </section>
+
+        {/* Headline */}
+        <h1 className="mt-2 text-5xl md:text-[64px] font-black leading-tight max-w-3xl tracking-tight" style={{color:tx}}>
+          Turn One-Time Customers Into{" "}
+          <span style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
+        </h1>
+        <p className="text-base mt-4 max-w-lg leading-relaxed" style={{color:tx2}}>
+          Loyable helps businesses track visits, reward loyalty, automate WhatsApp marketing and bring customers back — all in one powerful platform.
+        </p>
+
+        {/* CTA buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
+          <button onClick={()=>nav("signup")} className="px-7 h-11 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-lg" style={{background:"#8b5cf6"}}>Get started free</button>
+          <button className="flex items-center gap-2 h-11 px-7 rounded-md text-sm font-medium border transition-opacity hover:opacity-70" style={{borderColor:"#8b5cf6",color:tx2}}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+            <span>Watch demo</span>
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-5 mt-5 text-xs" style={{color:tx3}}>
+          {["14-Day Free Trial","No Credit Card","Setup in 2 Minutes"].map(l=>(
+            <span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-violet-500"/>{l}</span>
+          ))}
+        </div>
+
+        {/* Dashboard mockup */}
+        <div className="relative mt-16 w-full max-w-4xl mx-auto">
+          <div className="absolute -inset-4 rounded-3xl opacity-20 blur-3xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#111118":"#ffffff",borderColor:bdr}}>
+            <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.03)":"#f8fafc",borderColor:bdr}}>
+              <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
+              <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
+              <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                {[{l:"Total Customers",v:"12,458",c:"+12.5%"},{l:"Active Customers",v:"8,215",c:"+8.3%"},{l:"Repeat Customers",v:"6,125",c:"+15.2%"},{l:"Revenue Recovered",v:"£23,560",c:"+18.7%"}].map((k,i)=>(
+                  <div key={i} className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.04)":"#f8fafc",borderColor:bdr}}>
+                    <div className="text-[9px] mb-1" style={{color:tx3}}>{k.l}</div>
+                    <div className="font-bold text-sm" style={{color:tx}}>{k.v}</div>
+                    <div className="text-[9px] text-emerald-500 font-semibold">{k.c}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.02)":"#f8fafc",borderColor:bdr}}>
+                  <div className="text-xs font-semibold mb-2" style={{color:tx}}>Visits Overview</div>
+                  <div className="h-16 flex items-end gap-1">
+                    {[40,55,35,70,50,85,60,75,45,90,65,80].map((h,i)=>(
+                      <div key={i} className="flex-1 rounded-sm" style={{height:`${h}%`,background:"linear-gradient(to top,#8b5cf6,#a78bfa)",opacity:0.7}}/>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.02)":"#f8fafc",borderColor:bdr}}>
+                  <div className="text-xs font-semibold mb-2" style={{color:tx}}>Top Campaigns</div>
+                  {[{l:"Birthday Offer",w:75,c:"#8b5cf6"},{l:"Weekend Promo",w:55,c:"#06b6d4"},{l:"Win-Back",w:35,c:"#ec4899"},{l:"New Menu",w:20,c:"#f59e0b"}].map((b,i)=>(
+                    <div key={i} className="mb-1.5">
+                      <div className="text-[9px] mb-0.5" style={{color:tx3}}>{b.l}</div>
+                      <div className="h-1.5 rounded-full" style={{background:D?"rgba(255,255,255,0.06)":"#ede9fe"}}><div className="h-full rounded-full" style={{width:`${b.w}%`,background:b.c}}/></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Floating loyalty points card */}
+          <div className="absolute -bottom-4 -left-4 w-36 rounded-2xl p-3 shadow-xl border hidden sm:block" style={{background:"linear-gradient(135deg,#7c3aed,#8b5cf6)",borderColor:"rgba(255,255,255,0.2)"}}>
+            <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">Loyable</span></div>
+            <div className="text-white font-black text-lg">2,450</div>
+            <div className="text-purple-200 text-[9px]">Loyalty Points</div>
+            <div className="mt-2 h-1 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}><div className="h-full w-3/4 rounded-full" style={{background:"rgba(255,255,255,0.7)"}}/></div>
+          </div>
+        </div>
+
+        {/* Marquee logos */}
+        <h3 className="text-sm text-center mt-20 mb-6 font-medium" style={{color:tx3}}>Trusted by leading businesses, including —</h3>
+        <div className="overflow-hidden w-full relative max-w-4xl mx-auto select-none">
+          <div className="absolute left-0 top-0 h-full w-20 z-10 pointer-events-none" style={{background:`linear-gradient(to right, ${bg}, transparent)`}}/>
+          <div className="lyl-track">
+            {[...BRANDS,...BRANDS,...BRANDS,...BRANDS].map((b,i)=>(
+              <span key={i} className="mx-10 text-sm font-black tracking-tight whitespace-nowrap" style={{color:tx,opacity:0.35}}>{b}</span>
+            ))}
+          </div>
+          <div className="absolute right-0 top-0 h-full w-20 z-10 pointer-events-none" style={{background:`linear-gradient(to left, ${bg}, transparent)`}}/>
+        </div>
+      </div>
+
+      {/* ── Features ────────────────────────────────────────── */}
+      <div id="features" className="text-center px-4 py-20">
+        <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Features</p>
+        <h2 className="text-3xl font-black text-center mx-auto mt-1" style={{color:tx}}>Everything You Need to Build Loyalty</h2>
+        <p className="mt-2 max-w-xl mx-auto text-sm" style={{color:tx2}}>All the tools you need to engage, reward and retain your customers — in one platform.</p>
+        <div className="flex flex-wrap items-center justify-center gap-5 mt-12 max-w-6xl mx-auto">
+          {LS_FEATURES.map((f,i)=>(
+            <div key={i} className="p-6 rounded-xl space-y-3 border text-left transition-all hover:shadow-md hover:-translate-y-0.5 w-64" style={{border:`1px solid ${bdr}`,background:card}}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{f.icon}</div>
+              <h3 className="text-sm font-semibold" style={{color:tx}}>{f.title}</h3>
+              <p className="text-xs leading-relaxed" style={{color:tx2}}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ── How it Works ────────────────────────────────────── */}
-      <section className="py-20 px-4 sm:px-6" style={{background:bg2}}>
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-10">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>HOW IT WORKS</p>
-            <h2 className="text-3xl font-black mb-2" style={{color:tx}}>Simple Steps, Big Results</h2>
-            <p className="text-sm mb-6" style={{color:tx2}}>Loyable makes customer retention easy in just 5 steps.</p>
-            <button onClick={()=>nav("signup")} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Get Started Free</button>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4">
+      <div id="how-it-works" className="py-20 px-4" style={{background:bg2}}>
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>How It Works</p>
+          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Simple Steps, Big Results</h2>
+          <p className="text-sm mb-10" style={{color:tx2}}>Loyable makes customer retention easy in just 5 steps.</p>
+          <div className="flex flex-wrap justify-center gap-6">
             {STEPS.map((s,i)=>(
               <div key={i} className="flex items-center gap-3">
                 <div className="flex flex-col items-center">
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{s.icon}</div>
                   <div className="text-xs font-bold mt-2 text-center max-w-[90px]" style={{color:tx}}>{s.n}</div>
-                  <div className="text-[10px] text-center max-w-[90px]" style={{color:tx2}}>{s.d}</div>
+                  <div className="text-[10px] text-center max-w-[90px] mt-0.5" style={{color:tx2}}>{s.d}</div>
                 </div>
                 {i<STEPS.length-1&&<ChevronRight size={20} className="text-violet-400 flex-shrink-0 mt-[-28px]"/>}
               </div>
             ))}
           </div>
+          <button onClick={()=>nav("signup")} className="mt-10 px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{background:"#8b5cf6"}}>Get Started Free</button>
         </div>
-      </section>
+      </div>
 
       {/* ── Industries ──────────────────────────────────────── */}
-      <section id="industries" className="py-20 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-3xl font-black mb-3" style={{color:tx}}>Perfect for Every Business</h2>
-          <div className="flex flex-wrap justify-center gap-8 mt-10">
-            {INDUSTRIES.map(ind=>(
-              <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe"}}>{ind.icon}</div>
-                <span className="text-xs font-medium" style={{color:tx2}}>{ind.l}</span>
-              </div>
-            ))}
-          </div>
+      <div className="py-20 px-4 text-center">
+        <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Industries</p>
+        <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Perfect for Every Business</h2>
+        <p className="text-sm max-w-md mx-auto" style={{color:tx2}}>From restaurants to gyms, Loyable works for any business that wants loyal customers.</p>
+        <div className="flex flex-wrap justify-center gap-8 mt-12 max-w-3xl mx-auto">
+          {INDUSTRIES.map(ind=>(
+            <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.12)":"#ede9fe",border:`1px solid ${bdr}`}}>{ind.icon}</div>
+              <span className="text-xs font-medium" style={{color:tx2}}>{ind.l}</span>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
 
       {/* ── Testimonials ────────────────────────────────────── */}
-      <section className="py-20 px-4 sm:px-6" style={{background:bg2}}>
-        <div className="max-w-7xl mx-auto">
+      <div className="py-20 px-4" style={{background:bg2}}>
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>WHAT OUR CUSTOMERS SAY</p>
-            <h2 className="text-3xl font-black" style={{color:tx}}>Loved by Businesses, Trusted by Thousands</h2>
+            <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Testimonials</p>
+            <h2 className="text-3xl font-black mt-1" style={{color:tx}}>Loved by Businesses, Trusted by Thousands</h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t,i)=>(
-              <div key={i} className="p-6 rounded-2xl border" style={{background:card,borderColor:bdr}}>
+              <div key={i} className="p-6 rounded-2xl border transition-all hover:shadow-md" style={{background:card,border:`1px solid ${bdr}`}}>
                 <div className="flex gap-0.5 mb-4">{Array(t.stars).fill(0).map((_,j)=><Star key={j} size={14} className="text-yellow-400 fill-yellow-400"/>)}</div>
                 <p className="text-sm leading-relaxed mb-5" style={{color:tx2}}>"{t.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{t.avatar}</div>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{t.avatar}</div>
                   <div><div className="text-sm font-semibold" style={{color:tx}}>{t.name}</div><div className="text-xs" style={{color:tx2}}>{t.biz}</div></div>
                 </div>
               </div>
@@ -840,104 +868,140 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* ── Pricing ─────────────────────────────────────────── */}
-      <section id="pricing" className="py-20 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{color:"#8b5cf6"}}>SIMPLE, TRANSPARENT PRICING</p>
-            <h2 className="text-3xl font-black mb-8" style={{color:tx}}>Choose the Perfect Plan for Your Business</h2>
-            {/* Monthly/Yearly toggle */}
-            <div className="inline-flex items-center gap-1 p-1 rounded-xl border" style={{background:D?"rgba(255,255,255,0.05)":"#f3f4f6",borderColor:bdr}}>
-              <button onClick={()=>setPricingYearly(false)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all" style={{background:!pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:!pricingYearly?"white":tx2}}>Monthly</button>
-              <button onClick={()=>setPricingYearly(true)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2" style={{background:pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:pricingYearly?"white":tx2}}>
-                Yearly <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.15)",color:"#22c55e"}}>Save 20%</span>
-              </button>
-            </div>
+      <div id="pricing" className="py-20 px-4 relative">
+        {/* Color splash decoration */}
+        <div className="absolute -top-32 left-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.08) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.06) 0%,transparent 70%)"}}/>
+        <div className="text-center mb-12">
+          <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Pricing</p>
+          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Choose the Perfect Plan for Your Business</h2>
+          <p className="text-sm max-w-lg mx-auto mb-8" style={{color:tx2}}>Flexible pricing options designed to meet your needs — whether you're just getting started or scaling up.</p>
+          {/* Toggle */}
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl border" style={{background:D?"rgba(255,255,255,0.04)":"#f1f5f9",border:`1px solid ${bdr}`}}>
+            <button onClick={()=>setPricingYearly(false)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all" style={{background:!pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:!pricingYearly?"white":tx2}}>Monthly</button>
+            <button onClick={()=>setPricingYearly(true)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2" style={{background:pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:pricingYearly?"white":tx2}}>
+              Yearly <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.15)",color:"#22c55e"}}>Save 20%</span>
+            </button>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {PRICING.map((plan,i)=>{
-              const price=pricingYearly?plan.yearly:plan.monthly;
-              return(
-                <div key={i} className="rounded-2xl p-6 flex flex-col relative border transition-all hover:shadow-xl hover:-translate-y-1" style={{background:plan.highlight?"linear-gradient(135deg,rgba(139,92,246,0.1),rgba(124,58,237,0.05))":card,borderColor:plan.highlight?"#8b5cf6":bdr}}>
-                  {plan.highlight&&<div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-black text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Most Popular</div>}
-                  <div className="mb-5">
-                    <h3 className="font-black text-lg mb-0.5" style={{color:tx}}>{plan.name}</h3>
-                    <p className="text-xs mb-4" style={{color:tx2}}>{plan.desc}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm" style={{color:tx2}}>£</span>
-                      <span className="text-4xl font-black" style={{color:tx}}>{price}</span>
-                      <span className="text-sm" style={{color:tx2}}>/month</span>
-                    </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-6 max-w-5xl mx-auto">
+          {PRICING.map((plan,i)=>{
+            const price=pricingYearly?plan.yearly:plan.monthly;
+            const isPopular=plan.highlight;
+            return(
+              <div key={i} className="p-6 rounded-2xl w-full max-w-[280px] flex flex-col relative transition-all hover:-translate-y-1" style={{
+                boxShadow:isPopular?"0 4px 40px rgba(139,92,246,0.3)":"0 4px 24px rgba(0,0,0,0.06)",
+                background:isPopular?"linear-gradient(145deg,#4f46e5,#7c3aed)":"",
+                ...(isPopular?{}:{background:D?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.8)",border:`1px solid ${bdr}`}),
+              }}>
+                {isPopular&&(
+                  <div className="flex items-center gap-1 text-xs py-1.5 px-2.5 rounded-md font-medium absolute top-4 right-4 bg-white text-violet-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>
+                    Most Popular
                   </div>
-                  <ul className="space-y-2.5 flex-1 mb-6">
-                    {plan.features.map((f,j)=>(
-                      <li key={j} className="flex items-start gap-2 text-xs" style={{color:tx2}}>
-                        <Check size={13} className="text-violet-500 mt-0.5 flex-shrink-0"/>{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button onClick={()=>nav("signup")} className="w-full py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90" style={{background:plan.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:plan.highlight?"white":"#8b5cf6",border:plan.highlight?"none":`2px solid #8b5cf6`}}>
-                    {plan.cta}
-                  </button>
+                )}
+                <p className="font-semibold text-sm" style={{color:isPopular?"rgba(255,255,255,0.9)":tx2}}>{plan.name}</p>
+                <div className="text-3xl font-black mt-1 mb-0.5" style={{color:isPopular?"white":tx}}>
+                  £{price}<span className="text-sm font-normal" style={{color:isPopular?"rgba(255,255,255,0.7)":tx2}}>/mo</span>
                 </div>
-              );
-            })}
-          </div>
+                <p className="text-xs mb-4" style={{color:isPopular?"rgba(255,255,255,0.65)":tx2}}>{plan.desc}</p>
+                <hr className="my-4" style={{borderColor:isPopular?"rgba(255,255,255,0.2)":bdr}}/>
+                <ul className="space-y-2.5 flex-1 mb-6">
+                  {plan.features.map((f,j)=>(
+                    <li key={j} className="flex items-center gap-2 text-xs" style={{color:isPopular?"rgba(255,255,255,0.85)":tx2}}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{color:isPopular?"white":"#8b5cf6",flexShrink:0}}><path d="M20 6 9 17l-5-5"/></svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={()=>nav("signup")} className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90" style={{background:isPopular?"white":"#8b5cf6",color:isPopular?"#7c3aed":"white"}}>
+                  {plan.cta}
+                </button>
+              </div>
+            );
+          })}
         </div>
-      </section>
+      </div>
 
-      {/* ── CTA Banner ──────────────────────────────────────── */}
-      <section className="py-16 px-4 sm:px-6" style={{background:"linear-gradient(135deg,#7c3aed 0%,#8b5cf6 50%,#6d28d9 100%)"}}>
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">Ready to Turn Visitors into Loyal Customers?</h2>
-              <p className="text-purple-200 text-sm">Start your 14-day free trial today. No credit card required.</p>
-              <div className="flex flex-wrap gap-4 mt-3 text-xs text-purple-200">
-                {["14-Day Free Trial","No Credit Card","Cancel Anytime"].map(l=><span key={l} className="flex items-center gap-1.5"><Check size={11}/>{l}</span>)}
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <input type="email" placeholder="Enter your business email" className="flex-1 lg:w-60 px-4 py-3 rounded-xl text-sm outline-none" style={{background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",color:"white"}}/>
-              <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-xl text-sm font-bold text-violet-700 transition-all hover:opacity-90 whitespace-nowrap" style={{background:"#ffffff"}}>Start Free Trial</button>
-            </div>
+      {/* ── FAQ ─────────────────────────────────────────────── */}
+      <div className="py-20 px-4" style={{background:bg2}}>
+        <div className="relative max-w-2xl mx-auto">
+          {/* Color splash left decoration */}
+          <div className="absolute -left-48 top-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.06) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)"}}/>
+          <div className="text-center mb-10">
+            <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>FAQ's</p>
+            <h2 className="text-3xl font-black mt-1" style={{color:tx}}>Frequently Asked Questions</h2>
+            <p className="mt-2 text-sm max-w-lg mx-auto" style={{color:tx2}}>Everything you need to know about Loyable. Can't find the answer? Contact our support team.</p>
           </div>
-        </div>
-      </section>
-
-      {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="py-14 px-4 sm:px-6 border-t" style={{background:D?"#080510":"#1a1035",borderColor:"rgba(255,255,255,0.06)"}}>
-        <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
-            <div className="lg:col-span-2">
-              <div className="flex items-center gap-2 mb-3">
-                <img src="/logo.svg" alt="Loyable" className="w-9 h-9 object-contain"/>
-              </div>
-              <p className="text-slate-400 text-xs leading-relaxed mb-4">The all-in-one loyalty and customer retention marketing platform for businesses that want to grow.</p>
-              <div className="flex gap-3">
-                {["f","in","tw","yt"].map(s=><div key={s} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity" style={{background:"rgba(255,255,255,0.08)"}}><span className="text-white text-xs font-bold">{s}</span></div>)}
-              </div>
-            </div>
-            {[
-              {h:"Product",links:["Features","Pricing","Integrations","Changelog","API"]},
-              {h:"Company",links:["About Us","Careers","Blog","Press","Contact"]},
-              {h:"Legal",links:["Privacy Policy","Terms of Service","GDPR Compliance","Security"]},
-            ].map(col=>(
-              <div key={col.h}>
-                <h4 className="text-white font-bold text-sm mb-4">{col.h}</h4>
-                <ul className="space-y-2">{col.links.map(l=><li key={l}><a href="#" className="text-slate-400 text-xs hover:text-white transition-colors">{l}</a></li>)}</ul>
+          <div className="w-full space-y-0">
+            {FAQS.map((faq,i)=>(
+              <div key={i} className="border-b cursor-pointer w-full" style={{borderColor:D?"rgba(139,92,246,0.2)":bdr}} onClick={()=>setFaqOpen(faqOpen===i?null:i)}>
+                <div className="flex items-center justify-between py-4">
+                  <h3 className="text-sm font-medium pr-4" style={{color:tx}}>{faq.q}</h3>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:tx2,transform:faqOpen===i?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.3s ease",flexShrink:0}}><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+                <div style={{maxHeight:faqOpen===i?"400px":"0",overflow:"hidden",transition:"max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease",opacity:faqOpen===i?1:0,paddingBottom:faqOpen===i?"16px":"0"}}>
+                  <p className="text-sm leading-relaxed" style={{color:tx2}}>{faq.a}</p>
+                </div>
               </div>
             ))}
           </div>
-          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3" style={{borderColor:"rgba(255,255,255,0.06)"}}>
-            <p className="text-slate-500 text-xs">© 2024 Loyable. All rights reserved.</p>
-            <div className="flex items-center gap-2">
-              <button onClick={()=>setDark(!dark)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity" style={{background:"rgba(255,255,255,0.06)"}}><span className="text-sm">{D?"☀️":"🌙"}</span></button>
-              <span className="text-slate-500 text-xs">Switch to {D?"Light":"Dark"} Mode</span>
+        </div>
+      </div>
+
+      {/* ── CTA ─────────────────────────────────────────────── */}
+      <div className="flex flex-col items-center text-center justify-center py-20 px-4">
+        <h2 className="text-3xl font-black mb-3" style={{color:tx}}>Ready to Turn Visitors into Loyal Customers?</h2>
+        <p className="text-sm max-w-md mx-auto mb-8" style={{color:tx2}}>Start your 14-day free trial today. No credit card required. Cancel anytime.</p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input type="email" placeholder="Enter your business email" className="px-4 py-3 rounded-md text-sm outline-none w-72" style={{background:D?"rgba(255,255,255,0.07)":"#f8fafc",border:`1px solid ${bdr}`,color:tx}}/>
+          <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap" style={{background:"#8b5cf6"}}>Start Free Trial</button>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-5 mt-5 text-xs" style={{color:tx3}}>
+          {["14-Day Free Trial","No Credit Card","Cancel Anytime"].map(l=><span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-violet-500"/>{l}</span>)}
+        </div>
+      </div>
+
+      {/* ── Footer ──────────────────────────────────────────── */}
+      <footer className="relative px-6 md:px-16 lg:px-24 pt-16 pb-6 border-t" style={{background:D?"#09090b":"#ffffff",borderColor:bdr}}>
+        {/* Watermark text */}
+        <div className="absolute top-0 right-0 left-0 flex justify-center overflow-hidden pointer-events-none select-none" style={{height:"120px"}}>
+          <span className="text-[120px] font-black tracking-tighter leading-none" style={{color:D?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.04)"}}>LOYABLE</span>
+        </div>
+        <div className="relative flex flex-col md:flex-row justify-between w-full gap-10 border-b pb-10 mb-6" style={{borderColor:bdr}}>
+          <div className="max-w-xs">
+            <div className="flex items-center gap-2 mb-4">
+              <img src="/logo.svg" alt="Loyable" className="h-8 w-auto object-contain"/>
+              <span className="font-black text-base" style={{color:tx}}>Loyable</span>
+            </div>
+            <p className="text-xs leading-relaxed mb-4" style={{color:tx2}}>The all-in-one loyalty and customer retention platform for businesses that want to grow. WhatsApp-first, SMB-focused.</p>
+            <div className="flex gap-2">
+              {["f","in","tw","yt"].map(s=><div key={s} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity border" style={{border:`1px solid ${bdr}`,color:tx2}}><span className="text-xs font-bold">{s}</span></div>)}
             </div>
           </div>
+          <div className="flex flex-1 items-start justify-start md:justify-end gap-16">
+            {[
+              {h:"Product",links:["Features","Pricing","Integrations","Changelog","API"]},
+              {h:"Company",links:["About Us","Careers","Blog","Press","Contact"]},
+              {h:"Legal",links:["Privacy Policy","Terms of Service","GDPR","Security"]},
+            ].map(col=>(
+              <div key={col.h}>
+                <h4 className="font-semibold text-sm mb-5" style={{color:tx}}>{col.h}</h4>
+                <ul className="space-y-2.5">{col.links.map(l=><li key={l}><a href="#" className="text-xs transition-colors hover:opacity-80" style={{color:tx2}}>{l}</a></li>)}</ul>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs" style={{color:tx3}}>© 2025 Loyable. All rights reserved.</p>
+          <button onClick={()=>setDark(!dark)} className="flex items-center gap-2 text-xs transition-opacity hover:opacity-70" style={{color:tx3}}>
+            {D
+              ? <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>Light mode</>
+              : <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>Dark mode</>
+            }
+          </button>
         </div>
       </footer>
     </div>
