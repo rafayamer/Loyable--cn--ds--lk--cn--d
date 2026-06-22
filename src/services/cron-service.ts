@@ -170,12 +170,13 @@ const refreshSegmentsForBusiness = async (biz: {
       const prev         = c.segment;
       let   next: string = prev;
 
-      if (!last || last < lostCutoff) {
+      // BIG_SPENDER evaluated first so dormant VIPs aren't lost to LOST/AT_RISK
+      if (spend >= BIG_SPENDER_THRESHOLD) {
+        next = 'BIG_SPENDER';
+      } else if (!last || last < lostCutoff) {
         next = 'LOST';
       } else if (last < atRiskCutoff) {
         next = 'AT_RISK';
-      } else if (spend >= BIG_SPENDER_THRESHOLD && last >= loyalCutoff) {
-        next = 'BIG_SPENDER';
       } else if (highestTier && c.currentTierId === highestTier.id) {
         next = 'VIP';
       } else if (redemptions > 3 && c.visitCount < 5) {
@@ -388,33 +389,43 @@ const inactivityQueueJob = async (): Promise<Record<string, unknown>> => {
 
       const excludeIds = alreadyMessaged.map(r => r.customerId);
 
-      const candidates = await prisma.customer.findMany({
-        where: {
-          businessId:               biz.id,
-          segment:                  { in: ['AT_RISK', 'LOST'] },
-          isActive:                 true,
-          isSuppressed:             false,
-          marketingConsentWhatsapp: true,
-          lastVisitAt:              { lte: inactivityCutoff },
-          id:                       { notIn: excludeIds },
-        },
-        select: { id: true },
-        take:   100,
-      });
+      // Paginate in chunks of 500 to handle large customer bases
+      const CHUNK = 500;
+      let cursor: string | undefined;
+      let pageLoop = true;
+      while (pageLoop) {
+        const page = await prisma.customer.findMany({
+          where: {
+            businessId:               biz.id,
+            segment:                  { in: ['AT_RISK', 'LOST'] },
+            isActive:                 true,
+            isSuppressed:             false,
+            marketingConsentWhatsapp: true,
+            lastVisitAt:              { lte: inactivityCutoff },
+            id:                       { notIn: excludeIds },
+            ...(cursor ? { id: { notIn: excludeIds, gt: cursor } } : {}),
+          },
+          select:  { id: true },
+          orderBy: { id: 'asc' },
+          take:    CHUNK,
+        });
+        if (page.length < CHUNK) pageLoop = false;
+        if (page.length > 0) cursor = page[page.length - 1].id;
 
-      for (const customer of candidates) {
-        evaluated++;
-        try {
-          await enqueueAutomationTrigger({
-            workflowId:     wf.id,
-            businessId:     biz.id,
-            customerId:     customer.id,
-            triggerType:    'INACTIVITY',
-            triggerPayload: { daysInactive: biz.irregularGapDays },
-          });
-          queued++;
-        } catch (err) {
-          console.error(`[cron:inactivityQueue] Enqueue failed for ${customer.id}:`, err);
+        for (const customer of page) {
+          evaluated++;
+          try {
+            await enqueueAutomationTrigger({
+              workflowId:     wf.id,
+              businessId:     biz.id,
+              customerId:     customer.id,
+              triggerType:    'INACTIVITY',
+              triggerPayload: { daysInactive: biz.irregularGapDays },
+            });
+            queued++;
+          } catch (err) {
+            console.error(`[cron:inactivityQueue] Enqueue failed for ${customer.id}:`, err);
+          }
         }
       }
     } catch (err) {

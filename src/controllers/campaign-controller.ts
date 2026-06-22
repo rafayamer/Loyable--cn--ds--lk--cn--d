@@ -234,6 +234,22 @@ const pauseHandler = async (req: Request, res: Response): Promise<void> => {
  * Render a layoutJson into a MessagePayload without saving or dispatching.
  * Used by the canvas "Preview as WhatsApp" button.
  */
+const cloneHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const src = await getCampaignById(req.params.id, businessId);
+    const { id: _id, createdAt: _c, updatedAt: _u, status: _s, launchedAt: _l, scheduledAt: _sc, completedAt: _cp, ...rest } = src as any;
+    const cloned = await (prisma as any).campaign.create({
+      data: { ...rest, businessId, name: `Copy of ${src.name}`, status: 'DRAFT' },
+    });
+    res.status(201).json({ campaign: cloned });
+  } catch (err: any) {
+    if (err.message === 'CAMPAIGN_NOT_FOUND') { res.status(404).json({ error: 'Campaign not found' }); return; }
+    console.error('[campaign:clone]', err);
+    res.status(500).json({ error: 'Failed to clone campaign' });
+  }
+};
+
 const previewPayloadHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { layoutJson, customerName, provider } =
@@ -313,6 +329,12 @@ campaignRouter.post(
   '/:id/pause',
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER) as any,
   pauseHandler
+);
+
+campaignRouter.post(
+  '/:id/clone',
+  requireRoles(Role.TENANT_OWNER, Role.MARKETING_STAFF) as any,
+  cloneHandler
 );
 
 campaignRouter.post(

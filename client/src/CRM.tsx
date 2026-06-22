@@ -2244,6 +2244,7 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const [campaigns,setCampaigns]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [launching,setLaunching]=useState<string|null>(null);
+  const [cloning,setCloning]=useState<string|null>(null);
   useEffect(()=>{
     api.campaigns.list().then(d=>setCampaigns(d.campaigns??[])).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
@@ -2251,6 +2252,11 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
     setLaunching(id);
     try{await api.campaigns.launch(id);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"ACTIVE"}:c));}
     catch(e){}finally{setLaunching(null);}
+  };
+  const clone=async(id:string)=>{
+    setCloning(id);
+    try{const d=await api.campaigns.clone(id);setCampaigns(p=>[d.campaign,...p]);}
+    catch(e){}finally{setCloning(null);}
   };
   const totalSent=campaigns.reduce((a:number,c:any)=>a+(c.stats?.sent??0),0);
   const totalDel=campaigns.reduce((a:number,c:any)=>a+(c.stats?.delivered??0),0);
@@ -2280,6 +2286,7 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
             </div>
             <div className="flex items-center gap-2">
               <Badge color={statusColor(c.status)}>{c.status}</Badge>
+              <button onClick={()=>clone(c.id)} disabled={cloning===c.id} title="Clone campaign" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50" style={{background:"rgba(255,255,255,0.07)",color:"#94a3b8"}}>{cloning===c.id?<RefreshCw size={11} className="animate-spin"/>:<Copy size={11}/>}Clone</button>
               {(c.status==="DRAFT"||c.status==="APPROVED")&&<button onClick={()=>launch(c.id)} disabled={launching===c.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{launching===c.id?<RefreshCw size={11} className="animate-spin"/>:<Play size={11}/>}Launch</button>}
             </div>
           </div>
