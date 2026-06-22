@@ -511,9 +511,11 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const STEPS=[
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>,n:"Customer Visits",d:"Customer walks into your business."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,n:"Scans QR Code",d:"They scan to check in instantly."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 8h2m2 0h2m2 0h2M7 11h1m3 0h1"/></svg>,n:"Built-in POS",d:"Staff process orders on the built-in POS."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,n:"Earns Points",d:"Points are credited automatically."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,n:"Redeems Rewards",d:"They claim discounts and rewards."},
-    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,n:"Comes Back",d:"They return and become truly loyal."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/></svg>,n:"AI Win-Back",d:"Loyable auto-detects at-risk customers and sends them personalised discount offers."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,n:"Comes Back",d:"They return — every time, guaranteed."},
   ];
 
   const INDUSTRIES=[
@@ -660,6 +662,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       {/* ── Marquee keyframes ─────────────────────────────── */}
       <style>{`
         @keyframes lyl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        @keyframes lyl-steps{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        .lyl-steps-track:hover{animation-play-state:paused}
         .lyl-track{display:flex;width:max-content;animation:lyl-marquee 28s linear infinite;}
         .lyl-track:hover{animation-play-state:paused}
         @keyframes lyl-cube-spin{0%{transform:rotateX(15deg) rotateY(0deg)}100%{transform:rotateX(15deg) rotateY(360deg)}}
@@ -852,20 +856,28 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <div id="how-it-works" className="py-20 px-4" style={{background:bg2}}>
         <div className="max-w-5xl mx-auto text-center">
           <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>How It Works</p>
-          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Simple Steps, Big Results</h2>
-          <p className="text-sm mb-10" style={{color:tx2}}>Loyable makes customer retention easy in just 5 steps.</p>
-          <div className="flex flex-wrap justify-center gap-6">
-            {STEPS.map((s,i)=>(
-              <div key={i} className="flex items-center gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="text-[10px] font-bold mb-1 text-violet-400">0{i+1}</div>
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{s.icon}</div>
-                  <div className="text-xs font-bold mt-2 text-center max-w-[90px]" style={{color:tx}}>{s.n}</div>
-                  <div className="text-[10px] text-center max-w-[90px] mt-0.5" style={{color:tx2}}>{s.d}</div>
+          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>How Loyable Works</h2>
+          <p className="text-sm mb-10" style={{color:tx2}}>From first visit to loyal customer — fully automated in 7 simple steps.</p>
+          <div className="relative overflow-hidden w-full">
+            <div className="absolute left-0 top-0 h-full w-16 z-10 pointer-events-none" style={{background:`linear-gradient(to right,${bg2},transparent)`}}/>
+            <div className="absolute right-0 top-0 h-full w-16 z-10 pointer-events-none" style={{background:`linear-gradient(to left,${bg2},transparent)`}}/>
+            <div style={{display:"flex",width:"max-content",animation:"lyl-steps 28s linear infinite"}} className="lyl-steps-track">
+              {[...STEPS,...STEPS].map((s,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:"0",flexShrink:0}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:130,padding:"0 8px"}}>
+                    <div style={{fontSize:10,fontWeight:700,marginBottom:6,color:"#a78bfa",letterSpacing:"0.08em"}}>0{(i%STEPS.length)+1}</div>
+                    <div style={{width:56,height:56,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white",boxShadow:"0 4px 20px rgba(139,92,246,0.4)"}}>{s.icon}</div>
+                    <div style={{fontSize:12,fontWeight:700,marginTop:10,textAlign:"center",color:tx,lineHeight:1.3}}>{s.n}</div>
+                    <div style={{fontSize:10,textAlign:"center",marginTop:4,color:tx2,lineHeight:1.4,maxWidth:110}}>{s.d}</div>
+                  </div>
+                  {(i%STEPS.length)<STEPS.length-1&&(
+                    <div style={{display:"flex",alignItems:"center",marginTop:-40,flexShrink:0}}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  )}
                 </div>
-                {i<STEPS.length-1&&<ChevronRight size={20} className="text-violet-400 flex-shrink-0 mt-[-28px]"/>}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           <button onClick={()=>nav("signup")} className="mt-10 px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{background:"#8b5cf6"}}>Get Started Free</button>
         </div>
@@ -2218,7 +2230,8 @@ const CustomerPortalPage=()=>{
             )}
           </PortalCard>
 
-          {/* Background Images */}
+          {/* Background Images — removed */}
+          {false&&(
           <PortalCard>
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Image size={14} className="text-violet-400"/>Background Images
@@ -2244,6 +2257,7 @@ const CustomerPortalPage=()=>{
               );
             })}
           </PortalCard>
+          )}
 
           {/* WiFi */}
           <PortalCard>
