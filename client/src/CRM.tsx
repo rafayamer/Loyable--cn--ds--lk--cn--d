@@ -2407,6 +2407,50 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   return(
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">WhatsApp campaign builder · BullMQ dispatch · AI-assisted copywriting</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
+
+      {/* WhatsApp Ads — Coming Soon */}
+      <div className="relative overflow-hidden rounded-2xl p-5" style={{background:"linear-gradient(135deg,#0d1f12 0%,#0a2e1a 50%,#0f2416 100%)",border:"1px solid rgba(37,211,102,0.25)"}}>
+        {/* Glow blob */}
+        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-20 pointer-events-none" style={{background:"radial-gradient(circle,#25d366,transparent 70%)"}}/>
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
+              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.848L0 24l6.335-1.652A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.371l-.36-.213-3.732.973.999-3.636-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-white font-bold text-base">WhatsApp Ads</p>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold tracking-wide" style={{background:"rgba(37,211,102,0.2)",border:"1px solid rgba(37,211,102,0.4)",color:"#4ade80"}}>Coming Soon</span>
+              </div>
+              <p className="text-sm" style={{color:"rgba(255,255,255,0.55)"}}>Send targeted promotional messages to reach new and existing customers directly on WhatsApp — straight from Loyable, no third-party tools needed.</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            {icon:"🎯",title:"Audience Targeting",desc:"Target by segment, spend, location or custom rules"},
+            {icon:"📊",title:"Real-time Analytics",desc:"Track delivery, read rates and revenue attributed"},
+            {icon:"🤖",title:"AI Copywriter",desc:"Generate high-converting ad copy with one click"},
+          ].map((f,i)=>(
+            <div key={i} className="flex items-start gap-3 rounded-xl p-3" style={{background:"rgba(37,211,102,0.06)",border:"1px solid rgba(37,211,102,0.12)"}}>
+              <span className="text-xl leading-none mt-0.5">{f.icon}</span>
+              <div>
+                <p className="text-white text-xs font-semibold">{f.title}</p>
+                <p className="text-xs mt-0.5" style={{color:"rgba(255,255,255,0.4)"}}>{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="relative mt-4 flex items-center gap-3">
+          <input type="email" placeholder="Enter your email to get early access"
+            className="flex-1 px-3 py-2 rounded-xl text-sm placeholder-slate-500 outline-none"
+            style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
+          <button className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-all hover:opacity-90"
+            style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
+            Notify Me
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {loading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
           <KPI icon={Send} label="Total Sent" value={totalSent.toLocaleString()} color={C.blue}/>
