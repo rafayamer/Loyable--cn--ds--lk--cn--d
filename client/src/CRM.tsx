@@ -1648,35 +1648,133 @@ const DataHubPage=()=>{
   const [tab,setTab]=useState("queue");
   const [queueMsgs,setQueueMsgs]=useState<any[]>([]);
   const [queueLoading,setQueueLoading]=useState(true);
+  const [uploadedFiles,setUploadedFiles]=useState<{name:string,rows:number,uploadedAt:string}[]>([]);
+  const [uploading,setUploading]=useState(false);
+  const [uploadMsg,setUploadMsg]=useState("");
+
   useEffect(()=>{
     if(tab==="queue"){
       setQueueLoading(true);
       api.messages.list({limit:50}).then(d=>setQueueMsgs(d.messages??[])).catch(()=>{}).finally(()=>setQueueLoading(false));
     }
   },[tab]);
-  const sheets=[{name:"Sheet1 (Check-ins)",rows:847,status:"Synced",sync:"2 min ago"},{name:"Customer Records",rows:1680,status:"Synced",sync:"2 min ago"},{name:"Segments",rows:2060,status:"Synced",sync:"15 min ago"},{name:"Analytics_Data",rows:168,status:"Synced",sync:"1 hr ago"},{name:"Loyal Customers",rows:420,status:"Synced",sync:"1 hr ago"},{name:"Irregular Customers",rows:290,status:"Synced",sync:"1 hr ago"},{name:"Logs",rows:3240,status:"Synced",sync:"2 min ago"}];
+
+  const handleCsvUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0]; if(!f)return;
+    if(!f.name.endsWith(".csv")&&!f.name.endsWith(".xlsx")){setUploadMsg("Only .csv or .xlsx files are supported.");return;}
+    setUploading(true);setUploadMsg("");
+    try{
+      const form=new FormData();form.append("file",f);
+      await fetch("/api/import/customers/preview",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""`}},body:form});
+      setUploadedFiles(p=>[...p,{name:f.name,rows:0,uploadedAt:new Date().toLocaleTimeString()}]);
+      setUploadMsg("✅ File uploaded. Go to Customers → Import to review and confirm.");
+    }catch(err:any){setUploadMsg(`❌ ${err.message??"Upload failed"}`);}
+    finally{setUploading(false);e.target.value="";}
+  };
+
+  const CUSTOMER_COLS=[
+    {col:"fullName",type:"text",required:true,example:"John Smith",desc:"Customer's full name"},
+    {col:"phone",type:"E.164",required:true,example:"+447911123456",desc:"WhatsApp-registered phone in E.164 format"},
+    {col:"email",type:"email",required:false,example:"john@email.com",desc:"Email address (optional)"},
+    {col:"totalSpend",type:"number",required:false,example:"250.00",desc:"Total lifetime spend in your currency"},
+    {col:"visitCount",type:"integer",required:false,example:"12",desc:"Number of past visits"},
+    {col:"marketingConsent",type:"true/false",required:false,example:"true",desc:"WhatsApp marketing consent (defaults to false)"},
+    {col:"notes",type:"text",required:false,example:"VIP customer",desc:"Internal notes"},
+  ];
+
   return(
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Data Hub</h1><p className="text-xs text-slate-400 mt-0.5">BullMQ queue monitor · Google Sheets sync · Processing pipeline</p></div><button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><RefreshCw size={14}/>Sync Now</button></div>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-xl font-bold text-white">Data Hub</h1><p className="text-xs text-slate-400 mt-0.5">Message queue monitor · Customer data import · Processing pipeline</p></div>
+      </div>
+
       {/* Pipeline */}
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Layers size={14} className="text-violet-400"/>Check-In → BullMQ Pipeline</h3>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">{[{l:"Check-In",icon:UserPlus,desc:"QR / POS Webhook",c:"#3b82f6"},{l:"Classify",icon:Layers,desc:"Segment + Tier",c:"#8b5cf6"},{l:"Consent Check",icon:Shield,desc:"Pre-flight #4",c:"#06b6d4"},{l:"Quota Guard",icon:Lock,desc:"Redis key check",c:"#f59e0b"},{l:"Cooldown",icon:Clock,desc:"72h window",c:"#ec4899"},{l:"BullMQ",icon:Database,desc:"Job enqueued",c:"#22c55e"},{l:"Gateway",icon:Send,desc:"Meta / WAHA",c:"#25D366"}].map((s,i)=>(
-          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">{i>0&&<ChevronRight size={12} className="text-slate-600"/>}<div className="p-2.5 rounded-xl text-center min-w-[72px]" style={{background:s.c+"10",border:`1px solid ${s.c}20`}}><s.icon size={16} className="mx-auto mb-1" style={{color:s.c}}/><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500" style={{fontSize:9}}>{s.desc}</div></div></div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">{[
+          {l:"Check-In",icon:UserPlus,desc:"QR / POS Webhook",c:"#3b82f6"},
+          {l:"Classify",icon:Layers,desc:"Segment + Tier",c:"#8b5cf6"},
+          {l:"Consent",icon:Shield,desc:"Pre-flight #4",c:"#06b6d4"},
+          {l:"Quota",icon:Lock,desc:"Redis key check",c:"#f59e0b"},
+          {l:"Cooldown",icon:Clock,desc:"72h window",c:"#ec4899"},
+          {l:"BullMQ",icon:Database,desc:"Job enqueued",c:"#22c55e"},
+          {l:"Gateway",icon:Send,desc:"Meta / WAHA",c:"#25D366"}
+        ].map((s,i)=>(
+          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
+            {i>0&&<ChevronRight size={12} className="text-slate-600"/>}
+            <div className="p-2.5 rounded-xl text-center min-w-[72px]" style={{background:s.c+"10",border:`1px solid ${s.c}20`}}>
+              <s.icon size={16} className="mx-auto mb-1" style={{color:s.c}}/>
+              <div className="text-xs font-medium text-white">{s.l}</div>
+              <div className="text-xs text-slate-500" style={{fontSize:9}}>{s.desc}</div>
+            </div>
+          </div>
         ))}</div>
       </div>
-      <div className="flex gap-1">{["queue","sheets","logs"].map(t=><button key={t} onClick={()=>setTab(t)} className={`px-3 py-2 rounded-lg text-xs capitalize ${tab===t?"text-white":"text-slate-400"}`} style={tab===t?{background:"rgba(139,92,246,0.2)"}:{}}>{t==="queue"?"Message Queue":t==="sheets"?"Google Sheets":"Logs"}</button>)}</div>
+
+      <div className="flex gap-1">{["queue","import","format"].map(t=>(
+        <button key={t} onClick={()=>setTab(t)} className={`px-3 py-2 rounded-lg text-xs capitalize ${tab===t?"text-white":"text-slate-400"}`} style={tab===t?{background:"rgba(139,92,246,0.2)"}:{}}>
+          {t==="queue"?"Message Queue":t==="import"?"Import Customers":"Column Format"}
+        </button>
+      ))}</div>
+
       {tab==="queue"&&<div className="gc rounded-xl overflow-hidden" style={CARD}>
-        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Template</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider Message ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Time</th></tr></thead>
-          <tbody>{queueLoading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={5} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):queueMsgs.length===0?<tr><td colSpan={5} className="py-8 text-center text-slate-500 text-xs">No messages in queue</td></tr>:queueMsgs.map((m:any)=>(
-            <tr key={m.id} className="border-b border-white/3 hover:bg-white/2"><td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td><td className="py-2.5 px-3 font-mono text-violet-300">{m.templateName||"—"}</td><td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td><td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono">{m.providerId||<span className="text-slate-700">—</span>}</td><td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td></tr>
-          ))}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Time</th></tr></thead>
+          <tbody>{queueLoading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={4} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):queueMsgs.length===0?<tr><td colSpan={4} className="py-8 text-center text-slate-500 text-xs">No messages in queue</td></tr>:queueMsgs.map((m:any)=>(
+            <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
+              <td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td>
+              <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
+              <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono">{m.providerId||<span className="text-slate-700">—</span>}</td>
+              <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
         <div className="p-3 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(STATUS_COLORS).map(([s,c])=><div key={s} className="flex items-center gap-1 text-xs"><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-400">{s}</span><span className="text-white font-medium">({queueMsgs.filter((m:any)=>m.status===s).length})</span></div>)}</div>
       </div>}
-      {tab==="sheets"&&<div className="space-y-2">{sheets.map((s,i)=><div key={i} className="gc flex items-center gap-3 p-3 rounded-xl" style={CARD}><Table size={14} className="text-violet-400 flex-shrink-0"/><div className="flex-1"><div className="text-xs font-medium text-white">{s.name}</div><div className="text-xs text-slate-500">{s.rows.toLocaleString()} rows · {s.sync}</div></div><Badge color={C.green}>{s.status}</Badge></div>)}</div>}
-      {tab==="logs"&&<div className="rounded-xl p-4 font-mono text-xs space-y-1.5" style={{background:"rgba(8,6,18,0.95)",border:"1px solid rgba(255,255,255,0.06)",maxHeight:380,overflow:"auto"}}>{[{t:"10:42:15",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT PASSED: customerId=cust_3 all 7 checks clear → routing to META gateway"},{t:"10:42:15",l:"INFO",c:"meta.gateway",m:"SENT code=200 wamid=HBgLMzQ0N…  template=thank_you_template"},{t:"10:42:14",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT #6 COOLDOWN: DROPPED customer=cust_8 within 72h window"},{t:"10:42:13",l:"INFO",c:"messaging.worker",m:"PRE-FLIGHT #4 CONSENT: DROPPED customer=cust_7 marketingConsentWhatsapp=false"},{t:"10:42:10",l:"WARN",c:"messaging.worker",m:"PRE-FLIGHT #7 QUOTA: businessId=biz_x MONTHLY_QUOTA_EXHAUSTED → pauseTenantQueue"},{t:"10:35:00",l:"INFO",c:"waha.webhook",m:"OPT-OUT detected phone=+447977999000 keyword=STOP → ConsentChangeLog appended"},{t:"10:30:00",l:"INFO",c:"waha.webhook",m:"SENTIMENT VERY_NEGATIVE customer=cust_6 text='terrible service' → marketingPausedUntil=+72h"},{t:"01:05:00",l:"INFO",c:"analytics.cron",m:"Nightly snapshot complete: churnRate=31.6% retentionRate=68.4% avgLtv=385 businessId=biz_1"}].map((l,i)=>(
-        <div key={i} className="flex gap-2"><span className="text-slate-600 flex-shrink-0">{l.t}</span><span className={l.l==="ERROR"?"text-red-400":l.l==="WARN"?"text-amber-400":"text-green-400"}>[{l.l}]</span><span className="text-violet-400 flex-shrink-0">{l.c}:</span><span className="text-slate-300">{l.m}</span></div>
-      ))}</div>}
+
+      {tab==="import"&&<div className="space-y-4">
+        <div className="gc rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Download size={14} className="text-violet-400"/>Import Customers via CSV / XLSX</h3>
+          <p className="text-xs text-slate-400 mb-4">Upload a spreadsheet with your customer data. Switch to the "Column Format" tab to see the exact columns and format required.</p>
+          <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-xl cursor-pointer transition-all" style={{background:"rgba(139,92,246,0.05)",border:"2px dashed rgba(139,92,246,0.3)"}}>
+            <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleCsvUpload} disabled={uploading}/>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.15)"}}><Download size={24} className="text-violet-400"/></div>
+            <div className="text-center"><div className="text-sm font-semibold text-white">{uploading?"Uploading…":"Drop CSV or XLSX here"}</div><div className="text-xs text-slate-400 mt-1">or click to browse · max 10 MB</div></div>
+          </label>
+          {uploadMsg&&<p className="text-xs mt-3 text-center" style={{color:uploadMsg.startsWith("✅")?"#22c55e":"#ef4444"}}>{uploadMsg}</p>}
+          {uploadedFiles.length>0&&<div className="mt-4 space-y-2">
+            <h4 className="text-xs font-semibold text-slate-400">Uploaded this session</h4>
+            {uploadedFiles.map((f,i)=><div key={i} className="flex items-center gap-3 p-2.5 rounded-lg" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.15)"}}><FileText size={14} className="text-green-400 flex-shrink-0"/><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{f.name}</div><div className="text-xs text-slate-500">Uploaded at {f.uploadedAt}</div></div><Badge color="#22c55e">Uploaded</Badge></div>)}
+          </div>}
+        </div>
+      </div>}
+
+      {tab==="format"&&<div className="space-y-4">
+        <div className="gc rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-1">Required CSV / XLSX Format</h3>
+          <p className="text-xs text-slate-400 mb-4">Your spreadsheet must have these column headers in row 1. Order doesn't matter — column names must match exactly (case-insensitive).</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead><tr className="border-b border-white/5"><th className="text-left py-2 px-3 text-slate-400 font-medium">Column Name</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Type</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Required</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Example</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Description</th></tr></thead>
+              <tbody>{CUSTOMER_COLS.map((col,i)=>(
+                <tr key={i} className="border-b border-white/3">
+                  <td className="py-2.5 px-3 font-mono text-violet-300">{col.col}</td>
+                  <td className="py-2.5 px-3 text-slate-400">{col.type}</td>
+                  <td className="py-2.5 px-3">{col.required?<Badge color="#22c55e">Required</Badge>:<span className="text-slate-500">Optional</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-slate-300">{col.example}</td>
+                  <td className="py-2.5 px-3 text-slate-400">{col.desc}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-2"><Info size={13} className="text-violet-400"/>Example CSV content</h3>
+          <pre className="text-xs text-green-400 overflow-x-auto p-3 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontFamily:"monospace"}}>{`fullName,phone,email,totalSpend,visitCount,marketingConsent
+John Smith,+447911123456,john@email.com,250.00,12,true
+Maria Garcia,+34612345678,maria@cafe.es,85.50,4,true
+Tom Wilson,+12125551234,,0,1,false`}</pre>
+        </div>
+      </div>}
     </div>
   );
 };
@@ -2444,6 +2542,10 @@ const SettingsPage=({wa,onConnect})=>{
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
+  const [inviteEmail,setInviteEmail]=useState("");
+  const [inviteRole,setInviteRole]=useState("MARKETING_STAFF");
+  const [inviting,setInviting]=useState(false);
+  const [inviteMsg,setInviteMsg]=useState("");
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
@@ -2473,14 +2575,59 @@ const SettingsPage=({wa,onConnect})=>{
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
-          <div className="text-xs text-slate-400 mb-2">6-tier RBAC from Prisma Role enum · tenantScope.ts middleware enforces branch isolation</div>
-          {[{name:"Alex Thompson",role:"TENANT_OWNER",email:"alex@coffeehouse.com",branch:"All branches"},{name:"Maria Garcia",role:"BRANCH_MANAGER",email:"maria@coffeehouse.com",branch:"Soho Branch"},{name:"Tom Wilson",role:"CASHIER",email:"tom@coffeehouse.com",branch:"Soho Branch"},{name:"Lisa Park",role:"MARKETING_STAFF",email:"lisa@coffeehouse.com",branch:"All branches"}].map((m,i)=>(
-            <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}>
-              <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white" style={{background:ROLE_COLORS[m.role]+"30",color:ROLE_COLORS[m.role]}}>{m.name.split(" ").map(n=>n[0]).join("")}</div><div><div className="text-xs text-white font-medium">{m.name}</div><div className="text-xs text-slate-500">{m.email} · {m.branch}</div></div></div>
-              <Badge color={ROLE_COLORS[m.role]}>{m.role.replace("_"," ")}</Badge>
+          <p className="text-xs text-slate-400">Staff members receive an email invitation with a link to set their password and access the CRM. Each role has restricted access to specific features.</p>
+
+          {/* Role permission matrix */}
+          <div className="rounded-xl overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div className="px-4 py-2.5 border-b border-white/5" style={{background:"rgba(255,255,255,0.02)"}}><span className="text-xs font-semibold text-slate-300">Role Permissions</span></div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-white/5"><th className="text-left py-2 px-3 text-slate-500">Feature</th>{["TENANT_OWNER","BRANCH_MANAGER","MARKETING_STAFF","KITCHEN_STAFF"].map(r=><th key={r} className="py-2 px-2 text-slate-400 font-medium text-center">{r.replace("_"," ")}</th>)}</tr></thead>
+                <tbody>{[
+                  {f:"Dashboard & Analytics",perms:[true,false,false,false]},
+                  {f:"Customers & Loyalty",perms:[true,true,true,false]},
+                  {f:"Messages & Inbox",perms:[true,true,true,false]},
+                  {f:"Campaigns",perms:[true,true,true,false]},
+                  {f:"Automations",perms:[true,true,false,false]},
+                  {f:"POS / Orders",perms:[true,true,false,true]},
+                  {f:"AI Insights",perms:[true,false,false,false]},
+                  {f:"Settings",perms:[true,false,false,false]},
+                ].map((row,i)=>(
+                  <tr key={i} className="border-b border-white/3">
+                    <td className="py-2 px-3 text-slate-300">{row.f}</td>
+                    {row.perms.map((p,j)=><td key={j} className="py-2 px-2 text-center">{p?<span className="text-green-400 text-base">✓</span>:<span className="text-slate-700 text-base">—</span>}</td>)}
+                  </tr>
+                ))}</tbody>
+              </table>
             </div>
-          ))}
-          <button className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-1"><Plus size={12}/>Invite staff member</button>
+          </div>
+
+          {/* Invite form */}
+          <div className="p-4 rounded-xl space-y-3" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+            <h4 className="text-xs font-semibold text-white">Invite a Staff Member</h4>
+            <p className="text-xs text-slate-400">They will receive an email with a secure link to create their password. Staff login at the same URL as you.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="colleague@email.com" type="email" className="sm:col-span-2 px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              <select value={inviteRole} onChange={e=>setInviteRole(e.target.value)} className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                <option value="BRANCH_MANAGER">Branch Manager</option>
+                <option value="MARKETING_STAFF">Marketing Staff</option>
+                <option value="KITCHEN_STAFF">Kitchen / Cashier</option>
+              </select>
+            </div>
+            <button disabled={inviting||!inviteEmail.includes("@")} onClick={async()=>{setInviting(true);setInviteMsg("");try{await fetch("/api/staff/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""`},body:JSON.stringify({email:inviteEmail,role:inviteRole})}});setInviteMsg(`✅ Invite sent to ${inviteEmail}`);setInviteEmail("");}catch(e:any){setInviteMsg(`❌ ${e.message??'Failed to send invite'}`);}finally{setInviting(false);}}} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+              {inviting?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{inviting?"Sending…":"Send Invite"}
+            </button>
+            {inviteMsg&&<p className="text-xs" style={{color:inviteMsg.startsWith("✅")?"#22c55e":"#ef4444"}}>{inviteMsg}</p>}
+          </div>
+
+          {/* Note about login */}
+          <div className="p-3 rounded-xl flex gap-3" style={{background:"rgba(6,182,212,0.06)",border:"1px solid rgba(6,182,212,0.15)"}}>
+            <Info size={14} className="text-cyan-400 flex-shrink-0 mt-0.5"/>
+            <div className="text-xs text-slate-400 space-y-1">
+              <div className="text-cyan-300 font-medium">How staff login works</div>
+              <div>Staff members log in at the same URL as you. They receive an email invite with a magic link to set their password. Their access is automatically restricted to the features their role allows — they will never see Settings, billing, or owner-level analytics.</div>
+            </div>
+          </div>
         </div>}
         {tab==="stripe"&&<div className="space-y-4">
           <div className="p-4 rounded-xl" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.15),rgba(6,182,212,0.1))",border:"1px solid rgba(139,92,246,0.25)"}}><Badge color={C.amber}>PROFESSIONAL</Badge><div className="text-2xl font-bold text-white mt-2">£149<span className="text-xs text-slate-400 font-normal">/month</span></div><div className="text-xs text-slate-400 mt-1">Renews Jul 15 · Stripe subscription: sub_1Nx...</div></div>
