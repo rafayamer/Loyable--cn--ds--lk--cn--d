@@ -1677,7 +1677,7 @@ const DataHubPage=()=>{
     setUploading(true);setUploadMsg("");
     try{
       const form=new FormData();form.append("file",f);
-      await fetch("/api/import/customers/preview",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""`}},body:form});
+      await fetch("/api/import/customers/preview",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")??""}`},body:form});
       setUploadedFiles(p=>[...p,{name:f.name,rows:0,uploadedAt:new Date().toLocaleTimeString()}]);
       setUploadMsg("File uploaded. Go to Customers to review and confirm.");
     }catch(err:any){setUploadMsg("Error: "+(err.message??"Upload failed"));}
