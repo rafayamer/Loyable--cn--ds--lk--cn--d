@@ -26,7 +26,7 @@
 import { Request, Response, Router } from 'express';
 import crypto                         from 'crypto';
 import { PrismaClient }               from '@prisma/client';
-import { accruePointsForVisit }       from '../services/loyalty-service';
+import { accruePointsForVisit, evaluateCustomerSegment } from '../services/loyalty-service';
 import { enqueueAutomationTrigger }   from '../services/messaging-queue';
 
 const prisma = new PrismaClient();
@@ -352,6 +352,9 @@ const processTransaction = async (
 
   // ── 5. Accrue points + tier evaluation ───────────────────────
   await accruePointsForVisit(visit.id, businessId, customerId, amountPence / 100);
+
+  // Inline segment re-evaluation so customer shows correct label immediately
+  evaluateCustomerSegment(customerId, businessId).catch(() => {});
 
   // ── 6. Milestone automation check ───────────────────────────
   const updatedCustomer = await prisma.customer.findUnique({

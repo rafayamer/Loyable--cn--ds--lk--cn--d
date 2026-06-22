@@ -717,6 +717,65 @@ export const evaluateAndDowngradeTier = async (
   return true;
 };
 
+/**
+ * Inline segment evaluation for a single customer — called immediately
+ * after a visit so the segment is correct without waiting for the nightly cron.
+ * Mirrors the priority order in segmentRefreshJob.
+ */
+export const evaluateCustomerSegment = async (
+  customerId: string,
+  businessId: string
+): Promise<void> => {
+  const BIG_SPENDER_THRESHOLD = 500;
+
+  const biz = await prisma.business.findUnique({
+    where:  { id: businessId },
+    select: { irregularGapDays: true, lostDaysThreshold: true },
+  });
+  if (!biz) return;
+
+  const now          = new Date();
+  const lostCutoff   = new Date(now.getTime() - (biz.lostDaysThreshold ?? 60) * 86_400_000);
+  const atRiskCutoff = new Date(now.getTime() - (biz.irregularGapDays  ?? 14) * 86_400_000);
+  const loyalCutoff  = new Date(now.getTime() - 30 * 86_400_000);
+
+  const [c, highestTier] = await Promise.all([
+    prisma.customer.findUnique({
+      where:  { id: customerId },
+      select: { segment: true, totalSpend: true, lastVisitAt: true, visitCount: true, currentTierId: true,
+                couponRedemptions: { select: { id: true } } },
+    }),
+    prisma.loyaltyTier.findFirst({ where: { businessId }, orderBy: { rank: 'desc' }, select: { id: true } }),
+  ]);
+
+  if (!c) return;
+
+  const spend       = Number(c.totalSpend ?? 0);
+  const last        = c.lastVisitAt;
+  const redemptions = c.couponRedemptions.length;
+  let   next: string;
+
+  if (spend >= BIG_SPENDER_THRESHOLD) {
+    next = 'BIG_SPENDER';
+  } else if (!last || last < lostCutoff) {
+    next = 'LOST';
+  } else if (last < atRiskCutoff) {
+    next = 'AT_RISK';
+  } else if (highestTier && c.currentTierId === highestTier.id) {
+    next = 'VIP';
+  } else if (redemptions > 3 && c.visitCount < 5) {
+    next = 'COUPON_HUNTER';
+  } else if (last >= loyalCutoff && c.visitCount >= 2) {
+    next = 'LOYAL';
+  } else {
+    next = 'NEW';
+  }
+
+  if (next !== c.segment) {
+    await prisma.customer.update({ where: { id: customerId }, data: { segment: next as any, updatedAt: now } });
+  }
+};
+
 export const getTierConfiguration = async (businessId: string) =>
   prisma.loyaltyTier.findMany({
     where:   { businessId },

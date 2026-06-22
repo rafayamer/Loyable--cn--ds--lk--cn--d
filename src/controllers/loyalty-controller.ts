@@ -28,6 +28,7 @@ import {
   upsertTierConfiguration,
   processReferralConversion,
   accruePointsForVisit,
+  evaluateCustomerSegment,
 } from '../services/loyalty-service';
 
 import {
@@ -386,6 +387,9 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
       customerId,
       amountSpent
     );
+
+    // Inline segment re-evaluation so customer label is correct immediately
+    evaluateCustomerSegment(customerId, businessId).catch(() => {});
 
     // Check visit milestone automation (e.g. 10th visit)
     const updatedCustomer = await prisma.customer.findUnique({
