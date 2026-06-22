@@ -121,10 +121,10 @@ const NAV_ALL=[
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
-const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
+const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark})=>{
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
   return(
-  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:"1px solid rgba(139,92,246,0.12)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
+  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:portalDark?"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)":"linear-gradient(180deg,#ffffff 0%,#faf5ff 60%,#ffffff 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:portalDark?"1px solid rgba(139,92,246,0.12)":"1px solid rgba(139,92,246,0.18)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
     {/* Logo area */}
     <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${col?"justify-center flex-col":""}`}>
       <div className="relative flex-shrink-0">
@@ -164,6 +164,13 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
     {/* Divider */}
     <div className="mx-3 h-px mb-2" style={{background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)"}}/>
     <div className="p-2.5">
+      <button onClick={()=>{const n=!portalDark;setPortalDark(n);localStorage.setItem("portal_dark",String(n));}} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 ${col?"justify-center":""}`} style={{color:portalDark?"#94a3b8":"#6d28d9"}}>
+        {portalDark
+          ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+        }
+        {!col&&<span>{portalDark?"Light Mode":"Dark Mode"}</span>}
+      </button>
       <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:text-red-400 hover:bg-red-400/5 transition-all duration-200 ${col?"justify-center":""}`}><LogOut size={15}/>{!col&&<span>Sign Out</span>}</button>
     </div>
   </div>
@@ -655,17 +662,16 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         @keyframes lyl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
         .lyl-track{display:flex;width:max-content;animation:lyl-marquee 28s linear infinite;}
         .lyl-track:hover{animation-play-state:paused}
-        @keyframes lyl-cube-spin{0%{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg)}100%{transform:rotateX(360deg) rotateY(420deg) rotateZ(180deg)}}
-        @keyframes lyl-cube-float{0%,100%{margin-top:0px}50%{margin-top:-24px}}
-        .lyl-cube{width:120px;height:120px;transform-style:preserve-3d;animation:lyl-cube-spin 14s linear infinite,lyl-cube-float 6s ease-in-out infinite;position:relative}
-        .lyl-cube-face{position:absolute;width:120px;height:120px;border:1.5px solid rgba(167,139,250,0.55);background:rgba(139,92,246,0.06);backdrop-filter:blur(2px)}
-        .lyl-cube-face.front {transform:translateZ(60px)}
-        .lyl-cube-face.back  {transform:rotateY(180deg) translateZ(60px)}
-        .lyl-cube-face.left  {transform:rotateY(-90deg) translateZ(60px)}
-        .lyl-cube-face.right {transform:rotateY(90deg)  translateZ(60px)}
-        .lyl-cube-face.top   {transform:rotateX(90deg)  translateZ(60px)}
-        .lyl-cube-face.bottom{transform:rotateX(-90deg) translateZ(60px)}
-        .lyl-cube-face::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(167,139,250,0.18) 0%,transparent 60%)}
+        @keyframes lyl-cube-spin{0%{transform:rotateX(15deg) rotateY(0deg)}100%{transform:rotateX(15deg) rotateY(360deg)}}
+        @keyframes lyl-cube-float{0%,100%{transform:translateY(0px) rotateX(15deg) rotateY(0deg)}50%{transform:translateY(-16px) rotateX(15deg) rotateY(180deg)}}
+        .lyl-cube{width:90px;height:90px;transform-style:preserve-3d;animation:lyl-cube-float 12s ease-in-out infinite;position:relative}
+        .lyl-cube-face{position:absolute;width:90px;height:90px;border:1px solid rgba(167,139,250,0.4);background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(109,40,217,0.04))}
+        .lyl-cube-face.front {transform:translateZ(45px)}
+        .lyl-cube-face.back  {transform:rotateY(180deg) translateZ(45px)}
+        .lyl-cube-face.left  {transform:rotateY(-90deg) translateZ(45px)}
+        .lyl-cube-face.right {transform:rotateY(90deg)  translateZ(45px)}
+        .lyl-cube-face.top   {transform:rotateX(90deg)  translateZ(45px)}
+        .lyl-cube-face.bottom{transform:rotateX(-90deg) translateZ(45px)}
       `}</style>
 
       {/* ── Navbar ──────────────────────────────────────────── */}
@@ -717,16 +723,16 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.1) 0%,transparent 60%)":"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.06) 0%,transparent 60%)"}}/>
 
         {/* Neon rotating cube — left */}
-        <div className="absolute pointer-events-none" style={{left:"6%",top:"22%",perspective:"600px",opacity:D?0.7:0.45}}>
-          <div className="lyl-cube" style={{filter:"drop-shadow(0 0 18px rgba(139,92,246,0.7)) drop-shadow(0 0 6px rgba(167,139,250,0.5))"}}>
+        <div className="absolute pointer-events-none" style={{left:"5%",top:"18%",perspective:"500px",opacity:D?0.65:0.35}}>
+          <div className="lyl-cube" style={{filter:"drop-shadow(0 0 12px rgba(139,92,246,0.6))"}}>
             {["front","back","left","right","top","bottom"].map(f=><div key={f} className={`lyl-cube-face ${f}`}/>)}
           </div>
         </div>
         {/* Neon rotating cube — right (smaller, offset animation) */}
         <div className="absolute pointer-events-none" style={{right:"5%",top:"38%",perspective:"500px",opacity:D?0.5:0.3}}>
-          <div style={{width:70,height:70,transformStyle:"preserve-3d",animation:"lyl-cube-spin 20s linear infinite reverse, lyl-cube-float 8s ease-in-out infinite",position:"relative",filter:"drop-shadow(0 0 14px rgba(109,40,217,0.8)) drop-shadow(0 0 5px rgba(167,139,250,0.4))"}}>
+          <div style={{width:60,height:60,transformStyle:"preserve-3d",animation:"lyl-cube-float 16s ease-in-out infinite reverse",position:"relative",filter:"drop-shadow(0 0 10px rgba(109,40,217,0.5))"}}>
             {["front","back","left","right","top","bottom"].map(f=>(
-              <div key={f} className={`lyl-cube-face ${f}`} style={{width:70,height:70,transform:{front:"translateZ(35px)",back:"rotateY(180deg) translateZ(35px)",left:"rotateY(-90deg) translateZ(35px)",right:"rotateY(90deg) translateZ(35px)",top:"rotateX(90deg) translateZ(35px)",bottom:"rotateX(-90deg) translateZ(35px)"}[f]}}/>
+              <div key={f} className={`lyl-cube-face ${f}`} style={{width:60,height:60,transform:{front:"translateZ(30px)",back:"rotateY(180deg) translateZ(30px)",left:"rotateY(-90deg) translateZ(30px)",right:"rotateY(90deg) translateZ(30px)",top:"rotateX(90deg) translateZ(30px)",bottom:"rotateX(-90deg) translateZ(30px)"}[f]}}/>
             ))}
           </div>
         </div>
@@ -3838,6 +3844,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
+  const [portalDark,setPortalDark]=useState(()=>localStorage.getItem("portal_dark")!=="false");
   useEffect(()=>{
     if(loggedIn){
       // Hydrate biz_industry / biz_name from server on every session start
@@ -3894,13 +3901,13 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   ];
   const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
   return(
-    <div className="min-h-screen relative overflow-x-hidden" style={{background:"#06040f"}}>
+    <div className="min-h-screen relative overflow-x-hidden" style={{background:portalDark?"#06040f":"#f8f7ff"}}>
       {/* Ambient background orbs for glassmorphism depth */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18) 0%,transparent 70%)",filter:"blur(40px)"}}/>
-        <div style={{position:"absolute",top:"40%",right:"-10%",width:"600px",height:"600px",borderRadius:"50%",background:"radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)",filter:"blur(40px)"}}/>
-        <div style={{position:"absolute",bottom:"-10%",left:"30%",width:"500px",height:"500px",borderRadius:"50%",background:"radial-gradient(circle,rgba(236,72,153,0.08) 0%,transparent 70%)",filter:"blur(40px)"}}/>
-        <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)",filter:"blur(30px)"}}/>
+        <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(139,92,246,0.18) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"40%",right:"-10%",width:"600px",height:"600px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)":"radial-gradient(circle,rgba(6,182,212,0.07) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",bottom:"-10%",left:"30%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(236,72,153,0.08) 0%,transparent 70%)":"radial-gradient(circle,rgba(236,72,153,0.05) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)",filter:"blur(30px)"}}/>
       </div>
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -3918,7 +3925,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
-      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role}/></div>
+      <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role} portalDark={portalDark} setPortalDark={setPortalDark}/></div>
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div className="flex items-center gap-2">
