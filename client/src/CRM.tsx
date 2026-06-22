@@ -645,12 +645,27 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     <div className="min-h-screen overflow-x-hidden" style={{background:bg,color:tx}}>
 
       {/* ── Marquee keyframes ─────────────────────────────── */}
-      <style>{`@keyframes lyl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}} .lyl-track{display:flex;width:max-content;animation:lyl-marquee 28s linear infinite;} .lyl-track:hover{animation-play-state:paused}`}</style>
+      <style>{`
+        @keyframes lyl-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        .lyl-track{display:flex;width:max-content;animation:lyl-marquee 28s linear infinite;}
+        .lyl-track:hover{animation-play-state:paused}
+        @keyframes lyl-cube-spin{0%{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg)}100%{transform:rotateX(360deg) rotateY(420deg) rotateZ(180deg)}}
+        @keyframes lyl-cube-float{0%,100%{margin-top:0px}50%{margin-top:-24px}}
+        .lyl-cube{width:120px;height:120px;transform-style:preserve-3d;animation:lyl-cube-spin 14s linear infinite,lyl-cube-float 6s ease-in-out infinite;position:relative}
+        .lyl-cube-face{position:absolute;width:120px;height:120px;border:1.5px solid rgba(167,139,250,0.55);background:rgba(139,92,246,0.06);backdrop-filter:blur(2px)}
+        .lyl-cube-face.front {transform:translateZ(60px)}
+        .lyl-cube-face.back  {transform:rotateY(180deg) translateZ(60px)}
+        .lyl-cube-face.left  {transform:rotateY(-90deg) translateZ(60px)}
+        .lyl-cube-face.right {transform:rotateY(90deg)  translateZ(60px)}
+        .lyl-cube-face.top   {transform:rotateX(90deg)  translateZ(60px)}
+        .lyl-cube-face.bottom{transform:rotateX(-90deg) translateZ(60px)}
+        .lyl-cube-face::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(167,139,250,0.18) 0%,transparent 60%)}
+      `}</style>
 
       {/* ── Navbar ──────────────────────────────────────────── */}
       <nav className="flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 py-4" style={{backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",background:navBg,borderBottom:`1px solid ${bdr}`}}>
         <button onClick={()=>nav("landing")} className="flex items-center gap-2.5 flex-shrink-0">
-          <img src="/logo.svg" alt="Loyable" className="h-9 w-auto object-contain"/>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6" opacity="0.9"/></svg>
           <span className="font-black text-lg" style={{color:tx}}>Loyable</span>
         </button>
 
@@ -695,6 +710,21 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.25) 0%,transparent 70%)":"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.12) 0%,transparent 70%)"}}/>
         <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.1) 0%,transparent 60%)":"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.06) 0%,transparent 60%)"}}/>
 
+        {/* Neon rotating cube — left */}
+        <div className="absolute pointer-events-none" style={{left:"6%",top:"22%",perspective:"600px",opacity:D?0.7:0.45}}>
+          <div className="lyl-cube" style={{filter:"drop-shadow(0 0 18px rgba(139,92,246,0.7)) drop-shadow(0 0 6px rgba(167,139,250,0.5))"}}>
+            {["front","back","left","right","top","bottom"].map(f=><div key={f} className={`lyl-cube-face ${f}`}/>)}
+          </div>
+        </div>
+        {/* Neon rotating cube — right (smaller, offset animation) */}
+        <div className="absolute pointer-events-none" style={{right:"5%",top:"38%",perspective:"500px",opacity:D?0.5:0.3}}>
+          <div style={{width:70,height:70,transformStyle:"preserve-3d",animation:"lyl-cube-spin 20s linear infinite reverse, lyl-cube-float 8s ease-in-out infinite",position:"relative",filter:"drop-shadow(0 0 14px rgba(109,40,217,0.8)) drop-shadow(0 0 5px rgba(167,139,250,0.4))"}}>
+            {["front","back","left","right","top","bottom"].map(f=>(
+              <div key={f} className={`lyl-cube-face ${f}`} style={{width:70,height:70,transform:{front:"translateZ(35px)",back:"rotateY(180deg) translateZ(35px)",left:"rotateY(-90deg) translateZ(35px)",right:"rotateY(90deg) translateZ(35px)",top:"rotateX(90deg) translateZ(35px)",bottom:"rotateX(-90deg) translateZ(35px)"}[f]}}/>
+            ))}
+          </div>
+        </div>
+
         {/* Social proof pill */}
         <div className="relative flex flex-wrap items-center justify-center gap-3 p-1.5 pr-5 mb-6 rounded-full border" style={{border:`1px solid ${bdr}`,background:D?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.8)"}}>
           <div className="flex items-center -space-x-2.5">
@@ -733,7 +763,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="absolute -inset-4 rounded-3xl opacity-20 blur-3xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#111118":"#ffffff",borderColor:bdr}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.03)":"#f8fafc",borderColor:bdr}}>
-              <img src="/logo.svg" alt="Loyable" className="w-5 h-5 object-contain"/>
+              <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
               <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
               <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
             </div>
