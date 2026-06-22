@@ -14,5 +14,5 @@ waha/dist/
 waha/.sessions/
 waha/media/
 waha/.env
-.claude/
+.claude/worktrees/
 client/src/CRM.tsx.bak
