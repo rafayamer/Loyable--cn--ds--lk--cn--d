@@ -203,6 +203,26 @@ function LoyaltyCard({ customer, nextTier, progressToNext }: any) {
 // ================================================================
 function MenuTab({ menuImageUrl }: { menuImageUrl: string }) {
   const [zoomed, setZoomed] = useState(false);
+  const isPdf = menuImageUrl.toLowerCase().includes('.pdf');
+
+  if (isPdf) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="text-5xl">📄</div>
+        <p className="text-sm text-slate-600 text-center">Our menu is available as a PDF</p>
+        <a
+          href={menuImageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-6 py-3 rounded-2xl text-white text-sm font-semibold"
+          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+        >
+          Open Menu PDF
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div>
       <p className="text-xs text-slate-500 mb-3 text-center">Tap image to zoom</p>

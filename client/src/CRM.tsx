@@ -1853,12 +1853,12 @@ const CustomerPortalPage=()=>{
             </div>
             {ps.showMenu&&(
               <div className="mt-3 space-y-2">
-                <label className="text-xs text-slate-400">Menu Image URL</label>
+                <label className="text-xs text-slate-400">Menu URL</label>
                 <input value={ps.menuImageUrl||""} onChange={e=>setPs((p:any)=>({...p,menuImageUrl:e.target.value}))}
-                  placeholder="https://example.com/menu.jpg"
+                  placeholder="https://example.com/menu.jpg or menu.pdf"
                   className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
                   style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-                <p className="text-xs text-slate-500">Paste a direct link to your menu image (JPG, PNG, or WebP). Customers will tap to view it full screen.</p>
+                <p className="text-xs text-slate-500">Paste a direct link to your menu — image (JPG, PNG, WebP) or PDF (max 10 MB). Customers will tap to view it full screen.</p>
               </div>
             )}
           </Card>
