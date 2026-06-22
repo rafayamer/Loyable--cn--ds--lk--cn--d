@@ -76,8 +76,8 @@ const RedeemSchema = z.object({
 const infoHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
   const biz = await prisma.business.findFirst({
-    where:  { slug, isActive: true },
-    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, portalSettings: true },
+    where:  { slug },  // isActive not required — portal should always be accessible
+    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, portalSettings: true, isActive: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
@@ -136,7 +136,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
 
   const biz = await prisma.business.findFirst({
-    where: { slug, isActive: true },
+    where: { slug },
     select: { id: true, name: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
@@ -273,7 +273,7 @@ const redeemHandler = async (req: Request, res: Response): Promise<void> => {
 const todayHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
   const biz = await prisma.business.findFirst({
-    where: { slug, isActive: true },
+    where: { slug },
     select: { id: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
