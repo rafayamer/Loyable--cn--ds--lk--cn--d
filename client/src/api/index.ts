@@ -218,7 +218,7 @@ export const api = {
     menu: async (file: File): Promise<{ url: string }> => {
       const form = new FormData();
       form.append('file', file);
-      const token = localStorage.getItem('loyable_token') ?? '';
+      const token = localStorage.getItem('accessToken') ?? '';
       const r = await fetch('/api/upload/menu', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
       if (!r.ok) throw new Error((await r.json()).error ?? 'Upload failed');
       return r.json();

@@ -97,7 +97,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
-          <img src="/logo.svg" alt="Loyable" className="w-16 h-16 object-contain mx-auto mb-3"/>
+          <img src="/logo.svg" alt="Loyable" className="w-28 h-28 object-contain mx-auto mb-4"/>
           <h1 className="text-white font-black text-2xl">{bizName}</h1>
           <p className="text-purple-300 text-sm mt-1">Your Loyalty Rewards</p>
         </div>

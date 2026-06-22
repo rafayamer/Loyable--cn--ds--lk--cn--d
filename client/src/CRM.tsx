@@ -127,30 +127,47 @@ const NAV_ALL=[
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role})=>{
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
   return(
-  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"rgba(8,5,18,0.85)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
-    <div className={`flex items-center gap-3 p-4 mb-2 ${col?"justify-center":""}`}>
-      <img src="/logo.svg" alt="Loyable" className="w-9 h-9 flex-shrink-0 object-contain"/>
-      {!col&&<div className="flex-1 min-w-0"><div className="text-slate-600 text-[10px]">by Abdul Rafay Amer</div></div>}
-      <button onClick={()=>setCol(!col)} className={`text-slate-600 hover:text-slate-300 transition-colors ${col?"hidden":""}`}><ChevronLeft size={15}/></button>
-      {col&&<button onClick={()=>setCol(!col)} className="absolute right-2 text-slate-600 hover:text-slate-300 transition-colors"><ChevronRight size={15}/></button>}
+  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:"1px solid rgba(139,92,246,0.12)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
+    {/* Logo area */}
+    <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${col?"justify-center flex-col":""}`}>
+      <div className="relative flex-shrink-0">
+        <div className="absolute inset-0 rounded-xl blur-md opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}/>
+        <div className="relative w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))",border:"1px solid rgba(139,92,246,0.3)"}}>
+          <img src="/logo.svg" alt="Loyable" className="w-6 h-6 object-contain"/>
+        </div>
+      </div>
+      {!col&&<div className="flex-1 min-w-0">
+        <div className="text-white font-bold text-sm tracking-tight">Loyable</div>
+        <div className="text-slate-500 text-[9px] tracking-wide uppercase">CRM Platform</div>
+      </div>}
+      {!col&&<button onClick={()=>setCol(!col)} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5"><ChevronLeft size={14}/></button>}
+      {col&&<button onClick={()=>setCol(!col)} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5 mt-1"><ChevronRight size={14}/></button>}
     </div>
-    {!col&&<div className="mx-3 mb-2 px-3 py-2 rounded-xl flex items-center gap-2" style={{background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.12)"}}><div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/><span className="text-xs text-emerald-400 font-medium truncate">The Coffee House</span></div>}
-    {!col&&<div className="mx-3 mb-3 px-2 py-1 rounded-lg" style={{background:"rgba(139,92,246,0.1)"}}><span className="text-[9px] font-bold uppercase tracking-wider" style={{color:ROLE_COLORS[role]||"#8b5cf6"}}>{role?.replace("_"," ")}</span></div>}
-    <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto">{NAV.map(it=>{
+    {/* Business badge */}
+    {!col&&<div className="mx-3 mb-1 px-3 py-2 rounded-xl flex items-center gap-2" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.1)"}}>
+      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse"/>
+      <span className="text-xs text-emerald-400 font-medium truncate">{localStorage.getItem("biz_name")||"Your Business"}</span>
+    </div>}
+    {!col&&<div className="mx-3 mb-4 px-2 py-0.5 rounded-md inline-flex"><span className="text-[9px] font-bold uppercase tracking-widest" style={{color:ROLE_COLORS[role]||"#8b5cf6"}}>{role?.replace(/_/g," ")}</span></div>}
+    {col&&<div className="mx-2 mb-3 h-px" style={{background:"linear-gradient(90deg,transparent,rgba(139,92,246,0.3),transparent)"}}/>}
+    {/* Nav items */}
+    <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto scrollbar-hide">{NAV.map(it=>{
       const active=page===it.id;
       return(
         <button key={it.id} onClick={()=>setPage(it.id)} title={col?it.label:undefined}
-          className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 ${col?"justify-center px-3":"px-3"} ${active?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"}`}
-          style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",borderLeft:col?"none":"3px solid #8b5cf6",paddingLeft:col?undefined:"9px"}:{}}>
-          <it.icon size={17} className="flex-shrink-0"/>
+          className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${col?"justify-center px-0":"px-3"} ${active?"text-white":"text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]"}`}
+          style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.18),rgba(6,182,212,0.06))",boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.2)",paddingLeft:col?undefined:"10px"}:{}}>
+          <it.icon size={16} className={`flex-shrink-0 ${active?"text-violet-400":""}`}/>
           {!col&&<span className="flex-1 text-left">{it.label}</span>}
-          {!col&&it.id==="messages"&&wa&&<div className="w-2 h-2 rounded-full bg-emerald-400"/>}
-          {!col&&it.id==="ai"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.15)",color:"#06b6d4"}}>ML</span>}
+          {!col&&it.id==="messages"&&wa&&<div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>}
+          {!col&&it.id==="ai"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>AI</span>}
         </button>
       );
     })}</nav>
-    <div className="p-2.5 border-t border-white/[0.05]">
-      <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/5 transition-all ${col?"justify-center":""}`}><LogOut size={16}/>{!col&&<span>Logout</span>}</button>
+    {/* Divider */}
+    <div className="mx-3 h-px mb-2" style={{background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)"}}/>
+    <div className="p-2.5">
+      <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:text-red-400 hover:bg-red-400/5 transition-all duration-200 ${col?"justify-center":""}`}><LogOut size={15}/>{!col&&<span>Sign Out</span>}</button>
     </div>
   </div>
   );
@@ -3411,7 +3428,10 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   const role=useRole();
   const [page,setPage]=useState(()=>{
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
-    return r===ROLES.KITCHEN?"pos":"dashboard";
+    if(r===ROLES.KITCHEN)return"pos";
+    const saved=localStorage.getItem("crm_page");
+    const safePgs=["dashboard","customers","messages","campaigns","automations","analytics","settings","loyalty","portal","pos","ai-bi"];
+    return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
   useEffect(()=>{
@@ -3436,7 +3456,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     // Enforce role restrictions — redirect to POS if not allowed
     const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
     if(!allowed.includes(role)){setPage(role===ROLES.KITCHEN?"pos":"pos");return;}
-    setPage(p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);
+    setPage(p);localStorage.setItem("crm_page",p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);
   };
   const render=()=>{
     // Block non-owner from owner-only pages
