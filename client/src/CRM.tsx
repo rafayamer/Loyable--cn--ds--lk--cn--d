@@ -122,6 +122,7 @@ const NAV_ALL=[
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark})=>{
+  const {pd,setPd}=usePd();
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
   return(
   <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:portalDark?"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)":"linear-gradient(180deg,#ffffff 0%,#faf5ff 60%,#ffffff 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:portalDark?"1px solid rgba(139,92,246,0.12)":"1px solid rgba(139,92,246,0.18)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
@@ -164,12 +165,12 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
     {/* Divider */}
     <div className="mx-3 h-px mb-2" style={{background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)"}}/>
     <div className="p-2.5">
-      <button onClick={()=>{const n=!portalDark;setPortalDark(n);localStorage.setItem("portal_dark",String(n));}} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 ${col?"justify-center":""}`} style={{color:portalDark?"#94a3b8":"#6d28d9"}}>
-        {portalDark
+      <button onClick={()=>setPd(!pd)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 hover:bg-violet-500/10 ${col?"justify-center":""}`} style={{color:pd?"#a78bfa":"#6d28d9"}}>
+        {pd
           ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
         }
-        {!col&&<span>{portalDark?"Light Mode":"Dark Mode"}</span>}
+        {!col&&<span>{pd?"Light Mode":"Dark Mode"}</span>}
       </button>
       <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:text-red-400 hover:bg-red-400/5 transition-all duration-200 ${col?"justify-center":""}`}><LogOut size={15}/>{!col&&<span>Sign Out</span>}</button>
     </div>
@@ -223,6 +224,25 @@ type AuthView = "landing"|"login"|"signup"|"forgot"|"forgot-sent";
 
 const ThemeCtx = createContext<{dark:boolean}>({dark:true});
 const useTheme = ()=>useContext(ThemeCtx);
+
+// ── Portal (CRM) theme context ────────────────────────────────────
+const PortalThemeCtx = createContext<{pd:boolean;setPd:(v:boolean)=>void}>({pd:true,setPd:()=>{}});
+const usePd = ()=>useContext(PortalThemeCtx);
+// Hook: components call useCard() to get reactive design tokens
+const useCard=()=>{ const {pd}=useContext(PortalThemeCtx); return pdTokens(pd); };
+// Reactive design tokens for portal light/dark
+const pdTokens=(pd:boolean)=>({
+  bg:    pd?"#06040f":"#f5f3ff",
+  bg2:   pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.85)",
+  card:  pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.92)",
+  bdr:   pd?"rgba(255,255,255,0.18)":"rgba(139,92,246,0.18)",
+  tx:    pd?"#ffffff":"#1e1333",
+  tx2:   pd?"rgba(255,255,255,0.6)":"#4b3f72",
+  tx3:   pd?"rgba(255,255,255,0.35)":"#7c6fa0",
+  inp:   pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.9)",
+  inpBd: pd?"rgba(255,255,255,0.15)":"rgba(139,92,246,0.25)",
+  shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(139,92,246,0.1)",
+});
 
 const AuthBg=()=>(
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1077,6 +1097,7 @@ const Skeleton=({h="h-4",w="w-full",className=""}:{h?:string,w?:string,className
 // DASHBOARD
 // ════════════════════════════════════════════════════════════════
 const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
+  const ct=useCard();
   const today=new Date();
   const fmt=(d:Date)=>d.toISOString().slice(0,10);
   const [dateFrom,setDateFrom]=useState(fmt(new Date(today.getTime()-29*86400000)));
@@ -1116,11 +1137,11 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const repeatRate=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
 
   return(
-    <div className="space-y-5">
+    <div className="space-y-5" style={{color:ct.tx}}>
       {/* Header + date picker */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <h1 className="text-xl font-bold" style={{color:ct.tx}}>Dashboard</h1>
           <p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -3914,8 +3935,10 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ];
   const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
+  const pt=pdTokens(portalDark);
   return(
-    <div className="min-h-screen relative overflow-x-hidden" style={{background:portalDark?"#06040f":"#f8f7ff"}}>
+  <PortalThemeCtx.Provider value={{pd:portalDark,setPd:(v)=>{setPortalDark(v);localStorage.setItem("portal_dark",String(v));localStorage.setItem("portal_dark",String(v));}}}>
+    <div className="min-h-screen relative overflow-x-hidden" style={{background:pt.bg,color:pt.tx,transition:"background 0.3s,color 0.3s"}}>
       {/* Ambient background orbs for glassmorphism depth */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(139,92,246,0.18) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%)",filter:"blur(40px)"}}/>
@@ -3941,7 +3964,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       {/* Desktop sidebar */}
       <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role} portalDark={portalDark} setPortalDark={setPortalDark}/></div>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:"rgba(8,6,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${pt.bdr}`}}>
         <div className="flex items-center gap-2">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
         </div>
@@ -3955,7 +3978,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         <div className="p-3 md:p-6 max-w-6xl">{render()}</div>
       </main>
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:"rgba(8,6,18,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:portalDark?"rgba(8,6,18,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`}}>
         {BOT_NAV.map(it=>{
           const active=page===it.id||(it.id==="customers"&&page==="profile");
           return(
@@ -3968,5 +3991,6 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         })}
       </nav>
     </div>
+  </PortalThemeCtx.Provider>
   );
 }
