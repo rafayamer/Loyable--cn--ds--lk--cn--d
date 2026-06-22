@@ -81,10 +81,9 @@ const infoHandler = async (req: Request, res: Response): Promise<void> => {
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  const tiers = await prisma.tierConfig.findMany({
+  const tiers = await (prisma as any).loyaltyTier.findMany({
     where:   { businessId: biz.id },
-    orderBy: { minPoints: 'asc' },
-    select:  { name: true, minPoints: true, maxPoints: true, color: true, discountPct: true, perks: true },
+    orderBy: { rank: 'asc' },
   });
 
   res.json({ business: biz, tiers, portalSettings: biz.portalSettings ?? {} });
@@ -198,10 +197,9 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
         },
       },
     }),
-    prisma.tierConfig.findMany({
+    (prisma as any).loyaltyTier.findMany({
       where:   { businessId },
-      orderBy: { minPoints: 'asc' },
-      select:  { name: true, minPoints: true, maxPoints: true, color: true, discountPct: true, perks: true },
+      orderBy: { rank: 'asc' },
     }),
     prisma.visit.findMany({
       where:   { customerId, businessId },
@@ -215,7 +213,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
 
   // Resolve tier name from currentTierId
   const tierRecord = customer.currentTierId
-    ? await prisma.tierConfig.findUnique({ where: { id: customer.currentTierId }, select: { name: true } }).catch(() => null)
+    ? await (prisma as any).loyaltyTier.findUnique({ where: { id: customer.currentTierId }, select: { name: true } }).catch(() => null)
     : null;
   const tierName = tierRecord?.name ?? 'Member';
 
