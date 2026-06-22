@@ -39,7 +39,6 @@ export const uploadRouter = Router();
 /** POST /api/upload/menu — upload a menu file; returns { url } */
 uploadRouter.post('/menu', tenantScope, upload.single('file'), (req: Request, res: Response): void => {
   if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
-  const baseUrl = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
-  const url = `${baseUrl}/uploads/${req.file.filename}`;
+  const url = `/uploads/${req.file.filename}`;
   res.json({ ok: true, url });
 });
