@@ -191,6 +191,8 @@ const hydrateFromApi=async()=>{
     if(biz?.slug)localStorage.setItem("biz_slug",biz.slug);
     if(biz?.currency)localStorage.setItem("biz_currency",biz.currency);
     if(biz?.logoUrl)localStorage.setItem("biz_logo",biz.logoUrl);
+    if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
+    if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
   }catch{}
 };
 
@@ -2255,6 +2257,7 @@ Tom Wilson,+12125551234,,0,1,false`}</pre>
 // AI INSIGHTS
 // ════════════════════════════════════════════════════════════════
 const AIPage=()=>{
+  const ct=useCard();
   const [query,setQuery]=useState("");
   const [res,setRes]=useState<any>(null);
   const [loading,setLoading]=useState(false);
@@ -2269,7 +2272,7 @@ const AIPage=()=>{
   const suggestions=["How many customers haven't visited in 60 days?","Which segment has the highest average spend?","What is my churn rate this month?","Show top 5 customers by points balance"];
   return(
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold text-white flex items-center gap-2"><Brain size={22} className="text-violet-400"/>AI Business Intelligence</h1><p className="text-xs text-slate-400 mt-0.5">Natural language → Prisma query → GPT insight · businessId injected server-side</p></div>
+      <div><h1 className="text-xl font-bold flex items-center gap-2" style={{color:ct.tx}}><Brain size={22} className="text-violet-400"/>AI Business Intelligence</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Natural language → Prisma query → GPT insight · businessId injected server-side</p></div>
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Brain size={14} className="text-violet-400"/>Ask Your Data</h3>
         <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((q,i)=><button key={i} onClick={()=>setQuery(q)} className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-all" style={{border:"1px solid rgba(255,255,255,0.06)"}}>{q}</button>)}</div>
@@ -2835,6 +2838,7 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
 // ANALYTICS
 // ════════════════════════════════════════════════════════════════
 const AnalyticsPage=()=>{
+  const ct=useCard();
   const [snapshot,setSnapshot]=useState<any[]>([]);
   const [segData,setSegData]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
@@ -3013,6 +3017,7 @@ const WhatsAppSettingsTab=()=>{
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
 const SettingsPage=({wa,onConnect})=>{
+  const ct=useCard();
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
@@ -3023,6 +3028,17 @@ const SettingsPage=({wa,onConnect})=>{
   const [inviteRole,setInviteRole]=useState("MARKETING_STAFF");
   const [inviting,setInviting]=useState(false);
   const [inviteMsg,setInviteMsg]=useState("");
+  const [pointsPerPound,setPointsPerPound]=useState(()=>parseInt(localStorage.getItem("pointsPerPound")||"1",10));
+  const [visitBasePoints,setVisitBasePoints]=useState(()=>parseInt(localStorage.getItem("visitBasePoints")||"5",10));
+  const [loyaltySaved,setLoyaltySaved]=useState(false);
+  const saveLoyaltySettings=async()=>{
+    try{
+      await api.settings.update({pointsPerPound,visitBasePoints});
+      localStorage.setItem("pointsPerPound",String(pointsPerPound));
+      localStorage.setItem("visitBasePoints",String(visitBasePoints));
+      setLoyaltySaved(true);setTimeout(()=>setLoyaltySaved(false),2500);
+    }catch{}
+  };
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const saveBizSettings=async()=>{
     try{
@@ -3033,10 +3049,10 @@ const SettingsPage=({wa,onConnect})=>{
       setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
     }catch{}
   };
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
   return(
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold text-white">Settings</h1><p className="text-xs text-slate-400 mt-0.5">Tenant configuration · All changes scoped to businessId</p></div>
+      <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Tenant configuration · All changes scoped to businessId</p></div>
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
       <div className="gc rounded-xl p-5" style={CARD}>
         {tab==="business"&&<div className="space-y-4">
@@ -3067,6 +3083,40 @@ const SettingsPage=({wa,onConnect})=>{
           <div className="flex items-center gap-3">
             <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
             {bizSaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
+          </div>
+        </div>}
+        {tab==="loyalty"&&<div className="space-y-5">
+          <div>
+            <h3 className="text-sm font-semibold mb-1" style={{color:ct.tx}}>Points Earning Rate</h3>
+            <p className="text-xs mb-4" style={{color:ct.tx2}}>Every customer earns {pointsPerPound} point{pointsPerPound!==1?"s":""} per £1 spent, plus {visitBasePoints} bonus point{visitBasePoints!==1?"s":""} just for visiting.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs mb-1 block" style={{color:ct.tx2}}>Points per £1 spent</label>
+              <input type="number" min={0} max={100} value={pointsPerPound} onChange={e=>setPointsPerPound(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+              <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Customers earn this many points for every £1 they spend</div>
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{color:ct.tx2}}>Bonus points per visit</label>
+              <input type="number" min={0} max={1000} value={visitBasePoints} onChange={e=>setVisitBasePoints(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+              <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Flat bonus points awarded on every visit, regardless of spend</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={saveLoyaltySettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Loyalty Settings</button>
+            {loyaltySaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
+          </div>
+          <div className="p-4 rounded-xl" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <h4 className="text-xs font-semibold mb-3" style={{color:ct.tx}}>Default Tier Thresholds (read-only)</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[{name:"Bronze",pts:0,color:"#cd7f32"},{name:"Silver",pts:100,color:"#c0c0c0"},{name:"Gold",pts:500,color:"#ffd700"},{name:"Platinum",pts:1000,color:"#b19cd9"}].map(t=>(
+                <div key={t.name} className="p-3 rounded-xl text-center" style={{background:t.color+"0d",border:`1px solid ${t.color}30`}}>
+                  <Crown size={14} style={{color:t.color}} className="mx-auto mb-1"/>
+                  <div className="text-xs font-bold" style={{color:t.color}}>{t.name}</div>
+                  <div className="text-[10px] mt-0.5" style={{color:ct.tx2}}>{t.pts} pts</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
@@ -3141,6 +3191,7 @@ const SettingsPage=({wa,onConnect})=>{
 // CAMPAIGNS LIST
 // ════════════════════════════════════════════════════════════════
 const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
+  const ct=useCard();
   const [campaigns,setCampaigns]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [launching,setLaunching]=useState<string|null>(null);
@@ -3245,6 +3296,7 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
 // AUTOMATIONS LIST
 // ════════════════════════════════════════════════════════════════
 const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
+  const ct=useCard();
   const [autos,setAutos]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [toggling,setToggling]=useState<string|null>(null);
@@ -4108,6 +4160,7 @@ const BIZ_TYPES=[
 ];
 
 const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
+  const ct=useCard();
   const bizType=getPosBizType();
   const [tab,setTab]=useState<"pos"|"kds"|"inventory"|"history"|"fbr">(
     ()=>can(role,"viewKitchen")&&!can(role,"newSale")?"kds":"pos"
