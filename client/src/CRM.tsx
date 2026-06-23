@@ -4475,7 +4475,11 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
-  const [portalDark,setPortalDark]=useState(()=>localStorage.getItem("portal_dark")!=="false");
+  const [portalDark,setPortalDark]=useState(()=>{
+    // Default to dark; only go light if user explicitly chose it
+    const saved=localStorage.getItem("portal_dark");
+    return saved===null||saved==="true";
+  });
   useEffect(()=>{
     if(loggedIn){
       // Hydrate biz_industry / biz_name from server on every session start

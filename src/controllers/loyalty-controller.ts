@@ -638,6 +638,30 @@ const getDashboardHandler = async (req: Request, res: Response): Promise<void> =
     const prevRevenue = Number(prevRevenueResult._sum?.amountSpent ?? 0);
     const revChange   = prevRevenue ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0;
 
+    // Build visitTrend from snapshots if available, otherwise aggregate raw visits by day
+    let visitTrend: { day: string; visits: number; revenue: number }[];
+    if (recentSnapshots.length > 0) {
+      visitTrend = recentSnapshots.map(s => ({
+        day:     s.snapshotDate.toISOString().slice(0, 10),
+        visits:  s.totalVisits,
+        revenue: Number(s.totalRevenue ?? 0),
+      }));
+    } else {
+      // Fall back: group visits by day for last 30 days
+      const rawVisits = await prisma.visit.findMany({
+        where:  { businessId, visitedAt: { gte: d30 } },
+        select: { visitedAt: true, amountSpent: true },
+        orderBy: { visitedAt: 'asc' },
+      });
+      const byDay = new Map<string, { visits: number; revenue: number }>();
+      for (const v of rawVisits) {
+        const day = v.visitedAt.toISOString().slice(0, 10);
+        const cur = byDay.get(day) ?? { visits: 0, revenue: 0 };
+        byDay.set(day, { visits: cur.visits + 1, revenue: cur.revenue + Number(v.amountSpent ?? 0) });
+      }
+      visitTrend = Array.from(byDay.entries()).map(([day, d]) => ({ day, ...d }));
+    }
+
     res.status(200).json({
       kpis: {
         totalCustomers,
@@ -651,11 +675,7 @@ const getDashboardHandler = async (req: Request, res: Response): Promise<void> =
         quotaUsed: subscription?.messagesUsedThisPeriod ?? 0,
         quotaTotal: subscription?.monthlyMessageQuota ?? 0,
       },
-      visitTrend: recentSnapshots.map(s => ({
-        day:     s.snapshotDate.toISOString().slice(0, 10),
-        visits:  s.totalVisits,
-        revenue: Number(s.totalRevenue ?? 0),
-      })),
+      visitTrend,
       segments: segmentCounts.map(s => ({ name: s.segment, value: s._count.id })),
     });
   } catch (err) { handleError(err, res); }
