@@ -65,23 +65,21 @@ export const creditPoints = async (
   const current    = customer?.currentPointsBalance ?? 0;
   const newBalance = current + points;
 
-  await Promise.all([
-    tx.rewardPointsLedger.create({
-      data: {
-        businessId, customerId,
-        type:          'CREDIT',
-        points,
-        balanceAfter:  newBalance,
-        reason,
-        referenceId,
-        referenceType,
-      },
-    }),
-    tx.customer.update({
-      where: { id: customerId },
-      data:  { currentPointsBalance: newBalance },
-    }),
-  ]);
+  await tx.rewardPointsLedger.create({
+    data: {
+      businessId, customerId,
+      type:          'CREDIT',
+      points,
+      balanceAfter:  newBalance,
+      reason,
+      referenceId,
+      referenceType,
+    },
+  });
+  await tx.customer.update({
+    where: { id: customerId },
+    data:  { currentPointsBalance: newBalance },
+  });
 
   return newBalance;
 };
@@ -111,23 +109,21 @@ export const debitPoints = async (
 
   const newBalance = current - points;
 
-  await Promise.all([
-    tx.rewardPointsLedger.create({
-      data: {
-        businessId, customerId,
-        type:          'DEBIT',
-        points,
-        balanceAfter:  newBalance,
-        reason,
-        referenceId,
-        referenceType,
-      },
-    }),
-    tx.customer.update({
-      where: { id: customerId },
-      data:  { currentPointsBalance: newBalance },
-    }),
-  ]);
+  await tx.rewardPointsLedger.create({
+    data: {
+      businessId, customerId,
+      type:          'DEBIT',
+      points,
+      balanceAfter:  newBalance,
+      reason,
+      referenceId,
+      referenceType,
+    },
+  });
+  await tx.customer.update({
+    where: { id: customerId },
+    data:  { currentPointsBalance: newBalance },
+  });
 
   return newBalance;
 };

@@ -244,7 +244,7 @@ const refreshSegmentsForBusiness = async (biz: {
  */
 const analyticsSnapshotJob = async (): Promise<Record<string, unknown>> => {
   const today    = new Date();
-  const dateOnly = new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const dateOnly = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
   const businesses = await prisma.business.findMany({
     where:  { isActive: true },
@@ -419,8 +419,7 @@ const inactivityQueueJob = async (): Promise<Record<string, unknown>> => {
             isSuppressed:             false,
             marketingConsentWhatsapp: true,
             lastVisitAt:              { lte: inactivityCutoff },
-            id:                       { notIn: excludeIds },
-            ...(cursor ? { id: { notIn: excludeIds, gt: cursor } } : {}),
+            id:                       { notIn: excludeIds, ...(cursor ? { gt: cursor } : {}) },
           },
           select:  { id: true },
           orderBy: { id: 'asc' },
@@ -474,17 +473,25 @@ const tierDemotionJob = async (): Promise<Record<string, unknown>> => {
 
   for (const biz of businesses) {
     try {
-      // Only customers who currently have a tier assigned
-      const customers = await prisma.customer.findMany({
-        where:   { businessId: biz.id, isActive: true, currentTierId: { not: null } },
-        select:  { id: true },
-        orderBy: { id: 'asc' },
-      });
+      let demotionCursor: string | undefined;
+      while (true) {
+        const page = await prisma.customer.findMany({
+          where:   { businessId: biz.id, isActive: true, currentTierId: { not: null } },
+          select:  { id: true },
+          orderBy: { id: 'asc' },
+          take:    500,
+          cursor:  demotionCursor ? { id: demotionCursor } : undefined,
+          skip:    demotionCursor ? 1 : 0,
+        });
+        if (page.length === 0) break;
+        demotionCursor = page[page.length - 1].id;
 
-      for (const c of customers) {
-        evaluated++;
-        const wasDemoted = await evaluateAndDowngradeTier(c.id, biz.id);
-        if (wasDemoted) demoted++;
+        for (const c of page) {
+          evaluated++;
+          const wasDemoted = await evaluateAndDowngradeTier(c.id, biz.id);
+          if (wasDemoted) demoted++;
+        }
+        if (page.length < 500) break;
       }
     } catch (err) {
       console.error(`[cron:tierDemotion] Business ${biz.id} failed:`, err);

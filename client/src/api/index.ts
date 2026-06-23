@@ -1,7 +1,7 @@
 // ── Authenticated fetch wrapper ───────────────────────────────────
 const BASE = '/api';
 
-async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function req<T>(path: string, init: RequestInit = {}, _retryDepth = 0): Promise<T> {
   const token = localStorage.getItem('accessToken');
   const res = await fetch(`${BASE}${path}`, {
     ...init,
@@ -12,8 +12,8 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
 
-  if (res.status === 401) {
-    // Try refresh — send userId + sessionId so the server rotates the right session
+  if (res.status === 401 && _retryDepth === 0) {
+    // Single refresh attempt — depth guard prevents infinite recursion
     try {
       const userId    = localStorage.getItem('userId');
       const sessionId = localStorage.getItem('sessionId');
@@ -27,13 +27,20 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
         const d = await r.json();
         localStorage.setItem('accessToken', d.accessToken);
         if (d.sessionId) localStorage.setItem('sessionId', d.sessionId);
-        return req<T>(path, init);
+        return req<T>(path, init, 1); // retry once with new token
       }
     } catch {}
     const hadToken = !!localStorage.getItem('accessToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('sessionId');
     if (hadToken) window.location.href = '/';
+    throw new Error('Unauthenticated');
+  }
+
+  if (res.status === 401) {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('sessionId');
+    window.location.href = '/';
     throw new Error('Unauthenticated');
   }
 

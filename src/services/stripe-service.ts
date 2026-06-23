@@ -32,7 +32,7 @@ export const getStripe = (): Stripe => {
   if (!_stripe) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) throw new Error('[stripe] STRIPE_SECRET_KEY is not set.');
-    _stripe = new Stripe(key, { apiVersion: '2024-06-20' });
+    _stripe = new Stripe(key, { apiVersion: '2024-04-10' });
   }
   return _stripe;
 };
@@ -385,7 +385,7 @@ export const syncTierToRedis = async (
     redis.del(featuresKey).then(() =>
       features[0] === '*'
         ? redis.sAdd(featuresKey, '*')            // Enterprise wildcard
-        : redis.sAdd(featuresKey, ...features)
+        : redis.sAdd(featuresKey, features as any)
     ),
   ]);
 };

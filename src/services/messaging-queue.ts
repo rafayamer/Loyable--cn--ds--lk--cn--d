@@ -383,7 +383,7 @@ export const getMessageQueueHealth = async (): Promise<QueueHealth> => {
     queue.getCompletedCount(),
     queue.getFailedCount(),
     queue.getDelayedCount(),
-    queue.getPausedCount(),
+    queue.getJobCountByTypes('paused').catch(() => 0),
   ]);
   return { waiting, active, completed, failed, delayed, paused };
 };

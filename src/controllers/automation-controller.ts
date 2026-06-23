@@ -170,7 +170,7 @@ const createHandler = async (req: Request, res: Response): Promise<void> => {
     const { businessId } = req.tenantContext;
     const input          = req.body as z.infer<typeof CreateWorkflowSchema>;
 
-    const { workflow, warnings } = await createWorkflow(businessId, input);
+    const { workflow, warnings } = await createWorkflow(businessId, input as any);
 
     res.status(201).json({
       workflow,
@@ -206,7 +206,7 @@ const updateHandler = async (req: Request, res: Response): Promise<void> => {
     const { workflow, warnings, recompiled } = await updateWorkflow(
       req.params.id,
       businessId,
-      input
+      input as any
     );
 
     res.status(200).json({

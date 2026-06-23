@@ -259,37 +259,41 @@ export const launchCampaign = async (
     return { queued: 0, skipped };
   }
 
-  // Bulk insert MessageQueue records
+  // Build a phone lookup for the job-building step
+  const phoneByCustomerId = new Map(customers.map(c => [c.id, c.whatsappNumber]));
+
+  // Bulk insert MessageQueue records in chunks.
+  // Capture createdAt timestamp before each chunk so we can reliably fetch
+  // back only the rows we just inserted (avoids fragile skip-based pagination).
   const CHUNK = 500;
   const insertedIds: string[] = [];
 
   for (let i = 0; i < records.length; i += CHUNK) {
     const slice = records.slice(i, i + CHUNK);
+    const beforeInsert = new Date(Date.now() - 1_000); // 1s buffer for clock skew
     await prisma.messageQueue.createMany({ data: slice });
 
-    // Fetch the IDs we just created (Prisma createMany doesn't return IDs)
+    // Fetch only the rows created in this chunk window
     const created = await prisma.messageQueue.findMany({
       where: {
         campaignId: id,
         businessId,
-        status: 'PENDING',
-        createdAt: { gte: new Date(Date.now() - 60_000) },
+        status:     'PENDING',
+        createdAt:  { gte: beforeInsert },
+        customerId: { in: slice.map(r => r.customerId as string) },
       },
       select: { id: true, customerId: true, payloadJson: true },
-      orderBy: { createdAt: 'asc' },
-      skip:  i,
-      take:  CHUNK,
     });
 
     for (const r of created) {
-      const customer = customers.find(c => c.id === r.customerId);
-      if (!customer?.whatsappNumber) continue;
+      const phone = phoneByCustomerId.get(r.customerId);
+      if (!phone) continue;
 
       jobs.push({
         messageQueueId: r.id,
         businessId,
         customerId:     r.customerId,
-        recipientPhone: customer.whatsappNumber,
+        recipientPhone: phone,
         channel:        channel as any,
         provider:       provider as any,
         payload:        r.payloadJson as unknown as MessagePayload,
@@ -487,7 +491,12 @@ const resolveSegmentCustomers = async (
       ...(segment && segment !== 'ALL' && { segment: segment as any }),
     },
     select: { id: true, whatsappNumber: true, fullName: true },
-    take:   10_000, // Safety cap — chunking handled by enqueueBulkCampaign
+    take:   10_000,
+  }).then(rows => {
+    if (rows.length === 10_000) {
+      console.warn(`[campaign.service] resolveSegmentCustomers: hit 10k cap for business ${businessId} segment=${segment ?? 'ALL'} — some customers will be skipped`);
+    }
+    return rows;
   });
 };
 

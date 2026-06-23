@@ -196,7 +196,7 @@ const processMessageJob = async (
     // Exhausted — pause this tenant and notify the owner
     await pauseTenantQueue(businessId);
     await resolveDropped(messageQueueId, 'DROPPED_QUOTA', 'MONTHLY_QUOTA_EXHAUSTED');
-    void notifyQuotaExhausted(businessId); // fire-and-forget
+    void notifyQuotaExhausted(businessId).catch(err => console.error('[messaging.worker] Quota notification failed:', err));
     return;
   }
 
@@ -232,6 +232,8 @@ const processMessageJob = async (
   // POST-SEND: Update DB record
   // ──────────────────────────────────────────────────────────────
   if (result.success) {
+    // updateMany on subscription: silently no-ops if row doesn't exist,
+    // preventing a missing subscription from rolling back the sent status.
     await prisma.$transaction([
       prisma.messageQueue.update({
         where: { id: messageQueueId },
@@ -242,19 +244,18 @@ const processMessageJob = async (
           updatedAt:         new Date(),
         },
       }),
-      // Increment campaign sent counter
       ...(campaignId
         ? [prisma.campaign.update({
             where: { id: campaignId },
             data:  { sentCount: { increment: 1 } },
           })]
         : []),
-      // Track subscription usage
-      prisma.subscription.update({
-        where: { businessId },
-        data:  { messagesUsedThisPeriod: { increment: 1 } },
-      }),
     ]);
+    // Separate non-critical usage tracking — failure here doesn't undo the sent status
+    await prisma.subscription.updateMany({
+      where: { businessId },
+      data:  { messagesUsedThisPeriod: { increment: 1 } },
+    });
 
   } else {
     // Re-credit quota — API rejected the message, we didn't use the slot
@@ -573,9 +574,12 @@ const dispatchAutomationMessage = async (
 
   const business = await prisma.business.findUnique({
     where:  { id: businessId },
-    select: { messagingProvider: true },
+    select: { messagingProvider: true, wahaBaseUrl: true, wahaSessionId: true },
   });
 
+  // Mirror WAHA auto-detect logic from campaign-service
+  const hasWaha    = !!(business?.wahaBaseUrl && business?.wahaSessionId);
+  const provider   = hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA');
   const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1_000);
 
   const record = await prisma.messageQueue.create({
@@ -583,8 +587,8 @@ const dispatchAutomationMessage = async (
       businessId,
       customerId,
       automationRunId,
-      channel:       business?.messagingProvider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META',
-      provider:      business?.messagingProvider ?? 'META',
+      channel:       provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META',
+      provider,
       status:        'PENDING',
       templateName,
       payloadJson: {
@@ -604,7 +608,7 @@ const dispatchAutomationMessage = async (
       businessId,
       customerId,
       recipientPhone:   customer.whatsappNumber,
-      channel:          record.channel,
+      channel:          record.channel as any,
       provider:         record.provider as any,
       payload:          record.payloadJson as any,
       isPromotional:    true,

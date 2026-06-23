@@ -384,7 +384,7 @@ const featureFlagsHandler = async (req: Request, res: Response): Promise<void> =
 
     await redis.del(featuresKey);
     if (features.length > 0) {
-      await redis.sAdd(featuresKey, ...features);
+      await redis.sAdd(featuresKey, features as any);
     }
 
     await prisma.auditLog.create({

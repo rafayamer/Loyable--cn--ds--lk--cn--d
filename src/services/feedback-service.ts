@@ -12,7 +12,7 @@
 // ================================================================
 
 import { prisma } from '../config/prisma';
-import { enqueueAutomationTrigger, enqueueMessage } from './messaging-queue';
+import { enqueueAutomationTrigger, enqueueMessage, TextPayload } from './messaging-queue';
 
 
 const FEEDBACK_WINDOW_MS  = 4 * 3_600_000;   // Send 4h after visit
@@ -61,16 +61,33 @@ export const dispatchFeedbackRequests = async (): Promise<{ sent: number; skippe
       });
       if (!customer?.whatsappNumber) { skipped++; continue; }
 
-      const message = `Hi ${customer.fullName?.split(' ')[0] ?? 'there'} 👋\n\nHow was your visit today?\n\nReply with a number:\n⭐ 1 – Poor\n⭐⭐ 2 – Fair\n⭐⭐⭐ 3 – Good\n⭐⭐⭐⭐ 4 – Great\n⭐⭐⭐⭐⭐ 5 – Excellent`;
+      const body = `Hi ${customer.fullName?.split(' ')[0] ?? 'there'} 👋\n\nHow was your visit today?\n\nReply with a number:\n⭐ 1 – Poor\n⭐⭐ 2 – Fair\n⭐⭐⭐ 3 – Good\n⭐⭐⭐⭐ 4 – Great\n⭐⭐⭐⭐⭐ 5 – Excellent`;
+      const payload: TextPayload = { type: 'TEXT', body };
 
       try {
+        // Create the MessageQueue record first (enqueueMessage requires it)
+        const record = await prisma.messageQueue.create({
+          data: {
+            businessId:    biz.id,
+            customerId:    customer.id,
+            channel:       'WHATSAPP_WAHA',
+            provider:      'WAHA',
+            status:        'PENDING',
+            payloadJson:   payload as any,
+            isPromotional: false, // Transactional — bypasses cooldown in worker
+            scheduledFor:  new Date(),
+          },
+        });
         await enqueueMessage({
-          businessId:    biz.id,
-          customerId:    customer.id,
-          phone:         customer.whatsappNumber,
-          message,
-          priority:      3,
-          skipCooldown:  true, // Transactional — not marketing
+          messageQueueId: record.id,
+          businessId:     biz.id,
+          customerId:     customer.id,
+          recipientPhone: customer.whatsappNumber,
+          channel:        'WHATSAPP_WAHA',
+          provider:       'WAHA',
+          payload,
+          isPromotional:  false,
+          retryCount:     0,
         });
 
         // Mark as requested by creating a placeholder row (score=0)
