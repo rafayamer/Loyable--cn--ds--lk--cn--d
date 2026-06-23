@@ -410,6 +410,8 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   const [err,         setErr]         = useState('');
   const [checkingIn,  setCheckingIn]  = useState(false);
   const [checkInMsg,  setCheckInMsg]  = useState<{ ok: boolean; text: string } | null>(null);
+  const [portalDark, setPortalDark] = useState(() => localStorage.getItem('portal_theme') !== 'light');
+  const toggleTheme = () => { const next = !portalDark; setPortalDark(next); localStorage.setItem('portal_theme', next ? 'dark' : 'light'); };
   const ps = portalSettings ?? {};
 
   const portalFetch = useCallback((path: string, init: RequestInit = {}) =>
@@ -490,9 +492,6 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   );
 
   const { customer, tiers, visits, referralCount, nextTier, progressToNext } = data;
-
-  const [portalDark, setPortalDark] = useState(() => localStorage.getItem('portal_theme') !== 'light');
-  const toggleTheme = () => { const next = !portalDark; setPortalDark(next); localStorage.setItem('portal_theme', next ? 'dark' : 'light'); };
 
   // Build tab list based on portalSettings visibility
   const TABS = [
