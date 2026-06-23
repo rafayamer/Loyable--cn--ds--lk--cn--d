@@ -1392,6 +1392,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
 // CUSTOMERS
 // ════════════════════════════════════════════════════════════════
 const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
+  const ct=useCard();
   const [q,setQ]=useState("");const [seg,setSeg]=useState("ALL");
   const [customers,setCustomers]=useState<any[]>([]);
   const [total,setTotal]=useState(0);
@@ -1407,20 +1408,20 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
   const filtered=customers;
   return(
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2"><div><h1 className="text-xl font-bold text-white">Customers</h1><p className="text-xs text-slate-400 mt-0.5">{loading?"Loading…":`${total} total · 7 segments`}</p></div></div>
+      <div className="flex items-center justify-between flex-wrap gap-2"><div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Customers</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>{loading?"Loading…":`${total} total · 7 segments`}</p></div></div>
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name or phone…" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name or phone…" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/></div>
         <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       </div>
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
-        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Segment</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden sm:table-cell">Visits</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Churn</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">CLV</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden sm:table-cell">Points</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th></tr></thead>
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 font-medium" style={{color:ct.tx2}}>Customer</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Segment</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Visits</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>Churn</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>CLV</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Points</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Status</th></tr></thead>
           <tbody>{filtered.map(c=>(
             <tr key={c.id} onClick={()=>onSelect(c)} className="border-b border-white/3 hover:bg-white/3 cursor-pointer">
-              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map(n=>n[0]).join("")}</div><div><div className="text-white font-medium">{c.name}</div><div className="text-slate-500">{c.phone}</div></div></div></td>
+              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map(n=>n[0]).join("")}</div><div><div className="font-medium" style={{color:ct.tx}}>{c.name}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
               <td className="py-3 px-3"><Badge color={SEG_COLORS[c.segment]||"#8b5cf6"}>{c.segment}</Badge></td>
-              <td className="py-3 px-3 text-slate-300 hidden sm:table-cell">{c.visits}</td>
+              <td className="py-3 px-3 hidden sm:table-cell" style={{color:ct.tx2}}>{c.visits}</td>
               <td className="py-3 px-3 hidden md:table-cell"><div className="flex items-center gap-1"><div className="w-12 h-1.5 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full" style={{width:`${c.churnRisk}%`,background:c.churnRisk>75?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div><span className="text-xs text-slate-400">{c.churnRisk}%</span></div></td>
-              <td className="py-3 px-3 text-slate-300 hidden md:table-cell">£{c.clv.toLocaleString()}</td>
+              <td className="py-3 px-3 hidden md:table-cell" style={{color:ct.tx2}}>£{c.clv.toLocaleString()}</td>
               <td className="py-3 px-3 hidden sm:table-cell"><span className="text-violet-400 font-medium">{c.points.toLocaleString()}</span></td>
               <td className="py-3 px-3"><span className={`font-medium ${c.status==="Active"?"text-green-400":c.status==="At Risk"?"text-amber-400":"text-red-400"}`}>{c.status}</span></td>
             </tr>
@@ -1613,6 +1614,7 @@ const InboxView=({connected}:{connected:boolean})=>(
 );
 
 const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
+  const ct=useCard();
   const [messages,setMessages]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [statusFilter,setStatusFilter]=useState("ALL");
@@ -1638,8 +1640,8 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
       {showCompose&&<SendMessageModal onClose={()=>setShowCompose(false)} onSent={load}/>}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-white">Messages</h1>
-          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+          <h1 className="text-xl font-bold" style={{color:ct.tx}}>Messages</h1>
+          <p className="text-xs flex items-center gap-1.5 mt-0.5" style={{color:ct.tx2}}>
             <span className={`w-2 h-2 rounded-full ${connected?"bg-green-400":waStatus==="SCAN_QR_CODE"?"bg-amber-400":"bg-red-400"}`}/>
             {connected?"WhatsApp connected · live inbox":waStatus==="SCAN_QR_CODE"?"Scan QR code in Settings → WhatsApp API":"WhatsApp not connected"}
             {view==="log"?` · ${total} logged`:""}
@@ -1901,6 +1903,7 @@ const AutomationBuilderPage=({onBack})=>{
 // LOYALTY & POINTS
 // ════════════════════════════════════════════════════════════════
 const LoyaltyPage=()=>{
+  const ct=useCard();
   const [tiers,setTiers]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -1940,7 +1943,7 @@ const LoyaltyPage=()=>{
   const tierColors=["#cd7f32","#c0c0c0","#ffd700","#b19cd9","#ef4444","#06b6d4"];
   return(
     <div className="space-y-5">
-      <div><h1 className="text-xl font-bold text-white">Loyalty & Rewards</h1><p className="text-xs text-slate-400 mt-0.5">Configure LoyaltyTier model · Visual slider interface · saved to Prisma</p></div>
+      <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Loyalty & Rewards</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Configure LoyaltyTier model · Visual slider interface · saved to Prisma</p></div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPI icon={Users} label="Total Customers" value={dashKpis?.totalCustomers?.toLocaleString()??"-"} change={`${dashKpis?.newThisMonth??0} new this month`} positive color={C.primary}/>
         <KPI icon={Eye} label="Active (30d)" value={dashKpis?.activeCustomers?.toLocaleString()??"-"} color={C.accent}/>
@@ -2023,6 +2026,7 @@ const TARGET_FIELDS=["fullName","whatsappNumber","email","birthday","gender","ad
 const TARGET_LABELS:Record<string,string>={fullName:"Full Name",whatsappNumber:"WhatsApp Number",email:"Email",birthday:"Birthday",gender:"Gender",address:"Address"};
 
 const DataHubPage=()=>{
+  const ct=useCard();
   const [tab,setTab]=useState("queue");
   const [queueMsgs,setQueueMsgs]=useState<any[]>([]);
   const [queueLoading,setQueueLoading]=useState(true);

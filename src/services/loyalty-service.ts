@@ -174,7 +174,13 @@ export const accruePointsForVisit = async (
   customerId:  string,
   amountSpent: number
 ): Promise<{ pointsEarned: number; newBalance: number; tierUpgraded: boolean }> => {
-  const pointsEarned = VISIT_BASE_POINTS + Math.floor(amountSpent * POINTS_PER_POUND);
+  const biz = await prisma.business.findUnique({
+    where:  { id: businessId },
+    select: { pointsPerPound: true, visitBasePoints: true },
+  });
+  const perPound   = biz?.pointsPerPound  ?? POINTS_PER_POUND;
+  const basePoints = biz?.visitBasePoints ?? VISIT_BASE_POINTS;
+  const pointsEarned = basePoints + Math.floor(amountSpent * perPound);
 
   const newBalance = await prisma.$transaction(async (tx) => {
     await tx.visit.update({

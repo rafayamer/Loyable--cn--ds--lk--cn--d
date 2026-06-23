@@ -178,6 +178,8 @@ model Business {
   irregularGapDays     Int               @default(14)   // "We Miss You" trigger threshold
   lostDaysThreshold    Int               @default(60)   // Lost classification threshold
   pointsExpiryDays     Int               @default(365)  // Points earned before this many days ago expire nightly
+  pointsPerPound       Int               @default(1)    // Points earned per £1 spent
+  visitBasePoints      Int               @default(5)    // Flat bonus points per visit
 
   isActive             Boolean           @default(true)
   createdAt            DateTime          @default(now())
