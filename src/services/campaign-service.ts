@@ -487,7 +487,10 @@ const resolveSegmentCustomers = async (
       isActive:                 true,
       isSuppressed:             false,
       marketingConsentWhatsapp: true,
-      marketingPausedUntil:     { OR: [{ equals: null }, { lt: new Date() }] } as any,
+      OR: [
+        { marketingPausedUntil: null },
+        { marketingPausedUntil: { lt: new Date() } },
+      ],
       ...(segment && segment !== 'ALL' && { segment: segment as any }),
     },
     select: { id: true, whatsappNumber: true, fullName: true },
