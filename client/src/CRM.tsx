@@ -510,7 +510,12 @@ const Reveal=({children,delay=0,y=24,className="",style={}}:{children:React.Reac
 
 const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [view,setView]=useState<AuthView>("landing");
-  const [dark,setDark]=useState(false);
+  const [dark,setDark]=useState(()=>{
+    // Default to dark; only go light if user explicitly chose it
+    const saved=localStorage.getItem("site_dark");
+    return saved===null||saved==="true";
+  });
+  useEffect(()=>{localStorage.setItem("site_dark",String(dark));},[dark]);
   const [mobileNav,setMobileNav]=useState(false);
   const [pricingYearly,setPricingYearly]=useState(false);
   const [testimonialIdx,setTestimonialIdx]=useState(0);

@@ -491,7 +491,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
 
   const { customer, tiers, visits, referralCount, nextTier, progressToNext } = data;
 
-  const [portalDark, setPortalDark] = useState(() => localStorage.getItem('portal_theme') === 'dark');
+  const [portalDark, setPortalDark] = useState(() => localStorage.getItem('portal_theme') !== 'light');
   const toggleTheme = () => { const next = !portalDark; setPortalDark(next); localStorage.setItem('portal_theme', next ? 'dark' : 'light'); };
 
   // Build tab list based on portalSettings visibility
