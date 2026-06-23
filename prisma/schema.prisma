@@ -1,0 +1,1195 @@
+// ================================================================
+//  CUSTOMER RETENTION PLATFORM — PRISMA SCHEMA
+//  Multi-Tenant SaaS | Every operational table enforces businessId
+//  Cube Retain CRM
+// ================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================================================
+// ENUMS
+// ================================================================
+
+enum Role {
+  PLATFORM_ADMINISTRATOR // Super Admin — full system access
+  TENANT_OWNER           // Full access across all branches of their business
+  BRANCH_MANAGER         // Scoped to their specific branchLocationId
+  CASHIER                // Transaction-level operations only (QR + PIN)
+  MARKETING_STAFF        // Campaign builder + customer data; no billing/integrations
+  CUSTOMER               // End-user portal access only
+}
+
+enum CustomerSegment {
+  NEW
+  LOYAL
+  VIP
+  AT_RISK
+  LOST
+  BIG_SPENDER
+  COUPON_HUNTER
+}
+
+enum MessageChannel {
+  WHATSAPP_META
+  WHATSAPP_WAHA
+  EMAIL
+  SMS
+  TELEGRAM
+  INSTAGRAM_DM
+}
+
+enum MessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CONSENT_REVOKED    // Opt-out interceptor blocked dispatch
+  DROPPED_COOLDOWN   // BullMQ spam interceptor: within tenant cooldown window
+  DROPPED_QUOTA      // Tenant hit monthly message quota
+}
+
+enum CouponType {
+  PERCENTAGE_DISCOUNT
+  FIXED_VALUE
+  FREE_PRODUCT
+  BOGO
+}
+
+enum CouponStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  VOIDED
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  GROWTH
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum LedgerTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum AutomationStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+enum MessagingProvider {
+  META
+  WAHA
+}
+
+enum SentimentLabel {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  VERY_NEGATIVE // Triggers: pause automations + Manager Alert
+}
+
+enum OutboundWebhookEvent {
+  CUSTOMER_REACHED_VIP
+  COUPON_REDEEMED
+  VISIT_REGISTERED
+  CUSTOMER_CHURNED
+  TIER_UPGRADED
+  REFERRAL_CONVERTED
+  SUBSCRIPTION_CHANGED
+}
+
+enum PosProvider {
+  SQUARE
+  TOAST
+  CLOVER
+  CUSTOM
+}
+
+// ================================================================
+// CORE TENANT MODEL
+// ================================================================
+
+model Business {
+  id                   String            @id @default(cuid())
+  name                 String
+  slug                 String            @unique // e.g. "casa-bistro"
+  customDomain         String?           @unique // White-label: "loyalty.casabistro.com"
+  logoUrl              String?
+  industry             String?
+  address              String?
+  country              String            @default("GB")
+  timezone             String            @default("Europe/London")
+  currency             String            @default("GBP")
+
+  // White-label theme injected as CSS variables in layout.tsx
+  brandingColors       Json?
+  // JSONB shape: { "primary": "#hex", "secondary": "#hex", "accent": "#hex", "background": "#hex" }
+
+  // Customer portal content + visibility settings
+  portalSettings       Json?
+  // JSONB shape: { showMenu: bool, menuImageUrl: string, showWifi: bool, wifiName: string, wifiPassword: string,
+  //                showAnnouncement: bool, announcementText: string, showReferral: bool, showVisitHistory: bool, customSections: [{title,body,icon,visible}] }
+
+  // Geolocation check-in
+  latitude             Float?
+  longitude            Float?
+  checkInRadiusMeters  Int     @default(30)
+
+
+  // Messaging provider configuration (dual gateway: Meta OR WAHA)
+  messagingProvider    MessagingProvider @default(META)
+
+  // Meta Cloud API credentials
+  metaPhoneNumberId    String?
+  metaWabaId           String?
+  metaAccessToken      String?           // Stored encrypted at rest
+
+  // WAHA self-hosted credentials
+  whatsappProvider     String?             @default("WAHA")  // "META" | "WAHA"
+  wahaBaseUrl          String?
+  wahaSessionId        String?
+  wahaApiKey           String?
+
+  // Operational configuration
+  messageCooldownHours Int               @default(72)   // Spam protection window
+  loyalDaysWindow      Int               @default(7)    // Loyal classification threshold
+  irregularGapDays     Int               @default(14)   // "We Miss You" trigger threshold
+  lostDaysThreshold    Int               @default(60)   // Lost classification threshold
+  pointsExpiryDays     Int               @default(365)  // Points earned before this many days ago expire nightly
+  pointsPerPound       Int               @default(1)    // Points earned per £1 spent
+  visitBasePoints      Int               @default(5)    // Flat bonus points per visit
+  bigSpenderThreshold  Int               @default(500)  // Total spend (in currency units) to classify as BIG_SPENDER
+
+  isActive             Boolean           @default(true)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  // FBR / POS integration
+  fbrPosId             Int?              // FBR POS ID assigned by FBR
+  fbrUserId            String?           // FBR IRIS UserID (for API auth)
+  fbrPassword          String?           // FBR POS password (encrypted at rest)
+  fbrToken             String?           // FBR PRAL API token (alternative auth)
+  ntn                  String?           // National Tax Number
+  taxNumber            String?           // STRN alias — shown on receipt
+  strn                 String?           // Sales Tax Registration Number
+  gstRate              Float             @default(17) // GST percentage
+  fbrEnabled           Boolean           @default(false)
+  fbrSandbox           Boolean           @default(true)  // Use sandbox until go-live
+
+  // Relations
+  branches             BranchLocation[]
+  users                User[]
+  customers            Customer[]
+  loyaltyTiers         LoyaltyTier[]
+  campaigns            Campaign[]
+  automationWorkflows  AutomationWorkflow[]
+  messageQueue         MessageQueue[]
+  analyticsSnapshots   AnalyticsSnapshot[]
+  subscription         Subscription?
+  apiKeys              ApiKey[]
+  auditLogs            AuditLog[]
+  outboundWebhooks     OutboundWebhookConfig[]
+  coupons              Coupon[]
+  posWebhookLogs       PosWebhookLog[]
+  consentChangeLogs    ConsentChangeLog[]
+  portalLogins         PortalLogin[]
+
+  @@map("businesses")
+}
+
+// ================================================================
+// MULTI-BRANCH ARCHITECTURE
+// ================================================================
+
+model BranchLocation {
+  id          String    @id @default(cuid())
+  businessId  String
+  name        String
+  address     String?
+  city        String?
+  country     String?
+  phone       String?
+  timezone    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  users       User[]
+  visits      Visit[]
+  couponRedemptions CouponRedemptionLog[]
+  messageQueue      MessageQueue[]
+  analyticsSnapshots AnalyticsSnapshot[]
+
+  @@index([businessId])
+  @@map("branch_locations")
+}
+
+// ================================================================
+// USERS (STAFF & OWNERS)
+// ================================================================
+
+model User {
+  id               String          @id @default(cuid())
+  businessId       String
+  branchLocationId String?         // NULL = access to all branches (Owner/Marketing)
+  email            String
+  passwordHash     String?         // Argon2id hash; null for social-login-only accounts
+  googleId         String?         // Google OAuth2 subject identifier
+  name             String
+  phone            String?
+  role             Role
+  refreshTokenHash String?         // kept for migration compat — no longer used for multi-device
+  isActive         Boolean         @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  business         Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])
+  auditLogs        AuditLog[]
+  couponRedemptions CouponRedemptionLog[]
+  sessions         UserSession[]
+
+  @@unique([email, businessId])
+  @@index([businessId])
+  @@index([businessId, branchLocationId])
+  @@index([businessId, role])
+  @@map("users")
+}
+
+// One row per logged-in device — enables unlimited concurrent sessions
+model UserSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    // Argon2id hash of the raw refresh token
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+// ================================================================
+// CUSTOMER MODEL — Core CRM entity
+// ================================================================
+
+model Customer {
+  id                       String           @id @default(cuid())
+  businessId               String
+
+  // Identity
+  fullName                 String
+  whatsappNumber           String?          // E.164 format: +447911123456
+  email                    String?
+  birthday                 DateTime?
+  gender                   String?
+  address                  String?
+  avatarUrl                String?
+
+  // Mobile app readiness (React Native / Expo future integration)
+  devicePushToken          String?
+
+  // Referral system
+  referralCode             String           @unique @default(cuid())
+  referredByCode           String?          // Code used at registration
+
+  // AI Segmentation
+  segment                  CustomerSegment  @default(NEW)
+
+  // Metrics (denormalized for query performance; source of truth is ledgers)
+  visitCount               Int              @default(0)
+  totalSpend               Decimal          @default(0) @db.Decimal(12, 2)
+  lastVisitAt              DateTime?
+  firstVisitAt             DateTime?
+  averageOrderValue        Decimal          @default(0) @db.Decimal(12, 2)
+  currentPointsBalance     Int              @default(0)   // Cached; recomputed from ledger
+  currentWalletBalance     Decimal          @default(0)   @db.Decimal(12, 2)
+  currentTierId            String?
+
+  // GDPR Granular Consent Flags
+  marketingConsentWhatsapp Boolean          @default(false)
+  marketingConsentEmail    Boolean          @default(false)
+  marketingConsentSms      Boolean          @default(false)
+  marketingConsentPush     Boolean          @default(false)
+
+  // Operational flags
+  isActive                 Boolean          @default(true)
+  isStaff                  Boolean          @default(false) // Staff/owner — NEVER receives marketing or automated messages
+  isSuppressed             Boolean          @default(false) // Post-STOP keyword suppression
+  marketingPausedUntil     DateTime?        // Set by negative sentiment detection
+
+  // AI Sentiment (updated by webhook.waha.ts sentiment worker)
+  latestSentimentLabel     SentimentLabel?
+  latestSentimentScore     Float?
+  latestSentimentAt        DateTime?
+
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+
+  business                 Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  visits                   Visit[]
+  rewardPointsLedger       RewardPointsLedger[]
+  walletLedger             WalletLedger[]
+  messageQueue             MessageQueue[]
+  coupons                  Coupon[]
+  couponRedemptions        CouponRedemptionLog[]
+  consentChangeLogs        ConsentChangeLog[]
+  tierHistory              CustomerTierHistory[]
+  segmentHistory           CustomerSegmentHistory[]
+  portalLogins             PortalLogin[]
+
+  @@unique([whatsappNumber, businessId])
+  @@unique([email, businessId])
+  @@index([businessId])
+  @@index([businessId, segment])
+  @@index([businessId, lastVisitAt])
+  // Covers the Customers list/segment view (filter by segment, sort by recency)
+  // so large tenants never fall back to a sequential scan + sort at scale.
+  @@index([businessId, segment, lastVisitAt])
+  @@index([businessId, whatsappNumber])
+  @@index([businessId, referralCode])
+  @@index([businessId, isActive, id])     // Cursor-based pagination in cron jobs
+  @@map("customers")
+}
+
+// ================================================================
+// VISIT TRACKING
+// ================================================================
+
+model Visit {
+  id               String          @id @default(cuid())
+  businessId       String
+  branchLocationId String?
+  customerId       String
+
+  // POS idempotency: transactionId prevents duplicate visit registration
+  // from retry webhooks (Square, Toast, Clover, etc.)
+  transactionId    String?
+
+  amountSpent      Decimal         @default(0) @db.Decimal(12, 2)
+  pointsEarned     Int             @default(0)
+  source           String          @default("QR_CHECKIN")
+  // QR_CHECKIN | POS_WEBHOOK | MANUAL | CSV_IMPORT | BOOKING_SYSTEM
+
+  staffId          String?
+  notes            String?
+  visitedAt        DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+
+  // FBR e-invoicing fields
+  fbrInvoiceNumber String?         // FBR-assigned invoice number
+  fbrQrCode        String?         // FBR verification QR URL
+  fbrSubmittedAt   DateTime?       // When invoice was sent to FBR
+  gstAmount        Decimal?        @db.Decimal(10, 2)  // GST charged
+  paymentMode      String?         // CASH | CARD | WALLET
+
+  // Revenue attribution: if this visit happened within 48h of a campaign/automation message
+  attributedCampaignId   String?
+  attributedAutomationId String?
+  attributionWindowHours Int?    @default(48)
+
+  customer         Customer        @relation(fields: [customerId], references: [id])
+  branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])
+
+  @@unique([transactionId, businessId])       // POS idempotency constraint
+  @@index([businessId])
+  @@index([businessId, customerId])
+  @@index([businessId, branchLocationId])
+  @@index([businessId, visitedAt])
+  @@index([customerId, visitedAt])            // Customer timeline aggregation
+  @@map("visits")
+}
+
+// ================================================================
+// LOYALTY & MEMBERSHIP TIERS
+// ================================================================
+
+model LoyaltyTier {
+  id               String    @id @default(cuid())
+  businessId       String
+  name             String    // Bronze, Silver, Gold, VIP
+  rank             Int       // 1=Bronze, 2=Silver, 3=Gold, 4=VIP (drag-slider order)
+  color            String?   // Hex for UI rendering
+  iconUrl          String?
+  minVisitCount    Int?      // Threshold: visits required to reach this tier
+  minTotalSpend    Decimal?  @db.Decimal(12, 2) // OR spend threshold
+  benefitsJson     Json?
+  // JSONB shape: [
+  //   { "type": "PERCENTAGE_DISCOUNT", "value": 10 },
+  //   { "type": "FREE_PRODUCT", "productName": "Coffee" },
+  //   { "type": "PRIORITY_SERVICE", "description": "Skip the queue" }
+  // ]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tierHistory      CustomerTierHistory[]
+
+  @@unique([businessId, rank])
+  @@index([businessId])
+  @@map("loyalty_tiers")
+}
+
+model CustomerTierHistory {
+  id           String       @id @default(cuid())
+  businessId   String
+  customerId   String
+  tierId       String
+  changedAt    DateTime     @default(now())
+  reason       String?      // VISIT_MILESTONE, SPEND_THRESHOLD, MANUAL_OVERRIDE
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  tier         LoyaltyTier  @relation(fields: [tierId], references: [id])
+
+  @@index([businessId, customerId])
+  @@map("customer_tier_history")
+}
+
+// ================================================================
+// REWARD POINTS LEDGER (Immutable Append-Only)
+// ================================================================
+
+model RewardPointsLedger {
+  id              String                @id @default(cuid())
+  businessId      String
+
+  // Strict tenant isolation on every ledger row
+  customerId      String
+
+  type            LedgerTransactionType
+  points          Int                   // Always positive; type determines direction
+  balanceAfter    Int                   // Denormalized running total for O(1) reads
+  reason          String
+  // VISIT_ACCRUAL | REDEMPTION | REFERRAL_CREDIT | TIER_BONUS
+  // | CAMPAIGN_REWARD | EXPIRY | MANUAL_ADJUSTMENT | REFUND
+
+  referenceId     String?               // visitId, couponId, campaignId, referralCode
+  referenceType   String?               // VISIT | COUPON | CAMPAIGN | REFERRAL
+
+  // Redemption details
+  redeemedForVoucherId String?
+
+  createdAt       DateTime              @default(now())
+
+  customer        Customer              @relation(fields: [customerId], references: [id])
+
+  @@index([businessId, customerId])
+  @@index([businessId, createdAt])
+  @@index([customerId, createdAt])           // Customer timeline feed
+  @@index([customerId, type, createdAt])     // Points expiry: oldest CREDIT per customer
+  @@index([businessId, customerId, type])    // Batch expiry queries scoped to business
+  // Idempotency guard: a given (customer, reason, reference) can only be
+  // credited once. Postgres treats NULL referenceId as distinct, so manual
+  // adjustments (null reference) are unaffected, but two concurrent
+  // VISIT_ACCRUAL writes for the same visitId can no longer double-credit.
+  @@unique([customerId, reason, referenceId])
+  @@map("reward_points_ledger")
+}
+
+// ================================================================
+// DIGITAL WALLET LEDGER (High-Precision Financial)
+// ================================================================
+
+model WalletLedger {
+  id              String                @id @default(cuid())
+  businessId      String
+  customerId      String
+  type            LedgerTransactionType
+  amount          Decimal               @db.Decimal(12, 2)
+  balanceAfter    Decimal               @db.Decimal(12, 2)
+  reason          String
+  // TOP_UP | PURCHASE_DEDUCTION | REFUND | REWARD_CREDIT | EXPIRY
+  referenceId     String?
+  referenceType   String?
+  createdAt       DateTime              @default(now())
+
+  customer        Customer              @relation(fields: [customerId], references: [id])
+
+  @@index([businessId, customerId])
+  @@index([businessId, createdAt])
+  @@map("wallet_ledger")
+}
+
+// ================================================================
+// COUPONS & REDEMPTION
+// ================================================================
+
+model Coupon {
+  id               String           @id @default(cuid())
+  businessId       String
+  customerId       String?
+  campaignId       String?
+
+  code             String           @unique @default(cuid())
+  type             CouponType
+  value            Decimal?         @db.Decimal(12, 2) // % or fixed £ amount
+  freeProductName  String?
+  bogoDetails      Json?            // JSONB: { "buyProductId": "...", "getProductId": "..." }
+  status           CouponStatus     @default(ACTIVE)
+  expiresAt        DateTime?
+  qrPayload        String?          // Encoded string rendered as QR on customer portal
+  cashierPinHash   String           // Argon2id hash of 4-digit PIN — never plaintext
+
+  maxRedemptions   Int              @default(1)
+  redemptionCount  Int              @default(0)
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer         Customer?        @relation(fields: [customerId], references: [id])
+  redemptionLogs   CouponRedemptionLog[]
+
+  @@index([businessId])
+  @@index([businessId, customerId])
+  @@index([businessId, status])
+  @@index([businessId, code])
+  @@map("coupons")
+}
+
+// Immutable audit trail — written inside Prisma $transaction with row-level lock
+model CouponRedemptionLog {
+  id               String          @id @default(cuid())
+  businessId       String
+  couponId         String
+  customerId       String
+  cashierId        String
+  branchLocationId String
+  redeemedAt       DateTime        @default(now())
+
+  // Offline PWA sync fields
+  wasOffline       Boolean         @default(false)
+  syncedAt         DateTime?
+  isConflict       Boolean         @default(false) // True if offline + concurrent online redemption
+
+  coupon           Coupon          @relation(fields: [couponId], references: [id])
+  customer         Customer        @relation(fields: [customerId], references: [id])
+  cashier          User            @relation(fields: [cashierId], references: [id])
+  branch           BranchLocation  @relation(fields: [branchLocationId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, couponId])
+  @@index([businessId, branchLocationId])
+  @@index([businessId, customerId])
+  @@map("coupon_redemption_logs")
+}
+
+// ================================================================
+// MESSAGING QUEUE
+// ================================================================
+
+model MessageQueue {
+  id               String          @id @default(cuid())
+  businessId       String
+  branchLocationId String?
+  customerId       String
+  campaignId       String?
+  automationRunId  String?
+
+  channel          MessageChannel
+  provider         MessagingProvider?
+  status           MessageStatus   @default(PENDING)
+
+  // Template or freeform
+  templateName     String?
+  payloadJson      Json            // Full message payload JSONB (Meta or WAHA format)
+
+  // Delivery tracking
+  providerMessageId String?        // wamid.XYZ returned by Meta/WAHA
+  sentAt           DateTime?
+  deliveredAt      DateTime?
+  readAt           DateTime?
+  failureReason    String?
+
+  scheduledFor     DateTime?       // BullMQ delayed job target time
+  isPromotional    Boolean         @default(true)
+  retryCount       Int             @default(0)
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  business         Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch           BranchLocation? @relation(fields: [branchLocationId], references: [id])
+  customer         Customer        @relation(fields: [customerId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, customerId])
+  @@index([businessId, status])
+  @@index([businessId, scheduledFor])
+  // Cooldown interceptor query:
+  @@index([businessId, customerId, isPromotional, createdAt])
+  // Status-filtered delivery queries:
+  @@index([businessId, customerId, isPromotional, status, createdAt])
+  @@map("message_queue")
+}
+
+// ================================================================
+// CAMPAIGNS (@dnd-kit/core layout builder)
+// ================================================================
+
+model Campaign {
+  id               String           @id @default(cuid())
+  businessId       String
+  name             String
+  description      String?
+  targetSegment    CustomerSegment?
+
+  // @dnd-kit/core canvas serialized layout
+  layoutJson       Json?
+  // JSONB shape: {
+  //   "blocks": [
+  //     { "id": "b1", "type": "TEXT", "content": "Hey {{name}}!", "order": 0 },
+  //     { "id": "b2", "type": "IMAGE", "mediaUrl": "https://...", "order": 1 },
+  //     { "id": "b3", "type": "COUPON", "couponId": "...", "order": 2 },
+  //     { "id": "b4", "type": "URL_BUTTON", "label": "Book Now", "url": "...", "order": 3 }
+  //   ]
+  // }
+
+  channel          MessageChannel   @default(WHATSAPP_META)
+  status           String           @default("DRAFT")
+  // DRAFT | SCHEDULED | ACTIVE | PAUSED | COMPLETED | FAILED
+
+  scheduledFor     DateTime?
+
+  // Analytics counters (denormalized from MessageQueue)
+  sentCount        Int              @default(0)
+  deliveredCount   Int              @default(0)
+  readCount        Int              @default(0)
+  failedCount      Int              @default(0)
+  droppedCount     Int              @default(0)
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([businessId, targetSegment])
+  @@map("campaigns")
+}
+
+// ================================================================
+// AUTOMATION WORKFLOWS (reactflow node graph)
+// ================================================================
+
+model AutomationWorkflow {
+  id              String           @id @default(cuid())
+  businessId      String
+  name            String
+  description     String?
+
+  triggerType     String
+  // BIRTHDAY | INACTIVITY | VISIT_MILESTONE | TIER_UPGRADE
+  // | SENTIMENT_NEGATIVE | REFERRAL_CONVERTED | SPEND_THRESHOLD
+
+  // Raw reactflow graph state saved by frontend
+  graphJson       Json
+  // JSONB shape: { "nodes": [...], "edges": [...] }
+  // (raw reactflow serialization — what the canvas stores)
+
+  // Backend-compiled executable definition (parsed from graphJson)
+  compiledJson    Json?
+  // JSONB shape: {
+  //   "trigger": { "type": "BIRTHDAY", "config": {} },
+  //   "actions": [
+  //     { "type": "SEND_WHATSAPP", "templateName": "birthday_special", "delayMinutes": 0 },
+  //     { "type": "AWARD_POINTS", "points": 50 }
+  //   ]
+  // }
+
+  status          AutomationStatus @default(DRAFT)
+  lastRunAt       DateTime?
+  runCount        Int              @default(0)
+  convertedCount  Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  runs            AutomationRun[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([businessId, triggerType])
+  @@map("automation_workflows")
+}
+
+model AutomationRun {
+  id           String             @id @default(cuid())
+  businessId   String
+  workflowId   String
+  customerId   String
+  bullmqJobId  String?            // BullMQ job ID for tracing
+  triggeredAt  DateTime           @default(now())
+  status       String             @default("RUNNING")
+  // RUNNING | COMPLETED | FAILED | SKIPPED_CONSENT
+  resultJson   Json?
+  errorMessage String?
+
+  workflow     AutomationWorkflow @relation(fields: [workflowId], references: [id])
+
+  @@index([businessId, workflowId])
+  @@index([businessId, customerId])
+  @@index([businessId, workflowId, status, triggeredAt])  // Deduplication lookups
+  @@map("automation_runs")
+}
+
+// ================================================================
+// ANALYTICS SNAPSHOTS (nightly node-cron pre-computation)
+// ================================================================
+
+model AnalyticsSnapshot {
+  id                    String          @id @default(cuid())
+  businessId            String
+  branchLocationId      String?         // NULL = business-wide rollup
+
+  snapshotDate          DateTime        @db.Date
+
+  // Customer cohort counts
+  totalCustomers        Int             @default(0)
+  newCustomers          Int             @default(0)
+  loyalCustomers        Int             @default(0)
+  vipCustomers          Int             @default(0)
+  atRiskCustomers       Int             @default(0)
+  lostCustomers         Int             @default(0)
+  bigSpenders           Int             @default(0)
+  couponHunters         Int             @default(0)
+
+  // Visit & Revenue metrics
+  totalVisits           Int             @default(0)
+  totalRevenue          Decimal         @default(0) @db.Decimal(12, 2)
+  averageOrderValue     Decimal         @default(0) @db.Decimal(12, 2)
+
+  // Retention KPIs
+  churnRate             Float           @default(0)      // Percentage
+  retentionRate         Float           @default(0)      // Percentage
+  averageLtv            Decimal         @default(0)      @db.Decimal(12, 2)
+  repeatVisitRate       Float           @default(0)
+
+  // Messaging metrics
+  messagesSent          Int             @default(0)
+  messagesDelivered     Int             @default(0)
+  messagesRead          Int             @default(0)
+  messagesFailed        Int             @default(0)
+  messagesDroppedConsent Int            @default(0)
+  messagesDroppedCooldown Int           @default(0)
+
+  // Campaign performance
+  campaignConversions   Int             @default(0)
+  couponRedemptions     Int             @default(0)
+  referralsGenerated    Int             @default(0)
+
+  createdAt             DateTime        @default(now())
+
+  business              Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch                BranchLocation? @relation(fields: [branchLocationId], references: [id])
+
+  // Upsert key: ensures nightly cron is idempotent (safe to re-run)
+  @@unique([businessId, snapshotDate, branchLocationId])
+  @@index([businessId])
+  @@index([businessId, snapshotDate])
+  @@map("analytics_snapshots")
+}
+
+// ================================================================
+// SEGMENTATION HISTORY (AI worker audit trail)
+// ================================================================
+
+model CustomerSegmentHistory {
+  id           String           @id @default(cuid())
+  businessId   String
+  customerId   String
+  fromSegment  CustomerSegment?
+  toSegment    CustomerSegment
+  changedAt    DateTime         @default(now())
+  reason       String?
+  // VISIT_THRESHOLD | INACTIVITY_45D | INACTIVITY_60D
+  // | SPEND_THRESHOLD | MANUAL_OVERRIDE | IMPORT
+
+  customer     Customer         @relation(fields: [customerId], references: [id])
+
+  @@index([businessId, customerId])
+  @@index([businessId, changedAt])
+  @@map("customer_segment_history")
+}
+
+// ================================================================
+// SUBSCRIPTIONS & STRIPE BILLING
+// ================================================================
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  businessId             String             @unique
+  stripeCustomerId       String?            @unique
+  stripeSubscriptionId   String?            @unique
+  stripePriceId          String?
+  tier                   SubscriptionTier   @default(FREE)
+  status                 SubscriptionStatus @default(TRIALING)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+
+  // Quota management — mirrored to Redis key: tenant:msg_quota:{businessId}
+  monthlyMessageQuota    Int                @default(500)
+  messagesUsedThisPeriod Int                @default(0)
+
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  business               Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ================================================================
+// API KEYS (Open API Layer — tenant-scoped)
+// ================================================================
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  businessId  String
+  name        String    // Friendly label e.g. "Zapier Integration"
+  keyHash     String    @unique   // SHA-256 hash — never store plaintext
+  keyPrefix   String              // First 12 chars for display: "crp_live_aBc..."
+  scopes      String[]            // ["read:customers", "write:visits", "read:analytics"]
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("api_keys")
+}
+
+// ================================================================
+// OUTBOUND WEBHOOKS (Zapier / Xero / QuickBooks emitter)
+// ================================================================
+
+model OutboundWebhookConfig {
+  id          String                 @id @default(cuid())
+  businessId  String
+  name        String
+  targetUrl   String
+  signingSecret String              // HMAC-SHA256 signing secret
+  events      OutboundWebhookEvent[]
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  business    Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  deliveries  OutboundWebhookDelivery[]
+
+  @@index([businessId])
+  @@map("outbound_webhook_configs")
+}
+
+model OutboundWebhookDelivery {
+  id           String                @id @default(cuid())
+  businessId   String
+  webhookId    String
+  event        OutboundWebhookEvent
+  payloadJson  Json
+  httpStatus   Int?
+  responseBody String?
+  attemptCount Int                   @default(1)
+  succeededAt  DateTime?
+  failedAt     DateTime?
+  createdAt    DateTime              @default(now())
+
+  webhook      OutboundWebhookConfig @relation(fields: [webhookId], references: [id])
+
+  @@index([businessId, webhookId])
+  @@map("outbound_webhook_deliveries")
+}
+
+// ================================================================
+// GDPR COMPLIANCE
+// ================================================================
+
+model ConsentChangeLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  customerId  String
+  channel     String   // WHATSAPP | EMAIL | SMS | PUSH
+  fromValue   Boolean
+  toValue     Boolean
+  triggerType String
+  // OPT_OUT_KEYWORD | OPT_IN_FORM | CUSTOMER_REQUEST
+  // | IMPORT | MANUAL_OVERRIDE | ADMIN_ACTION
+  keyword     String?  // The exact "STOP"/"UNSUBSCRIBE" keyword received
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id])
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, customerId])
+  @@index([businessId, createdAt])
+  @@map("consent_change_logs")
+}
+
+// ================================================================
+// AUDIT LOGS (Immutable — all data access & modifications)
+// ================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  userId      String?  // NULL for system-generated actions (cron, webhooks)
+  action      String
+  // CREATE_CUSTOMER | UPDATE_CUSTOMER | DELETE_CUSTOMER_PII
+  // | SEND_CAMPAIGN | REDEEM_COUPON | IMPERSONATE_TENANT
+  // | API_KEY_CREATED | EXPORT_DATA | LOGIN | LOGOUT
+  // | STRIPE_WEBHOOK | AUTOMATION_TRIGGERED | ...
+
+  entityType  String?  // Customer | Campaign | Coupon | User | ...
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  metaJson    Json?    // Additional context: diffs, before/after state
+
+  createdAt   DateTime @default(now())
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, userId])
+  @@index([businessId, action])
+  @@index([businessId, createdAt])
+  @@map("audit_logs")
+}
+
+// ================================================================
+// POS WEBHOOK INGESTION (Idempotent normalization log)
+// ================================================================
+
+model PosWebhookLog {
+  id               String      @id @default(cuid())
+  businessId       String
+  provider         PosProvider
+  transactionId    String      // Provider's unique transaction ID (idempotency key)
+  rawPayload       Json        // Store raw payload for debugging and replay
+  normalizedPhone  String?
+  normalizedEmail  String?
+  amountCents      Int?
+  status           String      @default("PENDING")
+  // PENDING | PROCESSED | DUPLICATE | FAILED | MISSING_CUSTOMER_IDENTITY
+  errorMessage     String?
+  createdCustomer  Boolean     @default(false)
+  visitId          String?     // Linked Visit record on successful processing
+  processedAt      DateTime?
+  createdAt        DateTime    @default(now())
+
+  business         Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, businessId])   // Core idempotency constraint
+  @@index([businessId])
+  @@index([businessId, status])
+  @@map("pos_webhook_logs")
+}
+
+// ================================================================
+// WEBSITE CMS — Public Landing Page Content
+// ================================================================
+
+model WebsiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  @@map("website_settings")
+}
+
+model WebsiteSection {
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  label   String
+  visible Boolean @default(true)
+  order   Int     @default(0)
+  @@map("website_sections")
+}
+
+model FeatureCard {
+  id        String   @id @default(cuid())
+  icon      String
+  title     String
+  desc      String   @db.Text
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  @@map("feature_cards")
+}
+
+model PricingPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String
+  monthlyPrice Int      @default(0)
+  yearlyPrice  Int      @default(0)
+  currency     String   @default("GBP")
+  features     Json
+  ctaText      String   @default("Get Started")
+  highlighted  Boolean  @default(false)
+  visible      Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  @@map("pricing_plans")
+}
+
+model CmsTestimonial {
+  id        String   @id @default(cuid())
+  name      String
+  business  String
+  avatarUrl String?
+  text      String   @db.Text
+  stars     Int      @default(5)
+  visible   Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  @@map("cms_testimonials")
+}
+
+model PartnerBusiness {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String?
+  website     String?
+  industry    String?
+  location    String?
+  description String?  @db.Text
+  active      Boolean  @default(true)
+  featured    Boolean  @default(false)
+  showOnHome  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  @@map("partner_businesses")
+}
+
+model PublicReview {
+  id          String    @id @default(cuid())
+  authorName  String
+  authorEmail String?
+  avatarUrl   String?
+  bizType     String?
+  stars       Int
+  comment     String    @db.Text
+  status      String    @default("PENDING")
+  pinned      Boolean   @default(false)
+  hidden      Boolean   @default(false)
+  replyText   String?   @db.Text
+  repliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([status])
+  @@index([createdAt])
+  @@map("public_reviews")
+}
+
+model BlogPost {
+  id         String   @id @default(cuid())
+  title      String
+  slug       String   @unique
+  summary    String   @db.Text
+  content    String   @db.Text
+  coverImage String?
+  published  Boolean  @default(false)
+  tags       Json     @default("[]")
+  seoTitle   String?
+  seoDesc    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@map("blog_posts")
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String   @db.Text
+  answer    String   @db.Text
+  order     Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  @@map("faq_items")
+}
+
+model AnnouncementBanner {
+  id       String    @id @default(cuid())
+  text     String    @db.Text
+  linkText String?
+  linkUrl  String?
+  type     String    @default("INFO")
+  active   Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+  createdAt DateTime @default(now())
+  @@map("announcement_banners")
+}
+
+model WebsitePageView {
+  id        String   @id @default(cuid())
+  page      String
+  event     String   @default("PAGE_VIEW")
+  referer   String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+  @@index([page, createdAt])
+  @@map("website_page_views")
+}
+
+model PortalLogin {
+  id         String   @id @default(cuid())
+  customerId String
+  businessId String
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@map("portal_logins")
+}
+
+model FeedbackResponse {
+  id         String   @id @default(cuid())
+  businessId String
+  customerId String
+  visitId    String?
+  score      Int      // 1–5 star rating from WhatsApp quick-reply
+  comment    String?  // Optional follow-up message
+  channel    String   @default("WHATSAPP") // WHATSAPP | SMS | EMAIL
+  sentAt     DateTime // When the rating request was sent
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([customerId])
+  @@index([businessId, score])
+  @@map("feedback_responses")
+}
