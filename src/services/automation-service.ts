@@ -323,17 +323,53 @@ export const getAutomationRuns = async (
     workflowId?: string;
     status?:     string;
     limit?:      number;
+    page?:       number;
   }
-) => prisma.automationRun.findMany({
-  where: {
-    businessId,
-    ...(filters.workflowId && { workflowId: filters.workflowId }),
-    ...(filters.status     && { status:     filters.status }),
-  },
-  orderBy: { triggeredAt: 'desc' },
-  take:    filters.limit ?? 50,
-  include: { workflow: { select: { name: true, triggerType: true } } },
-});
+) => {
+  const limit = filters.limit ?? 50;
+  const skip  = ((filters.page ?? 1) - 1) * limit;
+
+  const [runs, total] = await Promise.all([
+    prisma.automationRun.findMany({
+      where: {
+        businessId,
+        ...(filters.workflowId && { workflowId: filters.workflowId }),
+        ...(filters.status     && { status:     filters.status }),
+      },
+      orderBy: { triggeredAt: 'desc' },
+      skip,
+      take: limit,
+      include: {
+        workflow: { select: { name: true, triggerType: true } },
+      },
+    }),
+    prisma.automationRun.count({
+      where: {
+        businessId,
+        ...(filters.workflowId && { workflowId: filters.workflowId }),
+        ...(filters.status     && { status:     filters.status }),
+      },
+    }),
+  ]);
+
+  // Enrich with customer names in one batch query
+  const customerIds = [...new Set(runs.map(r => r.customerId))];
+  const customers   = customerIds.length > 0
+    ? await prisma.customer.findMany({
+        where:  { id: { in: customerIds } },
+        select: { id: true, fullName: true, whatsappNumber: true },
+      })
+    : [];
+  const custMap = new Map(customers.map(c => [c.id, c]));
+
+  const enriched = runs.map(r => ({
+    ...r,
+    customer: custMap.get(r.customerId) ?? null,
+    createdAt: r.triggeredAt,
+  }));
+
+  return { runs: enriched, total };
+};
 
 // ================================================================
 // EXECUTION ENGINE

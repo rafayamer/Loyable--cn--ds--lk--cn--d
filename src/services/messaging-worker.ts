@@ -35,13 +35,44 @@ import { sendEmail }          from '../utils/email.util';
 import type { ConnectionOptions } from 'bullmq';
 
 
-// Concurrency: 20 simultaneous jobs per worker instance.
-// Horizontal scale: run multiple instances behind a load balancer.
-const WORKER_CONCURRENCY = 20;
+// Concurrency: 5 simultaneous jobs per worker instance.
+// Low concurrency is intentional: WhatsApp bans accounts that send messages
+// in parallel bursts. All messages go through a single serial path per business.
+const WORKER_CONCURRENCY = 5;
 
-// BullMQ global rate limiter (across all workers in the cluster).
-// Prevents thundering-herd on Meta / WAHA from a parallel fleet of workers.
-const GLOBAL_RATE_LIMIT = { max: 200, duration: 1_000 }; // 200 msgs/second
+// Global rate limit: max 3 messages per second across the entire cluster.
+// Per-business human-behavior delays (45-90s) are enforced inside processMessageJob.
+const GLOBAL_RATE_LIMIT = { max: 3, duration: 1_000 };
+
+// Per-business human-behavior delay tracking (Redis key: wa:last_sent:{businessId})
+// Between each promotional WhatsApp message we wait 45-90 seconds + random jitter
+// to mimic human sending patterns and avoid WhatsApp account bans.
+const WA_MIN_DELAY_MS = 45_000;  // 45 seconds minimum
+const WA_MAX_DELAY_MS = 90_000;  // 90 seconds maximum
+
+const getRedisClient = () => {
+  // Reuse the BullMQ connection for rate limit tracking
+  return getRedisConnection() as any;
+};
+
+const enforceWhatsAppDelay = async (businessId: string, isPromotional: boolean): Promise<void> => {
+  if (!isPromotional) return; // Transactional messages (OTP, receipts) skip the delay
+
+  const redis    = getRedisClient();
+  const key      = `wa:last_sent:${businessId}`;
+  const lastSent = await redis.get(key);
+
+  if (lastSent) {
+    const elapsed = Date.now() - parseInt(lastSent, 10);
+    const jitter  = Math.floor(Math.random() * (WA_MAX_DELAY_MS - WA_MIN_DELAY_MS));
+    const needed  = WA_MIN_DELAY_MS + jitter - elapsed;
+    if (needed > 0) {
+      await new Promise(r => setTimeout(r, needed));
+    }
+  }
+
+  await redis.set(key, String(Date.now()), { EX: 300 }); // 5-min TTL safety net
+};
 
 // ================================================================
 // MAIN JOB PROCESSOR
@@ -70,7 +101,7 @@ const processMessageJob = async (
     automationRunId,
   } = job.data;
 
-  const redis = getRedisConnection() as any;
+  const redis = getRedisClient();
 
   // ──────────────────────────────────────────────────────────────
   // PRE-FLIGHT 1: Tenant queue paused (quota exhaustion / suspension)
@@ -208,6 +239,10 @@ const processMessageJob = async (
   // ──────────────────────────────────────────────────────────────
   // SEND — Route to Meta or WAHA gateway
   // ──────────────────────────────────────────────────────────────
+
+  // Enforce human-like send delay for WhatsApp promotional messages.
+  // This runs BEFORE the DB status update so the delay doesn't inflate "in-flight" time.
+  await enforceWhatsAppDelay(businessId, isPromotional);
 
   // Mark as in-flight in DB before calling external API
   await prisma.messageQueue.update({

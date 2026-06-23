@@ -370,10 +370,10 @@ const impersonateHandler = async (req: Request, res: Response): Promise<void> =>
 /** GET /api/auth/me  [requires tenantScope] */
 const meHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId, businessId } = req.tenantContext;
+    const { userId } = req.tenantContext;
 
-    const user = await prisma.user.findUnique({
-      where:   { id: userId },
+    let user = await prisma.user.findUnique({
+      where:  { id: userId },
       select: {
         id:               true,
         name:             true,
@@ -404,6 +404,40 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
           select: { id: true, name: true, city: true },
         },
       },
+    }).catch(async () => {
+      // Fallback for DB schema drift (e.g. migration not yet applied) —
+      // retry without new columns so login still works.
+      return prisma.user.findUnique({
+        where:  { id: userId },
+        select: {
+          id:               true,
+          name:             true,
+          email:            true,
+          phone:            true,
+          role:             true,
+          businessId:       true,
+          branchLocationId: true,
+          lastLoginAt:      true,
+          createdAt:        true,
+          business: {
+            select: {
+              name:           true,
+              slug:           true,
+              industry:       true,
+              currency:       true,
+              logoUrl:        true,
+              customDomain:   true,
+              brandingColors: true,
+              subscription: {
+                select: { tier: true, status: true, monthlyMessageQuota: true },
+              },
+            },
+          },
+          branch: {
+            select: { id: true, name: true, city: true },
+          },
+        },
+      });
     });
 
     if (!user) {

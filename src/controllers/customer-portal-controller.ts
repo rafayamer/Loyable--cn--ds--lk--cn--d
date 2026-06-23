@@ -88,27 +88,42 @@ function distanceMetres(lat1: number, lon1: number, lat2: number, lon2: number):
 
 /** GET /api/portal/:slug/info — business branding + tier config + portal settings */
 const infoHandler = async (req: Request, res: Response): Promise<void> => {
-  const { slug } = req.params;
-  const biz = await prisma.business.findFirst({
-    where:  { slug },  // isActive not required — portal should always be accessible
-    select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true, portalSettings: true, latitude: true, longitude: true, checkInRadiusMeters: true } as any,
-  });
-  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+  try {
+    const { slug } = req.params;
 
-  const tiers = await (prisma as any).loyaltyTier.findMany({
-    where:   { businessId: biz.id },
-    orderBy: { rank: 'asc' },
-  });
+    // Try full select first; fall back to safe columns if newer columns don't exist yet.
+    let biz: any = await prisma.business.findFirst({
+      where:  { slug },
+      select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true, portalSettings: true, latitude: true, longitude: true, checkInRadiusMeters: true } as any,
+    }).catch(() => null);
 
-  res.json({
-    business: biz,
-    tiers,
-    portalSettings: biz.portalSettings ?? {},
-    checkIn: {
-      enabled:       !!(biz.latitude && biz.longitude),
-      radiusMeters:  (biz as any).checkInRadiusMeters ?? 30,
-    },
-  });
+    if (biz === null) {
+      // Fallback: query without newer columns in case migration not yet applied
+      biz = await (prisma.business as any).findFirst({
+        where:  { slug },
+        select: { id: true, name: true, slug: true, currency: true, industry: true, logoUrl: true, isActive: true },
+      });
+    }
+
+    if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+    const tiers = await (prisma as any).loyaltyTier.findMany({
+      where:   { businessId: biz.id },
+      orderBy: { rank: 'asc' },
+    });
+
+    res.json({
+      business: biz,
+      tiers,
+      portalSettings: biz.portalSettings ?? {},
+      checkIn: {
+        enabled:       !!(biz.latitude && biz.longitude),
+        radiusMeters:  biz.checkInRadiusMeters ?? 30,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Portal unavailable' });
+  }
 };
 
 /** PATCH /api/portal/:slug/settings — update portal content settings (tenant auth required) */

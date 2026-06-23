@@ -136,6 +136,10 @@ export const api = {
     activate: (id: string) => post<any>(`/automations/${id}/activate`),
     deactivate:(id:string) => post<any>(`/automations/${id}/deactivate`),
     delete:   (id: string) => del<any>(`/automations/${id}`),
+    runs:     (id: string, params?: { limit?: number; page?: number }) => {
+      const qs = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return get<{ runs: any[]; total: number }>(`/automations/${id}/runs${qs}`);
+    },
   },
 
   // ── AI ────────────────────────────────────────────────────────

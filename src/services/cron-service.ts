@@ -274,8 +274,10 @@ const generateSnapshotForBusiness = async (
   const dayStart = dateOnly;
   const dayEnd   = new Date(dateOnly.getTime() + 86_400_000);
 
+  const day30ago = new Date(dayStart.getTime() - 30 * 86_400_000);
+
   // Run all aggregates in parallel
-  const [segCounts, visitStats, msgStats, totalCustomers, ltvStats] =
+  const [segCounts, visitStats, msgStats, totalCustomers, ltvStats, repeatCustomers] =
     await Promise.all([
       prisma.customer.groupBy({
         by:    ['segment'],
@@ -298,17 +300,25 @@ const generateSnapshotForBusiness = async (
         where: { businessId, isActive: true },
         _avg:  { totalSpend: true },
       }),
+      // Customers who visited more than once in the last 30 days
+      prisma.visit.groupBy({
+        by:     ['customerId'],
+        where:  { businessId, visitedAt: { gte: day30ago } },
+        having: { customerId: { _count: { gt: 1 } } },
+        _count: { customerId: true },
+      }),
     ]);
 
   const seg = Object.fromEntries(segCounts.map(s => [s.segment, s._count.id]));
   const msg = Object.fromEntries(msgStats.map(s  => [s.status,  s._count.id]));
 
-  const atRisk        = (seg['AT_RISK'] ?? 0) + (seg['LOST'] ?? 0);
-  const churnRate     = totalCustomers > 0 ? (atRisk / totalCustomers) * 100 : 0;
-  const retentionRate = 100 - churnRate;
-  const averageLtv    = Number(ltvStats._avg.totalSpend ?? 0);
-  const totalRevenue  = Number(visitStats._sum.amountSpent ?? 0);
-  const avgOrder      = Number(visitStats._avg.amountSpent ?? 0);
+  const atRisk         = (seg['AT_RISK'] ?? 0) + (seg['LOST'] ?? 0);
+  const churnRate      = totalCustomers > 0 ? (atRisk / totalCustomers) * 100 : 0;
+  const retentionRate  = 100 - churnRate;
+  const averageLtv     = Number(ltvStats._avg.totalSpend ?? 0);
+  const totalRevenue   = Number(visitStats._sum.amountSpent ?? 0);
+  const avgOrder       = Number(visitStats._avg.amountSpent ?? 0);
+  const repeatVisitRate = totalCustomers > 0 ? (repeatCustomers.length / totalCustomers) * 100 : 0;
 
   const sent      = (msg['SENT'] ?? 0) + (msg['DELIVERED'] ?? 0) + (msg['READ'] ?? 0);
   const delivered = msg['DELIVERED']          ?? 0;
@@ -338,6 +348,7 @@ const generateSnapshotForBusiness = async (
     messagesFailed:  failed,
     messagesDroppedConsent:  droppedC,
     messagesDroppedCooldown: droppedCo,
+    repeatVisitRate,
   };
 
   await prisma.analyticsSnapshot.upsert({

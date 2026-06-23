@@ -190,6 +190,13 @@ export const registerBusiness = async (
     { EX: 60 * 60 * 24 * 35 } // ~35 days TTL; renewed on each Stripe billing cycle
   );
 
+  // Seed FREE tier feature flags so campaigns and QR check-in work immediately
+  // without waiting for a Stripe subscription webhook.
+  const featuresKey = `tenant:features:${business.id}`;
+  const freeFeatures = ['qr_checkin', 'basic_campaigns', 'customer_profiles'];
+  await redis.sAdd(featuresKey, freeFeatures as any);
+  // No TTL — features are managed by stripe-service on subscription changes
+
   const tokens = await issueTokenPair({
     sub:        owner.id,
     businessId: business.id,

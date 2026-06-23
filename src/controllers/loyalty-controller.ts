@@ -431,8 +431,91 @@ const getSnapshotHandler = async (req: Request, res: Response): Promise<void> =>
       orderBy: { snapshotDate: 'asc' },
     });
 
+    // If no stored snapshots, compute a live snapshot so the dashboard
+    // shows real data immediately (instead of dashes on a fresh account).
+    if (snapshots.length === 0) {
+      const liveSnap = await computeLiveSnapshot(businessId);
+      return void res.status(200).json([liveSnap]);
+    }
+
     res.status(200).json(snapshots);
   } catch (err) { handleError(err, res); }
+};
+
+/** Computes a live analytics snapshot without writing to DB. */
+const computeLiveSnapshot = async (businessId: string): Promise<Record<string, unknown>> => {
+  const now      = new Date();
+  const day30ago = new Date(now.getTime() - 30 * 86_400_000);
+
+  const [segCounts, visitStats, msgStats, totalCustomers, ltvStats, repeatCustomers] =
+    await Promise.all([
+      prisma.customer.groupBy({
+        by:    ['segment'],
+        where: { businessId, isActive: true },
+        _count: { id: true },
+      }),
+      prisma.visit.aggregate({
+        where:  { businessId, visitedAt: { gte: day30ago } },
+        _count: { id: true },
+        _sum:   { amountSpent: true },
+        _avg:   { amountSpent: true },
+      }),
+      prisma.messageQueue.groupBy({
+        by:    ['status'],
+        where: { businessId, createdAt: { gte: day30ago } },
+        _count: { id: true },
+      }),
+      prisma.customer.count({ where: { businessId, isActive: true } }),
+      prisma.customer.aggregate({
+        where: { businessId, isActive: true },
+        _avg:  { totalSpend: true },
+      }),
+      // Repeat customers = visited more than once in last 30 days
+      prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId, visitedAt: { gte: day30ago } },
+        having: { customerId: { _count: { gt: 1 } } },
+        _count: { customerId: true },
+      }),
+    ]);
+
+  const seg = Object.fromEntries(segCounts.map(s => [s.segment, s._count.id]));
+  const msg = Object.fromEntries(msgStats.map(s  => [s.status,  s._count.id]));
+
+  const atRisk         = (seg['AT_RISK'] ?? 0) + (seg['LOST'] ?? 0);
+  const churnRate      = totalCustomers > 0 ? (atRisk / totalCustomers) * 100 : 0;
+  const retentionRate  = 100 - churnRate;
+  const averageLtv     = Number(ltvStats._avg.totalSpend ?? 0);
+  const repeatVisitRate = totalCustomers > 0 ? (repeatCustomers.length / totalCustomers) * 100 : 0;
+
+  const sent      = (msg['SENT'] ?? 0) + (msg['DELIVERED'] ?? 0) + (msg['READ'] ?? 0);
+
+  return {
+    businessId,
+    snapshotDate:     now,
+    branchLocationId: null,
+    totalCustomers,
+    newCustomers:     seg['NEW']          ?? 0,
+    loyalCustomers:   seg['LOYAL']        ?? 0,
+    vipCustomers:     seg['VIP']          ?? 0,
+    atRiskCustomers:  seg['AT_RISK']      ?? 0,
+    lostCustomers:    seg['LOST']         ?? 0,
+    bigSpenders:      seg['BIG_SPENDER']  ?? 0,
+    couponHunters:    seg['COUPON_HUNTER'] ?? 0,
+    totalVisits:      visitStats._count.id,
+    totalRevenue:     Number(visitStats._sum.amountSpent ?? 0),
+    averageOrderValue: Number(visitStats._avg.amountSpent ?? 0),
+    churnRate,
+    retentionRate,
+    averageLtv,
+    repeatVisitRate,
+    messagesSent:     sent,
+    messagesDelivered: msg['DELIVERED'] ?? 0,
+    messagesRead:     msg['READ']       ?? 0,
+    messagesFailed:   msg['FAILED']     ?? 0,
+    messagesDroppedConsent:  msg['CONSENT_REVOKED']  ?? 0,
+    messagesDroppedCooldown: msg['DROPPED_COOLDOWN'] ?? 0,
+  };
 };
 
 // ================================================================

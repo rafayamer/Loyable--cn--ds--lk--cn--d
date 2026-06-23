@@ -401,6 +401,12 @@ export const hasFeature = async (
   const redis       = getRedisClient();
   const featuresKey = `tenant:features:${businessId}`;
 
+  // If the key doesn't exist yet (e.g. pre-migration businesses), grant access
+  // to avoid locking out existing customers. Stripe webhooks will set proper
+  // feature flags once a subscription event fires.
+  const keyExists = await redis.exists(featuresKey);
+  if (!keyExists) return true;
+
   const [hasWildcard, hasSpecific] = await Promise.all([
     redis.sIsMember(featuresKey, '*'),
     redis.sIsMember(featuresKey, feature),

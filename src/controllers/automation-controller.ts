@@ -292,13 +292,15 @@ const runsHandler = async (req: Request, res: Response): Promise<void> => {
     const { businessId } = req.tenantContext;
     const filters        = RunsFilterSchema.parse(req.query);
 
-    const runs = await getAutomationRuns(businessId, {
+    const page = Number(req.query.page ?? 1);
+    const result = await getAutomationRuns(businessId, {
       workflowId: req.params.id,
       status:     filters.status,
       limit:      filters.limit,
+      page,
     });
 
-    res.status(200).json(runs);
+    res.status(200).json(result);
   } catch (err) { handleError(err, res); }
 };
 
