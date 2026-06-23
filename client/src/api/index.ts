@@ -45,7 +45,14 @@ async function req<T>(path: string, init: RequestInit = {}, _retryDepth = 0): Pr
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error ?? data?.message ?? `HTTP ${res.status}`);
+  if (!res.ok) {
+    // Surface field-level validation detail when present so the user sees
+    // the real problem ("Must contain a number") instead of "VALIDATION_ERROR".
+    if (Array.isArray(data?.fields) && data.fields.length) {
+      throw new Error(data.fields.map((f: any) => `${f.path}: ${f.message}`).join('; '));
+    }
+    throw new Error(data?.message ?? data?.error ?? `HTTP ${res.status}`);
+  }
   return data as T;
 }
 
@@ -113,6 +120,15 @@ export const api = {
       get<{ chatId: string; days: number; messages: any[] }>(`/messages/inbox/${encodeURIComponent(chatId)}?days=${days}&_t=${Date.now()}`),
     broadcast: (body: { message: string; segment?: string; customerIds?: string[] }) =>
       post<{ ok: boolean; sent: number; failed: number; total: number }>('/messages/broadcast', body),
+  },
+
+  // ── Billing / quota ───────────────────────────────────────────
+  billing: {
+    get: () => get<{
+      subscription: { monthlyMessageQuota?: number; messagesUsedThisPeriod?: number; tier?: string } | null;
+      quotaRemaining: number | null;
+      tierLimits: { quota: number } | null;
+    }>('/billing'),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────

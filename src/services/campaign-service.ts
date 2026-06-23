@@ -77,6 +77,12 @@ export interface CreateCampaignInput {
   scheduledFor?:   Date;
 }
 
+/** "ALL" / "Everyone" is not a CustomerSegment enum value — store as null (= all customers). */
+const normaliseSegment = (seg: unknown): any => {
+  if (!seg || seg === 'ALL' || seg === 'Everyone' || seg === 'ALL_CUSTOMERS') return null;
+  return seg;
+};
+
 export const createCampaign = async (
   businessId: string,
   input:      CreateCampaignInput
@@ -88,7 +94,7 @@ export const createCampaign = async (
       businessId,
       name:           input.name,
       description:    input.description,
-      targetSegment:  input.targetSegment as any,
+      targetSegment:  normaliseSegment(input.targetSegment),
       layoutJson:     input.layoutJson as unknown as Prisma.InputJsonValue,
       channel:        (input.channel as any) ?? 'WHATSAPP_WAHA',
       status:         'DRAFT',
@@ -120,7 +126,7 @@ export const updateCampaign = async (
     data: {
       ...(input.name            && { name:          input.name }),
       ...(input.description !== undefined && { description: input.description }),
-      ...(input.targetSegment   && { targetSegment:  input.targetSegment as any }),
+      ...(input.targetSegment   && { targetSegment:  normaliseSegment(input.targetSegment) }),
       ...(input.layoutJson      && { layoutJson:     input.layoutJson as unknown as Prisma.InputJsonValue }),
       ...(input.channel         && { channel:        input.channel as any }),
       ...(input.scheduledFor    && { scheduledFor:   input.scheduledFor }),

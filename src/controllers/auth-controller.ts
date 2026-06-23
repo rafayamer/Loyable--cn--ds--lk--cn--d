@@ -126,7 +126,7 @@ const createRateLimiter = (
 };
 
 const loginRateLimit    = createRateLimiter(15 * 60 * 1000, 10,  'rl:login',    '10 login attempts per 15 minutes exceeded.');
-const registerRateLimit = createRateLimiter(60 * 60 * 1000, 5,   'rl:register', '5 registration attempts per hour exceeded.');
+const registerRateLimit = createRateLimiter(60 * 60 * 1000, 20,  'rl:register', '20 registration attempts per hour exceeded. Please try again later.');
 const forgotPwdLimit    = createRateLimiter(60 * 60 * 1000, 5,   'rl:forgot',   '5 password reset requests per hour exceeded.');
 const inviteLimit       = createRateLimiter(60 * 60 * 1000, 20,  'rl:invite',   '20 invitations per hour exceeded.');
 const refreshLimit      = createRateLimiter(5  * 60 * 1000, 30,  'rl:refresh',  '30 refresh attempts per 5 minutes exceeded.');
@@ -395,6 +395,16 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
             brandingColors:  true,
             pointsPerPound:  true,
             visitBasePoints: true,
+            country:         true,
+            ntn:             true,
+            strn:            true,
+            taxNumber:       true,
+            fbrPosId:        true,
+            fbrUserId:       true,
+            fbrPassword:     true,
+            fbrSandbox:      true,
+            fbrEnabled:      true,
+            gstRate:         true,
             subscription: {
               select: { tier: true, status: true, monthlyMessageQuota: true },
             },
@@ -457,10 +467,15 @@ const UpdateMeSchema = z.object({
   name:       z.string().min(2).max(100).optional(),
   currency:   z.string().length(3).optional(),
   logoUrl:    z.string().url().optional().or(z.literal('')),
+  country:         z.string().length(2).optional(),       // ISO 3166-1 alpha-2 (e.g. PK)
   ntn:             z.string().max(20).optional(),
   strn:            z.string().max(20).optional(),
+  taxNumber:       z.string().max(30).optional(),
   fbrPosId:        z.number().int().optional(),
   fbrToken:        z.string().max(200).optional(),
+  fbrUserId:       z.string().max(100).optional(),
+  fbrPassword:     z.string().max(200).optional(),
+  fbrSandbox:      z.boolean().optional(),
   gstRate:         z.number().min(0).max(100).optional(),
   fbrEnabled:      z.boolean().optional(),
   pointsPerPound:  z.number().int().min(0).max(100).optional(),
@@ -478,16 +493,22 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.name       !== undefined && { name:       body.name }),
         ...(body.currency   !== undefined && { currency:   body.currency }),
         ...(body.logoUrl    !== undefined && { logoUrl:    body.logoUrl || null }),
+        ...(body.country    !== undefined && { country:    body.country.toUpperCase() }),
         ...(body.ntn        !== undefined && { ntn:        body.ntn }),
         ...(body.strn       !== undefined && { strn:       body.strn }),
+        ...(body.taxNumber  !== undefined && { taxNumber:  body.taxNumber }),
         ...(body.fbrPosId   !== undefined && { fbrPosId:   body.fbrPosId }),
         ...(body.fbrToken   !== undefined && { fbrToken:   body.fbrToken }),
+        ...(body.fbrUserId  !== undefined && { fbrUserId:  body.fbrUserId }),
+        ...(body.fbrPassword!== undefined && { fbrPassword:body.fbrPassword }),
+        ...(body.fbrSandbox !== undefined && { fbrSandbox: body.fbrSandbox }),
         ...(body.gstRate         !== undefined && { gstRate:         body.gstRate }),
         ...(body.fbrEnabled      !== undefined && { fbrEnabled:      body.fbrEnabled }),
         ...(body.pointsPerPound  !== undefined && { pointsPerPound:  body.pointsPerPound }),
         ...(body.visitBasePoints !== undefined && { visitBasePoints: body.visitBasePoints }),
-      },
-      select: { id: true, name: true, industry: true, currency: true, logoUrl: true },
+      } as any,
+      select: { id: true, name: true, industry: true, currency: true, logoUrl: true,
+                country: true, ntn: true, taxNumber: true, gstRate: true, fbrEnabled: true } as any,
     });
     res.json({ business: updated });
   } catch (err) {

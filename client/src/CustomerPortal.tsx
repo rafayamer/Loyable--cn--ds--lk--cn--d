@@ -51,12 +51,12 @@ function getSlug(): string {
 // ── LocalStorage helpers for portal session ───────────────────────
 const STORAGE_KEY = 'loyable_portal';
 
-// Theme-aware logo: white.png on dark bg, black.png on light bg
+// Theme-aware logo: white.png on LIGHT theme, black.png on DARK theme (brand spec)
 // Falls back to logo.svg if PNG files not yet uploaded
 function ThemeLogo({ dark, className = '' }: { dark: boolean; className?: string }) {
   return (
     <img
-      src={dark ? '/white.png' : '/black.png'}
+      src={dark ? '/black.png' : '/white.png'}
       onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }}
       alt="The Loyaly"
       className={className}

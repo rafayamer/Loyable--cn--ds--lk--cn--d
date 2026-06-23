@@ -269,31 +269,55 @@ const QUERY_MANIFEST = [
 
 interface LLMMessage { role: 'system' | 'user' | 'assistant'; content: string; }
 
+/** True if any supported LLM provider is configured. */
+export const isAIConfigured = (): boolean =>
+  !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+
 const callLLM = async (messages: LLMMessage[], maxTokens = 500): Promise<string> => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured.');
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey    = process.env.OPENAI_API_KEY;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body:    JSON.stringify({
-      model:       'gpt-4o-mini',
-      max_tokens:  maxTokens,
-      temperature: 0.3,
-      messages,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenAI API error ${response.status}: ${err}`);
+  // Prefer Anthropic Claude (latest, most capable for this workload)
+  if (anthropicKey) {
+    const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+    const convo  = messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }));
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: maxTokens,
+        system,
+        messages:   convo.length ? convo : [{ role: 'user', content: ' ' }],
+      }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Anthropic API error ${response.status}: ${err}`);
+    }
+    const json = await response.json() as { content: Array<{ type: string; text: string }> };
+    return json.content.filter(c => c.type === 'text').map(c => c.text).join('') ?? '';
   }
 
-  const json = await response.json() as {
-    choices: Array<{ message: { content: string } }>;
-  };
+  if (openaiKey) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+      body:    JSON.stringify({ model: 'gpt-4o-mini', max_tokens: maxTokens, temperature: 0.3, messages }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`OpenAI API error ${response.status}: ${err}`);
+    }
+    const json = await response.json() as { choices: Array<{ message: { content: string } }> };
+    return json.choices[0]?.message?.content ?? '';
+  }
 
-  return json.choices[0]?.message?.content ?? '';
+  throw new Error('No AI provider configured.');
 };
 
 // ================================================================
@@ -421,11 +445,10 @@ const biQueryHandler = async (req: Request, res: Response): Promise<void> => {
     const { question }   = req.body as z.infer<typeof QuerySchema>;
     const { businessId, userId } = req.tenantContext;
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    if (!isAIConfigured()) {
       res.status(503).json({
         error:   'AI_NOT_CONFIGURED',
-        message: 'OpenAI API key is not configured. Add OPENAI_API_KEY to environment variables.',
+        message: 'AI is not configured. Add ANTHROPIC_API_KEY (recommended) or OPENAI_API_KEY to environment variables.',
       });
       return;
     }

@@ -9,6 +9,7 @@ import { prisma } from '../config/prisma';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
 import {
   submitInvoice,
+  submitFBRInvoice,
   generateInvoiceNumber,
   calculateGST,
   buildFBRInvoice,
@@ -172,20 +173,27 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'At least one item is required' });
     }
 
-    // Fetch business FBR settings
-    const business = await prisma.business.findUnique({
+    // Fetch business FBR settings (new + legacy fields)
+    const business = await (prisma.business as any).findUnique({
       where: { id: businessId },
       select: {
-        fbrEnabled: true,
-        fbrPosId:   true,
-        fbrToken:   true,
-        gstRate:    true,
-        ntn:        true,
-        strn:       true,
+        country:     true,
+        fbrEnabled:  true,
+        fbrPosId:    true,
+        fbrToken:    true,
+        fbrUserId:   true,
+        fbrPassword: true,
+        fbrSandbox:  true,
+        gstRate:     true,
+        ntn:         true,
+        strn:        true,
+        taxNumber:   true,
       },
     });
 
+    const isPK    = (business?.country ?? '').toUpperCase() === 'PK';
     const gstRate = business?.gstRate ?? 17;
+    const taxNumber = business?.taxNumber ?? business?.strn ?? null;
 
     // Calculate totals
     const subtotal = items.reduce((s, i) => s + i.qty * i.unitPrice, 0);
@@ -239,34 +247,42 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
     const transactionId = `POS-${businessId.slice(-6)}-${Date.now()}`;
     const usin = generateInvoiceNumber(businessId, transactionId);
 
-    // Submit to FBR if enabled
+    // Submit to FBR — ONLY when business country is Pakistan.
+    // In sandbox we still produce a printable invoice number (SB-...).
     let fbrInvoiceNumber: string | undefined;
     let fbrQrCode: string | undefined;
     let fbrSubmittedAt: Date | undefined;
 
-    if (business?.fbrEnabled || process.env.NODE_ENV !== 'production') {
+    if (isPK && business?.fbrEnabled) {
       try {
-        const posId = business?.fbrPosId ?? parseInt(process.env.FBR_POS_ID ?? '1', 10);
-        const token = business?.fbrToken ?? process.env.FBR_TOKEN ?? 'sandbox-token';
-
+        const posId   = String(business?.fbrPosId ?? process.env.FBR_POS_ID ?? '1');
+        const sandbox = business?.fbrSandbox !== false; // default to sandbox
         const fbrInvoice = buildFBRInvoice({
-          usin,
-          posId,
-          items,
-          paymentMode,
-          discount,
-          gstRate,
-          buyerName:  customerName,
-          buyerPhone: customerPhone,
+          usin, posId: parseInt(posId, 10) || 1, items, paymentMode, discount, gstRate,
+          buyerName: customerName, buyerPhone: customerPhone,
         });
 
-        const result = await submitInvoice(fbrInvoice, posId, token);
-        fbrInvoiceNumber = result.invoiceNumber;
-        fbrQrCode        = result.qrCode;
-        fbrSubmittedAt   = new Date();
+        if (business?.fbrUserId && business?.fbrPassword) {
+          // New IMSP Basic-Auth flow (handles sandbox fallback internally)
+          const result = await submitFBRInvoice(
+            { posId, userId: business.fbrUserId, password: business.fbrPassword, ntn: business?.ntn ?? '', taxNumber: taxNumber ?? undefined, sandbox },
+            fbrInvoice,
+          );
+          fbrInvoiceNumber = result.fbrInvoiceNumber || (sandbox ? `SB-${posId}-${usin}` : undefined);
+          fbrQrCode        = result.qrCode;
+          fbrSubmittedAt   = result.success ? new Date() : undefined;
+        } else if (sandbox) {
+          // Sandbox without full creds — still print a sandbox number
+          fbrInvoiceNumber = `SB-${posId}-${usin}`;
+          fbrSubmittedAt   = new Date();
+        }
       } catch (fbrErr) {
         console.error('[pos] FBR submission failed:', fbrErr);
-        // Don't block the sale — log and continue
+        // Never block the sale — if sandbox, still print a number
+        if (business?.fbrSandbox !== false) {
+          fbrInvoiceNumber = `SB-${business?.fbrPosId ?? 1}-${usin}`;
+          fbrSubmittedAt   = new Date();
+        }
       }
     }
 
@@ -321,6 +337,11 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
       transactionId,
       pointsEarned,
       pointsBalance,
+      // Receipt fields — frontend prints these when isPK
+      isPK,
+      ntn:       business?.ntn ?? null,
+      taxNumber,
+      gstRate,
     });
   } catch (err) {
     console.error('[pos] create sale error', err);

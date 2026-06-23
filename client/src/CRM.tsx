@@ -39,6 +39,25 @@ const timeAgo = (d: string | Date) => {
   return `${Math.floor(h / 24)} days ago`;
 };
 
+// Churn risk score (0-100): weighted by recency, frequency and segment.
+// Higher = more likely to stop visiting. Mirrors the backend AT_RISK/LOST logic
+// but produces a continuous score so the dashboard meter is meaningful.
+const computeChurnRisk = (c: any): number => {
+  const now = Date.now();
+  const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).getTime() : null;
+  const daysSince = lastVisit ? Math.floor((now - lastVisit) / 86_400_000) : 999;
+  const visits = c.visitCount ?? 0;
+
+  // Recency: 0 days → 0, 90+ days → ~55 pts (weight 60%)
+  const recencyScore = Math.min(60, (daysSince / 90) * 60);
+  // Frequency: 0 visits → 30, 10+ visits → 0 (weight 30%)
+  const freqScore = Math.max(0, 30 - Math.min(30, visits * 3));
+  // Segment nudge
+  const segBonus = c.segment === "LOST" ? 15 : c.segment === "AT_RISK" ? 10 : c.segment === "NEW" ? 5 : 0;
+
+  return Math.max(0, Math.min(100, Math.round(recencyScore + freqScore + segBonus)));
+};
+
 // Map API customer to UI shape
 const mapCustomer = (c: any) => ({
   id:           c.id,
@@ -51,7 +70,7 @@ const mapCustomer = (c: any) => ({
   avg:          c.visitCount ? Math.round(Number(c.totalSpend ?? 0) / c.visitCount) : 0,
   segment:      c.segment ?? "NEW",
   status:       c.segment === "LOST" ? "Churned" : c.segment === "AT_RISK" ? "At Risk" : "Active",
-  churnRisk:    0,
+  churnRisk:    computeChurnRisk(c),
   clv:          Math.round(Number(c.totalSpend ?? 0) * 1.8),
   points:       c.pointsBalance ?? c.currentPointsBalance ?? 0,
   tier:         c.currentTier?.name ?? (c.currentTierId ? "Member" : "Bronze"),
@@ -252,17 +271,54 @@ const pdTokens=(pd:boolean)=>({
   shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(139,92,246,0.1)",
 });
 
-// Theme-aware brand logo — uses /white.png on dark, /black.png on light
-// Falls back to /logo.svg if PNG files not yet in public/
+// Theme-aware brand logo — white.png on LIGHT theme, black.png on DARK theme
+// (per brand spec). Falls back to /logo.svg if PNG files not yet in public/
 function ThemeLogo({ dark, className = '', style = {} }: { dark: boolean; className?: string; style?: React.CSSProperties }) {
   return (
     <img
-      src={dark ? '/white.png' : '/black.png'}
+      src={dark ? '/black.png' : '/white.png'}
       onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }}
       alt="The Loyaly"
       className={className}
       style={style}
     />
+  );
+}
+
+// Shows how many WhatsApp messages remain in the current plan. Renders nothing
+// if billing can't be read (e.g. non-owner role) so it never blocks a send screen.
+function QuotaBanner({ recipients }: { recipients?: number }) {
+  const [q, setQ] = useState<{ remaining: number; total: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api.billing.get().then((d: any) => {
+      if (!alive) return;
+      const total = d?.subscription?.monthlyMessageQuota ?? d?.tierLimits?.quota ?? 0;
+      const used = d?.subscription?.messagesUsedThisPeriod ?? 0;
+      const remaining = d?.quotaRemaining != null ? d.quotaRemaining : Math.max(0, total - used);
+      setQ({ remaining, total });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  if (!q || q.total <= 0) return null;
+  const pct = Math.min(100, Math.round(((q.total - q.remaining) / q.total) * 100));
+  const low = q.remaining <= q.total * 0.1;
+  const notEnough = recipients != null && recipients > q.remaining;
+  const col = notEnough || low ? "#ef4444" : pct > 80 ? "#f59e0b" : "#22c55e";
+  return (
+    <div className="mb-3 px-3 py-2.5 rounded-xl" style={{ background: col + "12", border: `1px solid ${col}33` }}>
+      <div className="flex items-center justify-between text-xs">
+        <span className="flex items-center gap-1.5 font-medium" style={{ color: col }}>
+          <MessageSquare size={12} />
+          {q.remaining.toLocaleString()} of {q.total.toLocaleString()} messages left this month
+        </span>
+        {recipients != null && <span className="text-slate-400">this send: {recipients.toLocaleString()}</span>}
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: col }} />
+      </div>
+      {notEnough && <div className="mt-1.5 text-[10px] text-red-400">⚠ Not enough quota for {recipients.toLocaleString()} recipients — upgrade your plan or reduce the audience.</div>}
+    </div>
   );
 }
 
@@ -1206,7 +1262,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <footer className="relative px-6 md:px-16 lg:px-24 pt-16 pb-6 border-t" style={{background:D?"#09090b":"#ffffff",borderColor:bdr}}>
         {/* Watermark text */}
         <div className="absolute top-0 right-0 left-0 flex justify-center overflow-hidden pointer-events-none select-none" style={{height:"120px"}}>
-          <span className="text-[120px] font-black tracking-tighter leading-none" style={{color:D?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.04)"}}>LOYABLE</span>
+          <span className="text-[120px] font-black tracking-tighter leading-none" style={{color:D?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.04)"}}>THE LOYALY</span>
         </div>
         <div className="relative flex flex-col md:flex-row justify-between w-full gap-10 border-b pb-10 mb-6" style={{borderColor:bdr}}>
           <div className="max-w-xs">
@@ -1604,6 +1660,7 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
           <div className="text-right text-xs text-slate-600 mt-0.5">{message.length} chars</div>
         </div>
 
+        <QuotaBanner/>
         {err&&<div className="text-xs text-red-400 p-2 rounded-lg" style={{background:"rgba(239,68,68,0.1)"}}>{err}</div>}
 
         <div className="flex gap-2">
@@ -1896,6 +1953,7 @@ const CampaignBuilderPage=({onBack})=>{
           {/* Audience & Send settings */}
           <div className="gc rounded-xl p-4" style={CARD}>
             <h3 className="text-xs font-semibold text-slate-300 mb-3">Who & When</h3>
+            <QuotaBanner/>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">Who receives this?</label>
@@ -1949,9 +2007,9 @@ const AutomationBuilderPage=({onBack})=>{
   const T=TRIGGERS.find(t=>t.type===trig)||TRIGGERS[0];
   const save=async()=>{
     setSaved(false);setSaveErr(null);
-    // Build proper ReactFlow node shapes (required by Zod schema)
-    const trigNode={id:"trigger-1",type:trig,data:{triggerType:trig},position:{x:250,y:50}};
-    const actNodes=acts.map((a,i)=>({id:`action-${i+1}`,type:a,data:{actionType:a,delayMinutes:delay,...(a==="SEND_WHATSAPP"?{messageBody:msgBody}:{})},position:{x:250,y:180+i*120}}));
+    // Build proper ReactFlow node shapes matching compiler's expected types
+    const trigNode={id:"trigger-1",type:"triggerNode",data:{triggerType:trig,...(trig==="INACTIVITY"?{config:{daysInactive:30}}:trig==="VISIT_MILESTONE"?{config:{visitCount:5}}:trig==="SPEND_THRESHOLD"?{config:{spendThreshold:100}}:{})},position:{x:250,y:50}};
+    const actNodes=acts.map((a,i)=>({id:`action-${i+1}`,type:"actionNode",data:{actionType:a,delayMinutes:delay,...(a==="SEND_WHATSAPP"?{templateName:"default",messageBody:msgBody||"Hi {{name}}, we have a special offer for you!"}:a==="AWARD_POINTS"?{points:50}:a==="DEDUCT_POINTS"?{points:10}:a==="CHANGE_SEGMENT"?{targetSegment:"VIP"}:{})},position:{x:250,y:180+i*120}}));
     const edges=actNodes.map((n,i)=>({id:`e${i}`,source:i===0?"trigger-1":actNodes[i-1].id,target:n.id}));
     const body={name:autoName||`Automation ${new Date().toLocaleDateString()}`,graphJson:{nodes:[trigNode,...actNodes],edges}};
     try{await api.automations.create(body);setSaved(true);setTimeout(()=>setSaved(false),2500);}catch(e:any){setSaveErr(e?.message||"Save failed");}
@@ -2003,6 +2061,7 @@ const AutomationBuilderPage=({onBack})=>{
           <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Delay before actions (minutes)</label><input type="number" value={delay} onChange={e=>setDelay(Number(e.target.value))} min={0} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
           <div className="pt-3 border-t border-white/5"><div className="text-xs text-slate-400 mb-2">compiledJson (persisted in AutomationWorkflow)</div><pre className="text-xs text-green-300 overflow-x-auto p-2 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontSize:10,maxHeight:100,overflow:"auto"}}>{JSON.stringify({trigger:{type:trig},actions:acts.map(a=>({type:a,delayMinutes:delay}))},null,2)}</pre></div>
           <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Automation Name</label><input type="text" value={autoName} onChange={e=>setAutoName(e.target.value)} placeholder="e.g. Birthday Reward" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div className="pt-3 border-t border-white/5"><QuotaBanner/></div>
           {saveErr&&<p className="text-xs text-red-400 text-center">{saveErr}</p>}
           <button onClick={save} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saved?<><Check size={14}/>Saved!</>:<><Zap size={14}/>Save Automation</>}</button>
         </div>
@@ -3881,7 +3940,8 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
     try{
       const r=await api.pos.createSale({customerPhone:order.phone?normPhone(order.phone):undefined,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
       if(r?.pointsEarned)setPtsEarned(r.pointsEarned);
-      const isPK=(localStorage.getItem("biz_country")||"").toUpperCase()==="PK";
+      // Prefer the server's authoritative isPK flag; fall back to localStorage.
+      const isPK=r?.isPK??((localStorage.getItem("biz_country")||"").toUpperCase()==="PK");
       const fbrInfo=isPK?{invoiceNo:r?.fbrInvoiceNumber,ntn:r?.ntn||localStorage.getItem("biz_ntn")||undefined,taxNo:r?.taxNumber||localStorage.getItem("biz_taxNumber")||undefined,gstRate:r?.gstRate||Number(localStorage.getItem("biz_gstRate")||17),isPK:true}:undefined;
       setLastFbrData(fbrInfo);
       // Deduct inventory
@@ -4423,13 +4483,14 @@ const SalesHistory=({currency}:{currency:string})=>{
 // ── FBR Panel (shared) ────────────────────────────────────────────
 const FBRPanel=()=>{
   const [stats,setStats]=useState<any>(null);
-  const [s,setS]=useState({ntn:"",taxNumber:"",fbrPosId:"",fbrUserId:"",fbrPassword:"",gstRate:"17",fbrSandbox:true,fbrEnabled:false});
-  const [saving,setSaving]=useState(false);const [testing,setTesting]=useState(false);const [res,setRes]=useState<string|null>(null);
+  const [s,setS]=useState({country:"PK",ntn:"",taxNumber:"",fbrPosId:"",fbrUserId:"",fbrPassword:"",gstRate:"17",fbrSandbox:true,fbrEnabled:false});
+  const [saving,setSaving]=useState(false);const [testing,setTesting]=useState(false);const [res,setRes]=useState<string|null>(null);const [formErr,setFormErr]=useState<string|null>(null);
   const [showPass,setShowPass]=useState(false);
   useEffect(()=>{
     api.pos.stats().then(setStats).catch(()=>{});
     api.settings.get().then((d:any)=>{
-      if(d?.business){const b=d.business;setS({ntn:b.ntn||"",taxNumber:b.taxNumber||"",fbrPosId:String(b.fbrPosId||""),fbrUserId:b.fbrUserId||"",fbrPassword:b.fbrPassword||"",gstRate:String(b.gstRate||17),fbrSandbox:b.fbrSandbox!==false,fbrEnabled:b.fbrEnabled||false});}
+      const b=d?.user?.business??d?.business;
+      if(b){setS({country:b.country||"PK",ntn:b.ntn||"",taxNumber:b.taxNumber||"",fbrPosId:String(b.fbrPosId||""),fbrUserId:b.fbrUserId||"",fbrPassword:b.fbrPassword||"",gstRate:String(b.gstRate||17),fbrSandbox:b.fbrSandbox!==false,fbrEnabled:b.fbrEnabled||false});}
     }).catch(()=>{});
   },[]);
   return(
@@ -4469,9 +4530,16 @@ const FBRPanel=()=>{
           <button onClick={()=>setS(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrEnabled?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrEnabled?22:2}}/></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          <div><label className="text-[10px] text-slate-400 block mb-1">NTN (National Tax Number)</label>
+          <div><label className="text-[10px] text-slate-400 block mb-1">Country</label>
+            <select className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={s.country} onChange={e=>setS(p=>({...p,country:e.target.value}))}>
+              <option value="PK" style={{background:"#1a1030"}}>🇵🇰 Pakistan (FBR)</option>
+              <option value="" style={{background:"#1a1030"}}>Other (no tax integration)</option>
+            </select>
+            <div className="text-[9px] text-slate-500 mt-0.5">FBR invoice numbers print on receipts only when Pakistan is selected.</div></div>
+          <div></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">NTN (National Tax Number) <span className="text-red-400">*</span></label>
             <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="1234567-8" value={s.ntn} onChange={e=>setS(p=>({...p,ntn:e.target.value}))}/></div>
-          <div><label className="text-[10px] text-slate-400 block mb-1">STRN / Tax Number</label>
+          <div><label className="text-[10px] text-slate-400 block mb-1">STRN / Tax Number <span className="text-red-400">*</span></label>
             <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Sales Tax Reg. No." value={s.taxNumber} onChange={e=>setS(p=>({...p,taxNumber:e.target.value}))}/></div>
           <div><label className="text-[10px] text-slate-400 block mb-1">POS ID (from IRIS portal)</label>
             <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none font-mono" style={inpS} placeholder="e.g. 12345" value={s.fbrPosId} onChange={e=>setS(p=>({...p,fbrPosId:e.target.value}))}/></div>
@@ -4488,8 +4556,23 @@ const FBRPanel=()=>{
           <div><div className="text-xs text-white font-medium">Sandbox Mode</div><div className="text-[10px] text-slate-500">Use FBR test environment — invoice numbers prefixed SB-</div></div>
           <button onClick={()=>setS(p=>({...p,fbrSandbox:!p.fbrSandbox}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrSandbox?"bg-amber-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrSandbox?22:2}}/></button>
         </div>
+        {formErr&&<div className="mb-3 text-xs text-red-400 px-3 py-2 rounded-lg" style={{background:"rgba(239,68,68,0.1)"}}>{formErr}</div>}
         <div className="flex gap-2 flex-wrap">
-          <button onClick={async()=>{setSaving(true);try{await api.settings.update({ntn:s.ntn,taxNumber:s.taxNumber,fbrPosId:parseInt(s.fbrPosId)||undefined,fbrUserId:s.fbrUserId,fbrPassword:s.fbrPassword,gstRate:parseFloat(s.gstRate)||17,fbrSandbox:s.fbrSandbox,fbrEnabled:s.fbrEnabled});localStorage.setItem("biz_ntn",s.ntn);localStorage.setItem("biz_taxNumber",s.taxNumber);localStorage.setItem("biz_gstRate",s.gstRate);}catch{}setSaving(false);}} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Settings"}</button>
+          <button onClick={async()=>{
+            setFormErr(null);
+            // Tax fields are mandatory when FBR is enabled for Pakistan
+            if(s.fbrEnabled&&s.country==="PK"){
+              if(!s.ntn.trim()){setFormErr("NTN is required to enable FBR.");return;}
+              if(!s.taxNumber.trim()){setFormErr("STRN / Tax Number is required to enable FBR.");return;}
+            }
+            setSaving(true);
+            try{
+              await api.settings.update({country:s.country||undefined,ntn:s.ntn,taxNumber:s.taxNumber,fbrPosId:parseInt(s.fbrPosId)||undefined,fbrUserId:s.fbrUserId,fbrPassword:s.fbrPassword,gstRate:parseFloat(s.gstRate)||17,fbrSandbox:s.fbrSandbox,fbrEnabled:s.fbrEnabled});
+              localStorage.setItem("biz_country",s.country);localStorage.setItem("biz_ntn",s.ntn);localStorage.setItem("biz_taxNumber",s.taxNumber);localStorage.setItem("biz_gstRate",s.gstRate);
+              setRes("ok");
+            }catch(e:any){setFormErr(e?.message||"Save failed");}
+            setSaving(false);
+          }} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Settings"}</button>
           <button onClick={async()=>{setTesting(true);setRes(null);try{await api.pos.stats();setRes("ok");}catch{setRes("fail");}setTesting(false);}} disabled={testing} className="px-4 py-2 rounded-xl text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>{testing?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test Connection</button>
           {res&&<span className={`px-3 py-2 rounded-xl text-xs ${res==="ok"?"text-green-400":"text-red-400"}`}>{res==="ok"?"✓ Connected":"✗ Failed"}</span>}
         </div>
