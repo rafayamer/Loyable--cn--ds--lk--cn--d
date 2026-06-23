@@ -16,9 +16,69 @@ async function bootstrap() {
   await initTenantRedis();
   await prisma.$queryRaw`SELECT 1`;
 
-  app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors());
+  // Behind a load balancer (Neon/Render/etc) the real client IP arrives via
+  // X-Forwarded-For. Without this, express.ip is the proxy IP and rate limiting
+  // collapses into a single shared bucket. Trust the first proxy hop only.
+  app.set('trust proxy', 1);
+
+  // Content Security Policy. We still rely on the Tailwind CDN (which needs
+  // 'unsafe-eval'/'unsafe-inline') so we scope a policy rather than disabling it
+  // outright. Tighten further once Tailwind is compiled at build time.
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", "'unsafe-eval'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
+        styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc:     ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc:      ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc:  ["'self'", 'https:', 'wss:'],
+        objectSrc:   ["'none'"],
+        frameAncestors: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // CORS — restrict to known origins. Set CORS_ORIGINS (comma-separated) or
+  // FRONTEND_URL in production; falls back to localhost dev ports.
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? process.env.FRONTEND_URL ?? 'http://localhost:3000,http://localhost:3002')
+    .split(',').map(o => o.trim()).filter(Boolean);
+  app.use(cors({
+    origin: (origin, cb) => {
+      // Allow non-browser clients (no Origin header: WAHA, Stripe, curl, mobile).
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+  }));
+
+  // ── Stripe webhook MUST receive the raw body for signature verification.
+  // Mounted BEFORE express.json() so the global JSON parser does not consume
+  // the stream. express.raw sets req._body=true, so express.json skips it.
+  app.use('/api/stripe', express.raw({ type: '*/*' }));
+
   app.use(express.json({ limit: '10mb' }));
+
+  // Minimal cookie parser — the auth refresh flow reads the httpOnly
+  // `refresh_token` cookie from req.cookies. (Avoids a cookie-parser dep.)
+  app.use((req: any, _res, next) => {
+    const header = req.headers?.cookie;
+    const jar: Record<string, string> = {};
+    if (typeof header === 'string') {
+      for (const part of header.split(';')) {
+        const idx = part.indexOf('=');
+        if (idx > -1) {
+          const k = part.slice(0, idx).trim();
+          const v = part.slice(idx + 1).trim();
+          if (k) jar[k] = decodeURIComponent(v);
+        }
+      }
+    }
+    req.cookies = jar;
+    next();
+  });
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', ts: new Date().toISOString() });

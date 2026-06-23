@@ -234,8 +234,12 @@ export const api = {
   // ── Customer Portal (public, uses separate portalToken) ──────
   portal: {
     info:   (slug: string) => get<any>(`/portal/${slug}/info`),
-    login:  (slug: string, body: { phone: string; name: string }) =>
-              post<{ token: string; customer: { id: string; name: string } }>(`/portal/${slug}/login`, body),
+    // Step 1: request an OTP (sent over WhatsApp). Returns { otpRequired, phone, devCode? }.
+    login:  (slug: string, body: { phone: string; name: string; ref?: string; email?: string; consentMarketing?: boolean }) =>
+              post<{ otpRequired: boolean; phone: string; devCode?: string }>(`/portal/${slug}/login`, body),
+    // Step 2: verify the OTP → returns the session token.
+    verifyOtp: (slug: string, body: { phone: string; code: string }) =>
+              post<{ token: string; customer: { id: string; name: string }; isNew: boolean; referralApplied: boolean; emailBonusAwarded: number }>(`/portal/${slug}/verify-otp`, body),
     me: (portalToken: string) =>
       req<any>('/portal/me', { headers: { Authorization: `Bearer ${portalToken}` } }),
     redeem: (portalToken: string, couponCode: string) =>

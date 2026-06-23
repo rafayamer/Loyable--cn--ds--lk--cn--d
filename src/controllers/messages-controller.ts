@@ -83,7 +83,17 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
         where:  { businessId, whatsappNumber: derivedPhone },
         select: { id: true },
       });
-      logCustomerId = found?.id;
+      // Auto-create a lightweight contact so the message is always logged
+      // (MessageQueue.customerId is non-nullable) and shows in analytics.
+      if (found) {
+        logCustomerId = found.id;
+      } else {
+        const created = await prisma.customer.create({
+          data: { businessId, fullName: derivedPhone, whatsappNumber: derivedPhone, segment: 'NEW' },
+          select: { id: true },
+        }).catch(() => null);
+        logCustomerId = created?.id;
+      }
     }
   }
 

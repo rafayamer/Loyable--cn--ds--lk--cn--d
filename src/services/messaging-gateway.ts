@@ -6,6 +6,7 @@
 // ================================================================
 
 import axios, { AxiosError }  from 'axios';
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { prisma } from '../config/prisma';
 import type { MessagePayload, TemplatePayload, TextPayload } from '../services/messaging-queue';
@@ -206,7 +207,9 @@ export const WahaGateway = {
           name: sessionId,
           config: {
             webhooks: [{
-              url:    `${webhookBase}/api/webhooks/waha/${sessionId}`,
+              // Per-tenant shared secret in the URL so the (otherwise public)
+              // webhook endpoint can authenticate that WAHA is the real caller.
+              url:    `${webhookBase}/api/webhooks/waha/${sessionId}?token=${encodeURIComponent(apiKey || sessionId)}`,
               events: ['message', 'message.ack', 'session.status'],
             }],
             noweb: { store: { enabled: true, full_sync: true } },
@@ -308,9 +311,33 @@ export const WahaGateway = {
 export const wahaWebhookRouter = Router();
 
 wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Promise<void> => {
+  const sessionParam = req.params.businessId; // WAHA session name (== businessId per tenant)
+  const token        = (req.query.token as string | undefined) ?? '';
+
+  // Authenticate the caller: the token must match the tenant's WAHA api key.
+  // Resolve the real business by id OR by stored wahaSessionId.
+  const business = await prisma.business.findFirst({
+    where:  { OR: [{ id: sessionParam }, { wahaSessionId: sessionParam }] },
+    select: { id: true, wahaApiKey: true, wahaSessionId: true },
+  }).catch(() => null);
+
+  if (!business) {
+    res.status(404).json({ error: 'UNKNOWN_SESSION' });
+    return;
+  }
+
+  const expected = business.wahaApiKey || business.wahaSessionId || sessionParam;
+  // Constant-time compare to avoid token-guessing via timing.
+  const ok = expected.length === token.length &&
+    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(token));
+  if (!ok) {
+    res.status(401).json({ error: 'INVALID_WEBHOOK_TOKEN' });
+    return;
+  }
+
   res.status(200).json({ received: true });
 
-  const { businessId } = req.params;
+  const businessId = business.id;
   const event = req.body;
 
   try {
@@ -321,7 +348,7 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
     if (event.event === 'message' && event.payload?.from && event.payload?.body) {
       const phone = normalizePhone(event.payload.from as string);
       const body  = (event.payload.body as string).trim().toUpperCase();
-      if (OPT_OUT_KEYWORDS.has(body)) {
+      if (isOptOutMessage(body)) {
         await processOptOut(phone, businessId, event.payload.body);
       } else {
         // Check if this is a feedback rating reply (digit 1–5)
@@ -364,6 +391,19 @@ const OPT_OUT_KEYWORDS = new Set([
   'STOP', 'UNSUBSCRIBE', 'CANCEL', 'QUIT', 'END',
   'OPTOUT', 'OPT-OUT', 'OPT OUT', 'REMOVE', 'REMOVE ME', 'NO MORE', 'DELETE ME',
 ]);
+
+// Detect opt-out intent even when the keyword is embedded in a sentence,
+// e.g. "please STOP", "stop sending these", "I want to unsubscribe".
+// Compliance requires honouring these, not only exact single-word replies.
+const isOptOutMessage = (upperBody: string): boolean => {
+  if (OPT_OUT_KEYWORDS.has(upperBody)) return true;
+  // word-boundary match for the primary single-word keywords
+  const singleWords = ['STOP', 'UNSUBSCRIBE', 'OPTOUT', 'CANCEL', 'QUIT'];
+  if (singleWords.some(w => new RegExp(`\\b${w}\\b`).test(upperBody))) return true;
+  // multi-word phrases
+  const phrases = ['OPT OUT', 'OPT-OUT', 'REMOVE ME', 'NO MORE', 'DELETE ME', 'STOP MESSAGING', 'STOP SENDING'];
+  return phrases.some(p => upperBody.includes(p));
+};
 
 const processOptOut = async (phone: string, businessId: string, rawKeyword: string): Promise<void> => {
   const customer = await prisma.customer.findFirst({

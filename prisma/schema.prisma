@@ -180,6 +180,7 @@ model Business {
   pointsExpiryDays     Int               @default(365)  // Points earned before this many days ago expire nightly
   pointsPerPound       Int               @default(1)    // Points earned per £1 spent
   visitBasePoints      Int               @default(5)    // Flat bonus points per visit
+  bigSpenderThreshold  Int               @default(500)  // Total spend (in currency units) to classify as BIG_SPENDER
 
   isActive             Boolean           @default(true)
   createdAt            DateTime          @default(now())
@@ -504,6 +505,11 @@ model RewardPointsLedger {
   @@index([customerId, createdAt])           // Customer timeline feed
   @@index([customerId, type, createdAt])     // Points expiry: oldest CREDIT per customer
   @@index([businessId, customerId, type])    // Batch expiry queries scoped to business
+  // Idempotency guard: a given (customer, reason, reference) can only be
+  // credited once. Postgres treats NULL referenceId as distinct, so manual
+  // adjustments (null reference) are unaffected, but two concurrent
+  // VISIT_ACCRUAL writes for the same visitId can no longer double-credit.
+  @@unique([customerId, reason, referenceId])
   @@map("reward_points_ledger")
 }
 

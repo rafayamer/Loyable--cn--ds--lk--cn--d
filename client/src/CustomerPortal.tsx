@@ -86,9 +86,14 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
   const [err,   setErr]   = useState('');
   const [loading, setLoading] = useState(false);
   const [bonusMsg, setBonusMsg] = useState('');
+  const [otpStep, setOtpStep]   = useState(false);
+  const [code, setCode]         = useState('');
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [devCode, setDevCode]   = useState('');
   const ps = portalSettings ?? {};
   const emailBonusPts = Number(ps.emailBonusPoints ?? 0);
 
+  // Step 1 — request an OTP sent to the customer's WhatsApp.
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');setBonusMsg('');
@@ -101,12 +106,34 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}), ...(email ? { email } : {}), consentMarketing: consent }),
       }).then(r => r.json());
-      if (!res.token) throw new Error(res.error ?? 'Login failed');
+      if (!res.otpRequired) throw new Error(res.error ?? 'Could not send code');
+      setMaskedPhone(res.phone ?? phone);
+      if (res.devCode) setDevCode(res.devCode); // dev-only convenience
+      setOtpStep(true);
+    } catch (e: any) {
+      setErr(e.message ?? 'Could not send code');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 2 — verify the OTP and receive the session token.
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/portal/${slug}/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code: code.trim() }),
+      }).then(r => r.json());
+      if (!res.token) throw new Error(res.error ?? 'Invalid code');
       saveSession(slug, res.token, res.customer.name);
       if (res.emailBonusAwarded > 0) setBonusMsg(`+${res.emailBonusAwarded} bonus points for adding your email!`);
       onLogin(res.token, res.customer.name);
     } catch (e: any) {
-      setErr(e.message ?? 'Login failed');
+      setErr(e.message ?? 'Invalid code');
     } finally {
       setLoading(false);
     }
@@ -142,8 +169,24 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
 
         <div className="rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
           <h2 className="text-white font-bold text-lg mb-1">Check your rewards</h2>
-          <p className="text-purple-200 text-sm mb-5">Enter your phone number and first name to view your loyalty account.</p>
+          <p className="text-purple-200 text-sm mb-5">{otpStep ? `We sent a 6-digit code to ${maskedPhone} on WhatsApp. Enter it below.` : 'Enter your phone number and first name to view your loyalty account.'}</p>
 
+          {otpStep ? (
+            <form onSubmit={verify} className="space-y-4">
+              <div>
+                <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Verification Code</label>
+                <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  <input type="text" inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/[^\d]/g, ''))} placeholder="123456" autoFocus className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-lg tracking-[0.5em] font-mono"/>
+                </div>
+                {devCode && <p className="text-purple-400 text-xs mt-1.5">Dev code: <span className="font-mono text-white">{devCode}</span></p>}
+              </div>
+              {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
+              <button type="submit" disabled={loading||code.length<4} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+                {loading ? 'Verifying...' : 'Verify & Continue →'}
+              </button>
+              <button type="button" onClick={() => { setOtpStep(false); setCode(''); setErr(''); }} className="w-full text-purple-300 text-xs">← Use a different number</button>
+            </form>
+          ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
@@ -179,9 +222,10 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
             {bonusMsg && <div className="px-4 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fde68a' }}>🎉 {bonusMsg}</div>}
             <button type="submit" disabled={loading||!consent} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
-              {loading ? 'Checking...' : 'View My Rewards →'}
+              {loading ? 'Sending code...' : 'Send Verification Code →'}
             </button>
           </form>
+          )}
         </div>
         <p className="text-center text-purple-400 text-xs mt-6">Powered by The Loyaly · Your data is secure</p>
       </div>

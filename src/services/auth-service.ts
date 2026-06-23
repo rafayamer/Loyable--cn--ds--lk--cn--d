@@ -415,11 +415,15 @@ export const resetPassword = async (
   const newHash = await hashPassword(newPassword);
 
   await prisma.$transaction(async (tx) => {
-    // Update password + invalidate all active refresh tokens (force re-login)
+    // Update password + invalidate the legacy single refresh-token hash
     await tx.user.update({
       where: { id: userId },
       data:  { passwordHash: newHash, refreshTokenHash: null },
     });
+
+    // Multi-session model: delete EVERY active session so a compromised
+    // account's stolen tokens stop working immediately on reset.
+    await tx.userSession.deleteMany({ where: { userId } }).catch(() => {});
 
     await tx.auditLog.create({
       data: {

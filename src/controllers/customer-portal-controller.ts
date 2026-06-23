@@ -13,9 +13,12 @@
 
 import { Request, Response, Router } from 'express';
 import { z }                         from 'zod';
+import crypto                        from 'crypto';
 import jwt, { SignOptions }          from 'jsonwebtoken';
 import { prisma } from '../config/prisma';
 import { tenantScope }               from '../middleware/tenant-scope-middleware';
+import { getRedisClient }            from '../config/redis';
+import { WahaGateway, toChatId }     from '../services/messaging-gateway';
 
 
 // ── Portal JWT helpers ────────────────────────────────────────────
@@ -159,6 +162,12 @@ const updateSettingsHandler = async (req: Request, res: Response): Promise<void>
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
+  // Ownership: the authenticated tenant may only edit their OWN business.
+  if (biz.id !== req.tenantContext?.businessId) {
+    res.status(403).json({ error: 'FORBIDDEN', message: 'You can only modify your own business.' });
+    return;
+  }
+
   const current = (biz.portalSettings as Record<string, any>) ?? {};
   const merged  = { ...current, ...parse.data };
 
@@ -166,7 +175,32 @@ const updateSettingsHandler = async (req: Request, res: Response): Promise<void>
   res.json({ ok: true, portalSettings: merged });
 };
 
-/** POST /api/portal/:slug/login — phone + name → find or create customer */
+// Normalize a phone to E.164 — default country UK (+44).
+function normalizePortalPhone(phone: string): string {
+  const rawDigits = phone.trim().replace(/[^\d+]/g, '');
+  if (rawDigits.startsWith('+'))       return rawDigits;
+  if (rawDigits.startsWith('00'))      return '+' + rawDigits.slice(2);
+  if (rawDigits.startsWith('0'))       return '+44' + rawDigits.slice(1);
+  if (rawDigits.length === 10)         return '+44' + rawDigits;
+  return '+' + rawDigits;
+}
+
+const OTP_TTL_SEC      = 300;  // 5 minutes
+const OTP_MAX_ATTEMPTS = 5;
+const otpKey  = (bizId: string, phone: string) => `portal:otp:${bizId}:${phone}`;
+const otpData = (bizId: string, phone: string) => `portal:otpdata:${bizId}:${phone}`;
+
+const VerifyOtpSchema = z.object({
+  phone: z.string().min(7).max(20),
+  code:  z.string().min(4).max(8),
+});
+
+/**
+ * POST /api/portal/:slug/login
+ * Step 1 of 2: validate input, send a 6-digit OTP over WhatsApp. Does NOT
+ * issue a session — that requires the customer to prove ownership of the
+ * phone number via /verify-otp. The signup payload is parked in Redis.
+ */
 const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const parse = LoginSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
@@ -175,65 +209,120 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const { slug } = req.params;
 
   const biz = await prisma.business.findFirst({
-    where: { slug },
+    where:  { slug },
+    select: { id: true, name: true, wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+  });
+  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+  const normalized = normalizePortalPhone(phone);
+  const redis = getRedisClient();
+
+  // Generate + store the OTP and the pending signup payload.
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+  await redis.set(otpKey(biz.id, normalized), code, { EX: OTP_TTL_SEC });
+  await redis.set(
+    otpData(biz.id, normalized),
+    JSON.stringify({ name: name.trim(), ref: ref ?? null, email: email ?? null, consentMarketing: !!consentMarketing }),
+    { EX: OTP_TTL_SEC }
+  );
+  await redis.del(`portal:otpattempts:${biz.id}:${normalized}`);
+
+  // Deliver the code over WhatsApp.
+  const baseUrl   = biz.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
+  const sessionId = biz.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
+  const apiKey    = biz.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
+  const sent = await WahaGateway.sendText(
+    toChatId(normalized),
+    `Your ${biz.name} verification code is ${code}. It expires in 5 minutes.`,
+    baseUrl, sessionId, apiKey
+  ).catch(() => ({ success: false }));
+
+  // In dev (or if WhatsApp isn't connected) we surface the code so testing
+  // isn't blocked. Never do this in production.
+  const devEcho = process.env.NODE_ENV !== 'production' ? { devCode: code } : {};
+  if (!sent.success && process.env.NODE_ENV === 'production') {
+    res.status(502).json({ error: 'Could not send verification code. Please try again.' });
+    return;
+  }
+
+  res.json({ otpRequired: true, phone: normalized.replace(/.(?=.{4})/g, '*'), ...devEcho });
+};
+
+/**
+ * POST /api/portal/:slug/verify-otp
+ * Step 2 of 2: verify the code, find-or-create the customer, run referral /
+ * email-bonus side effects, then issue the portal session token.
+ */
+const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
+  const parse = VerifyOtpSchema.safeParse(req.body);
+  if (!parse.success) { res.status(400).json({ error: 'Invalid input' }); return; }
+  const { slug } = req.params;
+  const normalized = normalizePortalPhone(parse.data.phone);
+
+  const biz = await prisma.business.findFirst({
+    where:  { slug },
     select: { id: true, name: true, portalSettings: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+
+  const redis = getRedisClient();
+  const attemptsK = `portal:otpattempts:${biz.id}:${normalized}`;
+  const attempts  = Number(await redis.get(attemptsK) ?? 0);
+  if (attempts >= OTP_MAX_ATTEMPTS) {
+    res.status(429).json({ error: 'Too many attempts. Request a new code.' });
+    return;
+  }
+
+  const stored = await redis.get(otpKey(biz.id, normalized));
+  if (!stored || stored !== parse.data.code) {
+    await redis.set(attemptsK, String(attempts + 1), { EX: OTP_TTL_SEC });
+    res.status(401).json({ error: 'Invalid or expired code' });
+    return;
+  }
+
+  // Code is valid — consume it and the parked payload.
+  const payloadRaw = await redis.get(otpData(biz.id, normalized));
+  const payload = payloadRaw ? JSON.parse(payloadRaw) : {};
+  await redis.del(otpKey(biz.id, normalized));
+  await redis.del(otpData(biz.id, normalized));
+  await redis.del(attemptsK);
+
   const ps = (biz.portalSettings as Record<string, any>) ?? {};
   const emailBonusPoints = Number(ps.emailBonusPoints ?? 0);
+  const name = (payload.name as string) ?? 'Member';
+  const ref = payload.ref as string | null;
+  const email = payload.email as string | null;
+  const consentMarketing = !!payload.consentMarketing;
 
-  // Normalize phone to E.164 — default country UK (+44)
-  const rawDigits = phone.trim().replace(/[^\d+]/g, '');
-  let normalized: string;
-  if (rawDigits.startsWith('+'))       normalized = rawDigits;
-  else if (rawDigits.startsWith('00')) normalized = '+' + rawDigits.slice(2);
-  else if (rawDigits.startsWith('0'))  normalized = '+44' + rawDigits.slice(1);
-  else if (rawDigits.length === 10)    normalized = '+44' + rawDigits;
-  else                                 normalized = '+' + rawDigits;
-
-  // Search both normalized and the original stripped input to handle legacy records
-  const searchVariants = [...new Set([normalized, rawDigits, phone.trim().replace(/[\s\-().]/g, '')])];
-
+  const searchVariants = [...new Set([normalized, parse.data.phone.trim().replace(/[\s\-().]/g, '')])];
   let customer = await prisma.customer.findFirst({
-    where: {
-      businessId: biz.id,
-      OR: searchVariants.map(v => ({ whatsappNumber: v })),
-    },
+    where:  { businessId: biz.id, OR: searchVariants.map(v => ({ whatsappNumber: v })) },
     select: { id: true, fullName: true, whatsappNumber: true },
   });
 
   let isNew = false;
   if (!customer) {
     customer = await prisma.customer.create({
-      data: {
-        businessId:     biz.id,
-        fullName:       name.trim(),
-        whatsappNumber: normalized,  // always stored as E.164
-        segment:        'NEW',
-      },
+      data: { businessId: biz.id, fullName: name, whatsappNumber: normalized, segment: 'NEW' },
       select: { id: true, fullName: true, whatsappNumber: true },
     });
     isNew = true;
   }
 
-  // Process referral on first-ever signup if a valid ref code was supplied.
-  // Awards the referrer points + gives this new customer a signup discount.
   let referralApplied = false;
-  if (isNew && ref && ref !== '') {
+  if (isNew && ref) {
     try {
       const { processReferralConversion } = await import('../services/loyalty-service');
       const r = await processReferralConversion(customer.id, ref.trim(), biz.id);
       referralApplied = r.success;
-    } catch { /* non-fatal — referral simply not applied */ }
+    } catch { /* non-fatal */ }
   }
 
-  // Save email and award email bonus points (first time only)
   let emailBonusAwarded = 0;
   if (email) {
     const existing = await prisma.customer.findUnique({ where: { id: customer.id }, select: { email: true, currentPointsBalance: true } });
     const isFirstEmail = !existing?.email;
-    const updateData: any = { email, ...(consentMarketing ? { marketingConsentWhatsapp: true } : {}) };
-    await prisma.customer.update({ where: { id: customer.id }, data: updateData });
+    await prisma.customer.update({ where: { id: customer.id }, data: { email, ...(consentMarketing ? { marketingConsentWhatsapp: true } : {}) } });
     if (isFirstEmail && emailBonusPoints > 0) {
       const curBal = existing?.currentPointsBalance ?? 0;
       await prisma.rewardPointsLedger.create({
@@ -246,10 +335,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     await prisma.customer.update({ where: { id: customer.id }, data: { marketingConsentWhatsapp: true } });
   }
 
-  // Log this portal visit
-  await prisma.portalLogin.create({
-    data: { customerId: customer.id, businessId: biz.id },
-  }).catch(() => {}); // ignore if table not yet migrated
+  await prisma.portalLogin.create({ data: { customerId: customer.id, businessId: biz.id } }).catch(() => {});
 
   const token = issuePortalToken(customer.id, biz.id);
   res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied, emailBonusAwarded });
@@ -403,6 +489,13 @@ const todayHandler = async (req: Request, res: Response): Promise<void> => {
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
+  // Ownership: this exposes customer PII (names + phone numbers) so it is
+  // restricted to the business's own authenticated staff.
+  if (biz.id !== req.tenantContext?.businessId) {
+    res.status(403).json({ error: 'FORBIDDEN' });
+    return;
+  }
+
   const start = new Date();
   start.setHours(0, 0, 0, 0);
 
@@ -502,6 +595,12 @@ const updateLocationHandler = async (req: Request, res: Response): Promise<void>
   const biz = await prisma.business.findFirst({ where: { slug }, select: { id: true } });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
+  // Ownership: the authenticated tenant may only edit their OWN business.
+  if (biz.id !== req.tenantContext?.businessId) {
+    res.status(403).json({ error: 'FORBIDDEN', message: 'You can only modify your own business.' });
+    return;
+  }
+
   await prisma.business.update({
     where: { id: biz.id },
     data:  { latitude: parse.data.latitude, longitude: parse.data.longitude, ...(parse.data.checkInRadiusMeters ? { checkInRadiusMeters: parse.data.checkInRadiusMeters } : {}) } as any,
@@ -515,9 +614,10 @@ const updateLocationHandler = async (req: Request, res: Response): Promise<void>
 
 export const customerPortalRouter = Router();
 
-customerPortalRouter.get('/:slug/info',         infoHandler);
+customerPortalRouter.get('/:slug/info',          infoHandler);
 customerPortalRouter.post('/:slug/login',        loginHandler);
-customerPortalRouter.get('/:slug/today',         todayHandler);
+customerPortalRouter.post('/:slug/verify-otp',   verifyOtpHandler);
+customerPortalRouter.get('/:slug/today',         tenantScope, todayHandler);
 customerPortalRouter.patch('/:slug/settings',    tenantScope, updateSettingsHandler);
 customerPortalRouter.patch('/:slug/location',    tenantScope, updateLocationHandler);
 customerPortalRouter.get('/me',                  portalAuth, meHandler);

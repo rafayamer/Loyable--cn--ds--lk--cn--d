@@ -178,13 +178,23 @@ export const accruePointsForVisit = async (
   const basePoints = biz?.visitBasePoints ?? VISIT_BASE_POINTS;
   const pointsEarned = basePoints + Math.floor(amountSpent * perPound);
 
-  const newBalance = await prisma.$transaction(async (tx) => {
-    await tx.visit.update({
-      where: { id: visitId },
-      data:  { pointsEarned },
+  let newBalance: number;
+  try {
+    newBalance = await prisma.$transaction(async (tx) => {
+      await tx.visit.update({
+        where: { id: visitId },
+        data:  { pointsEarned },
+      });
+      return creditPoints(tx, businessId, customerId, pointsEarned, 'VISIT_ACCRUAL', visitId, 'VISIT');
     });
-    return creditPoints(tx, businessId, customerId, pointsEarned, 'VISIT_ACCRUAL', visitId, 'VISIT');
-  });
+  } catch (e: any) {
+    // Idempotent: this visit was already accrued (e.g. POS webhook retry).
+    if (e?.code === 'P2002') {
+      const cust = await prisma.customer.findUnique({ where: { id: customerId }, select: { currentPointsBalance: true } });
+      return { pointsEarned: 0, newBalance: cust?.currentPointsBalance ?? 0, tierUpgraded: false };
+    }
+    throw e;
+  }
 
   const tierUpgraded = await evaluateAndUpgradeTier(customerId, businessId);
   return { pointsEarned, newBalance, tierUpgraded };
@@ -223,17 +233,25 @@ export const backfillVisitPoints = async (
   const missing = visits.filter(v => !accruedVisitIds.has(v.id));
   if (missing.length === 0) return 0;
 
+  let credited = 0;
   for (const v of missing) {
     const spent = Number(v.amountSpent ?? 0);
     const pointsEarned = basePoints + Math.floor(spent * perPound);
-    await prisma.$transaction(async (tx) => {
-      await tx.visit.update({ where: { id: v.id }, data: { pointsEarned } });
-      await creditPoints(tx, businessId, customerId, pointsEarned, 'VISIT_ACCRUAL', v.id, 'VISIT');
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.visit.update({ where: { id: v.id }, data: { pointsEarned } });
+        await creditPoints(tx, businessId, customerId, pointsEarned, 'VISIT_ACCRUAL', v.id, 'VISIT');
+      });
+      credited++;
+    } catch (e: any) {
+      // P2002 = unique violation: another concurrent request already credited
+      // this visit. Safe to ignore — the idempotency guard did its job.
+      if (e?.code !== 'P2002') throw e;
+    }
   }
 
   await evaluateAndUpgradeTier(customerId, businessId);
-  return missing.length;
+  return credited;
 };
 
 // ================================================================
@@ -774,14 +792,13 @@ export const evaluateCustomerSegment = async (
   customerId: string,
   businessId: string
 ): Promise<void> => {
-  const BIG_SPENDER_THRESHOLD = 500;
-
   const biz = await prisma.business.findUnique({
     where:  { id: businessId },
-    select: { irregularGapDays: true, lostDaysThreshold: true },
-  });
+    select: { irregularGapDays: true, lostDaysThreshold: true, bigSpenderThreshold: true } as any,
+  }) as any;
   if (!biz) return;
 
+  const BIG_SPENDER_THRESHOLD = biz.bigSpenderThreshold ?? 500;
   const now          = new Date();
   const lostCutoff   = new Date(now.getTime() - (biz.lostDaysThreshold ?? 60) * 86_400_000);
   const atRiskCutoff = new Date(now.getTime() - (biz.irregularGapDays  ?? 14) * 86_400_000);
@@ -803,12 +820,17 @@ export const evaluateCustomerSegment = async (
   const redemptions = c.couponRedemptions.length;
   let   next: string;
 
-  if (spend >= BIG_SPENDER_THRESHOLD) {
-    next = 'BIG_SPENDER';
-  } else if (!last || last < lostCutoff) {
+  const isBigSpender = spend >= BIG_SPENDER_THRESHOLD;
+
+  // A high-value customer who has lapsed must still surface in win-back flows.
+  // Recency takes priority over the BIG_SPENDER label once they go quiet so
+  // AT_RISK/LOST automations can re-engage your most valuable customers.
+  if (!last || last < lostCutoff) {
     next = 'LOST';
   } else if (last < atRiskCutoff) {
     next = 'AT_RISK';
+  } else if (isBigSpender) {
+    next = 'BIG_SPENDER';
   } else if (highestTier && c.currentTierId === highestTier.id) {
     next = 'VIP';
   } else if (redemptions > 3 && c.visitCount < 5) {
