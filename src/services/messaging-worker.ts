@@ -50,6 +50,14 @@ const GLOBAL_RATE_LIMIT = { max: 200, duration: 1_000 }; // 200 msgs/second
 const processMessageJob = async (
   job: Job<OutboundMessageJobData>
 ): Promise<void> => {
+  // Handle system actions (e.g. scheduled campaign launch)
+  const data = job.data as any;
+  if (data._systemAction === 'LAUNCH_CAMPAIGN') {
+    const { launchCampaign } = await import('./campaign-service');
+    await launchCampaign(data.campaignId, data.businessId);
+    return;
+  }
+
   const {
     messageQueueId,
     businessId,
@@ -152,9 +160,8 @@ const processMessageJob = async (
         customerId,
         isPromotional:  true,
         status:         { in: ['SENT', 'DELIVERED', 'READ'] },
-        // Uses compound index: (businessId, customerId, isPromotional, createdAt)
-        createdAt:      { gte: cooldownWindowStart },
-        // Exclude current job
+        // Check sentAt so queued-but-unsent messages don't block the cooldown window
+        sentAt:         { gte: cooldownWindowStart },
         id:             { not: messageQueueId },
       },
       select: { id: true },

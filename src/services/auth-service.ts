@@ -169,6 +169,16 @@ export const registerBusiness = async (
       },
     });
 
+    // Seed default loyalty tiers so tier upgrades fire immediately for new businesses
+    await tx.loyaltyTier.createMany({
+      data: [
+        { businessId: business.id, rank: 1, name: 'Bronze', minVisitCount: 0,  minTotalSpend: 0,    color: '#cd7f32' },
+        { businessId: business.id, rank: 2, name: 'Silver', minVisitCount: 5,  minTotalSpend: 100,  color: '#c0c0c0' },
+        { businessId: business.id, rank: 3, name: 'Gold',   minVisitCount: 15, minTotalSpend: 500,  color: '#ffd700' },
+        { businessId: business.id, rank: 4, name: 'VIP',    minVisitCount: 30, minTotalSpend: 1000, color: '#b19cd9' },
+      ],
+    });
+
     return { business, owner };
   });
 

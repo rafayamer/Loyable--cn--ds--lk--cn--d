@@ -90,7 +90,7 @@ export const createCampaign = async (
       description:    input.description,
       targetSegment:  input.targetSegment as any,
       layoutJson:     input.layoutJson as unknown as Prisma.InputJsonValue,
-      channel:        (input.channel as any) ?? 'WHATSAPP_META',
+      channel:        (input.channel as any) ?? 'WHATSAPP_WAHA',
       status:         'DRAFT',
       scheduledFor:   input.scheduledFor,
     },
@@ -209,7 +209,7 @@ export const launchCampaign = async (
 
   const business = await prisma.business.findUnique({
     where:  { id: businessId },
-    select: { messagingProvider: true, name: true },
+    select: { messagingProvider: true, name: true, wahaBaseUrl: true, wahaSessionId: true },
   });
 
   // Resolve segment recipients
@@ -226,8 +226,12 @@ export const launchCampaign = async (
   await assertQuotaHeadroom(businessId, customers.length);
 
   const layout   = campaign.layoutJson as unknown as CampaignLayout;
-  const provider = business?.messagingProvider ?? 'META';
-  const channel  = (campaign.channel ?? (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META')) as Prisma.MessageQueueCreateManyInput['channel'];
+  // Auto-detect: if WAHA credentials are configured, prefer WAHA regardless of stored provider field
+  const hasWaha  = !!(business?.wahaBaseUrl && business?.wahaSessionId);
+  const provider = hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA');
+  const channel  = (campaign.channel && campaign.channel !== 'WHATSAPP_META'
+    ? campaign.channel
+    : (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META')) as Prisma.MessageQueueCreateManyInput['channel'];
 
   const jobs:    OutboundMessageJobData[] = [];
   const records: Prisma.MessageQueueCreateManyInput[] = [];

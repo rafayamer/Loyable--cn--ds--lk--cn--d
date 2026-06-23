@@ -211,9 +211,10 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
         customer = await prisma.customer.create({
           data: {
             businessId,
-            fullName:       customerName,
-            whatsappNumber: normalizedPhone,
-            segment:        'NEW',
+            fullName:                 customerName,
+            whatsappNumber:           normalizedPhone,
+            segment:                  'NEW',
+            marketingConsentWhatsapp: true,  // POS opt-in at counter
           },
         });
       }
@@ -227,8 +228,9 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
       const anon = await prisma.customer.create({
         data: {
           businessId,
-          fullName: anonName,
-          segment:  'NEW',
+          fullName:                 anonName,
+          segment:                  'NEW',
+          marketingConsentWhatsapp: true,
         },
       });
       customerId = anon.id;
