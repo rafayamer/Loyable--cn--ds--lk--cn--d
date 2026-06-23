@@ -77,10 +77,11 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
     setErr('');
     setLoading(true);
     try {
+      const ref = new URLSearchParams(window.location.search).get('ref') ?? undefined;
       const res = await fetch(`/api/portal/${slug}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, name }),
+        body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}) }),
       }).then(r => r.json());
       if (!res.token) throw new Error(res.error ?? 'Login failed');
       saveSession(slug, res.token, res.customer.name);
@@ -186,7 +187,7 @@ function LoyaltyCard({ customer, nextTier, progressToNext }: any) {
           <div className="mt-4">
             <div className="flex justify-between text-xs text-white/70 mb-1">
               <span>{progressToNext}% to {nextTier.name}</span>
-              <span>{nextTier.minPoints - (customer.pointsBalance ?? 0)} pts needed</span>
+              <span>{nextTier.needLabel ?? ''}</span>
             </div>
             <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }}>
               <div className="h-full rounded-full" style={{ background: 'rgba(255,255,255,0.9)', width: `${progressToNext}%`, transition: 'width 1s ease' }}/>
@@ -321,10 +322,12 @@ function VisitsTab({ visits, currency }: any) {
           </div>
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-700">{fmt(v.visitedAt)}</p>
-            {v.spend > 0 && <p className="text-xs text-slate-500">Spent {fmtCurrency(v.spend / 100, currency)}</p>}
+            {Number(v.amountSpent) > 0
+              ? <p className="text-xs text-slate-500">Spent {fmtCurrency(Number(v.amountSpent), currency)}</p>
+              : <p className="text-xs text-slate-400">Check-in</p>}
           </div>
           <div className="text-right">
-            <p className="font-bold text-purple-600 text-sm">+{v.pointsEarned}</p>
+            <p className="font-bold text-purple-600 text-sm">+{v.pointsEarned ?? 0}</p>
             <p className="text-xs text-slate-400">pts</p>
           </div>
         </div>
@@ -491,7 +494,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
     </div>
   );
 
-  const { customer, tiers, visits, referralCount, nextTier, progressToNext } = data;
+  const { customer, tiers, visits, referralCount, nextTier, progressToNext, perks = [] } = data;
 
   // Build tab list based on portalSettings visibility
   const TABS = [
@@ -586,12 +589,12 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
           <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Your {customer.tier} Perks</p>
             <div className="space-y-1.5">
-              {(tiers.find((t: any) => t.name === customer.tier)?.perks ?? []).map((perk: string, i: number) => (
+              {perks.map((perk: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-slate-700">
                   <span className="text-purple-500"><Icon.check/></span>{perk}
                 </div>
               ))}
-              {!tiers.find((t: any) => t.name === customer.tier)?.perks?.length && (
+              {perks.length === 0 && (
                 <p className="text-sm text-slate-400">Keep earning points to unlock exclusive perks.</p>
               )}
             </div>

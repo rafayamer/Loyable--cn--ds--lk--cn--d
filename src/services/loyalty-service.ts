@@ -190,6 +190,52 @@ export const accruePointsForVisit = async (
   return { pointsEarned, newBalance, tierUpgraded };
 };
 
+/**
+ * Self-healing backfill: credit points for any of a customer's visits that
+ * never produced a VISIT_ACCRUAL ledger entry (e.g. visits recorded while
+ * the pointsPerPound/visitBasePoints columns were missing, so accrual threw
+ * and was swallowed). Idempotent — only accrues visits absent from the ledger.
+ * Returns the number of visits backfilled. Safe to call on every profile read.
+ */
+export const backfillVisitPoints = async (
+  customerId: string,
+  businessId: string
+): Promise<number> => {
+  const biz = await prisma.business.findUnique({
+    where:  { id: businessId },
+    select: { pointsPerPound: true, visitBasePoints: true },
+  });
+  const perPound   = biz?.pointsPerPound  ?? POINTS_PER_POUND;
+  const basePoints = biz?.visitBasePoints ?? VISIT_BASE_POINTS;
+
+  const [visits, accrualLedger] = await Promise.all([
+    prisma.visit.findMany({
+      where:  { customerId, businessId },
+      select: { id: true, amountSpent: true },
+    }),
+    prisma.rewardPointsLedger.findMany({
+      where:  { customerId, businessId, reason: 'VISIT_ACCRUAL' },
+      select: { referenceId: true },
+    }),
+  ]);
+
+  const accruedVisitIds = new Set(accrualLedger.map(l => l.referenceId).filter(Boolean));
+  const missing = visits.filter(v => !accruedVisitIds.has(v.id));
+  if (missing.length === 0) return 0;
+
+  for (const v of missing) {
+    const spent = Number(v.amountSpent ?? 0);
+    const pointsEarned = basePoints + Math.floor(spent * perPound);
+    await prisma.$transaction(async (tx) => {
+      await tx.visit.update({ where: { id: v.id }, data: { pointsEarned } });
+      await creditPoints(tx, businessId, customerId, pointsEarned, 'VISIT_ACCRUAL', v.id, 'VISIT');
+    });
+  }
+
+  await evaluateAndUpgradeTier(customerId, businessId);
+  return missing.length;
+};
+
 // ================================================================
 // PART 3 — LOYALTY TIER ENGINE
 // ================================================================

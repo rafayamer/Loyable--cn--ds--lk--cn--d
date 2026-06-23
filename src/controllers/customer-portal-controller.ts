@@ -61,6 +61,7 @@ function portalAuth(req: Request, res: Response, next: any) {
 const LoginSchema = z.object({
   phone: z.string().min(7).max(20),
   name:  z.string().min(1).max(100),
+  ref:   z.string().min(1).max(64).optional(),
 });
 
 const RedeemSchema = z.object({
@@ -168,7 +169,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const parse = LoginSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
 
-  const { phone, name } = parse.data;
+  const { phone, name, ref } = parse.data;
   const { slug } = req.params;
 
   const biz = await prisma.business.findFirst({
@@ -211,18 +212,36 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     isNew = true;
   }
 
+  // Process referral on first-ever signup if a valid ref code was supplied.
+  // Awards the referrer points + gives this new customer a signup discount.
+  let referralApplied = false;
+  if (isNew && ref && ref !== '') {
+    try {
+      const { processReferralConversion } = await import('../services/loyalty-service');
+      const r = await processReferralConversion(customer.id, ref.trim(), biz.id);
+      referralApplied = r.success;
+    } catch { /* non-fatal — referral simply not applied */ }
+  }
+
   // Log this portal visit
   await prisma.portalLogin.create({
     data: { customerId: customer.id, businessId: biz.id },
   }).catch(() => {}); // ignore if table not yet migrated
 
   const token = issuePortalToken(customer.id, biz.id);
-  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew });
+  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied });
 };
 
 /** GET /api/portal/me — full loyalty profile */
 const meHandler = async (req: Request, res: Response): Promise<void> => {
   const { customerId, businessId } = (req as any).portalCtx;
+
+  // Self-heal: credit points for any visits that never accrued (e.g. recorded
+  // before the points config columns existed), then re-evaluate tier.
+  try {
+    const { backfillVisitPoints } = await import('../services/loyalty-service');
+    await backfillVisitPoints(customerId, businessId);
+  } catch { /* non-fatal — show whatever balance exists */ }
 
   const [customer, tiers, recentVisits] = await Promise.all([
     prisma.customer.findFirst({
@@ -247,41 +266,84 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
       where:   { customerId, businessId },
       orderBy: { visitedAt: 'desc' },
       take:    20,
-      select:  { id: true, visitedAt: true, amountSpent: true, source: true },
+      select:  { id: true, visitedAt: true, amountSpent: true, source: true, pointsEarned: true },
     }),
   ]);
 
   if (!customer) { res.status(404).json({ error: 'Customer not found' }); return; }
 
-  // Resolve tier name from currentTierId
-  const tierRecord = customer.currentTierId
-    ? await (prisma as any).loyaltyTier.findUnique({ where: { id: customer.currentTierId }, select: { name: true } }).catch(() => null)
+  // tiers are ordered by rank asc (lowest → highest)
+  const visitCount = customer.visitCount ?? 0;
+  const totalSpend = Number(customer.totalSpend ?? 0);
+
+  // Does the customer qualify for a tier? (visits OR spend threshold met)
+  const qualifies = (t: any) =>
+    (t.minVisitCount == null || visitCount >= t.minVisitCount) &&
+    (t.minTotalSpend == null || totalSpend >= Number(t.minTotalSpend));
+
+  // Resolve current tier: prefer stored currentTierId, else highest qualifying tier
+  let currentTier: any =
+    (customer.currentTierId && tiers.find((t: any) => t.id === customer.currentTierId)) || null;
+  if (!currentTier) {
+    const qualifying = tiers.filter(qualifies);
+    currentTier = qualifying.length ? qualifying[qualifying.length - 1] : null;
+  }
+  const tierName = currentTier?.name ?? (tiers[0]?.name ?? 'Member');
+
+  // Next tier = the first tier ranked above the current one that isn't yet reached
+  const currentRank = currentTier?.rank ?? 0;
+  const nextTierRaw = tiers.find((t: any) => t.rank > currentRank && !qualifies(t)) ?? null;
+
+  // Progress toward the next tier, measured on whichever metric it gates on
+  let progressToNext = 100;
+  let needLabel = '';
+  if (nextTierRaw) {
+    if (nextTierRaw.minVisitCount != null) {
+      const baseV = currentTier?.minVisitCount ?? 0;
+      const span  = Math.max(1, nextTierRaw.minVisitCount - baseV);
+      progressToNext = Math.max(0, Math.min(100, Math.round(((visitCount - baseV) / span) * 100)));
+      const remaining = Math.max(0, nextTierRaw.minVisitCount - visitCount);
+      needLabel = `${remaining} more visit${remaining === 1 ? '' : 's'}`;
+    } else if (nextTierRaw.minTotalSpend != null) {
+      const target = Number(nextTierRaw.minTotalSpend);
+      const baseS  = Number(currentTier?.minTotalSpend ?? 0);
+      const span   = Math.max(1, target - baseS);
+      progressToNext = Math.max(0, Math.min(100, Math.round(((totalSpend - baseS) / span) * 100)));
+      const remaining = Math.max(0, target - totalSpend);
+      needLabel = `${fmtSpendGap(remaining, customer)} to go`;
+    }
+  }
+
+  // Normalize next tier for the frontend (avoids non-existent minPoints field)
+  const nextTier = nextTierRaw
+    ? { name: nextTierRaw.name, needLabel, minVisitCount: nextTierRaw.minVisitCount, minTotalSpend: nextTierRaw.minTotalSpend }
     : null;
-  const tierName = tierRecord?.name ?? 'Member';
+
+  // Perks for the current tier (from benefitsJson)
+  const perks = ((currentTier?.benefitsJson as any[]) ?? []).map((b: any) =>
+    b?.description ?? b?.productName ?? (b?.type === 'PERCENTAGE_DISCOUNT' ? `${b.value}% member discount` : b?.type)
+  ).filter(Boolean);
 
   // Referral stats
   const referralCount = await prisma.customer.count({
     where: { businessId, referredByCode: customer.referralCode ?? '' },
   }).catch(() => 0);
 
-  // Next tier progress
-  const pts = customer.currentPointsBalance ?? 0;
-  const currentTierIdx = tiers.findIndex((t: any) => t.name === tierName);
-  const nextTier = tiers[currentTierIdx + 1] ?? null;
-  const progressToNext = nextTier
-    ? Math.min(100, Math.round(((pts - (tiers[currentTierIdx]?.minPoints ?? 0)) /
-        (nextTier.minPoints - (tiers[currentTierIdx]?.minPoints ?? 0))) * 100))
-    : 100;
-
   res.json({
     customer: { ...customer, name: customer.fullName, tier: tierName, pointsBalance: customer.currentPointsBalance, totalVisits: customer.visitCount },
     tiers,
+    perks,
     visits:       recentVisits,
     referralCount,
     nextTier,
     progressToNext,
   });
 };
+
+// Format remaining spend gap using the business currency where possible
+function fmtSpendGap(amount: number, _customer: any): string {
+  return `£${Math.ceil(amount)}`;
+}
 
 /** POST /api/portal/redeem — redeem a coupon by code */
 const redeemHandler = async (req: Request, res: Response): Promise<void> => {
