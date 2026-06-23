@@ -1065,7 +1065,7 @@ const NAV: NavItem[] = [
   { id: 'audit-logs',      label: 'Audit Logs',      icon: '≡' },
 ];
 
-export const The LoyalyAdminPanel: React.FC = () => {
+export const LoyalyAdminPanel: React.FC = () => {
   const [section, setSection] = useState<Section>('overview');
 
   const content: Record<Section, React.ReactNode> = {
@@ -1133,4 +1133,4 @@ export const The LoyalyAdminPanel: React.FC = () => {
   );
 };
 
-export default The LoyalyAdminPanel;
+export default LoyalyAdminPanel;
