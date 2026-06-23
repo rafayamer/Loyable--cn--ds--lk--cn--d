@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import The LoyalyAdminPanel from './The LoyalyAdminPanel';
+import LoyalyAdminPanel from './LoyableAdminPanel';
 import CRM from './CRM';
 import CustomerPortal from './CustomerPortal';
 
@@ -27,7 +27,7 @@ function AdminOrCRM() {
   };
 
   if (!checked) return null;
-  if (role === 'PLATFORM_ADMINISTRATOR') return <The LoyalyAdminPanel />;
+  if (role === 'PLATFORM_ADMINISTRATOR') return <LoyalyAdminPanel />;
   return <CRM onLogout={handleLogout} onRoleChange={(r: string) => setRole(r as Role)} />;
 }
 
