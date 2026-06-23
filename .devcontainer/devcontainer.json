@@ -1,8 +1,0 @@
-{
-  "forwardPorts": [3000, 4000, 3001],
-  "portsAttributes": {
-    "3000": { "label": "Frontend (Vite)", "onAutoForward": "openBrowser" },
-    "4000": { "label": "Backend API" },
-    "3001": { "label": "WAHA WhatsApp" }
-  }
-}
