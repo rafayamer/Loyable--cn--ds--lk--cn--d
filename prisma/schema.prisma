@@ -187,11 +187,15 @@ model Business {
 
   // FBR / POS integration
   fbrPosId             Int?              // FBR POS ID assigned by FBR
-  fbrToken             String?           // FBR PRAL API token
+  fbrUserId            String?           // FBR IRIS UserID (for API auth)
+  fbrPassword          String?           // FBR POS password (encrypted at rest)
+  fbrToken             String?           // FBR PRAL API token (alternative auth)
   ntn                  String?           // National Tax Number
+  taxNumber            String?           // STRN alias — shown on receipt
   strn                 String?           // Sales Tax Registration Number
   gstRate              Float             @default(17) // GST percentage
   fbrEnabled           Boolean           @default(false)
+  fbrSandbox           Boolean           @default(true)  // Use sandbox until go-live
 
   // Relations
   branches             BranchLocation[]

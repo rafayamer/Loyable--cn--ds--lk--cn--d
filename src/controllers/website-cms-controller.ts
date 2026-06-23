@@ -36,15 +36,15 @@ const ok   = (res: Response, data: any) => res.json(data);
 const err  = (res: Response, msg: string, code = 400) => res.status(code).json({ error: msg });
 
 const DEFAULT_SETTINGS: Record<string, string> = {
-  companyName:      'Loyable',
+  companyName:      'The Loyaly',
   tagline:          'Turn One-Time Customers Into Loyal Customers',
-  heroSubtitle:     'Loyable helps businesses track visits, reward loyalty, automate marketing and bring customers back – all in one powerful platform.',
+  heroSubtitle:     'The Loyaly helps businesses track visits, reward loyalty, automate marketing and bring customers back – all in one powerful platform.',
   heroCta1:         'Start Free Trial',
   heroCta2:         'Book a Demo',
   logoUrl:          '',
   primaryColor:     '#8b5cf6',
   accentColor:      '#7c3aed',
-  supportEmail:     'support@loyable.io',
+  supportEmail:     'support@theloyaly.com',
   whatsappContact:  '',
   instagramHandle:  '',
   facebookPage:     '',
@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   tiktokHandle:     '',
   termsUrl:         '#',
   privacyUrl:       '#',
-  seoTitle:         'Loyable — WhatsApp Retention Platform',
+  seoTitle:         'The Loyaly — WhatsApp Retention Platform',
   seoDescription:   'Loyalty programs, WhatsApp campaigns, AI analytics and POS — all in one platform for restaurants, salons, gyms and retail.',
   seoKeywords:      'loyalty program, whatsapp marketing, customer retention, CRM, SMB',
   announcementBar:  '',

@@ -59,9 +59,11 @@ function portalAuth(req: Request, res: Response, next: any) {
 
 // ── Validation schemas ────────────────────────────────────────────
 const LoginSchema = z.object({
-  phone: z.string().min(7).max(20),
-  name:  z.string().min(1).max(100),
-  ref:   z.string().min(1).max(64).optional(),
+  phone:             z.string().min(7).max(20),
+  name:              z.string().min(1).max(100),
+  ref:               z.string().min(1).max(64).optional(),
+  email:             z.string().email().optional(),
+  consentMarketing:  z.boolean().optional(),
 });
 
 const RedeemSchema = z.object({
@@ -169,14 +171,16 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   const parse = LoginSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
 
-  const { phone, name, ref } = parse.data;
+  const { phone, name, ref, email, consentMarketing } = parse.data;
   const { slug } = req.params;
 
   const biz = await prisma.business.findFirst({
     where: { slug },
-    select: { id: true, name: true },
+    select: { id: true, name: true, portalSettings: true },
   });
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+  const ps = (biz.portalSettings as Record<string, any>) ?? {};
+  const emailBonusPoints = Number(ps.emailBonusPoints ?? 0);
 
   // Normalize phone to E.164 — default country UK (+44)
   const rawDigits = phone.trim().replace(/[^\d+]/g, '');
@@ -223,13 +227,32 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     } catch { /* non-fatal — referral simply not applied */ }
   }
 
+  // Save email and award email bonus points (first time only)
+  let emailBonusAwarded = 0;
+  if (email) {
+    const existing = await prisma.customer.findUnique({ where: { id: customer.id }, select: { email: true, currentPointsBalance: true } });
+    const isFirstEmail = !existing?.email;
+    const updateData: any = { email, ...(consentMarketing ? { marketingConsentWhatsapp: true } : {}) };
+    await prisma.customer.update({ where: { id: customer.id }, data: updateData });
+    if (isFirstEmail && emailBonusPoints > 0) {
+      const curBal = existing?.currentPointsBalance ?? 0;
+      await prisma.rewardPointsLedger.create({
+        data: { customerId: customer.id, businessId: biz.id, type: 'CREDIT', points: emailBonusPoints, balanceAfter: curBal + emailBonusPoints, reason: 'MANUAL_ADJUSTMENT', referenceType: 'EMAIL_BONUS' },
+      });
+      await prisma.customer.update({ where: { id: customer.id }, data: { currentPointsBalance: { increment: emailBonusPoints } } });
+      emailBonusAwarded = emailBonusPoints;
+    }
+  } else if (consentMarketing) {
+    await prisma.customer.update({ where: { id: customer.id }, data: { marketingConsentWhatsapp: true } });
+  }
+
   // Log this portal visit
   await prisma.portalLogin.create({
     data: { customerId: customer.id, businessId: biz.id },
   }).catch(() => {}); // ignore if table not yet migrated
 
   const token = issuePortalToken(customer.id, biz.id);
-  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied });
+  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied, emailBonusAwarded });
 };
 
 /** GET /api/portal/me — full loyalty profile */

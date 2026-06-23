@@ -155,7 +155,7 @@ const handleError = (err: unknown, res: Response): void => {
 const listHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const workflows = await listWorkflows(req.tenantContext.businessId);
-    res.status(200).json(workflows);
+    res.status(200).json({ workflows });
   } catch (err) { handleError(err, res); }
 };
 

@@ -135,7 +135,7 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
         </div>
       </div>
       {!col&&<div className="flex-1 min-w-0">
-        <div className="text-white font-bold text-sm tracking-tight">Loyable</div>
+        <ThemeLogo dark={true} className="w-24 h-6 object-contain object-left"/>
         <div className="text-slate-500 text-[9px] tracking-wide uppercase">CRM Platform</div>
       </div>}
       {!col&&<button onClick={()=>setCol(!col)} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5"><ChevronLeft size={14}/></button>}
@@ -193,6 +193,10 @@ const hydrateFromApi=async()=>{
     if(biz?.logoUrl)localStorage.setItem("biz_logo",biz.logoUrl);
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
     if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
+    if(biz?.country)localStorage.setItem("biz_country",biz.country);
+    if(biz?.ntn)localStorage.setItem("biz_ntn",biz.ntn);
+    if(biz?.taxNumber)localStorage.setItem("biz_taxNumber",biz.taxNumber);
+    if(biz?.gstRate!=null)localStorage.setItem("biz_gstRate",String(biz.gstRate));
   }catch{}
 };
 
@@ -247,6 +251,20 @@ const pdTokens=(pd:boolean)=>({
   inpBd: pd?"rgba(255,255,255,0.15)":"rgba(139,92,246,0.25)",
   shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(139,92,246,0.1)",
 });
+
+// Theme-aware brand logo — uses /white.png on dark, /black.png on light
+// Falls back to /logo.svg if PNG files not yet in public/
+function ThemeLogo({ dark, className = '', style = {} }: { dark: boolean; className?: string; style?: React.CSSProperties }) {
+  return (
+    <img
+      src={dark ? '/white.png' : '/black.png'}
+      onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }}
+      alt="The Loyaly"
+      className={className}
+      style={style}
+    />
+  );
+}
 
 const AuthBg=()=>(
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -559,7 +577,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 8h2m2 0h2m2 0h2M7 11h1m3 0h1"/></svg>,n:"Built-in POS",d:"Staff process orders on the built-in POS."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,n:"Earns Points",d:"Points are credited automatically."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,n:"Redeems Rewards",d:"They claim discounts and rewards."},
-    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/></svg>,n:"AI Win-Back",d:"Loyable auto-detects at-risk customers and sends them personalised discount offers."},
+    {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/></svg>,n:"AI Win-Back",d:"The Loyaly auto-detects at-risk customers and sends them personalised discount offers."},
     {icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,n:"Comes Back",d:"They return — every time, guaranteed."},
   ];
 
@@ -577,32 +595,32 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   ];
 
   const TESTIMONIALS=[
-    {stars:5,text:"Loyable increased our repeat customers by 60%. The WhatsApp campaigns and rewards system work like magic!!!!",name:"Michael Brown",biz:"Casa Bistro",avatar:"MB"},
+    {stars:5,text:"The Loyaly increased our repeat customers by 60%. The WhatsApp campaigns and rewards system work like magic!!!!",name:"Michael Brown",biz:"Casa Bistro",avatar:"MB"},
     {stars:5,text:"Finally, a loyalty platform that is simple, powerful and affordable. Our customers love the rewards!",name:"Sarah Johnson",biz:"The Coffee House",avatar:"SJ"},
-    {stars:5,text:"The analytics help us understand our customers better. Our business has grown 35% since using Loyable.",name:"James Williams",biz:"Urban Cuts Barbershop",avatar:"JW"},
+    {stars:5,text:"The analytics help us understand our customers better. Our business has grown 35% since using The Loyaly.",name:"James Williams",biz:"Urban Cuts Barbershop",avatar:"JW"},
   ];
 
   // Emotional, story-driven case studies
   const CASE_STUDIES=[
     {emoji:"☕",biz:"The Corner Café",owner:"Amara",city:"Manchester",color:"#8b5cf6",
       stat:"+62%",statLabel:"repeat visits in 4 months",
-      story:"Amara nearly closed her café after the chain across the street opened. Loyable helped her remember every regular's name and order. When her quietest customers drifted away, automatic 'we miss you' messages with a free-coffee reward brought them back. Today her café is the busiest on the street again.",
+      story:"Amara nearly closed her café after the chain across the street opened. The Loyaly helped her remember every regular's name and order. When her quietest customers drifted away, automatic 'we miss you' messages with a free-coffee reward brought them back. Today her café is the busiest on the street again.",
       result:"From 30 to 480 loyal regulars — and a 6-month waitlist for her weekend brunch."},
     {emoji:"💈",biz:"Kingsman Barbers",owner:"Deon",city:"Birmingham",color:"#06b6d4",
       stat:"3,200",statLabel:"bookings recovered",
-      story:"Deon's chairs sat empty on weekdays. He couldn't afford ads. With Loyable, every haircut earned points and a friendly WhatsApp reminder when it was time for the next trim. Clients who used to vanish for months now come back every three weeks — like clockwork.",
+      story:"Deon's chairs sat empty on weekdays. He couldn't afford ads. With The Loyaly, every haircut earned points and a friendly WhatsApp reminder when it was time for the next trim. Clients who used to vanish for months now come back every three weeks — like clockwork.",
       result:"£41,000 in extra revenue in a single year, with zero ad spend."},
     {emoji:"🍰",biz:"Sweet Layla's Bakery",owner:"Layla",city:"London",color:"#ec4899",
       stat:"4.9★",statLabel:"average review, up from 3.8",
-      story:"Layla poured her heart into every cake, but unhappy customers stayed silent and never returned. Loyable quietly asked each customer how their visit went. Now she hears the problems first — and fixes them before they ever hit Google. Her happiest customers became her loudest fans.",
+      story:"Layla poured her heart into every cake, but unhappy customers stayed silent and never returned. The Loyaly quietly asked each customer how their visit went. Now she hears the problems first — and fixes them before they ever hit Google. Her happiest customers became her loudest fans.",
       result:"Reviews jumped from 3.8 to 4.9 stars and online orders tripled."},
     {emoji:"🏋️",biz:"Iron Pulse Gym",owner:"Marcus",city:"Leeds",color:"#f59e0b",
       stat:"-48%",statLabel:"member drop-off",
-      story:"Half of Marcus's New Year members quit by March. Loyable spotted who was slipping — people who hadn't checked in for two weeks — and nudged them with a personal message and a guest-pass for a friend. Members felt noticed. They stayed. They brought friends.",
+      story:"Half of Marcus's New Year members quit by March. The Loyaly spotted who was slipping — people who hadn't checked in for two weeks — and nudged them with a personal message and a guest-pass for a friend. Members felt noticed. They stayed. They brought friends.",
       result:"Cancellations cut in half and 900 referrals from existing members."},
     {emoji:"💅",biz:"Bloom Nail Studio",owner:"Priya",city:"Glasgow",color:"#a855f7",
       stat:"+£28k",statLabel:"yearly revenue",
-      story:"Priya's calendar had gaps she couldn't explain. Loyable showed her that clients loved her but simply forgot to rebook. A gentle birthday treat and a 'your nails are due' reminder filled those empty slots. Her quietest weeks became fully booked.",
+      story:"Priya's calendar had gaps she couldn't explain. The Loyaly showed her that clients loved her but simply forgot to rebook. A gentle birthday treat and a 'your nails are due' reminder filled those empty slots. Her quietest weeks became fully booked.",
       result:"From half-empty Tuesdays to a fully-booked studio, six days a week."},
     {emoji:"🍔",biz:"Smashville Burgers",owner:"Tom & Jess",city:"Bristol",color:"#22c55e",
       stat:"19,000",statLabel:"loyalty members",
@@ -610,19 +628,19 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       result:"A second location opened, funded entirely by repeat customers."},
     {emoji:"🌸",biz:"Serenity Day Spa",owner:"Hannah",city:"Edinburgh",color:"#14b8a6",
       stat:"+71%",statLabel:"rebooking rate",
-      story:"Hannah's spa was a place people visited once for a treat and forgot about. Loyable turned that one visit into a relationship — points, tiers, and a thank-you message that felt personal. First-timers became monthly regulars who looked forward to their 'me time'.",
+      story:"Hannah's spa was a place people visited once for a treat and forgot about. The Loyaly turned that one visit into a relationship — points, tiers, and a thank-you message that felt personal. First-timers became monthly regulars who looked forward to their 'me time'.",
       result:"7 in 10 first-time guests now return within 30 days."},
     {emoji:"🛍️",biz:"Thread & Co Boutique",owner:"Olivia",city:"Cardiff",color:"#f43f5e",
       stat:"2.4×",statLabel:"customer lifetime value",
-      story:"Olivia competed with giant online retailers and felt invisible. Loyable gave her something Amazon never could — a real connection. Early access to new arrivals for her VIPs made shoppers feel special. They stopped scrolling online and started coming in.",
+      story:"Olivia competed with giant online retailers and felt invisible. The Loyaly gave her something Amazon never could — a real connection. Early access to new arrivals for her VIPs made shoppers feel special. They stopped scrolling online and started coming in.",
       result:"Loyal shoppers now spend more than double what walk-ins do."},
     {emoji:"🍕",biz:"Nonna's Pizzeria",owner:"Giovanni",city:"Liverpool",color:"#ef4444",
       stat:"+340",statLabel:"orders every month",
-      story:"Giovanni's family recipes deserved a full house. Loyable helped him reward every tenth pizza and win back families who hadn't ordered in a while. 'Friday is pizza night' became a habit for hundreds of homes — all from one weekly WhatsApp.",
+      story:"Giovanni's family recipes deserved a full house. The Loyaly helped him reward every tenth pizza and win back families who hadn't ordered in a while. 'Friday is pizza night' became a habit for hundreds of homes — all from one weekly WhatsApp.",
       result:"Friday revenue doubled and delivery orders now book out by 7pm."},
     {emoji:"🚗",biz:"ShinePro Car Wash",owner:"Ben",city:"Newcastle",color:"#3b82f6",
       stat:"5,800",statLabel:"members in year one",
-      story:"Ben's car wash was a one-time stop for most drivers. Loyable turned it into a habit — a loyalty card on every phone and a reminder when the rain stopped. Drivers who came once a year now come once a month, rain or shine.",
+      story:"Ben's car wash was a one-time stop for most drivers. The Loyaly turned it into a habit — a loyalty card on every phone and a reminder when the rain stopped. Drivers who came once a year now come once a month, rain or shine.",
       result:"Membership revenue now covers his rent before the month even starts."},
   ];
 
@@ -645,7 +663,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
     if(view==="login")return(
       <div>
         <h2 className="text-2xl font-bold mb-1" style={{color:tx}}>Welcome Back</h2>
-        <p className="text-sm mb-6" style={{color:tx2}}>Sign in to your Loyable account</p>
+        <p className="text-sm mb-6" style={{color:tx2}}>Sign in to your The Loyaly account</p>
         <LoginView onLogin={onLogin} onView={nav}/>
       </div>
     );
@@ -673,7 +691,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
               <svg width="40" height="40" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
             </button>
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
-              {view==="signup"?"Create Your Loyable Account":"Welcome Back to Loyable"}
+              {view==="signup"?"Create Your The Loyaly Account":"Welcome Back to The Loyaly"}
             </h1>
             <p className="text-purple-200 text-sm mb-8 leading-relaxed">Join thousands of businesses that are turning one-time customers into loyal customers.</p>
             {[
@@ -717,7 +735,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
               {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
-              {view==="login"&&<><span className="text-sm" style={{color:tx2}}>New to Loyable?</span><button onClick={()=>nav("signup")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Sign up free</button></>}
+              {view==="login"&&<><span className="text-sm" style={{color:tx2}}>New to The Loyaly?</span><button onClick={()=>nav("signup")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Sign up free</button></>}
               {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>nav("login")} className="text-sm font-semibold flex items-center gap-1" style={{color:"#7c3aed"}}><ArrowLeft size={13}/>Back to login</button>}
             </div>
           </div>
@@ -737,11 +755,11 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
   // ── Full marketing landing page (PrebuiltUI template design) ───
   const FAQS=[
-    {q:"What is Loyable?",a:"Loyable is an all-in-one WhatsApp-first loyalty and customer retention platform. It lets businesses track visits, reward customers with points, automate WhatsApp campaigns, and grow repeat revenue — without technical knowledge."},
+    {q:"What is The Loyaly?",a:"The Loyaly is an all-in-one WhatsApp-first loyalty and customer retention platform. It lets businesses track visits, reward customers with points, automate WhatsApp campaigns, and grow repeat revenue — without technical knowledge."},
     {q:"Is there a free trial available?",a:"Yes! We offer a 14-day free trial with full access to all features. No credit card is required to start."},
     {q:"Can I change my subscription plan later?",a:"Absolutely. You can upgrade or downgrade your plan at any time from your account settings. Changes take effect immediately."},
     {q:"How do customers earn and redeem points?",a:"Customers scan your QR code at each visit or purchase. Points are credited automatically. They can redeem points via the customer portal or directly through staff for discounts and rewards."},
-    {q:"Do I need technical knowledge to set up Loyable?",a:"No. Loyable is designed for non-technical business owners. Setup takes under 2 minutes — connect WhatsApp, add your QR code, and you are live."},
+    {q:"Do I need technical knowledge to set up The Loyaly?",a:"No. The Loyaly is designed for non-technical business owners. Setup takes under 2 minutes — connect WhatsApp, add your QR code, and you are live."},
     {q:"Is my customer data secure?",a:"Yes. All data is encrypted, stored securely, and GDPR-compliant. Each business account is fully isolated — your data is never shared with other tenants."},
   ];
   return(
@@ -778,7 +796,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <nav className="flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 py-4" style={{backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",background:navBg,borderBottom:`1px solid ${bdr}`}}>
         <button onClick={()=>nav("landing")} className="flex items-center gap-2.5 flex-shrink-0">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6" opacity="0.9"/></svg>
-          <span className="font-black text-lg" style={{color:tx}}>Loyable</span>
+          <ThemeLogo dark={dark} className="h-6 w-auto object-contain"/>
         </button>
 
         {/* Desktop nav links */}
@@ -855,7 +873,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <span style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
         </h1>
         <p className="text-base mt-4 max-w-lg leading-relaxed" style={{color:tx2}}>
-          Loyable helps businesses track visits, reward loyalty, automate WhatsApp marketing and bring customers back — all in one powerful platform.
+          The Loyaly helps businesses track visits, reward loyalty, automate WhatsApp marketing and bring customers back — all in one powerful platform.
         </p>
 
         {/* CTA buttons */}
@@ -914,7 +932,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
           {/* Floating loyalty points card */}
           <div className="absolute -bottom-4 -left-4 w-36 rounded-2xl p-3 shadow-xl border hidden sm:block" style={{background:"linear-gradient(135deg,#7c3aed,#8b5cf6)",borderColor:"rgba(255,255,255,0.2)"}}>
-            <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">Loyable</span></div>
+            <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">The Loyaly</span></div>
             <div className="text-white font-black text-lg">2,450</div>
             <div className="text-purple-200 text-[9px]">Loyalty Points</div>
             <div className="mt-2 h-1 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}><div className="h-full w-3/4 rounded-full" style={{background:"rgba(255,255,255,0.7)"}}/></div>
@@ -954,7 +972,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <div id="how-it-works" className="py-20 px-4" style={{background:bg2}}>
         <div className="max-w-5xl mx-auto text-center">
           <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>How It Works</p>
-          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>How Loyable Works</h2>
+          <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>How The Loyaly Works</h2>
           <p className="text-sm mb-10" style={{color:tx2}}>From first visit to loyal customer — fully automated in 7 simple steps.</p>
           <div className="relative overflow-hidden w-full">
             <div className="absolute left-0 top-0 h-full w-16 z-10 pointer-events-none" style={{background:`linear-gradient(to right,${bg2},transparent)`}}/>
@@ -985,7 +1003,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <div className="py-20 px-4 text-center">
         <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Industries</p>
         <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Perfect for Every Business</h2>
-        <p className="text-sm max-w-md mx-auto" style={{color:tx2}}>From restaurants to gyms, Loyable works for any business that wants loyal customers.</p>
+        <p className="text-sm max-w-md mx-auto" style={{color:tx2}}>From restaurants to gyms, The Loyaly works for any business that wants loyal customers.</p>
         <div className="flex flex-wrap justify-center gap-8 mt-12 max-w-3xl mx-auto">
           {INDUSTRIES.map(ind=>(
             <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
@@ -1153,7 +1171,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="text-center mb-10">
             <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>FAQ's</p>
             <h2 className="text-3xl font-black mt-1" style={{color:tx}}>Frequently Asked Questions</h2>
-            <p className="mt-2 text-sm max-w-lg mx-auto" style={{color:tx2}}>Everything you need to know about Loyable. Can't find the answer? Contact our support team.</p>
+            <p className="mt-2 text-sm max-w-lg mx-auto" style={{color:tx2}}>Everything you need to know about The Loyaly. Can't find the answer? Contact our support team.</p>
           </div>
           <div className="w-full space-y-0">
             {FAQS.map((faq,i)=>(
@@ -1194,7 +1212,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="max-w-xs">
             <div className="flex items-center gap-2 mb-4">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
-              <span className="font-black text-base" style={{color:tx}}>Loyable</span>
+              <ThemeLogo dark={dark} className="h-5 w-auto object-contain"/>
             </div>
             <p className="text-xs leading-relaxed mb-4" style={{color:tx2}}>The all-in-one loyalty and customer retention platform for businesses that want to grow. WhatsApp-first, SMB-focused.</p>
             <div className="flex gap-2">
@@ -1215,7 +1233,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs" style={{color:tx3}}>© 2025 Loyable. All rights reserved.</p>
+          <p className="text-xs" style={{color:tx3}}>© 2025 The Loyaly. All rights reserved.</p>
           <button onClick={()=>setDark(!dark)} className="flex items-center gap-2 text-xs transition-opacity hover:opacity-70" style={{color:tx3}}>
             {D
               ? <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>Light mode</>
@@ -1927,12 +1945,16 @@ const TRIGGERS=[{type:"BIRTHDAY",label:"Birthday",icon:Gift,color:"#ec4899",desc
 const ACTIONS=[{type:"SEND_WHATSAPP",label:"Send WhatsApp",icon:MessageSquare,color:"#25D366",desc:"Route via BullMQ → gateway"},{type:"AWARD_POINTS",label:"Award Points",icon:StarIcon,color:"#f59e0b",desc:"Append to RewardPointsLedger"},{type:"CHANGE_SEGMENT",label:"Change Segment",icon:Users,color:"#8b5cf6",desc:"Update CustomerSegment enum"},{type:"SEND_EMAIL",label:"Send Email",icon:Mail,color:"#3b82f6",desc:"Queue email job"},{type:"MANAGER_ALERT",label:"Manager Alert",icon:Bell,color:"#ef4444",desc:"Push to dashboard notification"}];
 const AutomationBuilderPage=({onBack})=>{
   const [trig,setTrig]=useState("BIRTHDAY");const [acts,setActs]=useState(["SEND_WHATSAPP"]);const [delay,setDelay]=useState(0);const [saved,setSaved]=useState(false);const [msgBody,setMsgBody]=useState("");
+  const [autoName,setAutoName]=useState(`Automation ${new Date().toLocaleDateString()}`);const [saveErr,setSaveErr]=useState<string|null>(null);
   const T=TRIGGERS.find(t=>t.type===trig)||TRIGGERS[0];
   const save=async()=>{
-    setSaved(false);
-    const body={name:`Automation ${new Date().toLocaleDateString()}`,trigger:{type:trig},graphJson:{nodes:[{type:trig},...acts.map(a=>({type:a}))],edges:[]},compiledJson:{trigger:{type:trig},actions:acts.map(a=>({type:a,delayMinutes:delay,...(a==="SEND_WHATSAPP"?{messageBody:msgBody}:{})}))}};
-    try{await api.automations.create(body);}catch(e){}
-    setSaved(true);setTimeout(()=>setSaved(false),2500);
+    setSaved(false);setSaveErr(null);
+    // Build proper ReactFlow node shapes (required by Zod schema)
+    const trigNode={id:"trigger-1",type:trig,data:{triggerType:trig},position:{x:250,y:50}};
+    const actNodes=acts.map((a,i)=>({id:`action-${i+1}`,type:a,data:{actionType:a,delayMinutes:delay,...(a==="SEND_WHATSAPP"?{messageBody:msgBody}:{})},position:{x:250,y:180+i*120}}));
+    const edges=actNodes.map((n,i)=>({id:`e${i}`,source:i===0?"trigger-1":actNodes[i-1].id,target:n.id}));
+    const body={name:autoName||`Automation ${new Date().toLocaleDateString()}`,graphJson:{nodes:[trigNode,...actNodes],edges}};
+    try{await api.automations.create(body);setSaved(true);setTimeout(()=>setSaved(false),2500);}catch(e:any){setSaveErr(e?.message||"Save failed");}
   };
   return(
     <div className="space-y-4">
@@ -1980,6 +2002,8 @@ const AutomationBuilderPage=({onBack})=>{
           )}
           <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Delay before actions (minutes)</label><input type="number" value={delay} onChange={e=>setDelay(Number(e.target.value))} min={0} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
           <div className="pt-3 border-t border-white/5"><div className="text-xs text-slate-400 mb-2">compiledJson (persisted in AutomationWorkflow)</div><pre className="text-xs text-green-300 overflow-x-auto p-2 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontSize:10,maxHeight:100,overflow:"auto"}}>{JSON.stringify({trigger:{type:trig},actions:acts.map(a=>({type:a,delayMinutes:delay}))},null,2)}</pre></div>
+          <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Automation Name</label><input type="text" value={autoName} onChange={e=>setAutoName(e.target.value)} placeholder="e.g. Birthday Reward" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          {saveErr&&<p className="text-xs text-red-400 text-center">{saveErr}</p>}
           <button onClick={save} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saved?<><Check size={14}/>Saved!</>:<><Zap size={14}/>Save Automation</>}</button>
         </div>
       </div>
@@ -1997,7 +2021,7 @@ const LoyaltyPage=()=>{
   const [saving,setSaving]=useState(false);
   const [saved,setSaved]=useState(false);
   const [dashKpis,setDashKpis]=useState<any>(null);
-  const [pointsConfig,setPointsConfig]=useState({pointsPerPound:1,referralBonusPoints:50,referralReferrerPoints:25,pointsExpiryDays:365,minRedeemPoints:100,redeemRate:100});
+  const [pointsConfig,setPointsConfig]=useState({pointsPerPound:1,referralBonusPoints:50,referralReferrerPoints:25,pointsExpiryDays:365,minRedeemPoints:100,redeemRate:100,emailBonusPoints:0});
   const [savingConfig,setSavingConfig]=useState(false);
   const [savedConfig,setSavedConfig]=useState(false);
   useEffect(()=>{
@@ -2012,6 +2036,7 @@ const LoyaltyPage=()=>{
         pointsExpiryDays:b.pointsExpiryDays??365,
         minRedeemPoints:b.minRedeemPoints??100,
         redeemRate:b.redeemRate??100,
+        emailBonusPoints:Number(b.portalSettings?.emailBonusPoints??0),
       }));
     }).catch(()=>{});
   },[]);
@@ -2074,6 +2099,7 @@ const LoyaltyPage=()=>{
             {key:"pointsExpiryDays",label:"Points expiry (days)",min:30,max:730,step:30,icon:"⏱️"},
             {key:"minRedeemPoints",label:"Min points to redeem",min:10,max:1000,step:10,icon:"🔑"},
             {key:"redeemRate",label:"Points per £1 discount",min:10,max:500,step:10,icon:"💰"},
+            {key:"emailBonusPoints",label:"Bonus pts for adding email",min:0,max:500,step:10,icon:"📧"},
           ].map(({key,label,min,max,step,icon})=>(
             <div key={key} className="p-3 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
               <div className="flex items-center gap-1.5 mb-2">
@@ -2128,6 +2154,10 @@ const DataHubPage=()=>{
   const [uploading,setUploading]=useState(false);
   const [importMsg,setImportMsg]=useState<{text:string;ok:boolean}|null>(null);
   const [importResult,setImportResult]=useState<any>(null);
+  // Add customer state
+  const [acName,setAcName]=useState("");const [acPhone,setAcPhone]=useState("");const [acCategory,setAcCategory]=useState("NEW");const [acPoints,setAcPoints]=useState(0);const [acSendMsg,setAcSendMsg]=useState(false);const [acMsg,setAcMsg]=useState("Hi {{name}}, welcome to our loyalty programme! You have {{points}} points to start with.");const [acSaving,setAcSaving]=useState(false);const [acResult,setAcResult]=useState<{text:string;ok:boolean}|null>(null);
+  // Send message state for queue rows
+  const [sendMsgFor,setSendMsgFor]=useState<any|null>(null);const [directMsg,setDirectMsg]=useState("");const [sendingDirect,setSendingDirect]=useState(false);
 
   useEffect(()=>{
     if(tab==="queue"){
@@ -2135,6 +2165,25 @@ const DataHubPage=()=>{
       api.messages.list({limit:50}).then(d=>setQueueMsgs(d.messages??[])).catch(()=>{}).finally(()=>setQueueLoading(false));
     }
   },[tab]);
+
+  const handleAddCustomer=async()=>{
+    if(!acName.trim()||!acPhone.trim()){setAcResult({text:"Name and phone are required.",ok:false});return;}
+    setAcSaving(true);setAcResult(null);
+    try{
+      const res=await api.customers.create({fullName:acName.trim(),whatsappNumber:acPhone.trim(),segment:acCategory,initialPoints:acPoints>0?acPoints:undefined,sendWelcomeMessage:acSendMsg,welcomeMessage:acSendMsg?acMsg:undefined});
+      setAcResult({text:`Customer created${acPoints>0?` with ${acPoints} pts`:""}${acSendMsg?" · welcome message queued":""}`,ok:true});
+      setAcName("");setAcPhone("");setAcPoints(0);setAcSendMsg(false);
+    }catch(e:any){setAcResult({text:e?.message||"Failed to create customer",ok:false});}
+    finally{setAcSaving(false);}
+  };
+
+  const handleSendDirect=async()=>{
+    if(!sendMsgFor||!directMsg.trim())return;
+    setSendingDirect(true);
+    try{await api.messages.send({customerId:sendMsgFor.customerId||sendMsgFor.customer?.id,message:directMsg});setSendMsgFor(null);setDirectMsg("");}
+    catch(e:any){alert(e?.message||"Send failed");}
+    finally{setSendingDirect(false);}
+  };
 
   // Step 1: upload file → get headers
   const handleFileSelect=async(e:React.ChangeEvent<HTMLInputElement>)=>{
@@ -2202,50 +2251,78 @@ const DataHubPage=()=>{
   return(
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-xl font-bold text-white">Data Hub</h1><p className="text-xs text-slate-400 mt-0.5">Message queue monitor · Customer data import · Processing pipeline</p></div>
+        <div><h1 className="text-xl font-bold text-white">Data Hub</h1><p className="text-xs text-slate-400 mt-0.5">Message queue · Add customers · Bulk import</p></div>
       </div>
 
-      {/* Pipeline */}
-      <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Layers size={14} className="text-violet-400"/>Check-In → BullMQ Pipeline</h3>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">{[
-          {l:"Check-In",icon:UserPlus,desc:"QR / POS Webhook",c:"#3b82f6"},
-          {l:"Classify",icon:Layers,desc:"Segment + Tier",c:"#8b5cf6"},
-          {l:"Consent",icon:Shield,desc:"Pre-flight #4",c:"#06b6d4"},
-          {l:"Quota",icon:Lock,desc:"Redis key check",c:"#f59e0b"},
-          {l:"Cooldown",icon:Clock,desc:"72h window",c:"#ec4899"},
-          {l:"BullMQ",icon:Database,desc:"Job enqueued",c:"#22c55e"},
-          {l:"Gateway",icon:Send,desc:"Meta / WAHA",c:"#25D366"}
-        ].map((s,i)=>(
-          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
-            {i>0&&<ChevronRight size={12} className="text-slate-600"/>}
-            <div className="p-2.5 rounded-xl text-center min-w-[72px]" style={{background:s.c+"10",border:"1px solid "+(s.c)+"20"}}>
-              <s.icon size={16} className="mx-auto mb-1" style={{color:s.c}}/>
-              <div className="text-xs font-medium text-white">{s.l}</div>
-              <div className="text-xs text-slate-500" style={{fontSize:9}}>{s.desc}</div>
-            </div>
-          </div>
-        ))}</div>
-      </div>
-
-      <div className="flex gap-1">{["queue","import","format"].map(t=>(
-        <button key={t} onClick={()=>setTab(t)} className={`px-3 py-2 rounded-lg text-xs capitalize ${tab===t?"text-white":"text-slate-400"}`} style={tab===t?{background:"rgba(139,92,246,0.2)"}:{}}>
-          {t==="queue"?"Message Queue":t==="import"?"Import Customers":"Column Format"}
+      <div className="flex gap-1 flex-wrap">{[
+        {k:"queue",l:"Message Queue"},{k:"add",l:"Add Customer"},{k:"import",l:"Import CSV"},{k:"format",l:"Column Format"}
+      ].map(({k,l})=>(
+        <button key={k} onClick={()=>setTab(k)} className={`px-3 py-2 rounded-lg text-xs ${tab===k?"text-white":"text-slate-400"}`} style={tab===k?{background:"rgba(139,92,246,0.2)"}:{}}>
+          {l}
         </button>
       ))}</div>
 
-      {tab==="queue"&&<div className="gc rounded-xl overflow-hidden" style={CARD}>
-        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Time</th></tr></thead>
-          <tbody>{queueLoading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={4} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):queueMsgs.length===0?<tr><td colSpan={4} className="py-8 text-center text-slate-500 text-xs">No messages in queue</td></tr>:queueMsgs.map((m:any)=>(
-            <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
-              <td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td>
-              <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
-              <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono">{m.providerId||<span className="text-slate-700">—</span>}</td>
-              <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
-            </tr>
-          ))}</tbody>
-        </table></div>
-        <div className="p-3 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(STATUS_COLORS).map(([s,c])=><div key={s} className="flex items-center gap-1 text-xs"><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-400">{s}</span><span className="text-white font-medium">({queueMsgs.filter((m:any)=>m.status===s).length})</span></div>)}</div>
+      {tab==="queue"&&<>
+        <div className="gc rounded-xl overflow-hidden" style={CARD}>
+          <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5">
+            <th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th>
+            <th className="text-left py-3 px-3 text-slate-400 font-medium">Phone</th>
+            <th className="text-left py-3 px-3 text-slate-400 font-medium">Category</th>
+            <th className="text-left py-3 px-3 text-slate-400 font-medium">Points</th>
+            <th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th>
+            <th className="text-left py-3 px-3 text-slate-400 font-medium">Time</th>
+            <th className="py-3 px-3"/>
+          </tr></thead>
+            <tbody>{queueLoading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={7} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):queueMsgs.length===0?<tr><td colSpan={7} className="py-8 text-center text-slate-500 text-xs">No messages in queue</td></tr>:queueMsgs.map((m:any)=>(
+              <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
+                <td className="py-2.5 px-4 font-medium text-white">{m.customer?.fullName||"—"}</td>
+                <td className="py-2.5 px-3 text-slate-400 font-mono">{m.customer?.whatsappNumber||m.recipientPhone||"—"}</td>
+                <td className="py-2.5 px-3">{m.customer?.segment?<Badge color="#8b5cf6">{m.customer.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
+                <td className="py-2.5 px-3 text-amber-300 font-medium">{m.customer?.pointsBalance!=null?m.customer.pointsBalance.toLocaleString():"—"}</td>
+                <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
+                <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
+                <td className="py-2.5 px-3"><button onClick={()=>{setSendMsgFor(m);setDirectMsg("");}} className="px-2 py-1 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 transition-all" style={{border:"1px solid rgba(139,92,246,0.3)"}}><MessageSquare size={11} className="inline mr-1"/>Message</button></td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+          <div className="p-3 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(STATUS_COLORS).map(([s,c])=><div key={s} className="flex items-center gap-1 text-xs"><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-400">{s}</span><span className="text-white font-medium">({queueMsgs.filter((m:any)=>m.status===s).length})</span></div>)}</div>
+        </div>
+        {/* Send direct message modal */}
+        {sendMsgFor&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)"}}>
+          <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{background:"#181124",border:"1px solid rgba(139,92,246,0.3)"}}>
+            <div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Send Message to {sendMsgFor.customer?.fullName}</h3><button onClick={()=>setSendMsgFor(null)}><X size={16} className="text-slate-400"/></button></div>
+            <p className="text-xs text-slate-400">{sendMsgFor.customer?.whatsappNumber||sendMsgFor.recipientPhone}</p>
+            <textarea value={directMsg} onChange={e=>setDirectMsg(e.target.value)} rows={4} placeholder="Type your message…" className="w-full px-3 py-2 rounded-xl text-sm text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+            <div className="flex gap-2">
+              <button onClick={handleSendDirect} disabled={!directMsg.trim()||sendingDirect} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{sendingDirect?<RefreshCw size={12} className="animate-spin"/>:<Send size={12}/>}{sendingDirect?"Sending…":"Send"}</button>
+              <button onClick={()=>setSendMsgFor(null)} className="px-4 py-2 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
+            </div>
+          </div>
+        </div>}
+      </>}
+
+      {tab==="add"&&<div className="gc rounded-xl p-5 space-y-4" style={CARD}>
+        <div><h3 className="text-sm font-semibold text-white flex items-center gap-2"><UserPlus size={14} className="text-violet-400"/>Add Customer Manually</h3><p className="text-xs text-slate-400 mt-1">Register a new customer, optionally assign initial points and send a welcome message.</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="text-xs text-slate-400 mb-1 block">Full Name *</label><input value={acName} onChange={e=>setAcName(e.target.value)} placeholder="Jane Smith" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">WhatsApp Phone *</label><input value={acPhone} onChange={e=>setAcPhone(e.target.value)} placeholder="+44 7911 123456" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">Category / Segment</label><select value={acCategory} onChange={e=>setAcCategory(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.3)"}}>{["NEW","REGULAR","VIP","AT_RISK","LOST","BIG_SPENDER"].map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s}</option>)}</select></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">Starting Points</label><input type="number" value={acPoints} onChange={e=>setAcPoints(Number(e.target.value))} min={0} placeholder="0" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        </div>
+        <div className="pt-2 border-t border-white/5">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div onClick={()=>setAcSendMsg(p=>!p)} className="w-10 h-5 rounded-full transition-all relative flex-shrink-0" style={{background:acSendMsg?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.1)"}}>
+              <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:acSendMsg?"calc(100% - 18px)":"2px"}}/>
+            </div>
+            <span className="text-sm text-white">Send welcome message on WhatsApp</span>
+          </label>
+          {acSendMsg&&<div className="mt-3 space-y-2">
+            <textarea value={acMsg} onChange={e=>setAcMsg(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-xl text-xs text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+            <div className="flex flex-wrap gap-1.5">{["{{name}}","{{points}}","{{tier}}","{{business_name}}"].map(v=><button key={v} onClick={()=>setAcMsg(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}}>+{v}</button>)}</div>
+          </div>}
+        </div>
+        {acResult&&<p className="text-xs" style={{color:acResult.ok?"#22c55e":"#ef4444"}}>{acResult.text}</p>}
+        <button onClick={handleAddCustomer} disabled={acSaving||!acName.trim()||!acPhone.trim()} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{acSaving?<RefreshCw size={14} className="animate-spin"/>:<UserPlus size={14}/>}{acSaving?"Creating…":"Add Customer"}</button>
       </div>}
 
       {tab==="import"&&<div className="space-y-4">
@@ -3125,8 +3202,8 @@ const BillingTab=()=>{
       if(!r.ok)throw new Error((await r.json()).error??"Failed");
       const d=await r.json();
       if(d.url)window.location.href=d.url;
-      else setMsg("Contact hello@loyable.io to upgrade to this plan.");
-    }catch(e:any){setMsg(e.message??"Contact hello@loyable.io to upgrade.");}
+      else setMsg("Contact hello@theloyaly.com to upgrade to this plan.");
+    }catch(e:any){setMsg(e.message??"Contact hello@theloyaly.com to upgrade.");}
     finally{setUpgrading(false);}
   };
 
@@ -3139,7 +3216,7 @@ const BillingTab=()=>{
             <div className="text-xl font-bold text-white mt-2">{PLANS.find(p=>p.tier===currentTier)?.price??"—"}<span className="text-xs text-slate-400 font-normal">/month</span></div>
             <div className="text-xs text-slate-400 mt-1">{quota.toLocaleString()} messages per month · Status: {sub?.status??"—"}</div>
           </div>
-          <a href="mailto:hello@loyable.io?subject=Billing+Query" className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Contact Support</a>
+          <a href="mailto:hello@theloyaly.com?subject=Billing+Query" className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Contact Support</a>
         </div>
       </div>
 
@@ -3166,7 +3243,7 @@ const BillingTab=()=>{
       </div>
       {msg&&<div className="p-3 rounded-xl text-xs text-amber-300" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)"}}>{msg}</div>}
       <div className="p-3 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.02)"}}>
-        Payments are processed securely via Stripe. To cancel or change your subscription, contact <a href="mailto:hello@loyable.io" className="text-violet-400 underline">hello@loyable.io</a>. Plan changes take effect immediately.
+        Payments are processed securely via Stripe. To cancel or change your subscription, contact <a href="mailto:hello@theloyaly.com" className="text-violet-400 underline">hello@theloyaly.com</a>. Plan changes take effect immediately.
       </div>
     </div>
   );
@@ -3370,47 +3447,14 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">WhatsApp campaign builder · BullMQ dispatch · AI-assisted copywriting</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
 
-      {/* WhatsApp Ads — Coming Soon */}
-      <div className="relative overflow-hidden rounded-2xl p-5" style={{background:"linear-gradient(135deg,#0d1f12 0%,#0a2e1a 50%,#0f2416 100%)",border:"1px solid rgba(37,211,102,0.25)"}}>
-        {/* Glow blob */}
-        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-20 pointer-events-none" style={{background:"radial-gradient(circle,#25d366,transparent 70%)"}}/>
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
-              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.848L0 24l6.335-1.652A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.371l-.36-.213-3.732.973.999-3.636-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <p className="text-white font-bold text-base">WhatsApp Ads</p>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold tracking-wide" style={{background:"rgba(37,211,102,0.2)",border:"1px solid rgba(37,211,102,0.4)",color:"#4ade80"}}>Coming Soon</span>
-              </div>
-              <p className="text-sm" style={{color:"rgba(255,255,255,0.55)"}}>Send targeted promotional messages to reach new and existing customers directly on WhatsApp — straight from Loyable, no third-party tools needed.</p>
-            </div>
-          </div>
+      {/* WhatsApp Ads — Coming Soon (compact) */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:"rgba(37,211,102,0.06)",border:"1px solid rgba(37,211,102,0.18)"}}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
+          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.848L0 24l6.335-1.652A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.371l-.36-.213-3.732.973.999-3.636-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
         </div>
-        <div className="relative mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            {icon:"🎯",title:"Audience Targeting",desc:"Target by segment, spend, location or custom rules"},
-            {icon:"📊",title:"Real-time Analytics",desc:"Track delivery, read rates and revenue attributed"},
-            {icon:"🤖",title:"AI Copywriter",desc:"Generate high-converting ad copy with one click"},
-          ].map((f,i)=>(
-            <div key={i} className="flex items-start gap-3 rounded-xl p-3" style={{background:"rgba(37,211,102,0.06)",border:"1px solid rgba(37,211,102,0.12)"}}>
-              <span className="text-xl leading-none mt-0.5">{f.icon}</span>
-              <div>
-                <p className="text-white text-xs font-semibold">{f.title}</p>
-                <p className="text-xs mt-0.5" style={{color:"rgba(255,255,255,0.4)"}}>{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="relative mt-4 flex items-center gap-3">
-          <input type="email" placeholder="Enter your email to get early access"
-            className="flex-1 px-3 py-2 rounded-xl text-sm placeholder-slate-500 outline-none"
-            style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
-          <button className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-all hover:opacity-90"
-            style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
-            Notify Me
-          </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2"><span className="text-sm font-semibold text-white">WhatsApp Ads</span><span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{background:"rgba(37,211,102,0.2)",color:"#4ade80"}}>Coming Soon</span></div>
+          <p className="text-xs mt-0.5 truncate" style={{color:"rgba(255,255,255,0.45)"}}>Targeted WhatsApp promotions with AI copywriting and real-time attribution — built right into The Loyaly.</p>
         </div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -3617,20 +3661,73 @@ const buildBillText=(order:ActiveOrder,currency:string,bizType?:string)=>{
     ...(order.cname?[`\nCustomer: ${order.cname}`]:[]),
   ].join("\n");
   const discountLine=order.discount>0?`\nDiscount: -${currency} ${order.discount.toFixed(0)}`:"";
-  return `${header}\n\n${DIVIDER}\n${lines}\n${DIVIDER}${discountLine}\n*TOTAL: ${currency} ${total.toFixed(0)}*\n\n${thankYou}\n\n_message powered by loyable.site_`;
+  return `${header}\n\n${DIVIDER}\n${lines}\n${DIVIDER}${discountLine}\n*TOTAL: ${currency} ${total.toFixed(0)}*\n\n${thankYou}\n\n_message powered by theloyaly.com_`;
 };
-const printBill=(order:ActiveOrder,currency:string)=>{
-  const total=calcOrderTotal(order);
+const printBill=(order:ActiveOrder,currency:string,fbrData?:{invoiceNo?:string;ntn?:string;taxNo?:string;gstRate?:number;isPK?:boolean})=>{
+  const subtotal=order.items.reduce((s,i)=>s+i.qty*i.price,0);
+  const discountAmt=order.discount||0;
+  const afterDiscount=subtotal-discountAmt;
+  const gstRate=fbrData?.gstRate??0;
+  // Tax-inclusive GST: gstAmount = total × rate / (100 + rate)
+  const gstAmt=fbrData?.isPK&&gstRate>0?afterDiscount*(gstRate/(100+gstRate)):0;
+  const total=afterDiscount;
   const bizName=localStorage.getItem("biz_name")||"Receipt";
-  const w=window.open("","_blank","width=400,height=600");if(!w)return;
-  w.document.write(`<html><head><title>Receipt – ${bizName}</title><style>body{font-family:monospace;padding:20px;max-width:300px;margin:0 auto}h2{text-align:center;font-size:16px}hr{border:1px dashed #ccc}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-weight:bold;font-size:16px;border-top:2px solid #000;padding-top:8px;margin-top:8px}.footer{text-align:center;margin-top:16px;font-size:11px;color:#666}@media print{button{display:none}}</style></head><body>
-  <h2>✨ ${bizName} ✨</h2><hr/>${order.table?`<p style="text-align:center">Table: ${order.table}</p>`:""}${order.cname?`<p style="text-align:center">Customer: ${order.cname}</p>`:""}
-  <hr/>${order.items.map(i=>`<div class="row"><span>${i.name} ×${i.qty}</span><span>${currency} ${(i.qty*i.price).toFixed(0)}</span></div>`).join("")}
-  ${order.discount>0?`<div class="row"><span>Discount</span><span>-${currency} ${order.discount.toFixed(0)}</span></div>`:""}
-  <div class="row total"><span>TOTAL</span><span>${currency} ${total.toFixed(0)}</span></div><hr/>
-  <p class="footer">Thank you for choosing us!<br/>message powered by loyable.site</p>
-  <br/><button onclick="window.print()">🖨 Print</button></body></html>`);
-  w.document.close();setTimeout(()=>w.print(),400);
+  const bizAddr=localStorage.getItem("biz_address")||"";
+  const bizPhone=localStorage.getItem("biz_phone")||"";
+  const logoUrl=localStorage.getItem("biz_logo")||"";
+  const now=new Date();
+  const dateStr=now.toLocaleDateString("en-GB");
+  const timeStr=now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  const orderNo=order.id?.slice(-6).toUpperCase()||Math.random().toString(36).slice(2,8).toUpperCase();
+  const paid=order.paymentMode||"Cash";
+  const cash=order.cashGiven||total;
+  const change=Math.max(0,cash-total);
+  const w=window.open("","_blank","width=380,height=700");if(!w)return;
+  w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title><meta charset="utf-8"/><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margin:0 auto;padding:8px;background:#fff;color:#000}
+.center{text-align:center}.bold{font-weight:bold}.big{font-size:15px}.sm{font-size:10px}.xs{font-size:9px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 0}
+.dash{border-top:1px dashed #000;margin:6px 0}
+.double{border-top:2px solid #000;margin:6px 0}
+.logo{display:block;margin:0 auto 6px;max-width:120px;max-height:40px;object-fit:contain}
+.fbr-box{border:1px solid #000;padding:6px;margin:6px 0;text-align:center}
+.qr{display:block;margin:6px auto;width:80px;height:80px}
+@media print{body{width:80mm}button{display:none!important}}
+</style></head><body>
+${logoUrl?`<img src="${logoUrl}" class="logo"/>`:""}
+<div class="center bold big">${bizName.toUpperCase()}</div>
+${bizAddr?`<div class="center sm">${bizAddr}</div>`:""}
+${bizPhone?`<div class="center sm">Tel: ${bizPhone}</div>`:""}
+${fbrData?.isPK&&fbrData.ntn?`<div class="center sm">NTN: ${fbrData.ntn}</div>`:""}
+${fbrData?.isPK&&fbrData.taxNo?`<div class="center sm">STRN: ${fbrData.taxNo}</div>`:""}
+<div class="dash"></div>
+<div class="row sm"><span>Date: ${dateStr}</span><span>Time: ${timeStr}</span></div>
+<div class="row sm"><span>Order #: ${orderNo}</span>${order.table?`<span>Table: ${order.table}</span>`:""}</div>
+${order.cname?`<div class="sm">Customer: ${order.cname}</div>`:""}
+<div class="dash"></div>
+<div class="row bold xs"><span>ITEM</span><span>QTY</span><span>PRICE</span><span>AMOUNT</span></div>
+<div class="dash"></div>
+${order.items.map(i=>{
+  const amt=(i.qty*i.price).toFixed(2);
+  return `<div class="row xs"><span style="max-width:100px;overflow:hidden">${i.name}</span><span>${i.qty}</span><span>${i.price.toFixed(2)}</span><span>${amt}</span></div>`;
+}).join("")}
+<div class="dash"></div>
+<div class="row sm"><span>Sub Total</span><span>${currency} ${subtotal.toFixed(2)}</span></div>
+${discountAmt>0?`<div class="row sm"><span>Discount</span><span>-${currency} ${discountAmt.toFixed(2)}</span></div>`:""}
+${gstAmt>0?`<div class="row sm"><span>GST (${gstRate}% incl.)</span><span>${currency} ${gstAmt.toFixed(2)}</span></div>`:""}
+<div class="double"></div>
+<div class="row bold big"><span>TOTAL</span><span>${currency} ${total.toFixed(2)}</span></div>
+<div class="dash"></div>
+<div class="row sm"><span>Payment</span><span>${paid}</span></div>
+${paid==="Cash"||paid==="CASH"?`<div class="row sm"><span>Cash</span><span>${currency} ${Number(cash).toFixed(2)}</span></div><div class="row sm"><span>Change</span><span>${currency} ${change.toFixed(2)}</span></div>`:""}
+<div class="dash"></div>
+${fbrData?.isPK&&fbrData.invoiceNo?`<div class="fbr-box"><div class="bold sm">FBR TAX INVOICE</div><div class="xs" style="word-break:break-all">${fbrData.invoiceNo}</div><div class="xs">Verify at: fbr.gov.pk/TaxInvoice</div></div>`:""}
+<div class="center bold" style="margin:10px 0;font-size:14px">THANK YOU!</div>
+<div class="center xs">Powered by theloyaly.com</div>
+<br/><div class="center"><button onclick="window.print()" style="padding:8px 20px;font-size:13px;cursor:pointer">🖨 Print</button></div>
+</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),500);
 };
 
 // ── Menu Editor Modal ─────────────────────────────────────────────
@@ -3778,15 +3875,21 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
   };
 
   const [ptsEarned,setPtsEarned]=useState<number|null>(null);
+  const [lastFbrData,setLastFbrData]=useState<{invoiceNo?:string;ntn?:string;taxNo?:string;gstRate?:number;isPK?:boolean}|undefined>(undefined);
   const markPaid=async()=>{
     setPaying(true);setErr("");setPtsEarned(null);
     try{
       const r=await api.pos.createSale({customerPhone:order.phone?normPhone(order.phone):undefined,customerName:order.cname,items:order.items.map(i=>({name:i.name,qty:i.qty,unitPrice:i.price})),paymentMode:order.payMode,discount:order.discount,notes:order.notes||order.table?`${order.table||""}${order.notes?` | ${order.notes}`:""}`:""});
       if(r?.pointsEarned)setPtsEarned(r.pointsEarned);
+      const isPK=(localStorage.getItem("biz_country")||"").toUpperCase()==="PK";
+      const fbrInfo=isPK?{invoiceNo:r?.fbrInvoiceNumber,ntn:r?.ntn||localStorage.getItem("biz_ntn")||undefined,taxNo:r?.taxNumber||localStorage.getItem("biz_taxNumber")||undefined,gstRate:r?.gstRate||Number(localStorage.getItem("biz_gstRate")||17),isPK:true}:undefined;
+      setLastFbrData(fbrInfo);
       // Deduct inventory
       order.items.forEach(i=>deductStock(bizType,i.name,i.qty));
       updateOrder(order.id,{status:"PAID"});
       onPaid({...order,status:"PAID"});
+      // Auto-print if PK
+      if(isPK)printBill(order,currency,fbrInfo);
       // Send WhatsApp receipt
       await sendWA(order);
       setTimeout(()=>removeOrder(order.id),6000);
@@ -3833,7 +3936,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
             {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
           </button>
           <button onClick={openEdit} className="px-3 py-2 rounded-xl text-violet-300 hover:text-white transition-colors" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.25)"}} title="Edit Order"><Edit size={14}/></button>
-          <button onClick={()=>printBill(order,currency)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
+          <button onClick={()=>printBill(order,currency,lastFbrData)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
           <button onClick={()=>{if(confirm("Delete this unpaid order?"))removeOrder(order.id);}} className="px-3 py-2 rounded-xl text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}} title="Delete Order"><Trash2 size={14}/></button>
         </div>
       )}
@@ -3884,7 +3987,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
           <div className="flex items-center gap-2 text-green-400 text-xs">
             <CheckCircle size={13}/>
             <span>Paid · {order.payMode}</span>
-            <button onClick={()=>printBill(order,currency)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button>
+            <button onClick={()=>printBill(order,currency,lastFbrData)} className="ml-auto p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}} title="Print"><Printer size={12}/></button>
           </div>
           {ptsEarned!=null&&ptsEarned>0&&(
             <div className="flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold" style={{background:"rgba(245,158,11,0.08)",borderRadius:8,padding:"4px 8px"}}>
@@ -4043,7 +4146,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [cat,setCat]=useState(0);
   const [order,setOrder]=useState<{name:string;price:number;qty:number}[]>([]);
   const [mode,setMode]=useState<"CASH"|"CARD"|"WALLET">("CASH");
-  const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);
+  const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);const [discountMode,setDiscountMode]=useState<'value'|'percent'>('value');
   const [table,setTable]=useState("");const [notes,setNotes]=useState("");
   const [placing,setPlacing]=useState(false);const [placed,setPlaced]=useState(false);
   const [barcodeFlash,setBarcodeFlash]=useState<string|null>(null);
@@ -4098,17 +4201,19 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const placeOrder=()=>{
     if(!order.length)return;
     setPlacing(true);
-    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount,phone,cname,payMode:mode,status:"UNPAID",notes});
+    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount:discountValue,phone,cname,payMode:mode,status:"UNPAID",notes});
     setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");
     setPlaced(true);setTimeout(()=>setPlaced(false),3000);
     setPlacing(false);
   };
 
-  const subtotal=order.reduce((s,i)=>s+i.qty*i.price,0)-discount;
+  const orderRaw=order.reduce((s,i)=>s+i.qty*i.price,0);
+  const discountValue=discountMode==='percent'?orderRaw*(discount/100):discount;
+  const subtotal=orderRaw-discountValue;
   const total=Math.max(0,subtotal);
 
   const cartCount=order.reduce((s,i)=>s+i.qty,0);
-  const total2=Math.max(0,order.reduce((s,i)=>s+i.qty*i.price,0)-discount);
+  const total2=Math.max(0,orderRaw-discountValue);
 
   return(
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -4209,7 +4314,14 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
               <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
             ))}
           </div>
-          <div className="flex items-center gap-3"><label className="text-xs text-slate-400">Discount ({currency})</label><input className="w-28 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={0.01} placeholder="0.00" value={discount||""} onChange={e=>setDiscount(Number(e.target.value))}/></div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs text-slate-400">Discount</label>
+            <div className="flex rounded-lg overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.1)"}}>
+              {(['value','percent'] as const).map(m=><button key={m} onClick={()=>setDiscountMode(m)} className="px-2.5 py-1 text-xs font-medium transition-all" style={discountMode===m?{background:"rgba(139,92,246,0.4)",color:"white"}:{background:"rgba(255,255,255,0.04)",color:"#94a3b8"}}>{m==='value'?currency:'%'}</button>)}
+            </div>
+            <input className="w-20 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={discountMode==='percent'?1:0.01} max={discountMode==='percent'?100:undefined} placeholder={discountMode==='percent'?'%':'0.00'} value={discount||''} onChange={e=>setDiscount(Number(e.target.value))}/>
+            {discount>0&&discountValue>0&&<span className="text-xs text-amber-400">= {currency} {discountValue.toFixed(2)} off</span>}
+          </div>
         </div>
       </div>
 
@@ -4220,7 +4332,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           <div className="space-y-1.5 text-xs mb-4 max-h-44 overflow-y-auto">
             {order.map((i,idx)=><div key={idx} className="flex justify-between text-slate-300"><span>{i.name} ×{i.qty}</span><span>{currency} {(i.qty*i.price).toFixed(2)}</span></div>)}
             {!order.length&&<div className="text-slate-500 text-center py-3">Tap items from the menu</div>}
-            {discount>0&&<div className="flex justify-between text-amber-400"><span>Discount</span><span>-{currency} {discount.toFixed(2)}</span></div>}
+            {discountValue>0&&<div className="flex justify-between text-amber-400"><span>Discount {discount>0?`(${discount}${discountMode==='percent'?'%':''})`:''}  </span><span>-{currency} {discountValue.toFixed(2)}</span></div>}
           </div>
           <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
           <button onClick={placeOrder} disabled={placing||!order.length} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#f59e0b,#d97706)"}}>
@@ -4311,9 +4423,15 @@ const SalesHistory=({currency}:{currency:string})=>{
 // ── FBR Panel (shared) ────────────────────────────────────────────
 const FBRPanel=()=>{
   const [stats,setStats]=useState<any>(null);
-  const [s,setS]=useState({ntn:"",strn:"",fbrPosId:"",fbrToken:"",gstRate:"17",fbrEnabled:false});
+  const [s,setS]=useState({ntn:"",taxNumber:"",fbrPosId:"",fbrUserId:"",fbrPassword:"",gstRate:"17",fbrSandbox:true,fbrEnabled:false});
   const [saving,setSaving]=useState(false);const [testing,setTesting]=useState(false);const [res,setRes]=useState<string|null>(null);
-  useEffect(()=>{api.pos.stats().then(setStats).catch(()=>{});},[]);
+  const [showPass,setShowPass]=useState(false);
+  useEffect(()=>{
+    api.pos.stats().then(setStats).catch(()=>{});
+    api.settings.get().then((d:any)=>{
+      if(d?.business){const b=d.business;setS({ntn:b.ntn||"",taxNumber:b.taxNumber||"",fbrPosId:String(b.fbrPosId||""),fbrUserId:b.fbrUserId||"",fbrPassword:b.fbrPassword||"",gstRate:String(b.gstRate||17),fbrSandbox:b.fbrSandbox!==false,fbrEnabled:b.fbrEnabled||false});}
+    }).catch(()=>{});
+  },[]);
   return(
     <div className="space-y-4">
       {stats&&<div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -4323,27 +4441,62 @@ const FBRPanel=()=>{
         <KPI icon={CheckCircle} label="FBR Submitted" value={stats.fbrSubmitted??0} color={C.green}/>
         <KPI icon={XCircle} label="FBR Pending" value={stats.fbrFailed??0} color={C.red}/>
       </div>}
+
+      {/* Setup Guide */}
+      <div className="gc rounded-2xl p-4" style={{...CARD,border:"1px solid rgba(99,102,241,0.25)"}}>
+        <div className="flex items-start gap-3">
+          <Info size={15} className="text-indigo-400 mt-0.5 flex-shrink-0"/>
+          <div>
+            <div className="text-xs font-semibold text-indigo-400 mb-2">How to get your FBR credentials</div>
+            <ol className="space-y-1.5 text-xs text-slate-400 list-none">
+              {[
+                ["1","Go to","iris.fbr.gov.pk","and register your business"],
+                ["2","Login → POS Integration → Register POS → get your POSID"],
+                ["3","Under POS settings, set a dedicated POS Password (separate from IRIS login)"],
+                ["4","Your NTN is in your registration certificate. STRN is your Sales Tax Reg. No."],
+                ["5","Start in Sandbox mode to test — sandbox always returns a valid number"],
+              ].map(([n,...parts])=>(
+                <li key={n} className="flex gap-2"><span className="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-400 text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span><span>{parts.join("")}</span></li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </div>
+
       <div className="gc rounded-2xl p-5" style={CARD}>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm font-semibold text-white">FBR Configuration</span>
+          <span className="text-sm font-semibold text-white">FBR / PRA Configuration</span>
           <button onClick={()=>setS(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrEnabled?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrEnabled?22:2}}/></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          {[["NTN","ntn","National Tax Number"],["STRN","strn","Sales Tax Reg. No."],["POS ID","fbrPosId","FBR-assigned POS ID"],["FBR Token","fbrToken","PRAL API Bearer Token"],["GST Rate (%)","gstRate","Default 17"]].map(([label,key,ph])=>(
-            <div key={key}><label className="text-[10px] text-slate-400 block mb-1">{label}</label>
-              <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder={ph} value={(s as any)[key]} onChange={e=>setS(p=>({...p,[key]:e.target.value}))}/>
-            </div>
-          ))}
+          <div><label className="text-[10px] text-slate-400 block mb-1">NTN (National Tax Number)</label>
+            <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="1234567-8" value={s.ntn} onChange={e=>setS(p=>({...p,ntn:e.target.value}))}/></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">STRN / Tax Number</label>
+            <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Sales Tax Reg. No." value={s.taxNumber} onChange={e=>setS(p=>({...p,taxNumber:e.target.value}))}/></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">POS ID (from IRIS portal)</label>
+            <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none font-mono" style={inpS} placeholder="e.g. 12345" value={s.fbrPosId} onChange={e=>setS(p=>({...p,fbrPosId:e.target.value}))}/></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">IRIS User ID</label>
+            <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Your IRIS username" value={s.fbrUserId} onChange={e=>setS(p=>({...p,fbrUserId:e.target.value}))}/></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">POS Password</label>
+            <div className="relative"><input type={showPass?"text":"password"} className="w-full px-3 py-2 pr-8 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="POS API password" value={s.fbrPassword} onChange={e=>setS(p=>({...p,fbrPassword:e.target.value}))}/>
+              <button type="button" onClick={()=>setShowPass(p=>!p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"><Eye size={12}/></button></div></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">GST Rate (%)</label>
+            <input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none font-mono" style={inpS} placeholder="17" value={s.gstRate} onChange={e=>setS(p=>({...p,gstRate:e.target.value}))}/></div>
+        </div>
+        {/* Sandbox toggle */}
+        <div className="flex items-center justify-between mb-4 px-3 py-2 rounded-xl" style={{background:"rgba(255,255,255,0.04)"}}>
+          <div><div className="text-xs text-white font-medium">Sandbox Mode</div><div className="text-[10px] text-slate-500">Use FBR test environment — invoice numbers prefixed SB-</div></div>
+          <button onClick={()=>setS(p=>({...p,fbrSandbox:!p.fbrSandbox}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrSandbox?"bg-amber-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrSandbox?22:2}}/></button>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={async()=>{setSaving(true);try{await api.settings.update({ntn:s.ntn,strn:s.strn,fbrPosId:parseInt(s.fbrPosId)||undefined,fbrToken:s.fbrToken,gstRate:parseFloat(s.gstRate)||17,fbrEnabled:s.fbrEnabled});}catch{}setSaving(false);}} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save"}</button>
-          <button onClick={async()=>{setTesting(true);setRes(null);try{await api.pos.stats();setRes("ok");}catch{setRes("fail");}setTesting(false);}} disabled={testing} className="px-4 py-2 rounded-xl text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>{testing?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test</button>
+          <button onClick={async()=>{setSaving(true);try{await api.settings.update({ntn:s.ntn,taxNumber:s.taxNumber,fbrPosId:parseInt(s.fbrPosId)||undefined,fbrUserId:s.fbrUserId,fbrPassword:s.fbrPassword,gstRate:parseFloat(s.gstRate)||17,fbrSandbox:s.fbrSandbox,fbrEnabled:s.fbrEnabled});localStorage.setItem("biz_ntn",s.ntn);localStorage.setItem("biz_taxNumber",s.taxNumber);localStorage.setItem("biz_gstRate",s.gstRate);}catch{}setSaving(false);}} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Settings"}</button>
+          <button onClick={async()=>{setTesting(true);setRes(null);try{await api.pos.stats();setRes("ok");}catch{setRes("fail");}setTesting(false);}} disabled={testing} className="px-4 py-2 rounded-xl text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>{testing?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test Connection</button>
           {res&&<span className={`px-3 py-2 rounded-xl text-xs ${res==="ok"?"text-green-400":"text-red-400"}`}>{res==="ok"?"✓ Connected":"✗ Failed"}</span>}
         </div>
       </div>
-      <div className="gc rounded-2xl p-4" style={{...CARD,border:"1px solid rgba(245,158,11,0.2)"}}>
-        <div className="flex items-start gap-3"><Info size={15} className="text-amber-400 mt-0.5 flex-shrink-0"/><div><div className="text-xs font-semibold text-amber-400 mb-1">Sandbox Mode</div><div className="text-xs text-slate-400">FBR submissions are mocked in non-production. Invoice numbers are prefixed <code className="text-slate-300">SANDBOX-</code>.</div></div></div>
-      </div>
+      {!s.fbrSandbox&&<div className="gc rounded-2xl p-4" style={{...CARD,border:"1px solid rgba(239,68,68,0.3)"}}>
+        <div className="flex items-start gap-3"><AlertTriangle size={15} className="text-red-400 mt-0.5 flex-shrink-0"/><div><div className="text-xs font-semibold text-red-400 mb-1">Live Mode Active</div><div className="text-xs text-slate-400">All invoices are submitted to FBR production servers. Make sure your credentials are correct before processing sales.</div></div></div>
+      </div>}
     </div>
   );
 };
@@ -4414,7 +4567,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{biz.icon}</span>
-          <div><h1 className="text-2xl font-bold text-white tracking-tight">Loyable POS</h1><p className="text-xs text-slate-400 mt-0.5">{biz.label} · {currency}</p></div>
+          <div><h1 className="text-2xl font-bold text-white tracking-tight">The Loyaly POS</h1><p className="text-xs text-slate-400 mt-0.5">{biz.label} · {currency}</p></div>
         </div>
         <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(255,255,255,0.05)"}}>
           {allTabs.map(([t,label])=>(

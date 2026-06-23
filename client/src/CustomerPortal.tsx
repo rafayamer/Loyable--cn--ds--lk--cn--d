@@ -50,6 +50,19 @@ function getSlug(): string {
 
 // ── LocalStorage helpers for portal session ───────────────────────
 const STORAGE_KEY = 'loyable_portal';
+
+// Theme-aware logo: white.png on dark bg, black.png on light bg
+// Falls back to logo.svg if PNG files not yet uploaded
+function ThemeLogo({ dark, className = '' }: { dark: boolean; className?: string }) {
+  return (
+    <img
+      src={dark ? '/white.png' : '/black.png'}
+      onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }}
+      alt="The Loyaly"
+      className={className}
+    />
+  );
+}
 function saveSession(slug: string, token: string, name: string) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ slug, token, name, ts: Date.now() }));
 }
@@ -68,23 +81,29 @@ function clearSession() { localStorage.removeItem(STORAGE_KEY); }
 function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string; bizName: string; portalSettings: any; onLogin: (token: string, name: string) => void }) {
   const [phone, setPhone] = useState('');
   const [name,  setName]  = useState('');
+  const [email, setEmail] = useState('');
+  const [consent, setConsent] = useState(false);
   const [err,   setErr]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [bonusMsg, setBonusMsg] = useState('');
   const ps = portalSettings ?? {};
+  const emailBonusPts = Number(ps.emailBonusPoints ?? 0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setErr('');
+    setErr('');setBonusMsg('');
+    if (!consent) { setErr('Please agree to the terms to continue.'); return; }
     setLoading(true);
     try {
       const ref = new URLSearchParams(window.location.search).get('ref') ?? undefined;
       const res = await fetch(`/api/portal/${slug}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}) }),
+        body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}), ...(email ? { email } : {}), consentMarketing: consent }),
       }).then(r => r.json());
       if (!res.token) throw new Error(res.error ?? 'Login failed');
       saveSession(slug, res.token, res.customer.name);
+      if (res.emailBonusAwarded > 0) setBonusMsg(`+${res.emailBonusAwarded} bonus points for adding your email!`);
       onLogin(res.token, res.customer.name);
     } catch (e: any) {
       setErr(e.message ?? 'Login failed');
@@ -98,7 +117,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
-          <img src="/logo.svg" alt="Loyable" className="w-28 h-28 object-contain mx-auto mb-4"/>
+          <ThemeLogo dark={true} className="w-28 h-28 object-contain mx-auto mb-4"/>
           <h1 className="text-white font-black text-2xl">{bizName}</h1>
           <p className="text-purple-300 text-sm mt-1">Your Loyalty Rewards</p>
         </div>
@@ -140,13 +159,31 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
                 <input type="text" inputMode="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required autoComplete="given-name" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
+            {/* Optional email for bonus points */}
+            <div>
+              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
+                Email {emailBonusPts > 0 && <span className="normal-case text-yellow-300 font-normal">(+{emailBonusPts} bonus pts)</span>}
+              </label>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current" strokeWidth={2}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+                <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com (optional)" autoComplete="email" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+              </div>
+            </div>
+            {/* Consent + T&C */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <div onClick={() => setConsent(p => !p)} className="mt-0.5 w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center transition-all" style={{ background: consent ? 'linear-gradient(135deg,#8b5cf6,#7c3aed)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(139,92,246,0.5)' }}>
+                {consent && <svg viewBox="0 0 12 12" className="w-3 h-3"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth={2} fill="none"/></svg>}
+              </div>
+              <span className="text-xs text-purple-200 leading-relaxed">I agree to receive loyalty messages on WhatsApp and accept the <span className="text-purple-300 underline">terms & conditions</span>. You can opt out anytime by replying STOP.</span>
+            </label>
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
-            <button type="submit" disabled={loading} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+            {bonusMsg && <div className="px-4 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fde68a' }}>🎉 {bonusMsg}</div>}
+            <button type="submit" disabled={loading||!consent} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
               {loading ? 'Checking...' : 'View My Rewards →'}
             </button>
           </form>
         </div>
-        <p className="text-center text-purple-400 text-xs mt-6">Powered by Loyable · Your data is secure</p>
+        <p className="text-center text-purple-400 text-xs mt-6">Powered by The Loyaly · Your data is secure</p>
       </div>
     </div>
   );
@@ -479,7 +516,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   if (loading) return (
     <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: '#f8fafc' }}>
       <div className="text-center">
-        <img src="/logo.svg" alt="" className="w-12 h-12 mx-auto mb-3 animate-pulse object-contain"/>
+        <ThemeLogo dark={true} className="w-12 h-12 mx-auto mb-3 animate-pulse object-contain"/>
         <p className="text-slate-500 text-sm">Loading your rewards...</p>
       </div>
     </div>
@@ -515,7 +552,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
       {/* Header */}
       <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: portalDark ? 'rgba(15,10,30,0.95)' : 'rgba(248,250,252,0.9)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Loyable" className="w-7 h-7 object-contain"/>
+          <ThemeLogo dark={portalDark} className="w-7 h-7 object-contain"/>
           <span className={`font-bold text-sm ${portalDark ? 'text-white' : 'text-slate-800'}`}>{bizName}</span>
         </div>
         <div className="flex items-center gap-3">
@@ -656,14 +693,14 @@ export default function CustomerPortal() {
 
   if (!loaded) return (
     <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
-      <img src="/logo.svg" alt="" className="w-12 h-12 object-contain animate-pulse"/>
+      <ThemeLogo dark={true} className="w-12 h-12 object-contain animate-pulse"/>
     </div>
   );
 
   if (!slug || !biz) return (
     <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
       <div className="text-center text-white">
-        <img src="/logo.svg" alt="Loyable" className="w-14 h-14 object-contain mx-auto mb-4"/>
+        <ThemeLogo dark={true} className="w-14 h-14 object-contain mx-auto mb-4"/>
         <h1 className="font-black text-xl mb-2">Loyalty Portal</h1>
         {slug
           ? <p className="text-purple-300 text-sm">The loyalty program <span className="font-mono bg-white/10 px-1 rounded">/{slug}</span> was not found or is inactive.</p>

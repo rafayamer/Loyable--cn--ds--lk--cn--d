@@ -690,9 +690,9 @@ const PlatformSettingsSchema = z.object({
 });
 
 const defaultPlatformSettings = {
-  platformName:          'Loyable',
-  platformUrl:           'https://loyable.io',
-  supportEmail:          'support@loyable.io',
+  platformName:          'The Loyaly',
+  platformUrl:           'https://theloyaly.com',
+  supportEmail:          'support@theloyaly.com',
   maintenanceMode:       false,
   maintenanceBannerText: '',
   allowNewRegistrations: true,
@@ -817,12 +817,12 @@ const testEmailConfigHandler = async (req: Request, res: Response): Promise<void
     const { sendEmail } = await import('../utils/email.util');
     await sendEmail({
       to,
-      subject:    'Loyable Admin — Test Email',
+      subject:    'The Loyaly Admin — Test Email',
       templateId: 'PLATFORM_ANNOUNCEMENT',
       variables:  {
         name:    'Admin',
         subject: 'Email configuration test',
-        body:    'This is a test email from the Loyable platform admin. Your email provider is configured correctly.',
+        body:    'This is a test email from the The Loyaly platform admin. Your email provider is configured correctly.',
       },
     });
 
@@ -861,14 +861,14 @@ const EmailTemplateSchema = z.object({
 
 const builtinTemplates: Record<string, { subject: string; htmlBody: string; textBody: string; variables: string[]; isActive: boolean }> = {
   PASSWORD_RESET: {
-    subject:   'Reset your Loyable password',
+    subject:   'Reset your The Loyaly password',
     htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">Reset your password</h2><p>Hi {{name}},</p><p>Click the link below to reset your password. This link expires in {{expiryMinutes}} minutes.</p><a href="{{resetUrl}}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Reset Password</a><p style="color:#888;font-size:12px;margin-top:24px">If you didn't request this, you can safely ignore this email.</p></div>`,
     textBody:  `Hi {{name}}, reset your password at: {{resetUrl}} (expires in {{expiryMinutes}} minutes)`,
     variables: ['name', 'resetUrl', 'expiryMinutes'],
     isActive:  true,
   },
   STAFF_INVITE: {
-    subject:   `You've been invited to {{businessName}} on Loyable`,
+    subject:   `You've been invited to {{businessName}} on The Loyaly`,
     htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">You're invited!</h2><p>Hi {{name}},</p><p>You've been added as <strong>{{role}}</strong> at <strong>{{businessName}}</strong>.</p><a href="{{acceptUrl}}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Accept Invitation</a><p style="color:#888;font-size:12px;margin-top:24px">This invitation expires in {{expiryHours}} hours.</p></div>`,
     textBody:  `You've been invited to {{businessName}} as {{role}}. Accept at: {{acceptUrl}}`,
     variables: ['name', 'businessName', 'role', 'acceptUrl', 'expiryHours'],
@@ -897,14 +897,14 @@ const builtinTemplates: Record<string, { subject: string; htmlBody: string; text
   },
   PLATFORM_ANNOUNCEMENT: {
     subject:   '{{subject}}',
-    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">{{subject}}</h2><p>Hi {{name}},</p><div>{{body}}</div><p style="color:#888;font-size:12px;margin-top:24px">Loyable Platform Team</p></div>`,
+    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">{{subject}}</h2><p>Hi {{name}},</p><div>{{body}}</div><p style="color:#888;font-size:12px;margin-top:24px">The Loyaly Platform Team</p></div>`,
     textBody:  `Hi {{name}}, {{body}}`,
     variables: ['name', 'subject', 'body'],
     isActive:  true,
   },
   WELCOME: {
-    subject:   'Welcome to Loyable, {{businessName}}! 🎉',
-    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">Welcome aboard! 🎉</h2><p>Hi {{name}},</p><p>Your Loyable workspace for <strong>{{businessName}}</strong> is ready. Start building loyalty programmes and automated campaigns in minutes.</p><a href="{{dashboardUrl}}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Go to Dashboard</a></div>`,
+    subject:   'Welcome to The Loyaly, {{businessName}}! 🎉',
+    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#6366f1">Welcome aboard! 🎉</h2><p>Hi {{name}},</p><p>Your The Loyaly workspace for <strong>{{businessName}}</strong> is ready. Start building loyalty programmes and automated campaigns in minutes.</p><a href="{{dashboardUrl}}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Go to Dashboard</a></div>`,
     textBody:  `Welcome {{name}}! Your workspace for {{businessName}} is ready. Go to: {{dashboardUrl}}`,
     variables: ['name', 'businessName', 'dashboardUrl'],
     isActive:  true,
@@ -917,8 +917,8 @@ const builtinTemplates: Record<string, { subject: string; htmlBody: string; text
     isActive:  true,
   },
   SUSPENSION_NOTICE: {
-    subject:   'Your Loyable account has been suspended',
-    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#ef4444">Account Suspended</h2><p>Hi {{name}},</p><p>Your Loyable account for <strong>{{businessName}}</strong> has been suspended. Reason: <em>{{reason}}</em></p><p>Please contact <a href="mailto:{{supportEmail}}">{{supportEmail}}</a> to resolve this.</p></div>`,
+    subject:   'Your The Loyaly account has been suspended',
+    htmlBody:  `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2 style="color:#ef4444">Account Suspended</h2><p>Hi {{name}},</p><p>Your The Loyaly account for <strong>{{businessName}}</strong> has been suspended. Reason: <em>{{reason}}</em></p><p>Please contact <a href="mailto:{{supportEmail}}">{{supportEmail}}</a> to resolve this.</p></div>`,
     textBody:  `Hi {{name}}, your account {{businessName}} has been suspended. Reason: {{reason}}. Contact: {{supportEmail}}`,
     variables: ['name', 'businessName', 'reason', 'supportEmail'],
     isActive:  true,

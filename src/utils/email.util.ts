@@ -12,8 +12,8 @@
 //    4. none                → dev: log to console · prod: warn
 //
 //  Set these to go live:
-//    EMAIL_FROM        e.g. "hello@loyable.app"   (required)
-//    EMAIL_FROM_NAME   e.g. "Loyable"             (optional)
+//    EMAIL_FROM        e.g. "hello@theloyaly.com"   (required)
+//    EMAIL_FROM_NAME   e.g. "The Loyaly"             (optional)
 //    RESEND_API_KEY    or SENDGRID_API_KEY        (one required)
 // ================================================================
 
@@ -26,8 +26,8 @@ export interface EmailOptions {
   html?:       string;
 }
 
-const FROM_EMAIL = () => process.env.EMAIL_FROM || 'no-reply@loyable.app';
-const FROM_NAME  = () => process.env.EMAIL_FROM_NAME || 'Loyable';
+const FROM_EMAIL = () => process.env.EMAIL_FROM || 'no-reply@theloyaly.com';
+const FROM_NAME  = () => process.env.EMAIL_FROM_NAME || 'The Loyaly';
 
 /** Which provider, if any, is configured. Exposed for health checks. */
 export const emailProvider = (): 'resend' | 'sendgrid' | 'smtp' | 'none' => {
@@ -129,7 +129,7 @@ export const renderTemplate = (
     PASSWORD_RESET: `
       <h1>Reset your password</h1>
       <p>Hi {{name}},</p>
-      <p>We received a request to reset your Loyable password. This link expires in {{expiryMinutes}} minutes.</p>
+      <p>We received a request to reset your The Loyaly password. This link expires in {{expiryMinutes}} minutes.</p>
       {{cta:Reset Password:{{resetUrl}}}}
       <p class="muted">If you didn't request this, you can safely ignore this email.</p>
     `,
@@ -189,7 +189,7 @@ function wrapBranded(subject: string, inner: string): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(124,58,237,0.08);">
         <tr><td style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);padding:24px 32px;">
-          <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.02em;">♥ Loyable</span>
+          <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.02em;">♥ The Loyaly</span>
         </td></tr>
         <tr><td style="padding:32px;color:#1e1333;font-size:15px;line-height:1.6;">
           <style>
@@ -202,8 +202,8 @@ function wrapBranded(subject: string, inner: string): string {
           ${inner}
         </td></tr>
         <tr><td style="padding:20px 32px;border-top:1px solid #eee;color:#9488b8;font-size:12px;line-height:1.5;">
-          Loyable — turn one-time customers into loyal ones.<br/>
-          You're receiving this because you have a Loyable account.
+          The Loyaly — turn one-time customers into loyal ones.<br/>
+          You're receiving this because you have a The Loyaly account.
         </td></tr>
       </table>
     </td></tr>

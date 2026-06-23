@@ -1,6 +1,6 @@
 // ================================================================
 //  loyable-admin-panel.tsx
-//  Super Admin Panel — Loyable Platform Administration
+//  Super Admin Panel — The Loyaly Platform Administration
 //
 //  Sections:
 //   1. Overview        — MRR, KPIs, system health
@@ -721,13 +721,13 @@ const EmailConfigSection: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="From Email">
-              <Input type="email" value={form.fromEmail ?? ''} onChange={e => setF('fromEmail', e.target.value)} placeholder="noreply@loyable.io"/>
+              <Input type="email" value={form.fromEmail ?? ''} onChange={e => setF('fromEmail', e.target.value)} placeholder="noreply@theloyaly.com"/>
             </Field>
             <Field label="From Name">
-              <Input value={form.fromName ?? ''} onChange={e => setF('fromName', e.target.value)} placeholder="Loyable"/>
+              <Input value={form.fromName ?? ''} onChange={e => setF('fromName', e.target.value)} placeholder="The Loyaly"/>
             </Field>
             <Field label="Reply-To Email">
-              <Input type="email" value={form.replyTo ?? ''} onChange={e => setF('replyTo', e.target.value)} placeholder="support@loyable.io"/>
+              <Input type="email" value={form.replyTo ?? ''} onChange={e => setF('replyTo', e.target.value)} placeholder="support@theloyaly.com"/>
             </Field>
           </div>
 
@@ -761,7 +761,7 @@ const EmailConfigSection: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Field label="Unsubscribe URL" hint="Appended to marketing emails">
-              <Input type="url" value={form.unsubscribeUrl ?? ''} onChange={e => setF('unsubscribeUrl', e.target.value)} placeholder="https://loyable.io/unsubscribe"/>
+              <Input type="url" value={form.unsubscribeUrl ?? ''} onChange={e => setF('unsubscribeUrl', e.target.value)} placeholder="https://theloyaly.com/unsubscribe"/>
             </Field>
             <div className="flex flex-col justify-end">
               <Toggle checked={form.enableTracking ?? false} onChange={v => setF('enableTracking', v)} label="Enable open & click tracking"/>
@@ -845,7 +845,7 @@ const EmailTemplatesSection: React.FC = () => {
         expiryHours: '48', acceptUrl: '#', role: 'MANAGER', upgradeUrl: '#', billingUrl: '#',
         amountDue: '79.00', percentUsed: '90', used: '9000', total: '10000', subject: 'Platform Update',
         body: 'This is a sample announcement body.', dashboardUrl: '#', oldTier: 'GROWTH',
-        newTier: 'PROFESSIONAL', newQuota: '50,000', reason: 'Payment failure', supportEmail: 'support@loyable.io',
+        newTier: 'PROFESSIONAL', newQuota: '50,000', reason: 'Payment failure', supportEmail: 'support@theloyaly.com',
       };
       const p = await apiFetch<{ subject: string; htmlBody: string }>('/email-templates/preview', {
         method: 'POST',
@@ -968,7 +968,7 @@ const AnnouncementsSection: React.FC = () => {
           </Select>
         </Field>
         <Field label="Subject">
-          <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Important update from Loyable"/>
+          <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Important update from The Loyaly"/>
         </Field>
         <Field label="Message Body">
           <Textarea rows={8} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Write your announcement here…"/>
@@ -1048,7 +1048,7 @@ const AuditLogsSection: React.FC = () => {
   );
 };
 
-// ── Root: LoyableAdminPanel ───────────────────────────────────────
+// ── Root: The LoyalyAdminPanel ───────────────────────────────────────
 
 type Section = 'overview' | 'tenants' | 'pricing' | 'settings' | 'email-config' | 'email-templates' | 'announcements' | 'audit-logs';
 
@@ -1065,7 +1065,7 @@ const NAV: NavItem[] = [
   { id: 'audit-logs',      label: 'Audit Logs',      icon: '≡' },
 ];
 
-export const LoyableAdminPanel: React.FC = () => {
+export const The LoyalyAdminPanel: React.FC = () => {
   const [section, setSection] = useState<Section>('overview');
 
   const content: Record<Section, React.ReactNode> = {
@@ -1087,9 +1087,9 @@ export const LoyableAdminPanel: React.FC = () => {
       <aside className="w-56 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Loyable" className="h-8 w-8 object-contain"/>
+            <img src="/logo.svg" alt="The Loyaly" className="h-8 w-8 object-contain"/>
             <div>
-              <p className="text-sm font-bold text-slate-800 leading-tight">Loyable</p>
+              <p className="text-sm font-bold text-slate-800 leading-tight">The Loyaly</p>
               <p className="text-xs text-slate-400">Platform Admin</p>
             </div>
           </div>
@@ -1106,7 +1106,7 @@ export const LoyableAdminPanel: React.FC = () => {
         </nav>
 
         <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400">
-          Loyable Platform v1.0
+          The Loyaly Platform v1.0
         </div>
       </aside>
 
@@ -1133,4 +1133,4 @@ export const LoyableAdminPanel: React.FC = () => {
   );
 };
 
-export default LoyableAdminPanel;
+export default The LoyalyAdminPanel;

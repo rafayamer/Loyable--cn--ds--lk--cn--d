@@ -359,13 +359,11 @@ posRouter.post('/sale/:id/fbr-retry', async (req: Request, res: Response) => {
         name:      'Sale',
         qty:       1,
         unitPrice: Number(visit.amountSpent),
-        pctCode:   '9999.0000',
       }],
       paymentMode: (visit.paymentMode as 'CASH' | 'CARD' | 'WALLET') ?? 'CASH',
       gstRate:     business?.gstRate ?? 17,
       buyerName:   visit.customer?.fullName,
       buyerPhone:  visit.customer?.whatsappNumber ?? undefined,
-      date:        visit.visitedAt,
     });
 
     const result = await submitInvoice(fbrInvoice, posId, token);

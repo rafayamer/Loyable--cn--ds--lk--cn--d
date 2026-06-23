@@ -722,6 +722,103 @@ const listMessagesHandler = async (req: Request, res: Response): Promise<void> =
 // ROUTER ASSEMBLY
 // ================================================================
 
+// ================================================================
+// CREATE CUSTOMER HANDLER
+// ================================================================
+
+const CreateCustomerSchema = z.object({
+  fullName:           z.string().min(1).max(200),
+  whatsappNumber:     z.string().min(5).max(30),
+  email:              z.string().email().optional(),
+  segment:            z.string().optional(),
+  initialPoints:      z.number().int().min(0).optional(),
+  sendWelcomeMessage: z.boolean().optional(),
+  welcomeMessage:     z.string().max(1000).optional(),
+});
+
+const createCustomerHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const body = CreateCustomerSchema.parse(req.body);
+
+    // Normalise phone
+    let phone = body.whatsappNumber.replace(/\s+/g, '');
+    if (!phone.startsWith('+')) phone = '+' + phone;
+
+    const existing = await prisma.customer.findFirst({ where: { businessId, whatsappNumber: phone } });
+    if (existing) {
+      res.status(409).json({ error: 'CUSTOMER_EXISTS', message: 'A customer with this phone number already exists.' });
+      return;
+    }
+
+    const referralCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const customer = await prisma.customer.create({
+      data: {
+        businessId,
+        fullName:   body.fullName,
+        whatsappNumber: phone,
+        email:      body.email,
+        segment:    (body.segment as any) ?? 'NEW',
+        referralCode,
+        marketingConsentWhatsapp: true,
+      },
+    });
+
+    // Award initial points if requested
+    if (body.initialPoints && body.initialPoints > 0) {
+      await prisma.rewardPointsLedger.create({
+        data: {
+          customerId:   customer.id,
+          businessId,
+          type:         'CREDIT',
+          points:       body.initialPoints,
+          balanceAfter: body.initialPoints,
+          reason:       'MANUAL_ADJUSTMENT',
+          referenceType: 'INITIAL_REGISTRATION',
+        },
+      });
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data:  { currentPointsBalance: { increment: body.initialPoints } },
+      });
+    }
+
+    // Queue welcome message if requested
+    if (body.sendWelcomeMessage && body.welcomeMessage) {
+      const business = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true } });
+      const msgText = body.welcomeMessage
+        .replace('{{name}}', body.fullName.split(' ')[0])
+        .replace('{{points}}', String(body.initialPoints ?? 0))
+        .replace('{{business_name}}', business?.name ?? '');
+      const mqRecord = await prisma.messageQueue.create({
+        data: {
+          businessId,
+          customerId:    customer.id,
+          channel:       'WHATSAPP_WAHA',
+          provider:      'WAHA',
+          status:        'PENDING',
+          isPromotional: false,
+          payloadJson:   { type: 'TEXT', body: msgText } as any,
+        },
+      });
+      const { enqueueMessage } = await import('../services/messaging-queue');
+      await enqueueMessage({
+        messageQueueId: mqRecord.id,
+        businessId,
+        customerId:     customer.id,
+        recipientPhone: phone,
+        channel:        'WHATSAPP_WAHA',
+        provider:       'WAHA',
+        payload:        { type: 'TEXT', body: msgText },
+        isPromotional:  false,
+        retryCount:     0,
+      });
+    }
+
+    res.status(201).json({ customer: { id: customer.id, fullName: customer.fullName, whatsappNumber: phone } });
+  } catch (err) { handleError(err, res); }
+};
+
 export const loyaltyRouter = Router();
 
 // All loyalty routes require a valid tenant JWT
@@ -797,6 +894,13 @@ loyaltyRouter.get(
   '/customers',
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF, Role.CASHIER) as any,
   listCustomersHandler
+);
+
+// Create customer manually
+loyaltyRouter.post(
+  '/customers',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.CASHIER) as any,
+  createCustomerHandler
 );
 
 // Message queue

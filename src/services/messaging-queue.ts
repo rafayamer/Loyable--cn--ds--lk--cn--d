@@ -246,20 +246,35 @@ export const enqueueScheduledMessage = async (
 /**
  * Enqueue a bulk campaign: one BullMQ job per recipient.
  *
- * Performance design:
- *   - Uses addBulk for single Redis round-trip per chunk
- *   - Chunks capped at 500 to stay within Redis pipe limits
- *   - 50ms stagger between chunks prevents thundering herd
- *     on the Meta / WAHA API from this worker cluster
+ * Human-pacing design (WhatsApp ban prevention):
+ *   - Messages spread across a 23-hour window (max 1 day)
+ *   - Base interval = 23h / recipientCount, minimum 90s between sends
+ *   - Each slot gets ±40% random jitter — no two gaps are identical
+ *   - Chunks of 500 use addBulk for a single Redis round-trip
+ *
+ * 100 recipients → ~14 min avg gap with jitter; looks human to WhatsApp.
  */
 export const enqueueBulkCampaign = async (
   jobs: OutboundMessageJobData[]
 ): Promise<void> => {
-  const queue     = getMessageQueue();
-  const CHUNK     = 500;
-  const STAGGER_MS = 50;
+  const queue = getMessageQueue();
+  const CHUNK = 500;
 
-  for (let i = 0; i < jobs.length; i += CHUNK) {
+  const total     = jobs.length;
+  const windowMs  = 23 * 60 * 60 * 1_000; // 23 hours
+  // Min 90s between sends; larger audiences get smaller gaps proportionally
+  const baseGapMs = total > 1 ? Math.max(90_000, Math.floor(windowMs / (total - 1))) : 0;
+
+  // Pre-compute cumulative delays with ±40% jitter per slot
+  const delays: number[] = [];
+  let cursor = 0;
+  for (let i = 0; i < total; i++) {
+    delays.push(Math.round(cursor));
+    const jitter = baseGapMs * 0.4 * (Math.random() * 2 - 1);
+    cursor += baseGapMs + jitter;
+  }
+
+  for (let i = 0; i < total; i += CHUNK) {
     const chunk = jobs.slice(i, i + CHUNK);
 
     await queue.addBulk(
@@ -268,15 +283,13 @@ export const enqueueBulkCampaign = async (
         data,
         opts: {
           ...DEFAULT_MESSAGE_JOB_OPTIONS,
-          jobId:  `msg-${data.messageQueueId}`,
-          // Stagger within chunk: 10ms per job
-          delay: Math.floor(i / CHUNK) * STAGGER_MS + idx * 10,
+          jobId: `msg-${data.messageQueueId}`,
+          delay: delays[i + idx],
         },
       }))
     );
 
-    // Small yield between chunks to avoid blocking the event loop
-    if (i + CHUNK < jobs.length) {
+    if (i + CHUNK < total) {
       await new Promise(r => setTimeout(r, 20));
     }
   }

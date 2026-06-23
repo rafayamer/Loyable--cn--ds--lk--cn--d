@@ -90,6 +90,7 @@ export const api = {
     referrals:(id: string)  => get<any>(`/loyalty/${id}/referrals`),
     checkin:  (body: any)   => post<any>('/loyalty/checkin', body),
     redeem:   (id: string, body: any) => post<any>(`/loyalty/${id}/redeem`, body),
+    create:   (body: any)   => post<any>('/loyalty/customers', body),
   },
 
   // ── Analytics ─────────────────────────────────────────────────
