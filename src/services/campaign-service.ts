@@ -491,6 +491,7 @@ const resolveSegmentCustomers = async (
     where: {
       businessId,
       isActive:                 true,
+      isStaff:                  false,   // Staff/owner never receive campaigns
       isSuppressed:             false,
       marketingConsentWhatsapp: true,
       OR: [

@@ -340,6 +340,7 @@ model Customer {
 
   // Operational flags
   isActive                 Boolean          @default(true)
+  isStaff                  Boolean          @default(false) // Staff/owner — NEVER receives marketing or automated messages
   isSuppressed             Boolean          @default(false) // Post-STOP keyword suppression
   marketingPausedUntil     DateTime?        // Set by negative sentiment detection
 

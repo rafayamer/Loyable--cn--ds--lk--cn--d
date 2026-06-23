@@ -8,6 +8,7 @@
     "dev:all": "concurrently --names \"api,vite,waha\" \"npm run dev\" \"npm --prefix client run dev\" \"npm run waha:dev\"",
     "dev:no-waha": "concurrently --names \"api,vite\" \"npm run dev\" \"npm --prefix client run dev\"",
     "client:dev": "npm --prefix client run dev",
+    "admin:dev": "npm --prefix client run admin",
     "client:build": "cd client && npm run build",
     "client:install": "cd client && npm install",
     "waha:install": "cd waha && yarn install",

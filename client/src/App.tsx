@@ -7,6 +7,9 @@ const CustomerPortal = lazy(() => import('./CustomerPortal'));
 type Role = 'PLATFORM_ADMINISTRATOR' | 'TENANT_OWNER' | 'BRANCH_MANAGER' | 'CASHIER' | 'MARKETING_STAFF' | 'CUSTOMER' | null;
 
 const isPortal = window.location.pathname.startsWith('/portal');
+// Owner/SaaS-operator console — served on its own path (and its own dev port, see
+// `npm run admin:dev` → http://localhost:3002/admin). Forces the admin panel.
+const isAdmin  = window.location.pathname.startsWith('/admin');
 
 function AdminOrCRM() {
   const [role, setRole] = useState<Role>(null);
@@ -46,5 +49,6 @@ function PageLoader() {
 
 export default function App() {
   if (isPortal) return <Suspense fallback={<PageLoader />}><CustomerPortal /></Suspense>;
+  if (isAdmin)  return <Suspense fallback={<PageLoader />}><LoyalyAdminPanel /></Suspense>;
   return <AdminOrCRM />;
 }

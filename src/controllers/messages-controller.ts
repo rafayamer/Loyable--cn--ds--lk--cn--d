@@ -55,6 +55,14 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     resolvedChatId = toChatId(resolvedChatId);
   }
 
+  // Block sends to staff-flagged customers, at any cost.
+  if (customerId) {
+    const staffCheck = await prisma.customer.findUnique({ where: { id: customerId }, select: { isStaff: true } });
+    if (staffCheck?.isStaff) {
+      return res.status(403).json({ error: 'Recipient is marked as staff — messaging is disabled for staff.' });
+    }
+  }
+
   const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
 
   const result = await WahaGateway.sendText(resolvedChatId, message, baseUrl, sessionId, apiKey);
@@ -97,6 +105,17 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     } catch (e) {
       console.error('[messages] log to queue failed:', (e as Error).message, (e as any)?.meta);
     }
+  }
+
+  // Count this direct send against the monthly quota so the "messages left"
+  // banner reflects reality (campaign sends count via the worker).
+  try {
+    await prisma.subscription.updateMany({
+      where: { businessId },
+      data:  { messagesUsedThisPeriod: { increment: 1 } },
+    });
+  } catch (e) {
+    console.error('[messages] quota increment failed:', (e as Error).message);
   }
 
   res.json({ ok: true, messageId: result.messageId, chatId: resolvedChatId });

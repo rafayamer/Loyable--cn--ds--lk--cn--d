@@ -1338,7 +1338,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const load=useCallback(()=>{
     setLoading(true);
     api.dashboard.get().then(setDash).catch(()=>{}).finally(()=>setLoading(false));
-    api.customers.list({segment:"AT_RISK",limit:5}).then(d=>setAtRisk(d.customers.map(mapCustomer))).catch(()=>{});
+    // At-risk = real churn-risk ranking (not just the AT_RISK segment label, which
+    // may be empty until the nightly cron runs). Pull a window and rank by churnRisk.
+    api.customers.list({limit:100}).then(d=>{
+      const ranked=(d.customers||[]).map(mapCustomer).filter((c:any)=>(c.churnRisk??0)>=50).sort((a:any,b:any)=>(b.churnRisk??0)-(a.churnRisk??0)).slice(0,5);
+      setAtRisk(ranked);
+    }).catch(()=>{});
     api.analytics.snapshot(preset==="7d"?7:preset==="90d"?90:30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setAnalyticsLoading(false));
   },[preset]);
 
@@ -2217,12 +2222,35 @@ const DataHubPage=()=>{
   const [acName,setAcName]=useState("");const [acPhone,setAcPhone]=useState("");const [acCategory,setAcCategory]=useState("NEW");const [acPoints,setAcPoints]=useState(0);const [acSendMsg,setAcSendMsg]=useState(false);const [acMsg,setAcMsg]=useState("Hi {{name}}, welcome to our loyalty programme! You have {{points}} points to start with.");const [acSaving,setAcSaving]=useState(false);const [acResult,setAcResult]=useState<{text:string;ok:boolean}|null>(null);
   // Send message state for queue rows
   const [sendMsgFor,setSendMsgFor]=useState<any|null>(null);const [directMsg,setDirectMsg]=useState("");const [sendingDirect,setSendingDirect]=useState(false);
+  // Customers management tab
+  const [custList,setCustList]=useState<any[]>([]);const [custLoading,setCustLoading]=useState(false);const [custSearch,setCustSearch]=useState("");const [busyRow,setBusyRow]=useState<string|null>(null);
+
+  const loadCustomers=()=>{
+    setCustLoading(true);
+    api.customers.list({limit:100,q:custSearch||undefined}).then(d=>setCustList(d.customers||[])).catch(()=>{}).finally(()=>setCustLoading(false));
+  };
+
+  const toggleStaff=async(c:any)=>{
+    setBusyRow(c.id);
+    try{await api.customers.setStaff(c.id,!c.isStaff);setCustList(list=>list.map(x=>x.id===c.id?{...x,isStaff:!c.isStaff}:x));}
+    catch(e:any){alert(e?.message||"Failed to update");}
+    finally{setBusyRow(null);}
+  };
+
+  const deleteCustomer=async(c:any)=>{
+    if(!confirm(`Delete ${c.fullName}? This permanently removes their visits, points and message history.`))return;
+    setBusyRow(c.id);
+    try{await api.customers.remove(c.id);setCustList(list=>list.filter(x=>x.id!==c.id));}
+    catch(e:any){alert(e?.message||"Failed to delete");}
+    finally{setBusyRow(null);}
+  };
 
   useEffect(()=>{
     if(tab==="queue"){
       setQueueLoading(true);
       api.messages.list({limit:50}).then(d=>setQueueMsgs(d.messages??[])).catch(()=>{}).finally(()=>setQueueLoading(false));
     }
+    if(tab==="customers"){loadCustomers();}
   },[tab]);
 
   const handleAddCustomer=async()=>{
@@ -2314,7 +2342,7 @@ const DataHubPage=()=>{
       </div>
 
       <div className="flex gap-1 flex-wrap">{[
-        {k:"queue",l:"Message Queue"},{k:"add",l:"Add Customer"},{k:"import",l:"Import CSV"},{k:"format",l:"Column Format"}
+        {k:"queue",l:"Message Queue"},{k:"customers",l:"Customers"},{k:"add",l:"Add Customer"},{k:"import",l:"Import CSV"},{k:"format",l:"Column Format"}
       ].map(({k,l})=>(
         <button key={k} onClick={()=>setTab(k)} className={`px-3 py-2 rounded-lg text-xs ${tab===k?"text-white":"text-slate-400"}`} style={tab===k?{background:"rgba(139,92,246,0.2)"}:{}}>
           {l}
@@ -2359,6 +2387,42 @@ const DataHubPage=()=>{
           </div>
         </div>}
       </>}
+
+      {tab==="customers"&&<div className="gc rounded-xl overflow-hidden" style={CARD}>
+        <div className="p-3 border-b border-white/5 flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs"><Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"/><input value={custSearch} onChange={e=>setCustSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadCustomers();}} placeholder="Search name / phone / email…" className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <button onClick={loadCustomers} className="px-3 py-1.5 rounded-lg text-xs text-violet-300" style={{border:"1px solid rgba(139,92,246,0.3)"}}><RefreshCw size={11} className="inline mr-1"/>Refresh</button>
+        </div>
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5">
+          <th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th>
+          <th className="text-left py-3 px-3 text-slate-400 font-medium">Phone</th>
+          <th className="text-left py-3 px-3 text-slate-400 font-medium hidden sm:table-cell">Category</th>
+          <th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Points</th>
+          <th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Churn</th>
+          <th className="text-left py-3 px-3 text-slate-400 font-medium">Staff</th>
+          <th className="text-right py-3 px-4 text-slate-400 font-medium">Actions</th>
+        </tr></thead>
+          <tbody>{custLoading?[...Array(6)].map((_,i)=><tr key={i}><td colSpan={7} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):custList.length===0?<tr><td colSpan={7} className="py-8 text-center text-slate-500 text-xs">No customers found</td></tr>:custList.map((c:any)=>(
+            <tr key={c.id} className="border-b border-white/3 hover:bg-white/2" style={c.isStaff?{background:"rgba(245,158,11,0.05)"}:{}}>
+              <td className="py-2.5 px-4 font-medium text-white">{c.fullName}{c.isStaff&&<span className="ml-2 text-[9px] px-1.5 py-0.5 rounded text-amber-300" style={{background:"rgba(245,158,11,0.15)"}}>STAFF</span>}</td>
+              <td className="py-2.5 px-3 text-slate-400 font-mono">{c.whatsappNumber||c.phone||"—"}</td>
+              <td className="py-2.5 px-3 hidden sm:table-cell">{c.segment?<Badge color="#8b5cf6">{c.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
+              <td className="py-2.5 px-3 text-amber-300 font-medium hidden md:table-cell">{(c.pointsBalance??c.currentPointsBalance??0).toLocaleString()}</td>
+              <td className="py-2.5 px-3 hidden md:table-cell"><span style={{color:(c.churnRisk??0)>50?"#ef4444":(c.churnRisk??0)>25?"#f59e0b":"#22c55e"}}>{c.churnRisk??0}%</span></td>
+              <td className="py-2.5 px-3">
+                <button onClick={()=>toggleStaff(c)} disabled={busyRow===c.id} title={c.isStaff?"Marked as staff — never messaged":"Mark as staff (stops all messages)"} className="w-9 h-5 rounded-full transition-all relative inline-block align-middle disabled:opacity-50" style={{background:c.isStaff?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,0.1)"}}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:c.isStaff?"calc(100% - 18px)":"2px"}}/>
+                </button>
+              </td>
+              <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                <button onClick={()=>{setSendMsgFor({customer:{fullName:c.fullName,whatsappNumber:c.whatsappNumber||c.phone,id:c.id},customerId:c.id});setDirectMsg("");}} disabled={c.isStaff} title={c.isStaff?"Staff cannot be messaged":"Send message"} className="px-2 py-1 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 disabled:opacity-30 mr-1" style={{border:"1px solid rgba(139,92,246,0.3)"}}><MessageSquare size={11}/></button>
+                <button onClick={()=>deleteCustomer(c)} disabled={busyRow===c.id} title="Delete customer" className="px-2 py-1 rounded-lg text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-30" style={{border:"1px solid rgba(239,68,68,0.3)"}}><Trash2 size={11}/></button>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+        <div className="p-3 border-t border-white/5 text-xs text-slate-500">{custList.length} customer{custList.length!==1?"s":""} · Staff members are excluded from all campaigns, automations and direct messages.</div>
+      </div>}
 
       {tab==="add"&&<div className="gc rounded-xl p-5 space-y-4" style={CARD}>
         <div><h3 className="text-sm font-semibold text-white flex items-center gap-2"><UserPlus size={14} className="text-violet-400"/>Add Customer Manually</h3><p className="text-xs text-slate-400 mt-1">Register a new customer, optionally assign initial points and send a welcome message.</p></div>
@@ -3490,8 +3554,17 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   },[]);
   const launch=async(id:string)=>{
     setLaunching(id);
-    try{await api.campaigns.launch(id);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"ACTIVE"}:c));}
-    catch(e){}finally{setLaunching(null);}
+    try{
+      const r:any=await api.campaigns.launch(id);
+      const queued=r?.queued??0;
+      if(queued===0){
+        alert("Campaign launched but 0 messages were queued.\n\nThis usually means none of your customers have WhatsApp marketing consent, or all matching customers are marked as staff/suppressed. Add customers with consent enabled, then launch again.");
+      }else{
+        alert(`Campaign launched — ${queued} message${queued!==1?"s":""} queued for delivery.`);
+      }
+      setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"ACTIVE"}:c));
+    }
+    catch(e:any){alert(e?.message||"Launch failed");}finally{setLaunching(null);}
   };
   const clone=async(id:string)=>{
     setCloning(id);

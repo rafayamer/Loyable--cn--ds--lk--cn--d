@@ -119,6 +119,7 @@ const processMessageJob = async (
     where:  { id: customerId, businessId },
     select: {
       id:                       true,
+      isStaff:                  true,
       marketingConsentWhatsapp: true,
       marketingConsentEmail:    true,
       marketingConsentSms:      true,
@@ -129,6 +130,15 @@ const processMessageJob = async (
 
   if (!customer) {
     await resolveDropped(messageQueueId, 'FAILED', 'CUSTOMER_NOT_FOUND_IN_TENANT');
+    return;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // PRE-FLIGHT 2b: Staff member — NEVER send any automated/marketing
+  // message to a customer flagged as staff/owner, at any cost.
+  // ──────────────────────────────────────────────────────────────
+  if ((customer as any).isStaff) {
+    await resolveDropped(messageQueueId, 'FAILED', 'RECIPIENT_IS_STAFF');
     return;
   }
 

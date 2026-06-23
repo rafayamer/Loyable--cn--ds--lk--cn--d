@@ -553,6 +553,19 @@ const checkVisitMilestone = async (
 // CUSTOMERS LIST HANDLER
 // ================================================================
 
+// Root-level churn risk (0-100) from recency, visit frequency and segment.
+// Mirrors the client heuristic so dashboard "at-risk" reflects real data.
+const computeChurnRisk = (c: any): number => {
+  const now       = Date.now();
+  const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).getTime() : null;
+  const daysSince = lastVisit ? Math.floor((now - lastVisit) / 86_400_000) : 999;
+  const visits    = c.visitCount ?? 0;
+  const recency   = Math.min(60, (daysSince / 90) * 60);
+  const freq      = Math.max(0, 30 - Math.min(30, visits * 3));
+  const segBonus  = c.segment === 'LOST' ? 15 : c.segment === 'AT_RISK' ? 10 : c.segment === 'NEW' ? 5 : 0;
+  return Math.max(0, Math.min(100, Math.round(recency + freq + segBonus)));
+};
+
 const listCustomersHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { businessId } = req.tenantContext;
@@ -567,9 +580,9 @@ const listCustomersHandler = async (req: Request, res: Response): Promise<void> 
       isActive: true,
       ...(q && {
         OR: [
-          { fullName: { contains: q, mode: 'insensitive' } },
-          { phone:    { contains: q } },
-          { email:    { contains: q, mode: 'insensitive' } },
+          { fullName:       { contains: q, mode: 'insensitive' } },
+          { whatsappNumber: { contains: q } },
+          { email:          { contains: q, mode: 'insensitive' } },
         ],
       }),
       ...(segment && { segment }),
@@ -586,6 +599,7 @@ const listCustomersHandler = async (req: Request, res: Response): Promise<void> 
           segment: true, visitCount: true, totalSpend: true,
           currentPointsBalance: true, currentTierId: true,
           lastVisitAt: true, createdAt: true, referralCode: true,
+          isStaff: true, marketingConsentWhatsapp: true, isSuppressed: true,
         },
       }),
       prisma.customer.count({ where }),
@@ -595,6 +609,7 @@ const listCustomersHandler = async (req: Request, res: Response): Promise<void> 
       ...c,
       phone: c.whatsappNumber,
       pointsBalance: c.currentPointsBalance,
+      churnRisk: computeChurnRisk(c),
     }));
     res.status(200).json({ customers: mapped, total, page, pages: Math.ceil(total / limit) });
   } catch (err) { handleError(err, res); }
@@ -819,6 +834,55 @@ const createCustomerHandler = async (req: Request, res: Response): Promise<void>
   } catch (err) { handleError(err, res); }
 };
 
+// ================================================================
+// UPDATE CUSTOMER (staff flag, consent, name) — PATCH
+// ================================================================
+const UpdateCustomerSchema = z.object({
+  isStaff:                  z.boolean().optional(),
+  marketingConsentWhatsapp: z.boolean().optional(),
+  fullName:                 z.string().min(1).max(200).optional(),
+  email:                    z.string().email().optional(),
+  segment:                  z.string().optional(),
+});
+
+const updateCustomerHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const { customerId } = req.params;
+    const body = UpdateCustomerSchema.parse(req.body);
+
+    const existing = await prisma.customer.findFirst({ where: { id: customerId, businessId }, select: { id: true } });
+    if (!existing) { res.status(404).json({ error: 'CUSTOMER_NOT_FOUND' }); return; }
+
+    const data: any = {};
+    if (body.isStaff !== undefined)                  data.isStaff = body.isStaff;
+    if (body.marketingConsentWhatsapp !== undefined) data.marketingConsentWhatsapp = body.marketingConsentWhatsapp;
+    if (body.fullName !== undefined)                 data.fullName = body.fullName;
+    if (body.email !== undefined)                    data.email = body.email;
+    if (body.segment !== undefined)                  data.segment = body.segment as any;
+
+    const updated = await prisma.customer.update({ where: { id: customerId }, data, select: { id: true, isStaff: true } });
+    res.status(200).json({ customer: updated });
+  } catch (err) { handleError(err, res); }
+};
+
+// ================================================================
+// DELETE CUSTOMER — soft delete (isActive=false) then hard delete
+// ================================================================
+const deleteCustomerHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const { customerId } = req.params;
+
+    const existing = await prisma.customer.findFirst({ where: { id: customerId, businessId }, select: { id: true } });
+    if (!existing) { res.status(404).json({ error: 'CUSTOMER_NOT_FOUND' }); return; }
+
+    // Cascade removes visits, ledgers, messageQueue, etc. via schema onDelete.
+    await prisma.customer.delete({ where: { id: customerId } });
+    res.status(200).json({ ok: true, deleted: customerId });
+  } catch (err) { handleError(err, res); }
+};
+
 export const loyaltyRouter = Router();
 
 // All loyalty routes require a valid tenant JWT
@@ -901,6 +965,20 @@ loyaltyRouter.post(
   '/customers',
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.CASHIER) as any,
   createCustomerHandler
+);
+
+// Update customer (mark staff, toggle consent, edit details)
+loyaltyRouter.patch(
+  '/customers/:customerId',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER) as any,
+  updateCustomerHandler
+);
+
+// Delete customer
+loyaltyRouter.delete(
+  '/customers/:customerId',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER) as any,
+  deleteCustomerHandler
 );
 
 // Message queue

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite --port 3000",
+    "admin": "vite --port 3002",
     "build": "vite build",
     "preview": "vite preview"
   },

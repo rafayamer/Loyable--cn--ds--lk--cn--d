@@ -98,6 +98,9 @@ export const api = {
     checkin:  (body: any)   => post<any>('/loyalty/checkin', body),
     redeem:   (id: string, body: any) => post<any>(`/loyalty/${id}/redeem`, body),
     create:   (body: any)   => post<any>('/loyalty/customers', body),
+    update:   (id: string, body: any) => patch<any>(`/loyalty/customers/${id}`, body),
+    remove:   (id: string)  => del<any>(`/loyalty/customers/${id}`),
+    setStaff: (id: string, isStaff: boolean) => patch<any>(`/loyalty/customers/${id}`, { isStaff }),
   },
 
   // ── Analytics ─────────────────────────────────────────────────
