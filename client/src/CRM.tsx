@@ -1684,47 +1684,56 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
 // CAMPAIGN BUILDER (@dnd-kit/core simulation)
 // ════════════════════════════════════════════════════════════════
 const BLOCK_PALETTE=[{type:"TEXT",icon:Type,label:"Text Block",color:"#3b82f6"},{type:"IMAGE",icon:Image,label:"Image Block",color:"#22c55e"},{type:"COUPON",icon:Tag,label:"Coupon Block",color:"#f59e0b"},{type:"URL_BUTTON",icon:Link,label:"URL Button",color:"#ec4899"},{type:"AI_ASSIST",icon:Brain,label:"AI Assistant",color:"#8b5cf6"}];
+const CB_TEMPLATES=[
+  {label:"Win-Back",emoji:"💔",seg:"AT_RISK",msg:"Hey {name}! 👋 We miss you at {biz}. It's been a while — come back this week and enjoy a special treat just for you. We'd love to see you again! ❤️"},
+  {label:"Birthday",emoji:"🎂",seg:"ALL",msg:"Happy Birthday {name}! 🎉🎂 The whole team at {biz} is wishing you an amazing day. As our gift to you, enjoy a special surprise on your next visit. Come celebrate with us!"},
+  {label:"Flash Sale",emoji:"⚡",seg:"LOYAL",msg:"Flash sale alert, {name}! ⚡ For the next 24 hours only, {biz} is offering exclusive deals for loyal customers like you. Don't miss out — visit us today!"},
+  {label:"New Offer",emoji:"🎁",seg:"ALL",msg:"Hi {name}! We have something exciting for you at {biz} 🎁 A brand new offer is waiting — just for you. Visit us soon and ask about our latest deals!"},
+  {label:"Thank You",emoji:"🌟",seg:"VIP",msg:"Thank you for being such a loyal customer, {name}! 🌟 You mean the world to us at {biz}. As a small token of our appreciation, we have a VIP surprise waiting for you on your next visit."},
+  {label:"Re-engage",emoji:"🔔",seg:"LOST",msg:"Hey {name}, we haven't seen you in a while! 🔔 Things have changed at {biz} — new menu, new look, new offers. Come see what's new and we'll make sure your visit is extra special."},
+];
+
+const SEGMENT_LABELS:Record<string,string>={ALL:"Everyone",NEW:"New customers (1st visit)",LOYAL:"Regular customers",VIP:"VIP / top spenders",AT_RISK:"Haven't visited recently",LOST:"Long-term absent customers",BIG_SPENDER:"High-value customers",COUPON_HUNTER:"Offer-seekers"};
+
 const CampaignBuilderPage=({onBack})=>{
   const bizName=localStorage.getItem("biz_name")||"Your Business";
-  const [blocks,setBlocks]=useState<any[]>([{id:"b1",type:"TEXT",content:`Hey {name}! 👋 We have something special for you at ${bizName}.`},{id:"b2",type:"COUPON",content:"SUMMER20 · 20% off"}]);
-  const [dragType,setDragType]=useState<string|null>(null);const [selBlock,setSelBlock]=useState<string|null>(null);const [aiPrompt,setAiPrompt]=useState("");const [aiLoading,setAiLoading]=useState(false);
-  // Campaign config (controlled)
-  const [cName,setCName]=useState("Summer Win-Back");
-  const [cSegment,setCSegment]=useState("AT_RISK");
+  const [cName,setCName]=useState("");
+  const [msgText,setMsgText]=useState(`Hey {name}! 👋 We have something special for you at ${bizName}. Come visit us soon!`);
+  const [couponCode,setCouponCode]=useState("");
+  const [couponDesc,setCouponDesc]=useState("");
+  const [buttonLabel,setButtonLabel]=useState("");
+  const [buttonUrl,setButtonUrl]=useState("");
+  const [imageUrl,setImageUrl]=useState("");
+  const [cSegment,setCSegment]=useState("ALL");
   const [cChannel,setCChannel]=useState("WHATSAPP_WAHA");
   const [cSchedule,setCSchedule]=useState("");
   const [saving,setSaving]=useState<""|"draft"|"launch">("");
   const [saveMsg,setSaveMsg]=useState<{ok:boolean;text:string}|null>(null);
-  const dropRef=useRef(null);
-  const onDragStart=(type:string)=>setDragType(type);
-  const onDrop=(e:React.DragEvent)=>{e.preventDefault();if(!dragType)return;const nb={id:`b${Date.now()}`,type:dragType,content:dragType==="TEXT"?"Enter your text here...":dragType==="IMAGE"?"https://example.com/image.jpg":dragType==="COUPON"?"SAVE10 · 10% off":dragType==="URL_BUTTON"?"Book Now → https://example.com":"AI-generated content..."};setBlocks(p=>[...p,nb]);setSelBlock(nb.id);setDragType(null);};
-  const updateBlock=(id:string,content:string)=>setBlocks(p=>p.map(b=>b.id===id?{...b,content}:b));
+  const [aiPrompt,setAiPrompt]=useState("");
+  const [aiLoading,setAiLoading]=useState(false);
+  const [showExtras,setShowExtras]=useState(false);
 
-  // Transform canvas blocks → backend layoutJson (sanitised so it always validates)
+  const previewText=msgText.replace(/\{name\}/g,"Sarah").replace(/\{biz\}/g,bizName);
+  const charCount=msgText.length;
+
+  const applyTemplate=(t:typeof CB_TEMPLATES[0])=>{
+    setMsgText(t.msg.replace(/\{biz\}/g,bizName));
+    setCSegment(t.seg);
+    if(!cName)setCName(`${t.label} Campaign`);
+  };
+
   const buildLayout=()=>{
-    const isUrl=(s:string)=>/^https?:\/\/\S+$/i.test(s.trim());
     const blk:any[]=[];
-    blocks.forEach((b,i)=>{
-      const order=blk.length;
-      if(b.type==="IMAGE"){
-        if(isUrl(b.content))blk.push({id:b.id,type:"IMAGE",order,mediaUrl:b.content.trim()});
-        else blk.push({id:b.id,type:"TEXT",order,content:b.content});
-      }else if(b.type==="URL_BUTTON"){
-        const m=b.content.split(/→|->|\|/);const label=(m[0]||"Open").trim().slice(0,25);const url=(m[1]||"").trim();
-        if(isUrl(url))blk.push({id:b.id,type:"URL_BUTTON",order,label,url});
-        else blk.push({id:b.id,type:"TEXT",order,content:b.content});
-      }else if(b.type==="COUPON"){
-        const m=b.content.split(/·|\|/);const code=(m[0]||"").trim().slice(0,50)||"OFFER";const disc=(m[1]||"Special offer").trim().slice(0,200);
-        blk.push({id:b.id,type:"COUPON",order,couponCode:code,discountText:disc});
-      }else{
-        blk.push({id:b.id,type:b.type==="AI_ASSIST"?"AI_ASSIST":"TEXT",order,content:b.content||" "});
-      }
-    });
-    return {blocks:blk.length?blk:[{id:"b1",type:"TEXT",order:0,content:"Hello {name}!"}]};
+    if(imageUrl.trim())blk.push({id:"img1",type:"IMAGE",order:0,mediaUrl:imageUrl.trim()});
+    blk.push({id:"txt1",type:"TEXT",order:blk.length,content:msgText||"Hello {name}!"});
+    if(couponCode.trim())blk.push({id:"cp1",type:"COUPON",order:blk.length,couponCode:couponCode.trim(),discountText:couponDesc.trim()||"Special offer"});
+    if(buttonLabel.trim()&&/^https?:\/\/\S+$/i.test(buttonUrl.trim()))blk.push({id:"btn1",type:"URL_BUTTON",order:blk.length,label:buttonLabel.trim().slice(0,25),url:buttonUrl.trim()});
+    return {blocks:blk};
   };
 
   const save=async(launch:boolean)=>{
-    if(!cName.trim()){setSaveMsg({ok:false,text:"Give your campaign a name first."});return;}
+    if(!cName.trim()){setSaveMsg({ok:false,text:"Please give your campaign a name."});return;}
+    if(!msgText.trim()){setSaveMsg({ok:false,text:"Please write your message."});return;}
     setSaving(launch?"launch":"draft");setSaveMsg(null);
     try{
       const body:any={name:cName.trim(),targetSegment:cSegment,channel:cChannel,layoutJson:buildLayout()};
@@ -1733,14 +1742,14 @@ const CampaignBuilderPage=({onBack})=>{
       const id=created?.id;
       if(launch&&id){
         await api.campaigns.launch(id);
-        setSaveMsg({ok:true,text:`🚀 Campaign launched! Messages are being queued for the ${cSegment} segment.`});
+        setSaveMsg({ok:true,text:`🚀 Launched! Messages are being sent to your "${SEGMENT_LABELS[cSegment]||cSegment}" customers.`});
       }else{
-        setSaveMsg({ok:true,text:cSchedule?`✅ Campaign saved & scheduled.`:`✅ Campaign saved as draft. Launch it any time from the Campaigns page.`});
+        setSaveMsg({ok:true,text:cSchedule?`✅ Scheduled! Your campaign will send on the date you selected.`:`✅ Saved as draft. You can launch it any time from the Campaigns page.`});
       }
-      setTimeout(()=>onBack(),1400);
+      setTimeout(()=>onBack(),1800);
     }catch(e:any){
-      const msg=e?.message||"Failed to save campaign";
-      setSaveMsg({ok:false,text:msg==="FEATURE_NOT_AVAILABLE"?"Campaigns aren't included in your current plan — upgrade in Settings → Billing.":`Error: ${msg}`});
+      const msg=e?.message||"Failed to save";
+      setSaveMsg({ok:false,text:msg==="FEATURE_NOT_AVAILABLE"?"Campaigns aren't on your current plan — upgrade in Settings → Billing.":`Something went wrong: ${msg}`});
     }finally{setSaving("");}
   };
 
@@ -1748,85 +1757,157 @@ const CampaignBuilderPage=({onBack})=>{
     if(!aiPrompt.trim())return;
     setAiLoading(true);
     try{
-      const d=await api.ai.query(`Write a WhatsApp marketing message for: ${aiPrompt}. Keep it under 100 words, include an emoji, be friendly and personal. Use {name} for the customer's name.`);
-      const text=d.answer||"Your message here...";
-      const nb={id:`b${Date.now()}`,type:"TEXT",content:text};
-      setBlocks(p=>[...p,nb]);setAiPrompt("");
-    }catch(e){const nb={id:`b${Date.now()}`,type:"TEXT",content:`✨ ${aiPrompt} — special offer inside!`};setBlocks(p=>[...p,nb]);setAiPrompt("");}
-    finally{setAiLoading(false);}
+      const d=await api.ai.query(`Write a short friendly WhatsApp marketing message (under 80 words) for a business called "${bizName}". Context: ${aiPrompt}. Use {name} for the customer's first name. Include 1-2 emojis. Be warm and personal.`);
+      setMsgText(d.answer||msgText);
+    }catch{
+      setMsgText(`Hey {name}! 👋 ${aiPrompt} at ${bizName}. We'd love to see you soon!`);
+    }finally{setAiLoading(false);setAiPrompt("");}
   };
-  const SEGMENTS=["ALL","NEW","LOYAL","VIP","AT_RISK","LOST","BIG_SPENDER","COUPON_HUNTER"];
-  const selectedBlock=blocks.find(b=>b.id===selBlock);
+
   return(
-    <div className="space-y-4">
-      <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Campaign Builder</h1><p className="text-xs text-slate-400 mt-0.5">Build your message, pick who receives it, then save or launch.</p></div></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Block Palette */}
-        <div className="gc rounded-xl p-4" style={CARD}>
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><MousePointer size={14} className="text-violet-400"/>Block Palette</h3>
-          <div className="space-y-2">{BLOCK_PALETTE.map(b=><div key={b.type} draggable onDragStart={()=>onDragStart(b.type)} className="flex items-center gap-3 p-3 rounded-xl cursor-grab active:cursor-grabbing select-none" style={{background:b.color+"12",border:"1px solid "+(b.color)+"25"}}><div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:b.color+"20"}}><b.icon size={15} style={{color:b.color}}/></div><div><div className="text-xs font-medium text-white">{b.label}</div><div className="text-xs text-slate-500">{b.type}</div></div><div className="ml-auto text-slate-600"><MoreVertical size={14}/></div></div>)}</div>
-          <div className="mt-4 p-3 rounded-xl" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.15)"}}>
-            <div className="text-xs font-medium text-white mb-2 flex items-center gap-1.5"><Brain size={12} className="text-violet-400"/>AI Assistant</div>
-            <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} placeholder='e.g. "10% off for Ramadan with emojis"' className="w-full px-2.5 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none mb-2" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-            <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="w-full py-2 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-2 disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Generating...":"Generate with AI"}</button>
-          </div>
+    <div className="space-y-5 pb-8">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5"><ChevronLeft size={20}/></button>
+        <div><h1 className="text-xl font-bold text-white">New Campaign</h1><p className="text-xs text-slate-400 mt-0.5">Write your message, choose who gets it, then send.</p></div>
+      </div>
+
+      {/* Quick Templates */}
+      <div>
+        <p className="text-xs text-slate-400 mb-2 font-medium">Start from a template</p>
+        <div className="flex flex-wrap gap-2">
+          {CB_TEMPLATES.map(t=>(
+            <button key={t.label} onClick={()=>applyTemplate(t)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#c4b5fd"}}>
+              <span>{t.emoji}</span>{t.label}
+            </button>
+          ))}
         </div>
-        {/* Phone Preview */}
-        <div className="flex flex-col items-center gap-3">
-          <h3 className="text-sm font-semibold text-white self-start">Phone Preview</h3>
-          <div className="w-60 rounded-3xl p-2" style={{background:"#1a1a2e",border:"2px solid rgba(255,255,255,0.1)"}}>
-            <div className="h-5 flex items-center justify-center mb-1"><div className="w-16 h-1.5 rounded-full bg-white/20"/></div>
-            <div className="rounded-2xl overflow-hidden" style={{background:"#0b1628"}}>
-              <div className="flex items-center gap-2 p-2.5" style={{background:"#1e3a2f"}}><div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">{bizName.slice(0,1).toUpperCase()}</div><div className="text-xs text-white font-medium truncate max-w-[140px]">{bizName}</div><div className="ml-auto text-green-400 text-xs">●</div></div>
-              <div ref={dropRef} onDragOver={e=>e.preventDefault()} onDrop={onDrop} className="min-h-48 p-2 space-y-2" style={{background:"url('data:image/svg+xml,%3Csvg width=20 height=20 viewBox=0 0 20 20 xmlns=http://www.w3.org/2000/svg%3E%3Ccircle cx=1 cy=1 r=0.5 fill=%23ffffff08/%3E%3C/svg%3E')"}}>
-                {blocks.length===0&&<div className="flex flex-col items-center justify-center h-32 text-slate-600 text-xs text-center"><MousePointer size={20} className="mb-2 opacity-50"/>Drop blocks here</div>}
-                {blocks.map((b,i)=>(
-                  <div key={b.id} onClick={()=>setSelBlock(b.id===selBlock?null:b.id)} className={`rounded-xl p-2.5 cursor-pointer text-xs ${b.id===selBlock?"ring-2 ring-violet-400":""}`} style={{background:b.type==="COUPON"?"rgba(245,158,11,0.15)":b.type==="URL_BUTTON"?"rgba(236,72,153,0.15)":b.type==="IMAGE"?"rgba(34,197,94,0.15)":"rgba(255,255,255,0.06)"}}>
-                    {b.type==="IMAGE"?<div className="h-16 rounded-lg bg-white/5 flex items-center justify-center text-slate-500"><Image size={20}/></div>:b.type==="URL_BUTTON"?<div className="py-1.5 text-center rounded-lg text-pink-300 font-medium text-xs" style={{background:"rgba(236,72,153,0.2)"}}>{b.content}</div>:<p className="text-white/80 text-xs leading-relaxed">{b.content}</p>}
-                    <div className="flex items-center justify-between mt-1.5"><span className="text-slate-600" style={{fontSize:9}}>{b.type}</span><button onClick={e=>{e.stopPropagation();setBlocks(p=>p.filter(x=>x.id!==b.id));}} className="text-slate-600 hover:text-red-400"><X size={10}/></button></div>
-                  </div>
-                ))}
-                <div className="border-2 border-dashed border-white/10 rounded-xl h-10 flex items-center justify-center text-slate-600 text-xs">+ Drop block</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* LEFT: Compose */}
+        <div className="space-y-4">
+          {/* Campaign name */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <label className="text-xs font-semibold text-slate-300 mb-1.5 block">Campaign Name</label>
+            <input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. Summer Win-Back, Birthday Special…" className="w-full px-3 py-2.5 rounded-lg text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          </div>
+
+          {/* Message composer */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-300">Your Message</label>
+              <span className={`text-[10px] font-medium ${charCount>1000?"text-red-400":charCount>800?"text-amber-400":"text-slate-500"}`}>{charCount}/1000</span>
+            </div>
+            <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} rows={5} placeholder="Write your message here…" className="w-full px-3 py-2.5 rounded-xl text-sm text-white resize-y outline-none leading-relaxed" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {["{name}","{biz}"].map(tok=>(
+                <button key={tok} onClick={()=>setMsgText(p=>p+" "+tok)} className="px-2 py-0.5 rounded-md text-[11px] font-mono" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>{tok}</button>
+              ))}
+              <span className="text-[10px] text-slate-600 self-center ml-1">click to insert personalisation</span>
+            </div>
+          </div>
+
+          {/* AI assistant */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <div className="flex items-center gap-2 mb-2"><Brain size={13} className="text-violet-400"/><span className="text-xs font-semibold text-slate-300">Write with AI</span><span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.1)",color:"#06b6d4"}}>Beta</span></div>
+            <div className="flex gap-2">
+              <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAI()} placeholder='e.g. "20% off this weekend only"' className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Writing…":"Generate"}</button>
+            </div>
+          </div>
+
+          {/* Optional extras */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <button onClick={()=>setShowExtras(p=>!p)} className="w-full flex items-center justify-between text-xs font-semibold text-slate-300">
+              <span>Add extras (coupon, image, button link)</span>
+              {showExtras?<ChevronUp size={14}/>:<ChevronDown size={14}/>}
+            </button>
+            {showExtras&&<div className="space-y-3 mt-3 pt-3 border-t border-white/5">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Coupon Code (optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={couponCode} onChange={e=>setCouponCode(e.target.value.toUpperCase())} placeholder="e.g. SAVE20" className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                  <input value={couponDesc} onChange={e=>setCouponDesc(e.target.value)} placeholder="e.g. 20% off your next visit" className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                </div>
               </div>
-              <div className="p-2 flex gap-1.5" style={{background:"#1e3a2f"}}><div className="flex-1 rounded-full text-xs px-2 py-1.5 text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Type a message...</div><div className="w-7 h-7 rounded-full flex items-center justify-center" style={{background:"#25D366"}}><Send size={12} className="text-white"/></div></div>
-            </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Image URL (optional)</label>
+                <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="https://your-image.com/photo.jpg" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Button Link (optional)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={buttonLabel} onChange={e=>setButtonLabel(e.target.value)} placeholder="e.g. Book Now" className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                  <input value={buttonUrl} onChange={e=>setButtonUrl(e.target.value)} placeholder="https://…" className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                </div>
+              </div>
+            </div>}
           </div>
-          <div className="text-[10px] text-slate-500 text-center max-w-[220px]">Tap a block above to edit its text. Tokens like <span className="text-violet-300 font-mono">{"{name}"}</span> are filled in per customer.</div>
         </div>
-        {/* Properties Panel */}
-        <div className="gc rounded-xl p-4" style={CARD}>
-          <h3 className="text-sm font-semibold text-white mb-3">Campaign Settings</h3>
-          <div className="space-y-3">
-            <div><label className="text-xs text-slate-400 mb-1 block">Campaign Name</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. Summer Win-Back" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Who receives it</label>
-              <select value={cSegment} onChange={e=>setCSegment(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
-                {SEGMENTS.map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s==="ALL"?"All customers":s.replace(/_/g," ")}</option>)}
-              </select>
+
+        {/* RIGHT: Preview + Settings */}
+        <div className="space-y-4">
+          {/* Phone preview */}
+          <div className="gc rounded-xl p-4 flex flex-col items-center" style={CARD}>
+            <p className="text-xs font-semibold text-slate-300 mb-3 self-start">Live Preview</p>
+            <div className="w-56 rounded-3xl p-2" style={{background:"#1a1a2e",border:"2px solid rgba(255,255,255,0.1)"}}>
+              <div className="h-4 flex items-center justify-center mb-1"><div className="w-12 h-1 rounded-full bg-white/20"/></div>
+              <div className="rounded-2xl overflow-hidden" style={{background:"#0b1628"}}>
+                <div className="flex items-center gap-2 p-2" style={{background:"#1e3a2f"}}>
+                  <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">{bizName.slice(0,1).toUpperCase()}</div>
+                  <div className="text-xs text-white font-medium truncate">{bizName}</div>
+                  <div className="ml-auto text-green-400 text-[10px]">●</div>
+                </div>
+                <div className="p-2 space-y-2 min-h-32">
+                  {imageUrl&&<div className="w-full h-20 rounded-lg overflow-hidden bg-white/5"><img src={imageUrl} alt="" className="w-full h-full object-cover" onError={e=>(e.currentTarget.style.display="none")}/></div>}
+                  {previewText&&<div className="rounded-2xl rounded-tl-sm p-2.5 max-w-[90%]" style={{background:"rgba(255,255,255,0.08)"}}><p className="text-white text-[11px] leading-relaxed whitespace-pre-wrap">{previewText}</p></div>}
+                  {couponCode&&<div className="rounded-xl p-2 text-center" style={{background:"rgba(245,158,11,0.15)",border:"1px dashed rgba(245,158,11,0.4)"}}><div className="text-amber-300 font-bold text-xs tracking-widest">{couponCode}</div><div className="text-amber-200/70 text-[10px] mt-0.5">{couponDesc||"Special offer"}</div></div>}
+                  {buttonLabel&&buttonUrl&&<div className="rounded-xl py-1.5 text-center" style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)"}}><span className="text-violet-300 text-[11px] font-medium">{buttonLabel}</span></div>}
+                </div>
+                <div className="p-2 flex gap-1" style={{background:"#1e3a2f"}}><div className="flex-1 rounded-full text-[10px] px-2 py-1 text-slate-500" style={{background:"rgba(255,255,255,0.05)"}}>Message</div><div className="w-6 h-6 rounded-full flex items-center justify-center" style={{background:"#25D366"}}><Send size={10} className="text-white"/></div></div>
+              </div>
             </div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Send via</label>
-              <select value={cChannel} onChange={e=>setCChannel(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
-                <option value="WHATSAPP_WAHA" style={{background:"#1a1030"}}>WhatsApp</option>
-                <option value="EMAIL" style={{background:"#1a1030"}}>Email</option>
-                <option value="SMS" style={{background:"#1a1030"}}>SMS</option>
-              </select>
-            </div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Schedule (optional)</label><input type="datetime-local" value={cSchedule} onChange={e=>setCSchedule(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-[10px] text-slate-500 mt-1">Leave empty to save as a draft you can launch any time.</div></div>
+            <p className="text-[10px] text-slate-500 mt-2 text-center"><span className="text-violet-300 font-mono">{"{name}"}</span> will be replaced with each customer's real name</p>
           </div>
 
-          {/* Inline editor for the selected block */}
-          {selectedBlock&&(
-            <div className="mt-4 pt-4 border-t border-white/5">
-              <div className="text-xs font-medium text-white mb-2 flex items-center gap-1.5">Editing <span className="text-violet-300 font-mono">{selectedBlock.type}</span> block</div>
-              <textarea value={selectedBlock.content} onChange={e=>updateBlock(selectedBlock.id,e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.3)"}}/>
-              <div className="text-[10px] text-slate-500 mt-1">{selectedBlock.type==="COUPON"?"Format: CODE · description":selectedBlock.type==="URL_BUTTON"?"Format: Button label → https://link":selectedBlock.type==="IMAGE"?"Paste a public image URL (https://…)":"Plain text. Use {name} for personalisation."}</div>
+          {/* Audience & Send settings */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <h3 className="text-xs font-semibold text-slate-300 mb-3">Who & When</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Who receives this?</label>
+                <select value={cSegment} onChange={e=>setCSegment(e.target.value)} className="w-full px-3 py-2.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                  {Object.entries(SEGMENT_LABELS).map(([v,l])=><option key={v} value={v} style={{background:"#1a1030"}}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Send via</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{v:"WHATSAPP_WAHA",l:"WhatsApp",ico:"💬"},{v:"EMAIL",l:"Email",ico:"📧"},{v:"SMS",l:"SMS",ico:"📱"}].map(ch=>(
+                    <button key={ch.v} onClick={()=>setCChannel(ch.v)} className={`py-2 rounded-lg text-xs font-medium transition-all ${cChannel===ch.v?"text-white":"text-slate-400"}`} style={cChannel===ch.v?{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.4)"}:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                      <div>{ch.ico}</div><div className="mt-0.5">{ch.l}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Schedule for later (optional)</label>
+                <input type="datetime-local" value={cSchedule} onChange={e=>setCSchedule(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                <p className="text-[10px] text-slate-500 mt-1">Leave empty to send now or save as draft</p>
+              </div>
             </div>
-          )}
 
-          {/* Save / Launch actions */}
-          <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
-            {saveMsg&&<div className="text-xs px-3 py-2 rounded-lg" style={{background:saveMsg.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:saveMsg.ok?"#4ade80":"#f87171"}}>{saveMsg.text}</div>}
-            <button onClick={()=>save(true)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{saving==="launch"?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}{saving==="launch"?"Launching…":cSchedule?"Save & Schedule":"Save & Launch Now"}</button>
-            <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2 rounded-xl text-xs font-medium text-violet-200 disabled:opacity-50" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.25)"}}>{saving==="draft"?"Saving…":"Save as Draft"}</button>
+            {/* Actions */}
+            <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+              {saveMsg&&<div className="text-xs px-3 py-2.5 rounded-lg" style={{background:saveMsg.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:saveMsg.ok?"#4ade80":"#f87171"}}>{saveMsg.text}</div>}
+              <button onClick={()=>save(true)} disabled={!!saving} className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
+                {saving==="launch"?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}
+                {saving==="launch"?"Sending…":cSchedule?"Schedule Campaign":"Send Campaign Now"}
+              </button>
+              <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-50" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#c4b5fd"}}>
+                {saving==="draft"?"Saving…":"Save as Draft"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
