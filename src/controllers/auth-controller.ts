@@ -533,11 +533,12 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
 const createStaffDirectHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, businessId } = req.tenantContext;
-    const { name, role, password, personalEmail, branchLocationId } = req.body as {
+    const { name, role, password, personalEmail, phone, branchLocationId } = req.body as {
       name:              string;
       role:              string;
       password:          string;
       personalEmail:     string;
+      phone?:            string;
       branchLocationId?: string;
     };
     if (!name?.trim())          { res.status(400).json({ error: 'Name is required' }); return; }
@@ -551,6 +552,7 @@ const createStaffDirectHandler = async (req: Request, res: Response): Promise<vo
       role:             role as any,
       password,
       personalEmail,
+      phone,
       branchLocationId,
     });
     res.status(201).json(result);
@@ -635,6 +637,30 @@ authRouter.post('/invite',    tenantScope, inviteLimit, validate(InviteStaffSche
 );
 authRouter.post('/staff',     tenantScope, inviteLimit,
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), createStaffDirectHandler
+);
+authRouter.get('/staff',      tenantScope,
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER),
+  async (req: Request, res: Response) => {
+    const { businessId } = req.tenantContext;
+    const staff = await prisma.user.findMany({
+      where:   { businessId, role: { not: Role.TENANT_OWNER } },
+      select:  { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ staff });
+  }
+);
+authRouter.delete('/staff/:userId', tenantScope,
+  requireRoles(Role.TENANT_OWNER),
+  async (req: Request, res: Response) => {
+    const { businessId } = req.tenantContext;
+    const { userId } = req.params;
+    const user = await prisma.user.findFirst({ where: { id: userId, businessId }, select: { id: true, role: true } });
+    if (!user) { res.status(404).json({ error: 'Staff member not found' }); return; }
+    if (user.role === Role.TENANT_OWNER) { res.status(403).json({ error: 'Cannot remove the owner' }); return; }
+    await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    res.json({ ok: true });
+  }
 );
 
 authRouter.delete('/account', tenantScope, requireRoles(Role.TENANT_OWNER), deleteAccountHandler);

@@ -3573,10 +3573,16 @@ const AddStaffForm=()=>{
   const [staffRole,setStaffRole]=useState("MARKETING_STAFF");
   const [staffPass,setStaffPass]=useState("");
   const [personalEmail,setPersonalEmail]=useState("");
+  const [staffPhone,setStaffPhone]=useState("");
   const [showPass,setShowPass]=useState(false);
   const [saving,setSaving]=useState(false);
   const [result,setResult]=useState<{loginEmail:string;name:string;role:string}|null>(null);
   const [err,setErr]=useState("");
+  const [staffList,setStaffList]=useState<any[]>([]);
+  const [revoking,setRevoking]=useState<string|null>(null);
+  useEffect(()=>{
+    api.staff.list().then(d=>setStaffList(d.staff??[])).catch(()=>{});
+  },[]);
 
   const roleLabelMap:Record<string,string>={BRANCH_MANAGER:"Branch Manager",MARKETING_STAFF:"Marketing Staff",CASHIER:"Cashier / Kitchen"};
 
@@ -3586,12 +3592,19 @@ const AddStaffForm=()=>{
     if(!personalEmail.includes("@")){setErr("Please enter a valid personal email to send credentials to.");return;}
     setErr("");setSaving(true);
     try{
-      const d:any=await fetch("/api/auth/staff",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""`},body:JSON.stringify({name:staffName.trim(),role:staffRole,password:staffPass,personalEmail:personalEmail.trim()})}).then(r=>r.json());
-      if(d.error)throw new Error(d.error);
+      const d=await api.staff.create({name:staffName.trim(),role:staffRole,password:staffPass,personalEmail:personalEmail.trim(),...(staffPhone.trim()?{phone:staffPhone.trim()}:{})});
       setResult(d);
-      setStaffName("");setStaffPass("");setPersonalEmail("");
+      setStaffList(p=>[...p,{...d,email:d.loginEmail,isActive:true}]);
+      setStaffName("");setStaffPass("");setPersonalEmail("");setStaffPhone("");
     }catch(e:any){setErr(e.message||"Something went wrong.");}
     finally{setSaving(false);}
+  };
+  const revoke=async(id:string)=>{
+    if(!window.confirm("Remove this staff member's access? They will no longer be able to log in."))return;
+    setRevoking(id);
+    try{await api.staff.remove(id);setStaffList(p=>p.filter(s=>s.id!==id));}
+    catch(e:any){alert(e.message||"Failed to remove staff.");}
+    finally{setRevoking(null);}
   };
 
   const inpSt={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"10px",padding:"10px 12px",fontSize:"13px",color:"white",width:"100%",outline:"none"};
@@ -3644,6 +3657,10 @@ const AddStaffForm=()=>{
             <button type="button" onClick={()=>setShowPass(p=>!p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{showPass?<EyeOff size={13}/>:<Eye size={13}/>}</button>
           </div>
         </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs text-slate-400 mb-1">Their WhatsApp Number <span className="text-slate-500">(optional — so campaigns never message them)</span></label>
+          <input value={staffPhone} onChange={e=>{setStaffPhone(e.target.value);setErr("");}} placeholder="+447911123456" style={inpSt}/>
+        </div>
       </div>
       <div className="rounded-lg px-3 py-2 text-xs text-slate-400" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
         🔑 Login email will be auto-generated as <span className="font-mono text-violet-300">{staffName.trim()?`${staffName.trim().split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g,"")}.${staffRole==="BRANCH_MANAGER"?"manager":staffRole==="MARKETING_STAFF"?"marketing":"staff"}XX@theloyaly.com`:"name.roleXX@theloyaly.com"}</span>
@@ -3652,6 +3669,22 @@ const AddStaffForm=()=>{
       <button onClick={create} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
         {saving?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{saving?"Creating…":"Create Staff Account"}
       </button>
+
+      {/* Current staff list */}
+      {staffList.length>0&&<div className="mt-4 space-y-2">
+        <div className="text-xs font-semibold text-slate-300">Current Staff</div>
+        {staffList.map(s=>(
+          <div key={s.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)"}}>
+            <div>
+              <div className="text-xs font-medium text-white">{s.name}</div>
+              <div className="text-xs text-slate-500 font-mono mt-0.5">{s.email} · {roleLabelMap[s.role]||s.role}</div>
+            </div>
+            <button onClick={()=>revoke(s.id)} disabled={revoking===s.id} title="Revoke access" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-red-400 disabled:opacity-40" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)"}}>
+              {revoking===s.id?<RefreshCw size={11} className="animate-spin"/>:<UserMinus size={11}/>}Revoke
+            </button>
+          </div>
+        ))}
+      </div>}
     </div>
   );
 };

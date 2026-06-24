@@ -472,6 +472,7 @@ export interface CreateStaffDirectInput {
   role:             Role;
   password:         string;
   personalEmail:    string; // recipient's real email — for sending credentials
+  phone?:           string; // WhatsApp number — auto-flagged so campaigns skip them
   branchLocationId?: string;
 }
 
@@ -484,7 +485,7 @@ export interface CreateStaffDirectResult {
 export const createStaffDirect = async (
   input: CreateStaffDirectInput
 ): Promise<CreateStaffDirectResult> => {
-  const { inviterUserId, businessId, name, role, password, personalEmail, branchLocationId } = input;
+  const { inviterUserId, businessId, name, role, password, personalEmail, phone, branchLocationId } = input;
 
   const INVITABLE_ROLES: Role[] = [Role.BRANCH_MANAGER, Role.CASHIER, Role.MARKETING_STAFF];
   if (!INVITABLE_ROLES.includes(role)) throw new Error('ROLE_NOT_INVITABLE');
@@ -555,6 +556,35 @@ export const createStaffDirect = async (
           : 'Staff',
     },
   });
+
+  // If the owner provided a WhatsApp number, flag that number in the Customer table
+  // so campaign workers never message this staff member.
+  if (phone?.trim()) {
+    const normalizedPhone = phone.trim();
+    const existing = await prisma.customer.findFirst({
+      where: { businessId, whatsappNumber: normalizedPhone },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.customer.update({
+        where: { id: existing.id },
+        data:  { isStaff: true, isSuppressed: true },
+      }).catch(() => {});
+    } else {
+      // Create a suppressed customer record so the number is permanently flagged
+      await prisma.customer.create({
+        data: {
+          businessId,
+          fullName:               name.trim(),
+          whatsappNumber:         normalizedPhone,
+          isStaff:                true,
+          isSuppressed:           true,
+          marketingConsentWhatsapp: false,
+          segment:                'NEW' as any,
+        },
+      }).catch(() => {});
+    }
+  }
 
   return { loginEmail, name: name.trim(), role };
 };

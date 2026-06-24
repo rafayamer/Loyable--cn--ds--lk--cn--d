@@ -108,6 +108,13 @@ export const api = {
     deleteAll: (confirmName: string) => del<any>('/auth/account', { confirmName }),
   },
 
+  staff: {
+    list:   () => get<{ staff: any[] }>('/auth/staff'),
+    create: (body: { name: string; role: string; password: string; personalEmail: string }) =>
+              post<{ loginEmail: string; name: string; role: string }>('/auth/staff', body),
+    remove: (userId: string) => del<any>(`/auth/staff/${userId}`),
+  },
+
   // ── Analytics ─────────────────────────────────────────────────
   analytics: {
     snapshot: (days?: number) => get<any[]>(`/loyalty/analytics/snapshot?days=${days ?? 30}`),
