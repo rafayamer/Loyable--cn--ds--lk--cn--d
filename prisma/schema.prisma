@@ -5,7 +5,10 @@
 // ================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Alpine runner ships OpenSSL 3.0, so the client needs the matching
+  // musl/openssl-3.0 query engine in addition to the local dev binary.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
