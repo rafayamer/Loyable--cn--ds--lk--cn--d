@@ -38,6 +38,9 @@ async function ensureSchemaPatches() {
     // index; if legacy duplicate rows exist this will warn but never crash boot.
     { label: 'reward_points_ledger uniq(customerId,reason,referenceId)',
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "reward_points_ledger_customerId_reason_referenceId_key" ON "reward_points_ledger" ("customerId", "reason", "referenceId")' },
+    // Clear stale localhost WAHA URLs so the WAHA_BASE_URL env var takes effect.
+    { label: 'businesses.wahaBaseUrl clear localhost',
+      sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" LIKE '%localhost%'` },
   ];
   for (const { label, sql } of stmts) {
     try {
