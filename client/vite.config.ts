@@ -19,21 +19,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
-            return 'vendor-react';
-          }
-          if (id.includes('node_modules/lucide-react')) {
-            return 'vendor-icons';
-          }
-          if (id.includes('node_modules/')) {
-            return 'vendor-misc';
-          }
-        },
-      },
-    },
+    chunkSizeWarningLimit: 1200,
+    // No manual chunk splitting. Splitting interdependent vendor modules
+    // (react / recharts / d3) into separate chunks creates circular chunk
+    // references that surface as "Cannot access X before initialization"
+    // (TDZ) errors at runtime and leave the page blank. Let Rollup decide.
   },
 });
