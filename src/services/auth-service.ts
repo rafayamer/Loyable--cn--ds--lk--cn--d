@@ -247,6 +247,11 @@ export const login = async (
         business: { slug: businessSlug },
       }),
     },
+    orderBy: [
+      // Prefer TENANT_OWNER accounts when the same email exists in multiple businesses
+      { role: 'asc' },
+      { createdAt: 'asc' },
+    ],
     include: {
       business: {
         select: { id: true, name: true, slug: true, isActive: true, currency: true, industry: true },
