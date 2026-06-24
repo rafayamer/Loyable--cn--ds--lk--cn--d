@@ -361,14 +361,15 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
 
       // Increment customer counters
       await tx.customer.update({
-        where: { id: customerId },
-        data: {
+        where:  { id: customerId },
+        data:   {
           visitCount: { increment: 1 },
           totalSpend: { increment: amountSpent },
           lastVisitAt:  new Date(),
-          firstVisitAt: undefined, // Only set on first ever visit
+          firstVisitAt: undefined,
           updatedAt:    new Date(),
         },
+        select: { id: true },
       });
 
       // Ensure firstVisitAt is set only if null
@@ -793,8 +794,9 @@ const createCustomerHandler = async (req: Request, res: Response): Promise<void>
         },
       });
       await prisma.customer.update({
-        where: { id: customer.id },
-        data:  { currentPointsBalance: { increment: body.initialPoints } },
+        where:  { id: customer.id },
+        data:   { currentPointsBalance: { increment: body.initialPoints } },
+        select: { id: true },
       });
     }
 

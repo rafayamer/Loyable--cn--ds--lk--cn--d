@@ -38,7 +38,7 @@ function AdminOrCRM() {
 function PageLoader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0f0f17', flexDirection: 'column', gap: 16 }}>
-      <img src="/white.png" onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }} alt="The Loyaly" style={{ width: 120, opacity: 0.9 }} />
+      <img src="/white.png" alt="The Loyaly" style={{ width: 120, opacity: 0.9 }} />
       <div style={{ width: 200, height: 3, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #06b6d4)', borderRadius: 2, animation: 'slide 1.2s ease-in-out infinite' }} />
       </div>

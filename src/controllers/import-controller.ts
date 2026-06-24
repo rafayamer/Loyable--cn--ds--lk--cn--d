@@ -298,7 +298,7 @@ const upsertCustomerBatch = async (
         };
 
         if (existing) {
-          await tx.customer.update({ where: { id: existing.id }, data });
+          await tx.customer.update({ where: { id: existing.id }, data, select: { id: true } });
           updated++;
         } else {
           await tx.customer.create({
