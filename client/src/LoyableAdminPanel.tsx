@@ -154,7 +154,7 @@ const Spinner: React.FC<{ size?: string }> = ({ size = 'h-5 w-5' }) => (
 );
 
 const Btn: React.FC<{
-  onClick?: () => void; type?: 'button' | 'submit'; variant?: 'primary' | 'danger' | 'ghost' | 'outline';
+  onClick?: (e: React.MouseEvent) => void; type?: 'button' | 'submit'; variant?: 'primary' | 'danger' | 'ghost' | 'outline';
   disabled?: boolean; loading?: boolean; children: React.ReactNode; className?: string;
 }> = ({ onClick, type = 'button', variant = 'primary', disabled, loading, children, className = '' }) => {
   const base = 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
@@ -172,8 +172,8 @@ const Btn: React.FC<{
   );
 };
 
-const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
-  <div>
+const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode; className?: string }> = ({ label, hint, children, className = '' }) => (
+  <div className={className}>
     <label className="block text-xs font-medium text-slate-700 mb-1">{label}</label>
     {children}
     {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}

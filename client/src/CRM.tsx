@@ -6,10 +6,10 @@ import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, S
 // ════════════════════════════════════════════════════════════════
 // SCHEMA ENUMS (mirrors Prisma schema)
 // ════════════════════════════════════════════════════════════════
-const SEG_COLORS = { NEW:"#3b82f6", LOYAL:"#22c55e", VIP:"#f59e0b", AT_RISK:"#ef4444", LOST:"#6b7280", BIG_SPENDER:"#06b6d4", COUPON_HUNTER:"#ec4899" };
-const STATUS_COLORS = { PENDING:"#f59e0b", QUEUED:"#3b82f6", SENT:"#22c55e", DELIVERED:"#10b981", READ:"#06b6d4", FAILED:"#ef4444", CONSENT_REVOKED:"#6b7280", DROPPED_COOLDOWN:"#8b5cf6", DROPPED_QUOTA:"#f97316" };
-const ROLE_COLORS = { PLATFORM_ADMINISTRATOR:"#ef4444", TENANT_OWNER:"#f59e0b", BRANCH_MANAGER:"#8b5cf6", CASHIER:"#3b82f6", MARKETING_STAFF:"#22c55e", CUSTOMER:"#06b6d4" };
-const TIER_COLORS = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFESSIONAL:"#8b5cf6", ENTERPRISE:"#f59e0b" };
+const SEG_COLORS: Record<string,string> = { NEW:"#3b82f6", LOYAL:"#22c55e", VIP:"#f59e0b", AT_RISK:"#ef4444", LOST:"#6b7280", BIG_SPENDER:"#06b6d4", COUPON_HUNTER:"#ec4899" };
+const STATUS_COLORS: Record<string,string> = { PENDING:"#f59e0b", QUEUED:"#3b82f6", SENT:"#22c55e", DELIVERED:"#10b981", READ:"#06b6d4", FAILED:"#ef4444", CONSENT_REVOKED:"#6b7280", DROPPED_COOLDOWN:"#8b5cf6", DROPPED_QUOTA:"#f97316" };
+const ROLE_COLORS: Record<string,string> = { PLATFORM_ADMINISTRATOR:"#ef4444", TENANT_OWNER:"#f59e0b", BRANCH_MANAGER:"#8b5cf6", CASHIER:"#3b82f6", MARKETING_STAFF:"#22c55e", CUSTOMER:"#06b6d4" };
+const TIER_COLORS: Record<string,string> = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFESSIONAL:"#8b5cf6", ENTERPRISE:"#f59e0b" };
 const C = { primary:"#8b5cf6", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
 
 // ── Global design tokens ──────────────────────────────────────────
@@ -80,8 +80,8 @@ const mapCustomer = (c: any) => ({
 // ════════════════════════════════════════════════════════════════
 // MICRO COMPONENTS
 // ════════════════════════════════════════════════════════════════
-const Badge=({children,color,size="sm"})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:"1px solid "+(color)+"33"}}>{children}</span>;
-const KPI=({icon:Icon,label,value,change,positive,color,sub})=>(
+const Badge=({children,color,size="sm"}:{children?:any;color?:any;size?:any})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:"1px solid "+(color)+"33"}}>{children}</span>;
+const KPI=({icon:Icon,label,value,change,positive,color,sub}:{icon?:any;label?:any;value?:any;change?:any;positive?:any;color?:any;sub?:any})=>(
   <div className="gc rounded-2xl p-5 relative overflow-hidden" style={CARD}>
     <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-[0.06]" style={{background:color,transform:"translate(35%,-35%)"}}/>
     <div className="flex items-start justify-between mb-4">
@@ -140,7 +140,7 @@ const NAV_ALL=[
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
 ];
-const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark})=>{
+const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark}:any)=>{
   const {pd,setPd}=usePd();
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
   return(
@@ -915,7 +915,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="relative flex flex-wrap items-center justify-center gap-3 p-1.5 pr-5 mb-6 rounded-full border" style={{border:`1px solid ${bdr}`,background:D?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.8)"}}>
           <div className="flex items-center -space-x-2.5">
             {[["#8b5cf6","MB"],["#06b6d4","SJ"],["#ec4899","JW"]].map(([c,initials],i)=>(
-              <div key={i} className="size-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2" style={{background:c,ringColor:bg}}>{initials}</div>
+              <div key={i} className="size-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2" style={{background:c,["--tw-ring-color" as any]:bg}}>{initials}</div>
             ))}
           </div>
           <p className="text-xs font-medium" style={{color:tx2}}>Trusted by 1,000+ businesses worldwide</p>
@@ -1501,7 +1501,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 font-medium" style={{color:ct.tx2}}>Customer</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Segment</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Visits</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>Churn</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>CLV</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Points</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Status</th></tr></thead>
           <tbody>{filtered.map(c=>(
             <tr key={c.id} onClick={()=>onSelect(c)} className="border-b border-white/3 hover:bg-white/3 cursor-pointer">
-              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map(n=>n[0]).join("")}</div><div><div className="font-medium" style={{color:ct.tx}}>{c.name}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
+              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:any)=>n[0]).join("")}</div><div><div className="font-medium" style={{color:ct.tx}}>{c.name}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
               <td className="py-3 px-3"><Badge color={SEG_COLORS[c.segment]||"#8b5cf6"}>{c.segment}</Badge></td>
               <td className="py-3 px-3 hidden sm:table-cell" style={{color:ct.tx2}}>{c.visits}</td>
               <td className="py-3 px-3 hidden md:table-cell"><div className="flex items-center gap-1"><div className="w-12 h-1.5 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full" style={{width:`${c.churnRisk}%`,background:c.churnRisk>75?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div><span className="text-xs text-slate-400">{c.churnRisk}%</span></div></td>
@@ -1556,7 +1556,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
 // ════════════════════════════════════════════════════════════════
 // MESSAGES
 // ════════════════════════════════════════════════════════════════
-const MetaWizard=({onDone,onClose})=>{
+const MetaWizard=({onDone,onClose}:any)=>{
   const [step,setStep]=useState(0);const [loading,setLoading]=useState(false);
   const go=()=>{setLoading(true);setTimeout(()=>{setLoading(false);setStep(s=>s+1);},1800);};
   const steps=["Meta Login","Business","Phone","Verify","Done"];
@@ -1586,7 +1586,7 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
   const [selected,setSelected]=useState<any>(null);
 
   useEffect(()=>{
-    api.customers.list({limit:50,search}).then(d=>setCustomers(d.customers??[])).catch(()=>{});
+    api.customers.list({limit:50,q:search}).then(d=>setCustomers(d.customers??[])).catch(()=>{});
   },[search]);
 
   const send=async()=>{
@@ -1778,7 +1778,7 @@ const CB_TEMPLATES=[
 
 const SEGMENT_LABELS:Record<string,string>={ALL:"Everyone",NEW:"New customers (1st visit)",LOYAL:"Regular customers",VIP:"VIP / top spenders",AT_RISK:"Haven't visited recently",LOST:"Long-term absent customers",BIG_SPENDER:"High-value customers",COUPON_HUNTER:"Offer-seekers"};
 
-const CampaignBuilderPage=({onBack})=>{
+const CampaignBuilderPage=({onBack}:any)=>{
   const bizName=localStorage.getItem("biz_name")||"Your Business";
   const [cName,setCName]=useState("");
   const [msgText,setMsgText]=useState(`Hey {name}! 👋 We have something special for you at ${bizName}. Come visit us soon!`);
@@ -2004,7 +2004,7 @@ const CampaignBuilderPage=({onBack})=>{
 // ════════════════════════════════════════════════════════════════
 const TRIGGERS=[{type:"BIRTHDAY",label:"Birthday",icon:Gift,color:"#ec4899",desc:"Customer's birthday today"},{type:"INACTIVITY",label:"Inactivity",icon:Clock,color:"#ef4444",desc:"No visit > N days"},{type:"VISIT_MILESTONE",label:"Visit Milestone",icon:Star,color:"#f59e0b",desc:"Reaches X visits"},{type:"TIER_UPGRADE",label:"Tier Upgrade",icon:Crown,color:"#06b6d4",desc:"Moves to new loyalty tier"},{type:"SENTIMENT_NEGATIVE",label:"Neg. Sentiment",icon:AlertTriangle,color:"#8b5cf6",desc:"WAHA inbound very-negative"}];
 const ACTIONS=[{type:"SEND_WHATSAPP",label:"Send WhatsApp",icon:MessageSquare,color:"#25D366",desc:"Route via BullMQ → gateway"},{type:"AWARD_POINTS",label:"Award Points",icon:StarIcon,color:"#f59e0b",desc:"Append to RewardPointsLedger"},{type:"CHANGE_SEGMENT",label:"Change Segment",icon:Users,color:"#8b5cf6",desc:"Update CustomerSegment enum"},{type:"SEND_EMAIL",label:"Send Email",icon:Mail,color:"#3b82f6",desc:"Queue email job"},{type:"MANAGER_ALERT",label:"Manager Alert",icon:Bell,color:"#ef4444",desc:"Push to dashboard notification"}];
-const AutomationBuilderPage=({onBack})=>{
+const AutomationBuilderPage=({onBack}:any)=>{
   const [trig,setTrig]=useState("BIRTHDAY");const [acts,setActs]=useState(["SEND_WHATSAPP"]);const [delay,setDelay]=useState(0);const [saved,setSaved]=useState(false);const [msgBody,setMsgBody]=useState("");
   const [autoName,setAutoName]=useState(`Automation ${new Date().toLocaleDateString()}`);const [saveErr,setSaveErr]=useState<string|null>(null);
   const T=TRIGGERS.find(t=>t.type===trig)||TRIGGERS[0];
@@ -2024,7 +2024,7 @@ const AutomationBuilderPage=({onBack})=>{
         {/* Trigger */}
         <div className="gc rounded-xl p-4" style={CARD}>
           <div className="text-xs font-semibold text-cyan-400 mb-3 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>TRIGGER NODE</div>
-          <div className="space-y-2">{TRIGGERS.map(t=><button key={t.type} onClick={()=>setTrig(t.type)} className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${trig===t.type?"ring-2":"hover:bg-white/3"}`} style={trig===t.type?{background:t.color+"15",border:"1px solid "+(t.color)+"35",ringColor:t.color}:{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
+          <div className="space-y-2">{TRIGGERS.map(t=><button key={t.type} onClick={()=>setTrig(t.type)} className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${trig===t.type?"ring-2":"hover:bg-white/3"}`} style={trig===t.type?{background:t.color+"15",border:"1px solid "+(t.color)+"35",["--tw-ring-color" as any]:t.color}:{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:t.color+"20"}}><t.icon size={16} style={{color:t.color}}/></div><div className="flex-1"><div className="text-xs font-medium text-white">{t.label}</div><div className="text-xs text-slate-500">{t.desc}</div></div>{trig===t.type&&<CircleCheck size={16} style={{color:t.color}}/>}
           </button>)}</div>
         </div>
@@ -2612,8 +2612,6 @@ const CustomerPortalPage=()=>{
   // Load today's portal logins
   useEffect(()=>{
     if(!slug)return;
-    api.get?.(`/portal/${slug}/today`)?.then((d:any)=>setTodayCustomers(d?.customers??[])).catch(()=>{}).finally(()=>setTodayLoading(false));
-    // fallback: fetch directly
     fetch(`/api/portal/${slug}/today`,{headers:{Authorization:`Bearer ${localStorage.getItem("accessToken")}`}})
       .then(r=>r.json()).then(d=>setTodayCustomers(d?.customers??[])).catch(()=>{}).finally(()=>setTodayLoading(false));
   },[slug]);
@@ -3400,7 +3398,7 @@ const BillingTab=()=>{
 };
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
-const SettingsPage=({wa,onConnect})=>{
+const SettingsPage=({wa,onConnect}:any)=>{
   const ct=useCard();
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
@@ -3758,7 +3756,7 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
 const inpS={background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"#fff"};
 
 // Active orders store (shared across POS components via simple module-level state)
-type ActiveOrder={id:string;table?:string;type:string;items:{name:string;qty:number;price:number;ready?:boolean}[];discount:number;phone:string;cname:string;payMode:"CASH"|"CARD"|"WALLET";status:"UNPAID"|"PAID";createdAt:number;notes?:string;staff?:string;};
+type ActiveOrder={id:string;table?:string;type:string;items:{name:string;qty:number;price:number;ready?:boolean}[];discount:number;phone:string;cname:string;payMode:"CASH"|"CARD"|"WALLET";status:"UNPAID"|"PAID";createdAt:number;notes?:string;staff?:string;paymentMode?:string;cashGiven?:number;};
 const _orders:{list:ActiveOrder[];listeners:Set<()=>void>}={list:JSON.parse(localStorage.getItem("pos_orders")||"[]"),listeners:new Set()};
 const saveOrders=()=>{localStorage.setItem("pos_orders",JSON.stringify(_orders.list));_orders.listeners.forEach(fn=>fn());};
 const addOrder=(o:Omit<ActiveOrder,"id"|"createdAt">)=>{_orders.list.unshift({...o,id:Math.random().toString(36).slice(2),createdAt:Date.now()});saveOrders();};
@@ -4839,7 +4837,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     if(u?.role==='PLATFORM_ADMINISTRATOR')return; // App.tsx will switch to AdminPanel
     setLoggedIn(true);
   }}/>;
-  const nav=p=>{
+  const nav=(p:any)=>{
     // Enforce role restrictions — redirect to POS if not allowed
     const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
     if(!allowed.includes(role)){setPage(role===ROLES.KITCHEN?"pos":"pos");return;}
