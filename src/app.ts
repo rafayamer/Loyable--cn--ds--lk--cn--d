@@ -9,6 +9,17 @@ import { initRedis } from './config/redis';
 import { initRedis as initTenantRedis } from './middleware/tenant-scope-middleware';
 import { wahaWebhookRouter } from './services/messaging-gateway';
 
+// ── Crash visibility ──────────────────────────────────────────────
+// Print the moment the process starts so we always see *something* in
+// the platform logs, and never let an async crash die silently.
+console.log('[app] Process starting. NODE_ENV=' + (process.env.NODE_ENV ?? 'undefined'));
+process.on('unhandledRejection', (reason) => {
+  console.error('[app] UNHANDLED REJECTION:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[app] UNCAUGHT EXCEPTION:', err);
+});
+
 const app = express();
 
 /**
@@ -39,17 +50,30 @@ async function ensureSchemaPatches() {
 }
 
 async function bootstrap() {
-  // Fail fast with clear log output if critical secrets are missing
-  const missing = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_URL']
-    .filter(k => !process.env[k]);
-  if (missing.length) {
-    throw new Error(`[app] Missing required environment variables: ${missing.join(', ')}`);
+  // Log which critical secrets are present (values never logged) so the
+  // platform logs make missing-config obvious without crashing the boot.
+  for (const k of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_URL']) {
+    console.log(`[app] env ${k}: ${process.env[k] ? 'set' : 'MISSING'}`);
   }
 
-  await initRedis();
-  await initTenantRedis();
-  await prisma.$queryRaw`SELECT 1`;
-  await ensureSchemaPatches();
+  // Infrastructure init is best-effort. A Redis/DB hiccup must NOT prevent the
+  // HTTP server from binding — otherwise the platform shows "Application failed
+  // to respond" with no clue. We log failures and continue; /health still works.
+  try {
+    await initRedis();
+    await initTenantRedis();
+    console.log('[app] Redis initialised.');
+  } catch (e) {
+    console.error('[app] Redis init FAILED (continuing so port still binds):', (e as Error).message);
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    await ensureSchemaPatches();
+    console.log('[app] Database reachable, schema patches ensured.');
+  } catch (e) {
+    console.error('[app] Database init FAILED (continuing so port still binds):', (e as Error).message);
+  }
 
   // Behind a load balancer (Neon/Render/etc) the real client IP arrives via
   // X-Forwarded-For. Without this, express.ip is the proxy IP and rate limiting
