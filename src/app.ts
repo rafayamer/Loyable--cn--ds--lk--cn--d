@@ -39,6 +39,13 @@ async function ensureSchemaPatches() {
 }
 
 async function bootstrap() {
+  // Fail fast with clear log output if critical secrets are missing
+  const missing = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_URL']
+    .filter(k => !process.env[k]);
+  if (missing.length) {
+    throw new Error(`[app] Missing required environment variables: ${missing.join(', ')}`);
+  }
+
   await initRedis();
   await initTenantRedis();
   await prisma.$queryRaw`SELECT 1`;
