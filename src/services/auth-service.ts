@@ -84,6 +84,12 @@ export interface AuthResult extends TokenPair {
   };
 }
 
+/** Returned when one email maps to multiple businesses — client must pick one. */
+export interface BusinessPickerResult {
+  requiresBusinessSelection: true;
+  businesses: { id: string; name: string; slug: string; role: Role }[];
+}
+
 export interface InviteStaffInput {
   inviterUserId:    string;
   businessId:       string;
@@ -125,11 +131,13 @@ export const registerBusiness = async (
     throw new Error('BUSINESS_SLUG_TAKEN');
   }
 
-  // Check email uniqueness across the platform for this registration flow
-  // (same email can exist in multiple businesses as a Staff member via invite,
-  //  but cannot register as Owner of two businesses with same email)
+  // If this email is already registered as any user (owner or staff), block
+  // registration and tell them to log in instead.
   const normalizedEmail = ownerEmail.toLowerCase().trim();
-  const passwordHash    = await hashPassword(ownerPassword);
+  const existingUser = await prisma.user.findFirst({ where: { email: normalizedEmail }, select: { id: true } });
+  if (existingUser) throw new Error('EMAIL_ALREADY_REGISTERED');
+
+  const passwordHash = await hashPassword(ownerPassword);
 
   const { business, owner } = await prisma.$transaction(async (tx) => {
     const business = await tx.business.create({
@@ -234,24 +242,19 @@ export const login = async (
   input:     LoginInput,
   ipAddress?: string,
   userAgent?: string
-): Promise<AuthResult> => {
-  const { email, password, businessSlug } = input;
+): Promise<AuthResult | BusinessPickerResult> => {
+  const { email, password, businessSlug, businessId: targetBusinessId } = input as LoginInput & { businessId?: string };
   const normalizedEmail = email.toLowerCase().trim();
 
-  const userQuery = prisma.user.findFirst({
+  // Fetch ALL active users matching this email (across businesses)
+  const allUsers = await prisma.user.findMany({
     where: {
       email:    normalizedEmail,
       isActive: true,
-      // If businessSlug provided (multi-tenant login page), scope to that tenant
-      ...(businessSlug && {
-        business: { slug: businessSlug },
-      }),
+      ...(businessSlug    && { business: { slug: businessSlug } }),
+      ...(targetBusinessId && { businessId: targetBusinessId }),
     },
-    orderBy: [
-      // Prefer TENANT_OWNER accounts when the same email exists in multiple businesses
-      { role: 'asc' },
-      { createdAt: 'asc' },
-    ],
+    orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
     include: {
       business: {
         select: { id: true, name: true, slug: true, isActive: true, currency: true, industry: true },
@@ -259,22 +262,35 @@ export const login = async (
     },
   });
 
-  const user = await userQuery;
-
-  // ── Constant-time path for missing user ────────────────────────
-  if (!user || !user.passwordHash) {
+  // Constant-time guard — verify against first match or dummy
+  const anyUser = allUsers[0];
+  if (!anyUser || !anyUser.passwordHash) {
     await performDummyVerify();
-    throw new Error('INVALID_CREDENTIALS');
+    throw new Error('USER_NOT_FOUND');
   }
 
-  const passwordValid = await verifyPassword(user.passwordHash, password);
-  if (!passwordValid) {
-    throw new Error('INVALID_CREDENTIALS');
+  const passwordValid = await verifyPassword(anyUser.passwordHash, password);
+  if (!passwordValid) throw new Error('WRONG_PASSWORD');
+
+  // Filter to active businesses only
+  const activeUsers = allUsers.filter(u => u.business.isActive);
+  if (!activeUsers.length) throw new Error('TENANT_SUSPENDED');
+
+  // Multiple businesses and no specific one chosen → return picker
+  if (activeUsers.length > 1 && !targetBusinessId && !businessSlug) {
+    return {
+      requiresBusinessSelection: true,
+      businesses: activeUsers.map(u => ({
+        id:   u.business.id,
+        name: u.business.name,
+        slug: u.business.slug,
+        role: u.role,
+      })),
+    };
   }
 
-  if (!user.business.isActive) {
-    throw new Error('TENANT_SUSPENDED');
-  }
+  const user = activeUsers[0];
+  if (!user.business.isActive) throw new Error('TENANT_SUSPENDED');
 
   // Non-critical side-effects — must not block or fail login
   prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});

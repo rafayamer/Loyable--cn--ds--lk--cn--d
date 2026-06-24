@@ -159,6 +159,9 @@ const validate = (schema: z.ZodSchema) =>
 
 const AUTH_ERROR_STATUS: Record<string, number> = {
   INVALID_CREDENTIALS:             401,
+  USER_NOT_FOUND:                  401,
+  WRONG_PASSWORD:                  401,
+  EMAIL_ALREADY_REGISTERED:        409,
   TOKEN_EXPIRED:                   401,
   TOKEN_REVOKED:                   401,
   REFRESH_TOKEN_INVALID:           401,
@@ -215,6 +218,11 @@ const registerHandler = async (req: Request, res: Response): Promise<void> => {
 const loginHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await login(req.body, req.ip, req.headers['user-agent']);
+    // Multiple businesses share this email — return picker, no tokens issued yet
+    if ('requiresBusinessSelection' in result) {
+      res.status(200).json(result);
+      return;
+    }
     setRefreshCookie(res, result.refreshToken);
     res.status(200).json({
       accessToken: result.accessToken,

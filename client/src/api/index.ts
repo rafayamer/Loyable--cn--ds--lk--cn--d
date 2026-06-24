@@ -65,7 +65,7 @@ const del  = <T>(path: string, body?: unknown) => req<T>(path, { method: 'DELETE
 // ── Auth ──────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    login:         (email: string, password: string) => post<{ accessToken: string; sessionId?: string; user: any }>('/auth/login', { email, password }),
+    login:         (email: string, password: string, businessId?: string) => post<{ accessToken: string; sessionId?: string; user: any; requiresBusinessSelection?: boolean; businesses?: any[] }>('/auth/login', { email, password, ...(businessId ? { businessId } : {}) }),
     register:      (body: { businessName: string; ownerName: string; ownerEmail: string; ownerPassword: string; country: string; timezone: string; currency: string; industry?: string }) =>
                      post<{ accessToken: string; user: any }>('/auth/register', body),
     me:            () => get<any>('/auth/me'),

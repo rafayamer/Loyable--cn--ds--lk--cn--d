@@ -407,25 +407,53 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   const [err,setErr]=useState(oauthErr?OAUTH_ERROR_MSGS[oauthErr]??`Sign-in error: ${oauthErr}`:"");
   const [loading,setLoading]=useState(false);
   const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
+  const [bizChoices,setBizChoices]=useState<{id:string;name:string;role:string}[]|null>(null);
+  const doLogin=async(email:string,password:string,businessId?:string)=>{
+    const d=await api.auth.login(email,password,businessId);
+    if((d as any).requiresBusinessSelection){
+      setBizChoices((d as any).businesses);
+      return;
+    }
+    localStorage.setItem("accessToken",d.accessToken);
+    if((d as any).sessionId)localStorage.setItem("sessionId",(d as any).sessionId);
+    if(d.user?.id)localStorage.setItem("userId",d.user.id);
+    if((d.user as any)?.businessSlug)localStorage.setItem("biz_slug",(d.user as any).businessSlug);
+    if((d.user as any)?.businessName)localStorage.setItem("biz_name",(d.user as any).businessName);
+    if((d.user as any)?.businessIndustry)localStorage.setItem("biz_industry",(d.user as any).businessIndustry);
+    await hydrateFromApi();
+    onLogin(d.user);
+  };
   const submit=async()=>{
     if(!e||!p){setErr("Please enter your email and password.");return;}
     setErr("");setLoading(true);
-    try{
-      const d=await api.auth.login(e,p);
-      localStorage.setItem("accessToken",d.accessToken);
-      if((d as any).sessionId)localStorage.setItem("sessionId",(d as any).sessionId);
-      if(d.user?.id)localStorage.setItem("userId",d.user.id);
-      if((d.user as any)?.businessSlug)localStorage.setItem("biz_slug",(d.user as any).businessSlug);
-      if((d.user as any)?.businessName)localStorage.setItem("biz_name",(d.user as any).businessName);
-      if((d.user as any)?.businessIndustry)localStorage.setItem("biz_industry",(d.user as any).businessIndustry);
-      await hydrateFromApi();
-      onLogin(d.user);
-    }catch(ex){setErr((ex as Error).message==="INVALID_CREDENTIALS"?"Incorrect email or password.":(ex as Error).message);}
-    finally{setLoading(false);}
+    try{await doLogin(e,p);}
+    catch(ex){
+      const m=(ex as Error).message;
+      setErr(m==="USER_NOT_FOUND"?"No account found with that email.":m==="WRONG_PASSWORD"||m==="INVALID_CREDENTIALS"?"Wrong password. Please try again.":m);
+    }finally{setLoading(false);}
   };
   const {dark}=useTheme();
   const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
   const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035"};
+  if(bizChoices){
+    return(
+      <div>
+        <p className="text-center text-sm mb-4 font-medium" style={{color:dark?"#94a3b8":"#374151"}}>Multiple workspaces found for <strong>{e}</strong>. Choose one to continue:</p>
+        <div className="space-y-2 mb-4">
+          {bizChoices.map(b=>(
+            <button key={b.id} onClick={async()=>{setLoading(true);try{await doLogin(e,p,b.id);}catch(ex){setErr((ex as Error).message);}finally{setLoading(false);}}}
+              className="w-full text-left rounded-xl px-4 py-3 transition-all"
+              style={{background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:"1px solid rgba(124,58,237,0.25)"}}>
+              <div className="font-semibold text-sm" style={{color:dark?"white":"#1a1035"}}>{b.name}</div>
+              <div className="text-xs mt-0.5" style={{color:dark?"#94a3b8":"#6b7280"}}>{b.role.replace(/_/g," ")}</div>
+            </button>
+          ))}
+        </div>
+        <ErrBox msg={err}/>
+        <button onClick={()=>setBizChoices(null)} className="w-full text-center text-xs mt-2" style={{color:"#8b5cf6"}}>← Back</button>
+      </div>
+    );
+  }
   return(
     <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
@@ -478,7 +506,7 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
       onLogin(d.user);
     }catch(ex){
       const m=(ex as Error).message;
-      setErr(m==="BUSINESS_SLUG_TAKEN"?"A business with that name already exists. Try a different name.":m==="USER_ALREADY_EXISTS_IN_BUSINESS"?"An account with that email already exists. Try signing in.":m);
+      setErr(m==="BUSINESS_SLUG_TAKEN"?"A business with that name already exists. Try a different name.":m==="USER_ALREADY_EXISTS_IN_BUSINESS"||m==="EMAIL_ALREADY_REGISTERED"?"This email is already registered. Please log in instead.":m);
     }
     finally{setLoading(false);}
   };
