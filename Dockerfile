@@ -26,8 +26,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-# Install prod deps — prisma package included so local binary exists
-RUN npm ci --omit=dev --legacy-peer-deps
+# Install prod deps including prisma CLI (moved to dependencies for migrate)
+RUN npm install --legacy-peer-deps --omit=dev
 
 COPY --from=api-builder /app/dist ./dist
 COPY --from=api-builder /app/node_modules/.prisma ./node_modules/.prisma
