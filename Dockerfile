@@ -14,7 +14,7 @@ RUN npm ci --legacy-peer-deps
 COPY tsconfig.json ./
 COPY prisma/ ./prisma/
 COPY src/ ./src/
-RUN npx prisma generate
+RUN npx prisma@5.14.0 generate
 RUN npx tsc --project tsconfig.json
 
 # ── Stage 3: production image ────────────────────────────────────
@@ -34,4 +34,4 @@ COPY prisma/ ./prisma/
 EXPOSE 4000
 
 # Run migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/app.js"]
+CMD ["sh", "-c", "npx prisma@5.14.0 migrate deploy && node dist/app.js"]
