@@ -2,7 +2,7 @@
 FROM node:20-alpine AS client-builder
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 COPY client/ ./
 RUN npm run build
 
@@ -11,7 +11,7 @@ FROM node:20-alpine AS api-builder
 WORKDIR /app
 COPY package*.json ./
 # Install ALL deps (including prisma CLI) so generate + tsc work
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 COPY tsconfig.json ./
 COPY prisma/ ./prisma/
 COPY src/ ./src/
