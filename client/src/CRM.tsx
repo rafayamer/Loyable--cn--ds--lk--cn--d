@@ -1868,19 +1868,26 @@ const InboxView=({connected}:{connected:boolean})=>{
         <div className="flex-1 overflow-y-auto">
           {loading?<div className="p-4 text-center"><RefreshCw size={18} className="animate-spin text-slate-500 mx-auto"/></div>
           :convos.length===0?<div className="p-6 text-center text-xs" style={{color:sub}}>No messages yet.<br/>Send a message to start a conversation.</div>
-          :convos.map(c=>(
+          :convos.map(c=>{
+            const hasRealName=c.name&&c.name!==c.phone&&!/^\+?\d[\d\s\-]+$/.test(c.name);
+            const displayName=hasRealName?c.name:c.phone||"Unknown";
+            const displayPhone=hasRealName?c.phone:null;
+            return(
             <div key={c.chatId} onClick={()=>setActive(c)} className="flex items-center gap-3 p-3 cursor-pointer transition-colors" style={{background:active?.chatId===c.chatId?(dark?"rgba(139,92,246,0.15)":"rgba(139,92,246,0.08)"):"transparent"}}>
-              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{(c.name||"?")[0].toUpperCase()}</div>
+              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{displayName[0]?.toUpperCase()||"?"}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold truncate" style={{color:txt}}>{c.name}</span>
-                  <span className="text-xs flex-shrink-0" style={{color:sub}}>{chatTime(c.timestamp)}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-semibold truncate block" style={{color:txt}}>{displayName}</span>
+                    {displayPhone&&<span className="text-xs truncate block" style={{color:sub,fontSize:"10px"}}>{displayPhone}</span>}
+                  </div>
+                  <span className="text-xs flex-shrink-0 ml-1" style={{color:sub}}>{chatTime(c.timestamp)}</span>
                 </div>
                 <p className="text-xs truncate mt-0.5" style={{color:sub}}>{c.lastFromMe?"You: ":""}{c.lastText||"…"}</p>
               </div>
               {c.unread>0&&<div className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:"#25D366",fontSize:"10px"}}>{c.unread}</div>}
             </div>
-          ))}
+          );})
         </div>
       </div>
       {/* Thread */}
@@ -1893,8 +1900,15 @@ const InboxView=({connected}:{connected:boolean})=>{
         ):(
           <>
             <div className="flex items-center gap-3 p-3 border-b" style={{borderColor:border}}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{(active.name||"?")[0].toUpperCase()}</div>
-              <div><p className="text-sm font-semibold" style={{color:txt}}>{active.name}</p><p className="text-xs" style={{color:sub}}>{active.phone}</p></div>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>
+                {(active.name&&active.name!==active.phone&&!/^\+?\d[\d\s\-]+$/.test(active.name)?active.name:active.phone||"?")[0]?.toUpperCase()}
+              </div>
+              <div>
+                {active.name&&active.name!==active.phone&&!/^\+?\d[\d\s\-]+$/.test(active.name)
+                  ?<><p className="text-sm font-semibold" style={{color:txt}}>{active.name}</p><p className="text-xs" style={{color:sub}}>{active.phone}</p></>
+                  :<p className="text-sm font-semibold" style={{color:txt}}>{active.phone||active.name}</p>
+                }
+              </div>
             </div>
             <div ref={threadRef} className="flex-1 overflow-y-auto p-4 space-y-2">
               {thread.map((m,i)=>(
