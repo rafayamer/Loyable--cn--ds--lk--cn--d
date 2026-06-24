@@ -983,6 +983,24 @@ loyaltyRouter.delete(
   deleteCustomerHandler
 );
 
+// GDPR purge — delete all PII for a customer by phone number
+loyaltyRouter.post(
+  '/customers/purge',
+  requireRoles(Role.TENANT_OWNER) as any,
+  async (req: any, res: any) => {
+    const { businessId } = req.tenantContext;
+    const { phone } = req.body as { phone?: string };
+    if (!phone?.trim()) { res.status(400).json({ error: 'Phone number required' }); return; }
+    const customer = await prisma.customer.findFirst({
+      where: { businessId, whatsappNumber: phone.trim() },
+      select: { id: true },
+    });
+    if (!customer) { res.status(404).json({ error: 'No customer found with that phone number' }); return; }
+    await prisma.customer.delete({ where: { id: customer.id } });
+    res.json({ ok: true });
+  }
+);
+
 // Message queue
 loyaltyRouter.get(
   '/messages',

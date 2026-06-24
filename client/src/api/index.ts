@@ -101,6 +101,7 @@ export const api = {
     update:   (id: string, body: any) => patch<any>(`/loyalty/customers/${id}`, body),
     remove:   (id: string)  => del<any>(`/loyalty/customers/${id}`),
     setStaff: (id: string, isStaff: boolean) => patch<any>(`/loyalty/customers/${id}`, { isStaff }),
+    purge:    (phone: string) => post<any>('/loyalty/customers/purge', { phone }),
   },
 
   // ── Analytics ─────────────────────────────────────────────────

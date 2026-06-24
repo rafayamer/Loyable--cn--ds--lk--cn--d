@@ -2207,7 +2207,7 @@ const AutomationBuilderPage=({onBack}:any)=>{
             {/* Action nodes */}
             {acts.map((a,i)=>{const A=ACTIONS.find(x=>x.type===a)||ACTIONS[0];return(<div key={a+i} className="w-full space-y-0"><div className="max-w-xs mx-auto p-3 rounded-xl flex items-center gap-3" style={{background:A.color+"15",border:"2px solid "+(A.color)+"50"}}><div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{background:A.color+"25"}}><A.icon size={18} style={{color:A.color}}/></div><div className="flex-1"><div className="text-xs font-semibold" style={{color:A.color}}>ACTION {i+1}</div><div className="text-sm text-white font-medium">{A.label}</div></div><button onClick={()=>setActs(p=>p.filter((_,j)=>j!==i))} className="text-slate-500 hover:text-red-400"><X size={14}/></button></div>{i<acts.length-1&&<div className="flex flex-col items-center py-1"><div className="w-px h-5 bg-violet-500/40"/><div className="w-2 h-2 rotate-45 border-r-2 border-b-2 border-violet-400" style={{marginTop:-4}}/></div>}</div>);})}</div>
           <div className="mt-3 flex gap-2 justify-center"><button onClick={()=>{const unused=ACTIONS.filter(a=>!acts.includes(a.type));if(unused.length)setActs(p=>[...p,unused[0].type]);}} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 transition-all" style={{border:"1px dashed rgba(139,92,246,0.4)"}}><Plus size={12}/>Add Action</button></div>
-          <div className="mt-4 text-xs text-slate-500 text-center">graphJson → compiledJson → BullMQ job</div>
+          <div className="mt-4 text-xs text-slate-500 text-center">This automation will run automatically in the background</div>
         </div>
         {/* Config & JSON */}
         <div className="gc rounded-xl p-4 space-y-4" style={CARD}>
@@ -3564,6 +3564,58 @@ const BillingTab=()=>{
 };
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
+
+const GdprTab=()=>{
+  const [purging,setPurging]=useState(false);
+  const [phone,setPhone]=useState("");
+  const [done,setDone]=useState("");
+  const ct=useCard();
+  const doPurge=async()=>{
+    if(!phone.trim()){alert("Please enter a phone number.");return;}
+    if(!window.confirm(`Are you sure you want to permanently delete all data for ${phone}? This cannot be undone.`))return;
+    setPurging(true);setDone("");
+    try{
+      await api.customers.purge(phone.trim());
+      setDone("Done — all personal data for that customer has been permanently deleted.");
+      setPhone("");
+    }catch(e:any){alert(e?.message||"Something went wrong. Please try again.");}
+    finally{setPurging(false);}
+  };
+  return(
+    <div className="space-y-4">
+      <p className="text-xs text-slate-400">Control how your customers' personal information is handled. All settings below are active by default.</p>
+      <div className="space-y-2">
+        {[
+          {l:"WhatsApp Marketing Permission",d:"Customers can text STOP at any time to unsubscribe from WhatsApp messages. We handle this automatically."},
+          {l:"Email Marketing Permission",d:"Each customer has a separate on/off switch for email marketing."},
+          {l:"SMS Marketing Permission",d:"Separate permission for SMS messages — independent from WhatsApp and email."},
+          {l:"Push Notification Permission",d:"For future mobile app notifications — customers control this themselves."},
+        ].map((c,i)=>(
+          <div key={i} className="p-3 rounded-lg flex items-center justify-between" style={{background:"rgba(255,255,255,0.02)"}}>
+            <div><div className="text-xs text-white font-medium">{c.l}</div><div className="text-xs text-slate-500 mt-0.5">{c.d}</div></div>
+            <Badge color={C.green}>On</Badge>
+          </div>
+        ))}
+      </div>
+      <div className="p-4 rounded-xl" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.15)"}}>
+        <div className="text-xs font-semibold text-green-400 mb-1">🛑 Auto Unsubscribe</div>
+        <div className="text-xs text-slate-400">If a customer replies STOP, UNSUBSCRIBE, or CANCEL to any WhatsApp message, they are immediately removed from all future marketing messages. No action needed from you.</div>
+      </div>
+      <div className="p-4 rounded-xl" style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)"}}>
+        <div className="text-xs font-semibold text-red-400 mb-2">🗑️ Delete a Customer's Data</div>
+        <div className="text-xs text-slate-400 mb-3">If a customer asks you to delete their information, enter their phone number below. All their personal details will be permanently removed from your account.</div>
+        <div className="flex gap-2">
+          <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+447911123456" className="flex-1 rounded-lg px-3 py-2 text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(239,68,68,0.25)"}}/>
+          <button onClick={doPurge} disabled={purging} className="px-3 py-2 rounded-lg text-xs font-medium text-red-300 disabled:opacity-50 flex items-center gap-1.5" style={{border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.08)"}}>
+            {purging?<RefreshCw size={11} className="animate-spin"/>:<Trash2 size={11}/>}{purging?"Deleting…":"Delete Data"}
+          </button>
+        </div>
+        {done&&<div className="mt-2 text-xs text-green-400">{done}</div>}
+      </div>
+    </div>
+  );
+};
+
 const SettingsPage=({wa,onConnect}:any)=>{
   const ct=useCard();
   const [tab,setTab]=useState("business");
@@ -3597,10 +3649,10 @@ const SettingsPage=({wa,onConnect}:any)=>{
       setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
     }catch{}
   };
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"GDPR",icon:Globe}];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe}];
   return(
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Tenant configuration · All changes scoped to businessId</p></div>
+      <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
       <div className="gc rounded-xl p-5" style={CARD}>
         {tab==="business"&&<div className="space-y-4">
@@ -3724,8 +3776,8 @@ const SettingsPage=({wa,onConnect}:any)=>{
           </div>
         </div>}
         {tab==="stripe"&&<BillingTab/>}
-        {tab==="security"&&<div className="space-y-2">{[{l:"Argon2id Password Hashing",d:"64MB memory · 3 iterations · parallelism 4",on:true},{l:"JWT Access Tokens (15min)",d:"HS256 · HTTP-only refresh cookie (7d)",on:true},{l:"Refresh Token Rotation",d:"Theft detection → clears hash on mismatch",on:true},{l:"Redis Token Revocation",d:"Blacklist on logout/password change",on:true},{l:"Two-Factor Authentication (TOTP)",d:"6-digit TOTP with backup codes",on:false},{l:"Rate Limiting (Redis-backed)",d:"10 logins/15min · 5 registrations/hr",on:true},{l:"Cloudflare WAF + DDoS",d:"Edge protection · geo-blocking",on:true},{l:"Row-Level Security (businessId)",d:"tenantScope.ts middleware on every route",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
-        {tab==="gdpr"&&<div className="space-y-4"><div className="text-xs text-slate-400 mb-3">UK GDPR + EU GDPR · PECR compliant · Granular consent per channel</div><div className="space-y-2">{[{l:"WhatsApp Marketing Consent",d:"marketingConsentWhatsapp · STOP keyword flips to false"},{l:"Email Marketing Consent",d:"marketingConsentEmail · separate flag per Customer"},{l:"SMS Marketing Consent",d:"marketingConsentSms · independent"},{l:"Push Notification Consent",d:"marketingConsentPush · for React Native / Expo"}].map((c,i)=><div key={i} className="p-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className="flex items-center justify-between"><div><div className="text-xs text-white font-medium">{c.l}</div><div className="text-xs text-slate-500 font-mono">{c.d}</div></div><Badge color={C.green}>Active</Badge></div></div>)}</div><div className="p-3 rounded-xl" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}><div className="text-xs font-medium text-red-400 mb-1">Right to be Forgotten</div><div className="text-xs text-slate-400 mb-2">Hard-delete PII from Customer + Visit tables. Anonymized revenue rows preserved for analytics.</div><button className="px-3 py-1.5 rounded-lg text-xs text-red-300 font-medium" style={{border:"1px solid rgba(239,68,68,0.3)"}}>Initiate Data Purge Request</button></div><div className="p-3 rounded-xl" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.15)"}}><div className="text-xs font-medium text-green-400 mb-1">Opt-Out Interceptor</div><div className="text-xs text-slate-400">WAHA/Meta webhook · detects STOP/UNSUBSCRIBE/CANCEL · instantly sets isSuppressed=true · appends ConsentChangeLog · BullMQ worker checks before every dispatch</div></div></div>}
+        {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
+        {tab==="gdpr"&&<GdprTab/>}
       </div>
     </div>
   );
@@ -3768,7 +3820,7 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const statusColor=(s:string)=>s==="ACTIVE"||s==="LAUNCHED"?C.green:s==="SCHEDULED"?C.amber:s==="DRAFT"?"#64748b":s==="COMPLETED"?"#8b5cf6":"#64748b";
   return(
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">WhatsApp campaign builder · BullMQ dispatch · AI-assisted copywriting</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
+      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">Send WhatsApp messages to your customers in bulk</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
 
       {/* WhatsApp Ads — Coming Soon (compact) */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:"rgba(37,211,102,0.06)",border:"1px solid rgba(37,211,102,0.18)"}}>
@@ -3887,7 +3939,7 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
   return(
     <div className="space-y-4">
       {logsFor&&<AutomationRunsModal auto={logsFor} onClose={()=>setLogsFor(null)}/>}
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Automations</h1><p className="text-xs text-slate-400 mt-0.5">Visual flow builder → compiledJson → BullMQ jobs · Zero-code IF/THEN</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Build Automation</button></div>
+      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Automations</h1><p className="text-xs text-slate-400 mt-0.5">Set up automatic messages that send themselves — no manual work needed</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Build Automation</button></div>
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:autos.length===0?
         <div className="gc rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Build First Automation</button></div>:
       <div className="space-y-3">{autos.map((a:any)=>{
