@@ -234,7 +234,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
               </label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current" strokeWidth={2}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-                <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com (optional)" autoComplete="email" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+                <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={emailBonusPts > 0 ? `Add email to earn ${emailBonusPts} bonus points` : "your@email.com (optional)"} autoComplete="email" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
             </div>
             {/* Consent + T&C */}

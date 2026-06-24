@@ -20,6 +20,9 @@ import { tenantScope }               from '../middleware/tenant-scope-middleware
 import { getRedisClient }            from '../config/redis';
 import { WahaGateway, toChatId }     from '../services/messaging-gateway';
 import { getWahaConfig }             from '../config/waha';
+import { sendBaileysText }           from '../services/baileys-service';
+
+const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
 
 
 // ── Portal JWT helpers ────────────────────────────────────────────
@@ -203,48 +206,56 @@ const VerifyOtpSchema = z.object({
  * phone number via /verify-otp. The signup payload is parked in Redis.
  */
 const loginHandler = async (req: Request, res: Response): Promise<void> => {
-  const parse = LoginSchema.safeParse(req.body);
-  if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
+  try {
+    const parse = LoginSchema.safeParse(req.body);
+    if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
 
-  const { phone, name, ref, email, consentMarketing } = parse.data;
-  const { slug } = req.params;
+    const { phone, name, ref, email, consentMarketing } = parse.data;
+    const { slug } = req.params;
 
-  const biz = await prisma.business.findFirst({
-    where:  { slug },
-    select: { id: true, name: true, wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-  });
-  if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
+    const biz = await prisma.business.findFirst({
+      where:  { slug },
+      select: { id: true, name: true },
+    });
+    if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
 
-  const normalized = normalizePortalPhone(phone);
-  const redis = getRedisClient();
+    const normalized = normalizePortalPhone(phone);
+    const redis = getRedisClient();
 
-  // Generate + store the OTP and the pending signup payload.
-  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  await redis.set(otpKey(biz.id, normalized), code, { EX: OTP_TTL_SEC });
-  await redis.set(
-    otpData(biz.id, normalized),
-    JSON.stringify({ name: name.trim(), ref: ref ?? null, email: email ?? null, consentMarketing: !!consentMarketing }),
-    { EX: OTP_TTL_SEC }
-  );
-  await redis.del(`portal:otpattempts:${biz.id}:${normalized}`);
+    // Generate + store the OTP and the pending signup payload.
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+    await redis.set(otpKey(biz.id, normalized), code, { EX: OTP_TTL_SEC });
+    await redis.set(
+      otpData(biz.id, normalized),
+      JSON.stringify({ name: name.trim(), ref: ref ?? null, email: email ?? null, consentMarketing: !!consentMarketing }),
+      { EX: OTP_TTL_SEC }
+    );
+    await redis.del(`portal:otpattempts:${biz.id}:${normalized}`);
 
-  // Deliver the code over WhatsApp.
-  const { baseUrl, sessionId, apiKey } = await getWahaConfig(biz.id);
-  const sent = await WahaGateway.sendText(
-    toChatId(normalized),
-    `Your ${biz.name} verification code is ${code}. It expires in 5 minutes.`,
-    baseUrl, sessionId, apiKey
-  ).catch(() => ({ success: false }));
+    // Deliver the code over WhatsApp — route to Baileys or WAHA.
+    const otpText = `Your ${biz.name} verification code is ${code}. It expires in 5 minutes.`;
+    let sent: { success: boolean };
+    if (GLOBAL_BAILEYS) {
+      const digits = normalized.replace(/[^\d]/g, '');
+      sent = await sendBaileysText(biz.id, digits, otpText).catch(() => ({ success: false }));
+    } else {
+      const { baseUrl, sessionId, apiKey } = await getWahaConfig(biz.id);
+      sent = await WahaGateway.sendText(toChatId(normalized), otpText, baseUrl, sessionId, apiKey)
+        .catch(() => ({ success: false }));
+    }
 
-  // In dev (or if WhatsApp isn't connected) we surface the code so testing
-  // isn't blocked. Never do this in production.
-  const devEcho = process.env.NODE_ENV !== 'production' ? { devCode: code } : {};
-  if (!sent.success && process.env.NODE_ENV === 'production') {
-    res.status(502).json({ error: 'Could not send verification code. Please try again.' });
-    return;
+    // In dev surface the code so testing isn't blocked by WhatsApp not being connected.
+    const devEcho = process.env.NODE_ENV !== 'production' ? { devCode: code } : {};
+    if (!sent.success && process.env.NODE_ENV === 'production') {
+      res.status(502).json({ error: 'Could not send verification code — WhatsApp not connected. Please reconnect in Settings.' });
+      return;
+    }
+
+    res.json({ otpRequired: true, phone: normalized.replace(/.(?=.{4})/g, '*'), ...devEcho });
+  } catch (err) {
+    console.error('[portal] loginHandler error:', err);
+    res.status(500).json({ error: 'Server error — please try again.' });
   }
-
-  res.json({ otpRequired: true, phone: normalized.replace(/.(?=.{4})/g, '*'), ...devEcho });
 };
 
 /**
@@ -253,6 +264,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
  * email-bonus side effects, then issue the portal session token.
  */
 const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
   const parse = VerifyOtpSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: 'Invalid input' }); return; }
   const { slug } = req.params;
@@ -340,6 +352,10 @@ const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
 
   const token = issuePortalToken(customer.id, biz.id);
   res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied, emailBonusAwarded });
+  } catch (err) {
+    console.error('[portal] verifyOtpHandler error:', err);
+    res.status(500).json({ error: 'Server error — please try again.' });
+  }
 };
 
 /** GET /api/portal/me — full loyalty profile */
