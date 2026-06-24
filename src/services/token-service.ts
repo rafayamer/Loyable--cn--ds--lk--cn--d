@@ -195,7 +195,7 @@ export const rotateRefreshToken = async (
       throw new Error('REFRESH_TOKEN_INVALID');
     }
     if (oldAccessToken) revokeToken(oldAccessToken).catch(() => {});
-    await prisma.userSession.delete({ where: { id: session.id } });
+    await prisma.userSession.deleteMany({ where: { id: session.id } });
   } else {
     // Legacy fallback: verify against User.refreshTokenHash
     const userWithHash = await prisma.user.findUnique({

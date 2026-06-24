@@ -43,6 +43,7 @@ interface BaileysSession {
 // ── In-memory store ──────────────────────────────────────────────
 
 const sessions = new Map<string, BaileysSession>();
+const loggingOut = new Set<string>(); // guard against duplicate logout handlers
 
 const QR_REDIS_KEY  = (bizId: string) => `baileys:qr:${bizId}`;
 const QR_TTL_SECS   = 60;
@@ -133,11 +134,14 @@ export async function startBaileysSession(bizId: string): Promise<void> {
       const loggedOut = reason === DisconnectReason.loggedOut;
 
       if (loggedOut) {
+        if (loggingOut.has(bizId)) return; // already handling logout
+        loggingOut.add(bizId);
         console.log('[baileys] %s logged out — clearing credentials', bizId);
         session.status = 'STOPPED';
         sessions.delete(bizId);
         await clearAuthState(bizId);
         await clearQr(bizId);
+        loggingOut.delete(bizId);
       } else {
         // Transient disconnect — reconnect after short backoff
         session.status = 'STARTING';
