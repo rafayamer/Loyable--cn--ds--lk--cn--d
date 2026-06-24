@@ -159,8 +159,11 @@ messagesRouter.get('/inbox', tenantScope, async (req: Request, res: Response) =>
     const byPhone = new Map(customers.map(c => [c.whatsappNumber, c]));
     const conversations = latest.map((r:any) => {
       const cust = byPhone.get(r.phone);
+      // Always return @s.whatsapp.net chatId so the thread view uses a consistent key
+      const digits = (r.phone||r.chatId.replace(/@.*$/,'')).replace(/[^\d]/g,'');
+      const normChatId = digits ? `${digits}@s.whatsapp.net` : r.chatId;
       return {
-        chatId:     r.chatId,
+        chatId:     normChatId,
         phone:      r.phone,
         name:       cust?.fullName || r.phone || 'Unknown',
         customerId: r.customerId ?? cust?.id ?? null,
@@ -212,8 +215,21 @@ messagesRouter.get('/inbox/:chatId', tenantScope, async (req: Request, res: Resp
 
   if (GLOBAL_BAILEYS) {
     const cutoff = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
+    // Normalise chatId to phone so we match both @s.whatsapp.net and @c.us records
+    const phone = '+' + chatId.replace(/@.*$/, '').replace(/[^\d]/g, '');
     const rows = await (prisma as any).whatsAppMessage.findMany({
-      where:   { businessId, chatId, timestamp: { gte: cutoff } },
+      where: {
+        businessId,
+        timestamp: { gte: cutoff },
+        OR: [
+          { chatId },
+          // Also match the alternate JID suffix (old @c.us ↔ new @s.whatsapp.net)
+          { chatId: chatId.includes('@s.whatsapp.net')
+              ? chatId.replace('@s.whatsapp.net', '@c.us')
+              : chatId.replace('@c.us', '@s.whatsapp.net') },
+          ...(phone.length > 3 ? [{ phone }] : []),
+        ],
+      },
       orderBy: { timestamp: 'asc' },
       take:    200,
     });
