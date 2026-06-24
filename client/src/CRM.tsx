@@ -1580,12 +1580,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Message Performance</h3>
           {analyticsLoading?<Skeleton h="h-[160px]"/>:msgPerf.length===0?<div className="h-[160px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
-          <ResponsiveContainer width="100%" height={160}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[2,2,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[2,2,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
+          <ResponsiveContainer width="100%" height={160}><AreaChart data={msgPerf}><defs><linearGradient id="gmsg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35}/><stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient><linearGradient id="gmsg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient><linearGradient id="gmsg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Area type="monotone" dataKey="sent" name="Sent" stroke="#3b82f6" fill="url(#gmsg1)" strokeWidth={2}/><Area type="monotone" dataKey="del" name="Delivered" stroke="#22c55e" fill="url(#gmsg2)" strokeWidth={2}/><Area type="monotone" dataKey="read" name="Read" stroke="#06b6d4" fill="url(#gmsg3)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
         <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Customer Growth</h3>
           {analyticsLoading?<Skeleton h="h-[160px]"/>:growthData.length===0?<div className="h-[160px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
-          <ResponsiveContainer width="100%" height={160}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Bar dataKey="c" name="Total" fill="#8b5cf6" radius={[2,2,0,0]}/><Bar dataKey="ret" name="Loyal" fill="#22c55e" radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
+          <ResponsiveContainer width="100%" height={160}><AreaChart data={growthData}><defs><linearGradient id="ggrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="ggrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total" stroke="#8b5cf6" fill="url(#ggrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Loyal" stroke="#22c55e" fill="url(#ggrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
       </div>
 
@@ -2226,70 +2226,205 @@ const CampaignBuilderPage=({onBack}:any)=>{
 const TRIGGERS=[{type:"BIRTHDAY",label:"Birthday",icon:Gift,color:"#ec4899",desc:"Customer's birthday today"},{type:"INACTIVITY",label:"Inactivity",icon:Clock,color:"#ef4444",desc:"No visit > N days"},{type:"VISIT_MILESTONE",label:"Visit Milestone",icon:Star,color:"#f59e0b",desc:"Reaches X visits"},{type:"TIER_UPGRADE",label:"Tier Upgrade",icon:Crown,color:"#06b6d4",desc:"Moves to new loyalty tier"},{type:"SENTIMENT_NEGATIVE",label:"Neg. Sentiment",icon:AlertTriangle,color:"#8b5cf6",desc:"WAHA inbound very-negative"}];
 const ACTIONS=[{type:"SEND_WHATSAPP",label:"Send WhatsApp",icon:MessageSquare,color:"#25D366",desc:"Route via BullMQ → gateway"},{type:"AWARD_POINTS",label:"Award Points",icon:StarIcon,color:"#f59e0b",desc:"Append to RewardPointsLedger"},{type:"CHANGE_SEGMENT",label:"Change Segment",icon:Users,color:"#8b5cf6",desc:"Update CustomerSegment enum"},{type:"SEND_EMAIL",label:"Send Email",icon:Mail,color:"#3b82f6",desc:"Queue email job"},{type:"MANAGER_ALERT",label:"Manager Alert",icon:Bell,color:"#ef4444",desc:"Push to dashboard notification"}];
 const AutomationBuilderPage=({onBack}:any)=>{
-  const [trig,setTrig]=useState("BIRTHDAY");const [acts,setActs]=useState(["SEND_WHATSAPP"]);const [delay,setDelay]=useState(0);const [saved,setSaved]=useState(false);const [msgBody,setMsgBody]=useState("");
-  const [autoName,setAutoName]=useState(`Automation ${new Date().toLocaleDateString()}`);const [saveErr,setSaveErr]=useState<string|null>(null);
-  const T=TRIGGERS.find(t=>t.type===trig)||TRIGGERS[0];
-  const save=async()=>{
-    setSaved(false);setSaveErr(null);
-    // Build proper ReactFlow node shapes matching compiler's expected types
-    const trigNode={id:"trigger-1",type:"triggerNode",data:{triggerType:trig,...(trig==="INACTIVITY"?{config:{daysInactive:30}}:trig==="VISIT_MILESTONE"?{config:{visitCount:5}}:trig==="SPEND_THRESHOLD"?{config:{spendThreshold:100}}:{})},position:{x:250,y:50}};
-    const actNodes=acts.map((a,i)=>({id:`action-${i+1}`,type:"actionNode",data:{actionType:a,delayMinutes:delay,...(a==="SEND_WHATSAPP"?{templateName:"default",messageBody:msgBody||"Hi {{name}}, we have a special offer for you!"}:a==="AWARD_POINTS"?{points:50}:a==="DEDUCT_POINTS"?{points:10}:a==="CHANGE_SEGMENT"?{targetSegment:"VIP"}:{})},position:{x:250,y:180+i*120}}));
-    const edges=actNodes.map((n,i)=>({id:`e${i}`,source:i===0?"trigger-1":actNodes[i-1].id,target:n.id}));
-    const body={name:autoName||`Automation ${new Date().toLocaleDateString()}`,graphJson:{nodes:[trigNode,...actNodes],edges}};
-    try{await api.automations.create(body);setSaved(true);setTimeout(()=>setSaved(false),2500);}catch(e:any){setSaveErr(e?.message||"Save failed");}
+  const bizName=localStorage.getItem("biz_name")||"Your Business";
+  const [step,setStep]=useState(1);
+  const [trig,setTrig]=useState("BIRTHDAY");
+  const [delay,setDelay]=useState(0);
+  const [delayUnit,setDelayUnit]=useState<"minutes"|"hours"|"days">("hours");
+  const [msgBody,setMsgBody]=useState("");
+  const [awardPoints,setAwardPoints]=useState(50);
+  const [extraAction,setExtraAction]=useState<string|null>(null);
+  const [autoName,setAutoName]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [saveErr,setSaveErr]=useState<string|null>(null);
+  const [done,setDone]=useState(false);
+
+  // Suggested messages per trigger
+  const SUGGESTIONS:Record<string,string>={
+    BIRTHDAY:`Happy Birthday {{name}}! 🎂🎉 The whole team at ${bizName} wishes you a wonderful day. As our gift, enjoy a special surprise on your next visit — come celebrate with us!`,
+    INACTIVITY:`Hey {{name}}, we miss you! 👋 It's been a while since we've seen you at ${bizName}. Come back this week and we'll make your visit extra special. See you soon! 😊`,
+    VISIT_MILESTONE:`Congratulations {{name}}! 🌟 You've hit a loyalty milestone at ${bizName}! Thank you for being such a loyal customer — we have a special reward waiting for you on your next visit.`,
+    TIER_UPGRADE:`Great news, {{name}}! 🎊 You've just been upgraded to a new loyalty tier at ${bizName}! Your loyalty means everything to us. Enjoy your new exclusive perks on your next visit!`,
+    SENTIMENT_NEGATIVE:`Hi {{name}}, we're sorry if your recent experience didn't meet expectations. We'd love to make it right — please visit us and ask for the manager. Your satisfaction is our priority. 🙏`,
   };
+
+  const T=TRIGGERS.find(t=>t.type===trig)||TRIGGERS[0];
+  const delayMins=delay*(delayUnit==="days"?1440:delayUnit==="hours"?60:1);
+
+  const save=async()=>{
+    if(!autoName.trim()){setSaveErr("Please give your automation a name.");return;}
+    if(!msgBody.trim()){setSaveErr("Please write the message to send.");return;}
+    setSaving(true);setSaveErr(null);
+    const acts:string[]=["SEND_WHATSAPP"];
+    if(awardPoints>0)acts.push("AWARD_POINTS");
+    if(extraAction&&!acts.includes(extraAction))acts.push(extraAction);
+    const trigNode={id:"trigger-1",type:"triggerNode",data:{triggerType:trig,...(trig==="INACTIVITY"?{config:{daysInactive:30}}:trig==="VISIT_MILESTONE"?{config:{visitCount:5}}:{})},position:{x:250,y:50}};
+    const actNodes=acts.map((a,i)=>({id:`action-${i+1}`,type:"actionNode",data:{actionType:a,delayMinutes:delayMins,...(a==="SEND_WHATSAPP"?{templateName:"default",messageBody:msgBody}:a==="AWARD_POINTS"?{points:awardPoints}:a==="CHANGE_SEGMENT"?{targetSegment:"VIP"}:{})},position:{x:250,y:180+i*120}}));
+    const edges=actNodes.map((n,i)=>({id:`e${i}`,source:i===0?"trigger-1":actNodes[i-1].id,target:n.id}));
+    try{
+      const created=await api.automations.create({name:autoName.trim(),graphJson:{nodes:[trigNode,...actNodes],edges}});
+      if(created?.id)await api.automations.activate(created.id).catch(()=>{});
+      setDone(true);
+      setTimeout(()=>onBack(),1800);
+    }catch(e:any){setSaveErr(e?.message||"Save failed");}finally{setSaving(false);}
+  };
+
+  if(done)return(
+    <div className="flex flex-col items-center justify-center py-20 space-y-4">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:"rgba(34,197,94,0.15)",border:"2px solid rgba(34,197,94,0.4)"}}><Check size={28} className="text-green-400"/></div>
+      <p className="text-white font-semibold">Automation saved!</p>
+      <p className="text-slate-400 text-sm">It will run automatically in the background.</p>
+    </div>
+  );
+
   return(
-    <div className="space-y-4">
-      <div className="flex items-center gap-3"><button onClick={onBack} className="text-slate-400 hover:text-white"><ChevronLeft size={20}/></button><div><h1 className="text-xl font-bold text-white">Automation Builder</h1><p className="text-xs text-slate-400 mt-0.5">Visual reactflow canvas · compiles to graphJson + compiledJson stored in Prisma</p></div></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Trigger */}
-        <div className="gc rounded-xl p-4" style={CARD}>
-          <div className="text-xs font-semibold text-cyan-400 mb-3 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>TRIGGER NODE</div>
-          <div className="space-y-2">{TRIGGERS.map(t=><button key={t.type} onClick={()=>setTrig(t.type)} className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${trig===t.type?"ring-2":"hover:bg-white/3"}`} style={trig===t.type?{background:t.color+"15",border:"1px solid "+(t.color)+"35",["--tw-ring-color" as any]:t.color}:{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:t.color+"20"}}><t.icon size={16} style={{color:t.color}}/></div><div className="flex-1"><div className="text-xs font-medium text-white">{t.label}</div><div className="text-xs text-slate-500">{t.desc}</div></div>{trig===t.type&&<CircleCheck size={16} style={{color:t.color}}/>}
-          </button>)}</div>
-        </div>
-        {/* Visual Flow Canvas */}
-        <div className="gc rounded-xl p-4" style={CARD}>
-          <div className="text-xs font-semibold text-slate-400 mb-3">Flow Canvas</div>
-          <div className="flex flex-col items-center gap-0">
-            {/* Trigger node */}
-            <div className="w-full max-w-xs p-3 rounded-xl flex items-center gap-3" style={{background:T.color+"15",border:"2px solid "+(T.color)+"50"}}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{background:T.color+"25"}}><T.icon size={18} style={{color:T.color}}/></div><div><div className="text-xs font-semibold" style={{color:T.color}}>TRIGGER</div><div className="text-sm text-white font-medium">{T.label}</div></div>
-            </div>
-            {/* Arrow */}
-            <div className="flex flex-col items-center py-1"><div className="w-px h-5 bg-violet-500/40"/><div className="w-2 h-2 rotate-45 border-r-2 border-b-2 border-violet-400" style={{marginTop:-4}}/></div>
-            {/* Delay node */}
-            {delay>0&&<><div className="w-full max-w-xs p-2.5 rounded-xl flex items-center gap-2 mb-0" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)"}}><Clock size={14} className="text-amber-400"/><span className="text-xs text-amber-300">Wait {delay} minutes</span></div><div className="flex flex-col items-center py-1"><div className="w-px h-5 bg-violet-500/40"/><div className="w-2 h-2 rotate-45 border-r-2 border-b-2 border-violet-400" style={{marginTop:-4}}/></div></>}
-            {/* Action nodes */}
-            {acts.map((a,i)=>{const A=ACTIONS.find(x=>x.type===a)||ACTIONS[0];return(<div key={a+i} className="w-full space-y-0"><div className="max-w-xs mx-auto p-3 rounded-xl flex items-center gap-3" style={{background:A.color+"15",border:"2px solid "+(A.color)+"50"}}><div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{background:A.color+"25"}}><A.icon size={18} style={{color:A.color}}/></div><div className="flex-1"><div className="text-xs font-semibold" style={{color:A.color}}>ACTION {i+1}</div><div className="text-sm text-white font-medium">{A.label}</div></div><button onClick={()=>setActs(p=>p.filter((_,j)=>j!==i))} className="text-slate-500 hover:text-red-400"><X size={14}/></button></div>{i<acts.length-1&&<div className="flex flex-col items-center py-1"><div className="w-px h-5 bg-violet-500/40"/><div className="w-2 h-2 rotate-45 border-r-2 border-b-2 border-violet-400" style={{marginTop:-4}}/></div>}</div>);})}</div>
-          <div className="mt-3 flex gap-2 justify-center"><button onClick={()=>{const unused=ACTIONS.filter(a=>!acts.includes(a.type));if(unused.length)setActs(p=>[...p,unused[0].type]);}} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 transition-all" style={{border:"1px dashed rgba(139,92,246,0.4)"}}><Plus size={12}/>Add Action</button></div>
-          <div className="mt-4 text-xs text-slate-500 text-center">This automation will run automatically in the background</div>
-        </div>
-        {/* Config & JSON */}
-        <div className="gc rounded-xl p-4 space-y-4" style={CARD}>
-          <div className="text-xs font-semibold text-amber-400 mb-2 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>ACTION NODES</div>
-          <div className="space-y-2">{ACTIONS.map(a=><button key={a.type} onClick={()=>!acts.includes(a.type)&&setActs(p=>[...p,a.type])} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left text-xs transition-all ${acts.includes(a.type)?"opacity-50 cursor-not-allowed":""}`} style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}><a.icon size={14} style={{color:a.color}}/><span className="text-white">{a.label}</span><span className="text-slate-600 ml-auto">{a.desc}</span></button>)}</div>
-          {acts.includes("SEND_WHATSAPP")&&(
-            <div className="pt-3 border-t border-white/5 space-y-2">
-              <label className="text-xs text-slate-400">Message Body</label>
-              <textarea value={msgBody} onChange={e=>setMsgBody(e.target.value)} placeholder="Hi {{name}}, we miss you! Come back and earn {{points}} bonus points 🎁" rows={4} className="w-full px-3 py-2 rounded-lg text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-              <div className="flex flex-wrap gap-1.5">
-                {["{{name}}","{{points}}","{{tier}}","{{visits}}","{{business_name}}"].map(v=>(
-                  <button key={v} onClick={()=>setMsgBody(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}}>+{v}</button>
-                ))}
-              </div>
-              <p className="text-xs text-slate-500">Use variables above to personalize. {"{{name}}"} = customer's first name, {"{{points}}"} = their current balance.</p>
-            </div>
-          )}
-          <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Delay before actions (minutes)</label><input type="number" value={delay} onChange={e=>setDelay(Number(e.target.value))} min={0} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-          <div className="pt-3 border-t border-white/5"><div className="text-xs text-slate-400 mb-2">compiledJson (persisted in AutomationWorkflow)</div><pre className="text-xs text-green-300 overflow-x-auto p-2 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontSize:10,maxHeight:100,overflow:"auto"}}>{JSON.stringify({trigger:{type:trig},actions:acts.map(a=>({type:a,delayMinutes:delay}))},null,2)}</pre></div>
-          <div className="pt-3 border-t border-white/5"><label className="text-xs text-slate-400 mb-1 block">Automation Name</label><input type="text" value={autoName} onChange={e=>setAutoName(e.target.value)} placeholder="e.g. Birthday Reward" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-          <div className="pt-3 border-t border-white/5"><QuotaBanner/></div>
-          {saveErr&&<p className="text-xs text-red-400 text-center">{saveErr}</p>}
-          <button onClick={save} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saved?<><Check size={14}/>Saved!</>:<><Zap size={14}/>Save Automation</>}</button>
-        </div>
+    <div className="space-y-5 pb-8 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5"><ChevronLeft size={20}/></button>
+        <div><h1 className="text-xl font-bold text-white">Build Automation</h1><p className="text-xs text-slate-400 mt-0.5">Set up a message that sends itself automatically.</p></div>
       </div>
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-2">
+        {[{n:1,l:"When?"},{n:2,l:"Message"},{n:3,l:"Timing"},{n:4,l:"Save"}].map((s,i,arr)=>(
+          <div key={s.n} className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step>=s.n?"text-white":"text-slate-500"}`} style={{background:step>=s.n?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.06)"}}>{step>s.n?<Check size={12}/>:s.n}</div>
+              <span className={`text-xs font-medium hidden sm:block ${step===s.n?"text-white":step>s.n?"text-slate-400":"text-slate-600"}`}>{s.l}</span>
+            </div>
+            {i<arr.length-1&&<div className="flex-1 h-px min-w-4" style={{background:step>s.n?"rgba(139,92,246,0.4)":"rgba(255,255,255,0.06)"}}/>}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Choose Trigger */}
+      {step===1&&(
+        <div className="gc rounded-xl p-5" style={CARD}>
+          <h2 className="text-sm font-semibold text-white mb-1">When should this automation run?</h2>
+          <p className="text-xs text-slate-400 mb-4">Pick the event that triggers the message to send automatically.</p>
+          <div className="space-y-2">
+            {TRIGGERS.map(t=>(
+              <button key={t.type} onClick={()=>setTrig(t.type)} className="w-full flex items-center gap-4 p-4 rounded-xl text-left transition-all" style={trig===t.type?{background:t.color+"15",border:"2px solid "+(t.color)+"50"}:{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)"}}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:t.color+(trig===t.type?"25":"15")}}><t.icon size={20} style={{color:t.color}}/></div>
+                <div className="flex-1"><div className="text-sm font-semibold text-white">{t.label}</div><div className="text-xs text-slate-400 mt-0.5">{t.desc}</div></div>
+                {trig===t.type&&<div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{background:t.color}}><Check size={11} className="text-white"/></div>}
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>setStep(2)} className="w-full mt-5 py-3 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Write Message →</button>
+        </div>
+      )}
+
+      {/* Step 2: Message */}
+      {step===2&&(
+        <div className="space-y-4">
+          <div className="gc rounded-xl p-5" style={CARD}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:T.color+"20"}}><T.icon size={18} style={{color:T.color}}/></div>
+              <div><div className="text-xs font-medium" style={{color:T.color}}>Trigger: {T.label}</div><div className="text-sm font-semibold text-white">Write the WhatsApp message</div></div>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">This message will be sent automatically when the trigger fires. Use variables to personalise it.</p>
+            {!msgBody&&SUGGESTIONS[trig]&&(
+              <button onClick={()=>setMsgBody(SUGGESTIONS[trig])} className="w-full mb-3 flex items-center gap-2 p-3 rounded-lg text-left text-xs" style={{background:"rgba(139,92,246,0.08)",border:"1px dashed rgba(139,92,246,0.3)"}}>
+                <Zap size={12} className="text-violet-400 flex-shrink-0"/>
+                <span className="text-violet-300 font-medium">Use suggested message</span>
+                <span className="text-slate-500 ml-auto flex-shrink-0">tap to apply</span>
+              </button>
+            )}
+            <textarea value={msgBody} onChange={e=>setMsgBody(e.target.value)} rows={6} placeholder={`Write your message here… e.g. "${SUGGESTIONS[trig]?.slice(0,60)}…"`} className="w-full px-4 py-3 rounded-xl text-sm text-white resize-y outline-none leading-relaxed" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {[["{{name}}","Customer name"],["{{points}}","Points balance"],["{{tier}}","Loyalty tier"],["{{visits}}","Visit count"]].map(([v,d])=>(
+                <button key={v} onClick={()=>setMsgBody(p=>p+v)} title={d} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>+{v}</button>
+              ))}
+            </div>
+          </div>
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <div className="flex items-center gap-2 mb-3"><StarIcon size={13} className="text-amber-400"/><span className="text-xs font-semibold text-white">Also award bonus points? (optional)</span></div>
+            <div className="flex items-center gap-3">
+              <input type="range" min={0} max={500} step={10} value={awardPoints} onChange={e=>setAwardPoints(Number(e.target.value))} className="flex-1 h-1.5 rounded-full appearance-none" style={{accentColor:"#f59e0b"}}/>
+              <div className="text-sm font-bold text-amber-400 w-16 text-right">{awardPoints>0?`+${awardPoints} pts`:"None"}</div>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={()=>setStep(1)} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-slate-400" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>← Back</button>
+            <button onClick={()=>setStep(3)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Set Timing →</button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Timing */}
+      {step===3&&(
+        <div className="space-y-4">
+          <div className="gc rounded-xl p-5" style={CARD}>
+            <h2 className="text-sm font-semibold text-white mb-1">When should the message be sent?</h2>
+            <p className="text-xs text-slate-400 mb-4">Set a delay between the trigger and when the message actually sends.</p>
+            <div className="flex gap-2 items-center">
+              <input type="number" value={delay} onChange={e=>setDelay(Math.max(0,Number(e.target.value)))} min={0} className="w-24 px-3 py-2.5 rounded-lg text-sm text-white font-semibold text-center outline-none" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)"}}/>
+              <select value={delayUnit} onChange={e=>setDelayUnit(e.target.value as any)} className="flex-1 px-3 py-2.5 rounded-lg text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                <option value="minutes" style={{background:"#1a1030"}}>Minutes after trigger</option>
+                <option value="hours" style={{background:"#1a1030"}}>Hours after trigger</option>
+                <option value="days" style={{background:"#1a1030"}}>Days after trigger</option>
+              </select>
+            </div>
+            {delay===0&&<p className="text-xs text-slate-400 mt-2">Message sends immediately when the trigger fires.</p>}
+            {delay>0&&<p className="text-xs text-slate-400 mt-2">Message sends <span className="text-white font-medium">{delay} {delayUnit}</span> after the trigger event.</p>}
+            {/* Timing presets */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {[{l:"Immediately",d:0,u:"minutes"},{l:"1 hour later",d:1,u:"hours"},{l:"Same evening",d:6,u:"hours"},{l:"Next day",d:1,u:"days"},{l:"3 days later",d:3,u:"days"}].map(p=>(
+                <button key={p.l} onClick={()=>{setDelay(p.d);setDelayUnit(p.u as any);}} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={delay===p.d&&delayUnit===p.u?{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.4)",color:"#c4b5fd"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b"}}>{p.l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={()=>setStep(2)} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-slate-400" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>← Back</button>
+            <button onClick={()=>setStep(4)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Review & Save →</button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Review & Save */}
+      {step===4&&(
+        <div className="space-y-4">
+          <div className="gc rounded-xl p-5" style={CARD}>
+            <h2 className="text-sm font-semibold text-white mb-4">Review your automation</h2>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)"}}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:T.color+"20"}}><T.icon size={14} style={{color:T.color}}/></div>
+                <div><div className="text-xs font-semibold text-white">Trigger: {T.label}</div><div className="text-xs text-slate-400">{T.desc}</div></div>
+              </div>
+              {delay>0&&(
+                <div className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)"}}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(245,158,11,0.15)"}}><Clock size={14} className="text-amber-400"/></div>
+                  <div className="text-xs text-white">Wait <span className="font-semibold">{delay} {delayUnit}</span></div>
+                </div>
+              )}
+              <div className="p-3 rounded-xl" style={{background:"rgba(37,211,102,0.05)",border:"1px solid rgba(37,211,102,0.15)"}}>
+                <div className="flex items-center gap-2 mb-2"><MessageSquare size={12} className="text-green-400"/><span className="text-xs font-semibold text-green-400">WhatsApp Message</span></div>
+                <p className="text-xs text-white leading-relaxed whitespace-pre-wrap">{msgBody||"(no message)"}</p>
+              </div>
+              {awardPoints>0&&(
+                <div className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)"}}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(245,158,11,0.15)"}}><StarIcon size={14} className="text-amber-400"/></div>
+                  <div className="text-xs text-white">Award <span className="font-semibold text-amber-400">{awardPoints} points</span> to the customer</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <label className="text-xs font-semibold text-white mb-2 block">Give this automation a name</label>
+            <input value={autoName} onChange={e=>setAutoName(e.target.value)} placeholder={`e.g. ${T.label} Message`} className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)"}} autoFocus/>
+          </div>
+          {saveErr&&<div className="text-xs px-4 py-3 rounded-xl" style={{background:"rgba(239,68,68,0.1)",color:"#f87171"}}>{saveErr}</div>}
+          <div className="flex gap-3">
+            <button onClick={()=>setStep(3)} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-slate-400" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>← Back</button>
+            <button onClick={save} disabled={saving} className="flex-[2] py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
+              {saving?<RefreshCw size={14} className="animate-spin"/>:<Zap size={14}/>}
+              {saving?"Saving…":"Save & Activate Automation"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3378,13 +3513,13 @@ const AnalyticsPage=()=>{
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3">Message Performance (30 days)</h3>
         {loading?<Skeleton h="h-[180px]"/>:msgPerf.length===0?<div className="h-[180px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
-        <ResponsiveContainer width="100%" height={180}><BarChart data={msgPerf}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[3,3,0,0]}/><Bar dataKey="del" name="Delivered" fill="#22c55e" radius={[3,3,0,0]}/><Bar dataKey="read" name="Read" fill="#06b6d4" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer>}
+        <ResponsiveContainer width="100%" height={180}><AreaChart data={msgPerf}><defs><linearGradient id="amsg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35}/><stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient><linearGradient id="amsg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient><linearGradient id="amsg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="w" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="sent" name="Sent" stroke="#3b82f6" fill="url(#amsg1)" strokeWidth={2}/><Area type="monotone" dataKey="del" name="Delivered" stroke="#22c55e" fill="url(#amsg2)" strokeWidth={2}/><Area type="monotone" dataKey="read" name="Read" stroke="#06b6d4" fill="url(#amsg3)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
       </div>
     </div>
     <div className="gc rounded-xl p-4" style={CARD}>
       <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
-      <ResponsiveContainer width="100%" height={200}><BarChart data={growthData}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Bar dataKey="c" name="Total Customers" fill="#8b5cf6" radius={[4,4,0,0]}/><Bar dataKey="ret" name="Active" fill="#22c55e" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}
+      <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#8b5cf6" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
     </div>
   </div>
   );
@@ -4190,15 +4325,17 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
       setAutos(p=>p.map(a=>a.id===id?{...a,isActive:!a.isActive}:a));
     }catch(e){}finally{setToggling(null);}
   };
+  const TRIGGER_NAMES:Record<string,string>={BIRTHDAY:"🎂 Birthday",INACTIVITY:"⏰ Inactivity",VISIT_MILESTONE:"⭐ Visit Milestone",TIER_UPGRADE:"👑 Tier Upgrade",SENTIMENT_NEGATIVE:"⚠️ Negative Sentiment",NEW_CUSTOMER:"👋 New Customer",SPEND_THRESHOLD:"💰 Spend Threshold"};
+  const ACTION_NAMES:Record<string,string>={SEND_WHATSAPP:"💬 Send WhatsApp",AWARD_POINTS:"⭐ Award Points",CHANGE_SEGMENT:"🏷️ Change Segment",SEND_EMAIL:"📧 Send Email",MANAGER_ALERT:"🔔 Manager Alert",DEDUCT_POINTS:"➖ Deduct Points"};
   const getTriggerLabel=(t:any)=>{
     if(!t)return"—";
-    if(typeof t==="string")return t;
-    return t.type||t.trigger||JSON.stringify(t).slice(0,30);
+    const key=typeof t==="string"?t:(t?.type||t?.trigger||"");
+    return TRIGGER_NAMES[key]||key||"—";
   };
   const getActionLabel=(c:any)=>{
     if(!c)return"—";
-    if(Array.isArray(c))return c.map((a:any)=>a.type||a).join(" + ").slice(0,40);
-    if(typeof c==="string")return c.slice(0,40);
+    if(Array.isArray(c))return c.map((a:any)=>{const k=a?.type||a;return ACTION_NAMES[k]||k;}).join(" + ").slice(0,60);
+    if(typeof c==="string")return ACTION_NAMES[c]||c.slice(0,40);
     return"Custom flow";
   };
   return(

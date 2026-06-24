@@ -540,7 +540,7 @@ export const createStaffDirect = async (
     },
   }).catch(() => {});
 
-  // Send credentials to personal email
+  // Send credentials to personal email (non-fatal — staff is created regardless)
   await sendEmail({
     to:         normalizedPersonal,
     subject:    `Your login details for ${business?.name ?? 'The Loyaly'}`,
@@ -555,6 +555,8 @@ export const createStaffDirect = async (
           : role === Role.MARKETING_STAFF ? 'Marketing Staff'
           : 'Staff',
     },
+  }).catch((e: unknown) => {
+    console.warn('[auth] staff credentials email failed (non-fatal):', (e as Error).message);
   });
 
   // If the owner provided a WhatsApp number, flag that number in the Customer table
