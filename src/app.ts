@@ -11,10 +11,38 @@ import { wahaWebhookRouter } from './services/messaging-gateway';
 
 const app = express();
 
+/**
+ * Self-healing schema patches for purely ADDITIVE changes.
+ * Runs at startup with the app's own DB credentials so additive columns/indexes
+ * are present even if `prisma db push` hasn't been run yet. Every statement is
+ * idempotent (IF NOT EXISTS) and safe to run on every boot.
+ */
+async function ensureSchemaPatches() {
+  const stmts: Array<{ label: string; sql: string }> = [
+    { label: 'customers.isStaff',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "isStaff" BOOLEAN NOT NULL DEFAULT false' },
+    { label: 'businesses.bigSpenderThreshold',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "bigSpenderThreshold" INTEGER NOT NULL DEFAULT 500' },
+    // Idempotency guard against points double-credit. Uses a partial-safe unique
+    // index; if legacy duplicate rows exist this will warn but never crash boot.
+    { label: 'reward_points_ledger uniq(customerId,reason,referenceId)',
+      sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "reward_points_ledger_customerId_reason_referenceId_key" ON "reward_points_ledger" ("customerId", "reason", "referenceId")' },
+  ];
+  for (const { label, sql } of stmts) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (e) {
+      console.warn(`[app] schema patch "${label}" skipped:`, (e as Error).message);
+    }
+  }
+  console.log('[app] schema patches ensured.');
+}
+
 async function bootstrap() {
   await initRedis();
   await initTenantRedis();
   await prisma.$queryRaw`SELECT 1`;
+  await ensureSchemaPatches();
 
   // Behind a load balancer (Neon/Render/etc) the real client IP arrives via
   // X-Forwarded-For. Without this, express.ip is the proxy IP and rate limiting

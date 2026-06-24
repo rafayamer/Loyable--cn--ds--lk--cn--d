@@ -322,17 +322,19 @@ const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
   if (email) {
     const existing = await prisma.customer.findUnique({ where: { id: customer.id }, select: { email: true, currentPointsBalance: true } });
     const isFirstEmail = !existing?.email;
-    await prisma.customer.update({ where: { id: customer.id }, data: { email, ...(consentMarketing ? { marketingConsentWhatsapp: true } : {}) } });
+    // select id only — never RETURNING * (avoids referencing columns the DB
+    // may not have migrated yet, e.g. isStaff).
+    await prisma.customer.update({ where: { id: customer.id }, data: { email, ...(consentMarketing ? { marketingConsentWhatsapp: true } : {}) }, select: { id: true } });
     if (isFirstEmail && emailBonusPoints > 0) {
       const curBal = existing?.currentPointsBalance ?? 0;
       await prisma.rewardPointsLedger.create({
         data: { customerId: customer.id, businessId: biz.id, type: 'CREDIT', points: emailBonusPoints, balanceAfter: curBal + emailBonusPoints, reason: 'MANUAL_ADJUSTMENT', referenceType: 'EMAIL_BONUS' },
       });
-      await prisma.customer.update({ where: { id: customer.id }, data: { currentPointsBalance: { increment: emailBonusPoints } } });
+      await prisma.customer.update({ where: { id: customer.id }, data: { currentPointsBalance: { increment: emailBonusPoints } }, select: { id: true } });
       emailBonusAwarded = emailBonusPoints;
     }
   } else if (consentMarketing) {
-    await prisma.customer.update({ where: { id: customer.id }, data: { marketingConsentWhatsapp: true } });
+    await prisma.customer.update({ where: { id: customer.id }, data: { marketingConsentWhatsapp: true }, select: { id: true } });
   }
 
   await prisma.portalLogin.create({ data: { customerId: customer.id, businessId: biz.id } }).catch(() => {});
