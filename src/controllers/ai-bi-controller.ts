@@ -334,15 +334,102 @@ interface AIQueryResult {
   actionPath?:   string;
 }
 
+// ================================================================
+// BUSINESS PROFILE LOADER
+// Fetches full context about the tenant for the AI system prompt.
+// ================================================================
+
+async function loadBusinessContext(businessId: string): Promise<string> {
+  const [biz, customerStats, recentSnapshot] = await Promise.all([
+    prisma.business.findUnique({
+      where:  { id: businessId },
+      select: {
+        name: true, industry: true, description: true, city: true, country: true,
+        pointsPerPound: true, bigSpenderThreshold: true,
+        subscriptionTier: true, subscriptionStatus: true,
+        _count: { select: { customers: true, campaigns: true } },
+      },
+    }),
+    prisma.customer.aggregate({
+      where: { businessId, isActive: true },
+      _count: { id: true },
+      _sum:   { totalSpend: true, visitCount: true },
+      _avg:   { totalSpend: true, currentPointsBalance: true },
+    }),
+    prisma.analyticsSnapshot.findFirst({
+      where:   { businessId, branchLocationId: null },
+      orderBy: { snapshotDate: 'desc' },
+      select:  {
+        totalCustomers: true, activeCustomers: true, newCustomers: true,
+        atRiskCustomers: true, lostCustomers: true, bigSpenders: true,
+        retentionRate: true, churnRate: true, averageLtv: true,
+        totalRevenue: true, totalVisits: true,
+      },
+    }),
+  ]);
+
+  const bizName    = biz?.name        ?? 'this business';
+  const industry   = biz?.industry    ?? 'retail/hospitality';
+  const city       = biz?.city        ?? '';
+  const country    = biz?.country     ?? '';
+  const desc       = biz?.description ?? '';
+  const totalCust  = customerStats._count.id;
+  const totalSpend = Number(customerStats._sum.totalSpend ?? 0).toFixed(0);
+  const avgSpend   = Number(customerStats._avg.totalSpend ?? 0).toFixed(0);
+  const avgPoints  = Number(customerStats._avg.currentPointsBalance ?? 0).toFixed(0);
+  const snap       = recentSnapshot;
+
+  return `
+## PLATFORM CONTEXT
+You are the AI Business Intelligence advisor inside **Loyable** — a WhatsApp-first customer retention platform built for SMBs (restaurants, cafés, salons, retail stores). Loyable is a long-term retention operating system, not a one-time tool. It combines loyalty points, automated WhatsApp campaigns, customer segmentation, and AI-driven insights to help business owners grow repeat revenue sustainably.
+
+When giving advice, always frame recommendations within the context of Loyable's capabilities:
+- **Loyalty Program**: points earned per visit/spend, redeemable for rewards
+- **Campaigns**: WhatsApp broadcast messages to targeted customer segments
+- **Automations**: rule-based WhatsApp flows (birthday messages, win-back, tier upgrades)
+- **Segments**: NEW, REGULAR, VIP, BIG_SPENDER, AT_RISK, LOST — auto-assigned nightly
+- **AI Insights**: this feature — natural language queries over real business data
+
+Never suggest tools or platforms outside Loyable. If a need can be met inside Loyable, show how.
+
+## BUSINESS PROFILE
+- **Name**: ${bizName}
+- **Industry**: ${industry}
+- **Location**: ${[city, country].filter(Boolean).join(', ') || 'not specified'}
+- **Description**: ${desc || 'not provided'}
+- **Plan**: ${biz?.subscriptionTier ?? 'unknown'} (${biz?.subscriptionStatus ?? 'unknown'})
+- **Points per £/$ spent**: ${biz?.pointsPerPound ?? 1}
+- **Big Spender threshold**: £${biz?.bigSpenderThreshold ?? 500}
+- **Total campaigns created**: ${biz?._count?.campaigns ?? 0}
+
+## LIVE CUSTOMER DATA SUMMARY
+- **Total active customers**: ${totalCust}
+- **Total revenue tracked**: £${totalSpend}
+- **Average spend per customer**: £${avgSpend}
+- **Average points balance**: ${avgPoints} pts
+${snap ? `- **Retention rate**: ${snap.retentionRate?.toFixed(1) ?? 'N/A'}%
+- **Churn rate**: ${snap.churnRate?.toFixed(1) ?? 'N/A'}%
+- **Average LTV**: £${Number(snap.averageLtv ?? 0).toFixed(0)}
+- **New customers (latest snapshot)**: ${snap.newCustomers ?? 0}
+- **At-risk customers**: ${snap.atRiskCustomers ?? 0}
+- **Lost customers**: ${snap.lostCustomers ?? 0}
+- **Big spenders**: ${snap.bigSpenders ?? 0}
+- **Total visits tracked**: ${snap.totalVisits ?? 0}` : '- (No analytics snapshot yet — run the nightly cron or add visit data via POS)'}
+`.trim();
+}
+
 export const processNaturalLanguageQuery = async (
   question:   string,
   businessId: string
 ): Promise<AIQueryResult> => {
+  // Load full business context once — shared across both LLM passes
+  const bizContext = await loadBusinessContext(businessId);
+
   // ── PASS 1: Intent Classification ────────────────────────────
   const classificationResponse = await callLLM([
     {
       role:    'system',
-      content: `You are a query classifier for a customer retention CRM.
+      content: `You are a query classifier for Loyable, a WhatsApp-first customer retention CRM.
 Given a business owner's question, identify which query function to run.
 Return ONLY a valid JSON object: { "queryName": string, "parameters": object }
 Valid query names and their parameters:
@@ -357,7 +444,6 @@ ONLY return JSON. No explanation.`,
   let parameters: Record<string, unknown> = {};
 
   try {
-    // Strip markdown code fences if present
     const cleaned = classificationResponse.replace(/```json|```/g, '').trim();
     const parsed  = JSON.parse(cleaned) as { queryName: string; parameters: Record<string, unknown> };
     if (parsed.queryName && QUERY_LIBRARY[parsed.queryName]) {
@@ -365,7 +451,6 @@ ONLY return JSON. No explanation.`,
       parameters = parsed.parameters ?? {};
     }
   } catch {
-    // Classification failed — fall back to segment breakdown
     console.warn('[ai.bi] Intent classification parse failed, using fallback.');
   }
 
@@ -377,18 +462,24 @@ ONLY return JSON. No explanation.`,
   const insightResponse = await callLLM([
     {
       role:    'system',
-      content: `You are an expert business analyst for a customer retention platform.
-Your job: give the business owner a short (2-3 sentence), actionable insight based on query results.
-Always end with ONE concrete recommended action.
-Be specific — use the actual numbers from the data.
-Do NOT mention technology, APIs, or SQL.
-Respond in plain English as if speaking to a restaurant/café/salon owner.`,
+      content: `${bizContext}
+
+## YOUR ROLE
+You are the AI retention advisor for ${bizContext.match(/\*\*Name\*\*: (.+)/)?.[1] ?? 'this business'} inside Loyable.
+Your job: give the business owner a clear, personalised, actionable insight based on their real data.
+
+Rules:
+- Write 3-4 sentences max. Be specific — use the actual numbers.
+- Always end with ONE concrete action they can take TODAY inside Loyable (e.g. "Launch a Win-Back campaign targeting your AT_RISK segment", "Set up a Birthday automation", "Create a VIP reward campaign").
+- Frame Loyable as their long-term retention partner, not a one-off tool.
+- Speak directly to the owner — warm, confident, data-driven. No jargon.
+- Never mention SQL, APIs, code, or technology internals.`,
     },
     {
       role:    'user',
-      content: `Question: "${question}"\nQuery summary: ${rawData.summary}\nData: ${JSON.stringify(rawData.data).substring(0, 2000)}`,
+      content: `Question: "${question}"\nData summary: ${rawData.summary}\nFull data: ${JSON.stringify(rawData.data).substring(0, 2000)}`,
     },
-  ], 400);
+  ], 500);
 
   // Determine if we can suggest a quick action
   const actionMap: Record<string, { label: string; path: string }> = {
