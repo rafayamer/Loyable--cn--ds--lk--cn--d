@@ -3639,7 +3639,7 @@ const AddStaffForm=()=>{
     api.staff.list().then(d=>setStaffList(d.staff??[])).catch(()=>{});
   },[]);
 
-  const roleLabelMap:Record<string,string>={BRANCH_MANAGER:"Branch Manager",MARKETING_STAFF:"Marketing Staff",CASHIER:"Cashier / Kitchen"};
+  const roleLabelMap:Record<string,string>={BRANCH_MANAGER:"Manager",MARKETING_STAFF:"Marketing",CASHIER:"Staff"};
 
   const create=async()=>{
     if(!staffName.trim()){setErr("Please enter the staff member's name.");return;}
@@ -3696,9 +3696,9 @@ const AddStaffForm=()=>{
         <div>
           <label className="block text-xs text-slate-400 mb-1">Role *</label>
           <select value={staffRole} onChange={e=>setStaffRole(e.target.value)} style={{...inpSt,appearance:"none" as const}}>
-            <option value="BRANCH_MANAGER">Branch Manager</option>
-            <option value="MARKETING_STAFF">Marketing Staff</option>
-            <option value="CASHIER">Cashier / Kitchen</option>
+            <option value="BRANCH_MANAGER">Manager</option>
+            <option value="MARKETING_STAFF">Marketing</option>
+            <option value="CASHIER">Staff</option>
           </select>
         </div>
         <div>
@@ -3998,7 +3998,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
             <div className="px-4 py-2.5 border-b border-white/5" style={{background:"rgba(255,255,255,0.02)"}}><span className="text-xs font-semibold text-slate-300">Role Permissions</span></div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="border-b border-white/5"><th className="text-left py-2 px-3 text-slate-500">Feature</th>{["TENANT_OWNER","BRANCH_MANAGER","MARKETING_STAFF","KITCHEN_STAFF"].map(r=><th key={r} className="py-2 px-2 text-slate-400 font-medium text-center">{r.replace("_"," ")}</th>)}</tr></thead>
+                <thead><tr className="border-b border-white/5"><th className="text-left py-2 px-3 text-slate-500">Feature</th>{(["Owner","Manager","Marketing","Staff"] as const).map(r=><th key={r} className="py-2 px-2 text-slate-400 font-medium text-center">{r}</th>)}</tr></thead>
                 <tbody>{[
                   {f:"Dashboard & Analytics",perms:[true,false,false,false]},
                   {f:"Customers & Loyalty",perms:[true,true,true,false]},
