@@ -4322,23 +4322,83 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
   const [runs,setRuns]=useState<any[]>([]);
   const [total,setTotal]=useState(0);
   const [loading,setLoading]=useState(true);
-  useEffect(()=>{
+  const [showTest,setShowTest]=useState(false);
+  const [customers,setCustomers]=useState<any[]>([]);
+  const [custSearch,setCustSearch]=useState("");
+  const [testingId,setTestingId]=useState<string|null>(null);
+  const [testResult,setTestResult]=useState<{ok:boolean;msg:string}|null>(null);
+
+  const fetchRuns=()=>{
+    setLoading(true);
     api.automations.runs(auto.id,{limit:50}).then(d=>{setRuns(d.runs??[]);setTotal(d.total??0);}).catch(()=>{}).finally(()=>setLoading(false));
-  },[auto.id]);
+  };
+  useEffect(()=>{fetchRuns();},[auto.id]);
+
+  useEffect(()=>{
+    if(!showTest)return;
+    api.customers.list({limit:50,search:custSearch||undefined}).then((d:any)=>setCustomers(d.customers??d??[])).catch(()=>{});
+  },[showTest,custSearch]);
+
+  const testFire=async(customerId:string,customerName:string)=>{
+    setTestingId(customerId);setTestResult(null);
+    try{
+      const r=await api.automations.testFire(auto.id,customerId);
+      setTestResult({ok:true,msg:`✅ Fired for ${customerName}! Message queued.`});
+      setTimeout(fetchRuns,1500);
+    }catch(e:any){
+      setTestResult({ok:false,msg:`❌ ${e?.message??'Failed to fire'}`});
+    }finally{setTestingId(null);}
+  };
+
   const statusColor=(s:string)=>s==="COMPLETED"||s==="SENT"?"#22c55e":s==="RUNNING"||s==="PENDING"?"#f59e0b":s==="FAILED"||s==="DROPPED_QUOTA"||s==="CONSENT_REVOKED"?"#ef4444":"#64748b";
   return(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)"}}>
-      <div className="gc rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" style={CARD}>
+      <div className="gc rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" style={CARD}>
         <div className="flex items-center justify-between p-5 border-b border-white/5">
           <div>
             <div className="text-sm font-semibold text-white">{auto.name} — Run Logs</div>
             <div className="text-xs text-slate-400 mt-0.5">{total} total executions</div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={16}/></button>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>{setShowTest(p=>!p);setTestResult(null);}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",color:"#a78bfa"}}>
+              <Play size={11}/> Test Fire
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={16}/></button>
+          </div>
         </div>
+
+        {/* Test Fire panel */}
+        {showTest&&(
+          <div className="p-4 border-b border-white/5" style={{background:"rgba(139,92,246,0.05)"}}>
+            <p className="text-xs text-violet-300 mb-3 font-medium">Choose a customer to send this automation to right now (bypasses cooldown for testing):</p>
+            {testResult&&<div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{background:testResult.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:testResult.ok?"#86efac":"#fca5a5"}}>{testResult.msg}</div>}
+            <input value={custSearch} onChange={e=>setCustSearch(e.target.value)} placeholder="Search customers…" className="w-full px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none mb-2" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {customers.slice(0,20).map((c:any)=>(
+                <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{background:"rgba(255,255,255,0.03)"}}>
+                  <div>
+                    <div className="text-xs font-medium text-white">{c.fullName}</div>
+                    <div className="text-[10px] text-slate-500">{c.whatsappNumber}</div>
+                  </div>
+                  <button onClick={()=>testFire(c.id,c.fullName)} disabled={!!testingId} className="px-2.5 py-1 rounded-md text-[10px] font-semibold text-white disabled:opacity-40 flex items-center gap-1" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                    {testingId===c.id?<RefreshCw size={10} className="animate-spin"/>:<Zap size={10}/>}
+                    {testingId===c.id?"Firing…":"Fire"}
+                  </button>
+                </div>
+              ))}
+              {customers.length===0&&<p className="text-xs text-slate-500 text-center py-3">No customers found</p>}
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {loading?[...Array(5)].map((_,i)=><Skeleton key={i} h="h-14"/>):runs.length===0?
-            <div className="text-center py-8 text-slate-400 text-sm">No runs yet — this automation hasn't fired</div>:
+            <div className="text-center py-8 space-y-3">
+              <div className="text-slate-400 text-sm">No runs yet — this automation hasn't fired</div>
+              <button onClick={()=>setShowTest(true)} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                <Play size={11} className="inline mr-1"/>Test fire it now
+              </button>
+            </div>:
             runs.map((r:any)=>(
               <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:statusColor(r.status??r.messageStatus)}}/>

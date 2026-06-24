@@ -70,6 +70,7 @@ const LoginSchema = z.object({
   name:              z.string().min(1).max(100),
   ref:               z.string().min(1).max(64).optional(),
   email:             z.string().email().optional(),
+  birthday:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
   consentMarketing:  z.boolean().optional(),
 });
 
@@ -210,7 +211,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     const parse = LoginSchema.safeParse(req.body);
     if (!parse.success) { res.status(400).json({ error: 'Invalid input', issues: parse.error.issues }); return; }
 
-    const { phone, name, ref, email, consentMarketing } = parse.data;
+    const { phone, name, ref, email, birthday, consentMarketing } = parse.data;
     const { slug } = req.params;
 
     const biz = await prisma.business.findFirst({
@@ -227,7 +228,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
     await redis.set(otpKey(biz.id, normalized), code, { EX: OTP_TTL_SEC });
     await redis.set(
       otpData(biz.id, normalized),
-      JSON.stringify({ name: name.trim(), ref: ref ?? null, email: email ?? null, consentMarketing: !!consentMarketing }),
+      JSON.stringify({ name: name.trim(), ref: ref ?? null, email: email ?? null, birthday: birthday ?? null, consentMarketing: !!consentMarketing }),
       { EX: OTP_TTL_SEC }
     );
     await redis.del(`portal:otpattempts:${biz.id}:${normalized}`);
@@ -299,25 +300,41 @@ const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
   await redis.del(attemptsK);
 
   const ps = (biz.portalSettings as Record<string, any>) ?? {};
-  const emailBonusPoints = Number(ps.emailBonusPoints ?? 0);
+  const emailBonusPoints   = Number(ps.emailBonusPoints ?? 0);
+  const birthdayBonusPoints = Number(ps.birthdayBonusPoints ?? 0);
   const name = (payload.name as string) ?? 'Member';
   const ref = payload.ref as string | null;
   const email = payload.email as string | null;
+  const birthdayStr = payload.birthday as string | null; // YYYY-MM-DD or null
+  const birthdayDate = birthdayStr ? new Date(birthdayStr + 'T00:00:00.000Z') : null;
   const consentMarketing = !!payload.consentMarketing;
 
   const searchVariants = [...new Set([normalized, parse.data.phone.trim().replace(/[\s\-().]/g, '')])];
   let customer = await prisma.customer.findFirst({
     where:  { businessId: biz.id, OR: searchVariants.map(v => ({ whatsappNumber: v })) },
-    select: { id: true, fullName: true, whatsappNumber: true },
+    select: { id: true, fullName: true, whatsappNumber: true, birthday: true },
   });
 
   let isNew = false;
   if (!customer) {
     customer = await prisma.customer.create({
-      data: { businessId: biz.id, fullName: name, whatsappNumber: normalized, segment: 'NEW' },
-      select: { id: true, fullName: true, whatsappNumber: true },
+      data: {
+        businessId: biz.id,
+        fullName: name,
+        whatsappNumber: normalized,
+        segment: 'NEW',
+        ...(birthdayDate ? { birthday: birthdayDate } : {}),
+      },
+      select: { id: true, fullName: true, whatsappNumber: true, birthday: true },
     });
     isNew = true;
+  } else if (birthdayDate && !(customer as any).birthday) {
+    // Update birthday if they're providing it for the first time
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data:  { birthday: birthdayDate },
+      select: { id: true },
+    });
   }
 
   let referralApplied = false;
@@ -351,7 +368,14 @@ const verifyOtpHandler = async (req: Request, res: Response): Promise<void> => {
   await prisma.portalLogin.create({ data: { customerId: customer.id, businessId: biz.id } }).catch(() => {});
 
   const token = issuePortalToken(customer.id, biz.id);
-  res.json({ token, customer: { id: customer.id, name: customer.fullName }, isNew, referralApplied, emailBonusAwarded });
+  res.json({
+    token,
+    customer: { id: customer.id, name: customer.fullName },
+    isNew,
+    referralApplied,
+    emailBonusAwarded,
+    birthdayBonusPoints, // inform the frontend what bonus to advertise
+  });
   } catch (err) {
     console.error('[portal] verifyOtpHandler error:', err);
     res.status(500).json({ error: 'Server error — please try again.' });
@@ -375,7 +399,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
       select: {
         id: true, fullName: true, whatsappNumber: true, email: true,
         currentPointsBalance: true, currentTierId: true, visitCount: true, totalSpend: true,
-        referralCode: true, createdAt: true,
+        referralCode: true, createdAt: true, birthday: true,
         coupons: {
           where:   { status: 'ACTIVE' },
           select:  { id: true, code: true, type: true, value: true, expiresAt: true, freeProductName: true },

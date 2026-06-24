@@ -110,6 +110,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
   const [phone, setPhone] = useState('');
   const [name,  setName]  = useState('');
   const [email, setEmail] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [consent, setConsent] = useState(false);
   const [err,   setErr]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -119,7 +120,8 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
   const [maskedPhone, setMaskedPhone] = useState('');
   const [devCode, setDevCode]   = useState('');
   const ps = portalSettings ?? {};
-  const emailBonusPts = Number(ps.emailBonusPoints ?? 0);
+  const emailBonusPts   = Number(ps.emailBonusPoints   ?? 0);
+  const birthdayBonusPts = Number(ps.birthdayBonusPoints ?? 0);
 
   // Step 1 — request an OTP sent to the customer's WhatsApp.
   async function submit(e: React.FormEvent) {
@@ -132,7 +134,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
       const res = await fetch(`/api/portal/${slug}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}), ...(email ? { email } : {}), consentMarketing: consent }),
+        body: JSON.stringify({ phone, name, ...(ref ? { ref } : {}), ...(email ? { email } : {}), ...(birthday ? { birthday } : {}), consentMarketing: consent }),
       }).then(r => r.json());
       if (!res.otpRequired) throw new Error(res.error ?? 'Could not send code');
       setMaskedPhone(res.phone ?? phone);
@@ -236,6 +238,28 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
                 <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current" strokeWidth={2}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
                 <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={emailBonusPts > 0 ? `Add email to earn ${emailBonusPts} bonus points` : "your@email.com (optional)"} autoComplete="email" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
               </div>
+            </div>
+            {/* Birthday field */}
+            <div>
+              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
+                Date of Birth
+                {birthdayBonusPts > 0
+                  ? <span className="normal-case text-yellow-300 font-normal ml-1">(+{birthdayBonusPts} pts on your birthday 🎂)</span>
+                  : <span className="normal-case text-purple-400 font-normal ml-1"> — we'll send you a birthday surprise 🎂</span>
+                }
+              </label>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current flex-shrink-0" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={e => setBirthday(e.target.value)}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 5)).toISOString().split('T')[0]}
+                  className="flex-1 bg-transparent text-white outline-none text-sm"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+              <p className="text-purple-400 text-xs mt-1">Optional — add your birthday to receive a special reward every year</p>
             </div>
             {/* Consent + T&C */}
             <label className="flex items-start gap-3 cursor-pointer">
