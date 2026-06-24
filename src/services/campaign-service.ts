@@ -232,12 +232,13 @@ export const launchCampaign = async (
   await assertQuotaHeadroom(businessId, customers.length);
 
   const layout   = campaign.layoutJson as unknown as CampaignLayout;
-  // Auto-detect: if WAHA credentials are configured, prefer WAHA regardless of stored provider field
-  const hasWaha  = !!(business?.wahaBaseUrl && business?.wahaSessionId);
-  const provider = hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA');
-  const channel  = (campaign.channel && campaign.channel !== 'WHATSAPP_META'
+  // Provider: global env var wins; otherwise fall back to DB config
+  const globalBaileys = process.env.WHATSAPP_PROVIDER === 'baileys';
+  const hasWaha  = !globalBaileys && !!(business?.wahaBaseUrl && business?.wahaSessionId);
+  const provider = (globalBaileys ? 'WAHA' : (hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA'))) as any;
+  const channel  = (globalBaileys ? 'WHATSAPP_WAHA' : (campaign.channel && campaign.channel !== 'WHATSAPP_META'
     ? campaign.channel
-    : (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META')) as Prisma.MessageQueueCreateManyInput['channel'];
+    : (provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META'))) as Prisma.MessageQueueCreateManyInput['channel'];
 
   const jobs:    OutboundMessageJobData[] = [];
   const records: Prisma.MessageQueueCreateManyInput[] = [];

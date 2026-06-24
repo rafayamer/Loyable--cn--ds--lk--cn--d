@@ -645,9 +645,10 @@ const dispatchAutomationMessage = async (
     select: { messagingProvider: true, wahaBaseUrl: true, wahaSessionId: true },
   });
 
-  // Mirror WAHA auto-detect logic from campaign-service
-  const hasWaha    = !!(business?.wahaBaseUrl && business?.wahaSessionId);
-  const provider   = hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA');
+  // Mirror provider logic from campaign-service
+  const globalBaileys = process.env.WHATSAPP_PROVIDER === 'baileys';
+  const hasWaha    = !globalBaileys && !!(business?.wahaBaseUrl && business?.wahaSessionId);
+  const provider   = (hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA')) as any;
   const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1_000);
 
   const record = await prisma.messageQueue.create({
