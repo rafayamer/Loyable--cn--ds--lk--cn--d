@@ -8,6 +8,7 @@ import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { WahaGateway } from '../services/messaging-gateway';
 import { getWahaConfig as resolveWahaConfig } from '../config/waha';
+import { getWarmupStatus } from '../services/whatsapp-reliability';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 
@@ -33,6 +34,17 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
   try {
     const cfg = await getWahaConfig(bizId);
     const status = await WahaGateway.getStatus(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
+
+    // Reliability info — warmup budget + failover state. Best-effort: never let
+    // a missing column or Redis hiccup break the core connection status.
+    const [warmup, biz] = await Promise.all([
+      getWarmupStatus(bizId).catch(() => null),
+      prisma.business.findUnique({
+        where:  { id: bizId },
+        select: { wahaActiveSlot: true, wahaBackupSessionId: true, wahaLastHealthyAt: true, wahaConnectedAt: true },
+      }).catch(() => null),
+    ]);
+
     res.json({
       waha: {
         baseUrl:   cfg.baseUrlRaw   ?? 'http://localhost:3001',
@@ -40,6 +52,15 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
         apiKey:    cfg.apiKeyRaw    ? '••••••' : null,
         status,
         connected: status === 'WORKING',
+      },
+      warmup: warmup
+        ? { enabled: warmup.enabled, cap: warmup.cap, used: warmup.used, remaining: warmup.remaining }
+        : null,
+      health: {
+        activeSlot:    biz?.wahaActiveSlot ?? 'PRIMARY',
+        hasBackup:     !!biz?.wahaBackupSessionId,
+        lastHealthyAt: biz?.wahaLastHealthyAt ?? null,
+        connectedAt:   biz?.wahaConnectedAt ?? null,
       },
     });
   } catch (err: any) {

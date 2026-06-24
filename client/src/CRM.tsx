@@ -3279,6 +3279,35 @@ const WhatsAppSettingsTab=()=>{
         </>}
       </div>
 
+      {/* Sending health — warmup budget + failover state (only once connected) */}
+      {connected&&status?.warmup&&(
+        <div className="rounded-2xl p-4" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-semibold text-slate-300">Sending health</div>
+            {status?.health?.activeSlot==="BACKUP"
+              ?<span className="text-[10px] px-2 py-0.5 rounded-full text-amber-400" style={{background:"rgba(251,191,36,0.12)"}}>On backup number</span>
+              :<span className="text-[10px] px-2 py-0.5 rounded-full text-green-400" style={{background:"rgba(34,197,94,0.12)"}}>Primary · healthy</span>}
+          </div>
+          {status.warmup.enabled&&status.warmup.cap!==-1?(
+            <>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                <span>Daily warm-up limit</span>
+                <span className="text-slate-300 font-medium">{status.warmup.used} / {status.warmup.cap} today</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.06)"}}>
+                <div className="h-full rounded-full" style={{width:`${Math.min(100,(status.warmup.used/Math.max(1,status.warmup.cap))*100)}%`,background:"linear-gradient(90deg,#25D366,#128C7E)"}}/>
+              </div>
+              <div className="text-[10px] text-slate-500 mt-2">New numbers ramp up gradually to stay safe with WhatsApp. This limit increases automatically over your first 30 days.</div>
+            </>
+          ):(
+            <div className="text-[11px] text-slate-400">Your number is fully warmed up — no daily limit. <span className="text-slate-300">{status.warmup.used} sent today.</span></div>
+          )}
+          {!status?.health?.hasBackup&&(
+            <div className="text-[10px] text-slate-500 mt-2 pt-2" style={{borderTop:"1px solid rgba(255,255,255,0.05)"}}>💡 Add a backup number in advanced settings so we can auto-switch if this one drops.</div>
+          )}
+        </div>
+      )}
+
       {/* Advanced config — collapsed by default */}
       <div>
         <button onClick={()=>setShowAdvanced(v=>!v)} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
