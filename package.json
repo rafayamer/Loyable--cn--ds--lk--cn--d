@@ -28,7 +28,7 @@
     "fresh": "bash scripts/fresh-dev.sh"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
+    "@prisma/client": "5.14.0",
     "argon2": "^0.31.2",
     "axios": "^1.6.8",
     "bullmq": "^5.7.8",
@@ -47,7 +47,8 @@
     "rate-limit-redis": "^4.2.0",
     "redis": "^5.0.0",
     "stripe": "^15.7.0",
-    "zod": "^3.23.6"
+    "zod": "^3.23.6",
+    "prisma": "5.14.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -60,7 +61,6 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "concurrently": "^8.2.2",
-    "prisma": "^5.14.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }
