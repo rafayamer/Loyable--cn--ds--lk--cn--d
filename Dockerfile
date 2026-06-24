@@ -33,5 +33,5 @@ COPY prisma/ ./prisma/
 
 EXPOSE 4000
 
-# Run migrations then start
-CMD ["sh", "-c", "npx prisma@5.14.0 migrate deploy && node dist/app.js"]
+# Use local prisma binary (pinned v5) — avoids npx downloading Prisma 7
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/app.js"]
