@@ -17,11 +17,17 @@ async function getWahaConfig(bizId: string) {
     where:  { id: bizId },
     select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
   });
+  // A stale "localhost" URL can get persisted on first connect before the
+  // WAHA_BASE_URL env var is configured. Never let that override a real env
+  // value — treat any localhost DB value as absent so the env var wins.
+  const dbBaseUrl = biz?.wahaBaseUrl && !biz.wahaBaseUrl.includes('localhost')
+    ? biz.wahaBaseUrl
+    : null;
   return {
-    baseUrl:   biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001',
+    baseUrl:   dbBaseUrl          ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001',
     sessionId: biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default',
     apiKey:    biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '',
-    baseUrlRaw: biz?.wahaBaseUrl,
+    baseUrlRaw: dbBaseUrl,
     sessionIdRaw: biz?.wahaSessionId,
     apiKeyRaw: biz?.wahaApiKey,
   };
