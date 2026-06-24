@@ -203,7 +203,7 @@ const NAV_ALL=[
   {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
-  {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER]},
 ];
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark}:any)=>{
   const {pd,setPd}=usePd();
@@ -292,8 +292,6 @@ const OAUTH_ERROR_MSGS:Record<string,string>={
   google_denied:"Google sign-in was cancelled.",
   google_not_configured:"Google sign-in is not set up yet.",
   google_email_not_verified:"Your Google account email is not verified.",
-  apple_not_configured:"Apple sign-in is not set up yet.",
-  apple_not_implemented:"Apple sign-in is coming soon.",
   oauth_failed:"Social sign-in failed. Please try email instead.",
   oauth_invalid:"Invalid sign-in response. Please try again.",
   oauth_state_mismatch:"Sign-in session expired. Please try again.",
@@ -305,11 +303,6 @@ const GoogleIcon=()=>(
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-  </svg>
-);
-const AppleIcon=()=>(
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
   </svg>
 );
 
@@ -394,18 +387,16 @@ const AuthBg=()=>(
   </div>
 );
 
-const SocialButtons=({loading,socialLoading,onSocial}:{loading:boolean,socialLoading:"google"|"apple"|null,onSocial:(p:"google"|"apple")=>void})=>{
+const SocialButtons=({loading,socialLoading,onSocial}:{loading:boolean,socialLoading:"google"|null,onSocial:(p:"google")=>void})=>{
   const {dark}=useTheme();
   return(
     <div className="flex flex-col gap-3 mb-5">
-      {(["google","apple"] as const).map(p=>(
-        <button key={p} onClick={()=>onSocial(p)} disabled={!!socialLoading||loading}
-          className="flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
-          style={{background:dark?"rgba(255,255,255,0.07)":"#ffffff",border:`1px solid ${dark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.1)"}`,color:dark?"white":"#374151"}}>
-          {socialLoading===p?<RefreshCw size={16} className="animate-spin"/>:(p==="google"?<GoogleIcon/>:<svg width="18" height="18" viewBox="0 0 24 24" fill={dark?"white":"#374151"}><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>)}
-          <span>{p==="google"?"Sign up with Google":"Sign up with Apple"}</span>
-        </button>
-      ))}
+      <button onClick={()=>onSocial("google")} disabled={!!socialLoading||loading}
+        className="flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+        style={{background:dark?"rgba(255,255,255,0.07)":"#ffffff",border:`1px solid ${dark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.1)"}`,color:dark?"white":"#374151"}}>
+        {socialLoading==="google"?<RefreshCw size={16} className="animate-spin"/>:<GoogleIcon/>}
+        <span>Sign in with Google</span>
+      </button>
     </div>
   );
 };
@@ -471,7 +462,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   const oauthErr=new URLSearchParams(window.location.search).get("error");
   const [err,setErr]=useState(oauthErr?OAUTH_ERROR_MSGS[oauthErr]??`Sign-in error: ${oauthErr}`:"");
   const [loading,setLoading]=useState(false);
-  const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
+  const [socialLoading,setSocialLoading]=useState<"google"|null>(null);
   const [bizChoices,setBizChoices]=useState<{id:string;name:string;role:string}[]|null>(null);
   const doLogin=async(email:string,password:string,businessId?:string)=>{
     const d=await api.auth.login(email,password,businessId);
@@ -554,7 +545,7 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
   const [industry,setIndustry]=useState("restaurant");
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
-  const [socialLoading,setSocialLoading]=useState<"google"|"apple"|null>(null);
+  const [socialLoading,setSocialLoading]=useState<"google"|null>(null);
   const selStyle={...INP,width:"100%",appearance:"none" as const,padding:"10px 16px",borderRadius:"12px",color:"white",fontSize:"14px"};
   const submit=async()=>{
     if(!bizName||!name||!email||!pass){setErr("Please fill in all required fields.");return;}
@@ -5366,7 +5357,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
-    {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER]},
   ];
   const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
   const pt=pdTokens(portalDark);
