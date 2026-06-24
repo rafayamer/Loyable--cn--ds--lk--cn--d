@@ -12,6 +12,15 @@ import { prisma } from '../config/prisma';
 import type { MessagePayload, TemplatePayload, TextPayload } from '../services/messaging-queue';
 import { getRedisConnection, getRedisClient } from '../config/redis';
 import { processFeedbackReply } from './feedback-service';
+import { BaileysGateway, getBaileysStatus, getBaileysQrCode, startBaileysSession, stopBaileysSession } from './baileys-service';
+
+// When WHATSAPP_PROVIDER=baileys, route ALL tenants through the in-process Baileys service.
+// Per-business override is supported via the wahaProvider DB field when it exists.
+const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
+
+function useBaileys(wahaProvider?: string | null): boolean {
+  return GLOBAL_BAILEYS || wahaProvider === 'BAILEYS';
+}
 
 
 const WAHA_TIMEOUT_MS = 15_000;
@@ -39,16 +48,23 @@ export const routeMessage = async (opts: {
 }): Promise<GatewayResult> => {
   const { businessId, recipientPhone, payload } = opts;
 
-  // Cache WAHA config in Redis (5-min TTL) to avoid a DB hit on every message send
+  // ── Baileys fast-path ────────────────────────────────────────────
+  if (GLOBAL_BAILEYS) {
+    return BaileysGateway.send(recipientPhone, payload, businessId);
+  }
+
+  // ── WAHA path (with optional per-business Baileys override) ──────
   const redis = getRedisClient();
   const cacheKey = WAHA_CFG_CACHE_PREFIX + businessId;
   const wahaSelect = {
     wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true,
     wahaBackupSessionId: true, wahaActiveSlot: true,
+    wahaProvider: true,
   } as const;
   type WahaCfg = {
     wahaBaseUrl: string | null; wahaSessionId: string | null; wahaApiKey: string | null;
     wahaBackupSessionId: string | null; wahaActiveSlot: string | null;
+    wahaProvider: string | null;
   };
   let business: WahaCfg | null = null;
   try {
@@ -56,21 +72,25 @@ export const routeMessage = async (opts: {
     if (cached) {
       business = JSON.parse(cached) as WahaCfg;
     } else {
-      business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect });
+      business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect as any }) as WahaCfg | null;
       if (business) await redis.set(cacheKey, JSON.stringify(business), { EX: 300 });
     }
   } catch {
-    // Redis unavailable — fall through to direct DB query
-    business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect });
+    business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect as any }) as WahaCfg | null;
   }
 
   if (!business) return { success: false, error: 'BUSINESS_NOT_FOUND' };
+
+  // Per-business Baileys override
+  if (useBaileys(business.wahaProvider)) {
+    return BaileysGateway.send(recipientPhone, payload, businessId);
+  }
+
   if (!business.wahaBaseUrl || !business.wahaSessionId) {
     return { success: false, error: 'WAHA_NOT_CONFIGURED' };
   }
 
-  // Honour automatic failover: when the tenant is flipped to BACKUP, route
-  // through the backup session (same baseUrl + apiKey, different session name).
+  // Honour automatic failover
   const effectiveSession =
     business.wahaActiveSlot === 'BACKUP' && business.wahaBackupSessionId
       ? business.wahaBackupSessionId

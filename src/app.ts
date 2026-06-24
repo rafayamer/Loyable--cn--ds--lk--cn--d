@@ -8,6 +8,7 @@ import { prisma } from './config/prisma';
 import { initRedis } from './config/redis';
 import { initRedis as initTenantRedis } from './middleware/tenant-scope-middleware';
 import { wahaWebhookRouter } from './services/messaging-gateway';
+import { bootBaileySessions } from './services/baileys-service';
 
 // ── Crash visibility ──────────────────────────────────────────────
 // Print the moment the process starts so we always see *something* in
@@ -99,6 +100,14 @@ async function bootstrap() {
     console.log('[app] Database reachable, schema patches ensured.');
   } catch (e) {
     console.error('[app] Database init FAILED (continuing so port still binds):', (e as Error).message);
+  }
+
+  // Reconnect any Baileys sessions that have stored credentials in Redis.
+  // Only runs when WHATSAPP_PROVIDER=baileys or individual businesses have wahaProvider=BAILEYS.
+  if (process.env.WHATSAPP_PROVIDER === 'baileys') {
+    bootBaileySessions().catch(e =>
+      console.warn('[app] Baileys boot error (non-fatal):', (e as Error).message)
+    );
   }
 
   // Behind a load balancer (Neon/Render/etc) the real client IP arrives via

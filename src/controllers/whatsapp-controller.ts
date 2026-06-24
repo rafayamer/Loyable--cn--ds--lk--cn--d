@@ -1,6 +1,7 @@
 // ================================================================
 //  whatsapp-controller.ts
-//  WAHA session management per tenant.
+//  WhatsApp session management per tenant.
+//  Supports two providers: WAHA (external) and Baileys (in-process).
 // ================================================================
 
 import { Router, Request, Response } from 'express';
@@ -9,8 +10,28 @@ import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware
 import { WahaGateway } from '../services/messaging-gateway';
 import { getWahaConfig as resolveWahaConfig } from '../config/waha';
 import { getWarmupStatus } from '../services/whatsapp-reliability';
+import {
+  getBaileysStatus,
+  getBaileysQrCode,
+  startBaileysSession,
+  stopBaileysSession,
+} from '../services/baileys-service';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
+
+const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
+
+async function getProviderForBiz(bizId: string): Promise<'BAILEYS' | 'WAHA'> {
+  if (GLOBAL_BAILEYS) return 'BAILEYS';
+  try {
+    const biz = await prisma.business.findUnique({
+      where:  { id: bizId },
+      select: { wahaProvider: true } as any,
+    }) as any;
+    if (biz?.wahaProvider === 'BAILEYS') return 'BAILEYS';
+  } catch { /* column may not exist yet */ }
+  return 'WAHA';
+}
 
 export const whatsappRouter = Router();
 
@@ -32,11 +53,22 @@ async function getWahaConfig(bizId: string) {
 whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): Promise<void> => {
   const bizId = (req as any).tenantContext?.businessId as string;
   try {
+    const provider = await getProviderForBiz(bizId);
+
+    if (provider === 'BAILEYS') {
+      const status = getBaileysStatus(bizId);
+      res.json({
+        provider: 'BAILEYS',
+        waha: { status, connected: status === 'WORKING' },
+        warmup: null,
+        health: { activeSlot: 'PRIMARY', hasBackup: false, lastHealthyAt: null, connectedAt: null },
+      });
+      return;
+    }
+
     const cfg = await getWahaConfig(bizId);
     const status = await WahaGateway.getStatus(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
 
-    // Reliability info — warmup budget + failover state. Best-effort: never let
-    // a missing column or Redis hiccup break the core connection status.
     const [warmup, biz] = await Promise.all([
       getWarmupStatus(bizId).catch(() => null),
       prisma.business.findUnique({
@@ -46,6 +78,7 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
     ]);
 
     res.json({
+      provider: 'WAHA',
       waha: {
         baseUrl:   cfg.baseUrlRaw   ?? 'http://localhost:3001',
         sessionId: cfg.sessionIdRaw ?? 'default',
@@ -72,8 +105,13 @@ whatsappRouter.get('/status', tenantScope, async (req: Request, res: Response): 
 whatsappRouter.get('/qr', tenantScope, async (req: Request, res: Response): Promise<void> => {
   const bizId = (req as any).tenantContext?.businessId as string;
   try {
-    const cfg = await getWahaConfig(bizId);
-    const qr  = await WahaGateway.getQrCode(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
+    const provider = await getProviderForBiz(bizId);
+    const qr = provider === 'BAILEYS'
+      ? await getBaileysQrCode(bizId)
+      : await (async () => {
+          const cfg = await getWahaConfig(bizId);
+          return WahaGateway.getQrCode(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
+        })();
     if (!qr) { res.status(503).json({ error: 'QR_NOT_AVAILABLE' }); return; }
     res.set('Cache-Control', 'no-store').json({ qr });
   } catch (err: any) {
@@ -91,6 +129,21 @@ const startSchema = z.object({
 whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
   const bizId = (req as any).tenantContext?.businessId as string;
   try {
+    const provider = await getProviderForBiz(bizId);
+
+    if (provider === 'BAILEYS') {
+      const current = getBaileysStatus(bizId);
+      if (current === 'WORKING' || current === 'SCAN_QR_CODE' || current === 'STARTING') {
+        res.json({ ok: true, note: 'already_running', status: current, provider: 'BAILEYS' });
+        return;
+      }
+      startBaileysSession(bizId).catch(e =>
+        console.error('[whatsapp] Baileys startSession error: %s', e?.message)
+      );
+      res.json({ ok: true, note: 'starting', provider: 'BAILEYS' });
+      return;
+    }
+
     const body = startSchema.safeParse(req.body).data ?? {};
     const cfg  = await getWahaConfig(bizId);
 
@@ -98,20 +151,17 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
     const sessionId = body.wahaSessionId ?? cfg.sessionId;
     const apiKey    = body.wahaApiKey    ?? cfg.apiKey;
 
-    // Persist any overrides
     await prisma.business.update({
       where: { id: bizId },
       data:  { wahaBaseUrl: baseUrl, wahaSessionId: sessionId, wahaApiKey: apiKey },
     });
 
-    // Check if already starting/working before kicking off a 30s poll
     const currentStatus = await WahaGateway.getStatus(baseUrl, sessionId, apiKey);
     if (currentStatus === 'WORKING' || currentStatus === 'SCAN_QR_CODE' || currentStatus === 'STARTING') {
       res.json({ ok: true, note: 'already_running', status: currentStatus });
       return;
     }
 
-    // Fire-and-forget — don't block the HTTP response for 30s
     WahaGateway.startSession(baseUrl, sessionId, apiKey).catch(e =>
       console.error('[whatsapp] startSession bg error: code=%s msg=%s', e?.code ?? 'none', e?.message ?? 'none')
     );
@@ -129,6 +179,12 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
 whatsappRouter.post('/session/stop', tenantScope, requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), async (req: Request, res: Response): Promise<void> => {
   const bizId = (req as any).tenantContext?.businessId as string;
   try {
+    const provider = await getProviderForBiz(bizId);
+    if (provider === 'BAILEYS') {
+      await stopBaileysSession(bizId);
+      res.json({ ok: true, provider: 'BAILEYS' });
+      return;
+    }
     const cfg = await getWahaConfig(bizId);
     await WahaGateway.stopSession(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
     res.json({ ok: true });
