@@ -100,15 +100,32 @@ async function bootstrap() {
   }));
 
   // CORS — restrict to known origins. Set CORS_ORIGINS (comma-separated) or
-  // FRONTEND_URL in production; falls back to localhost dev ports.
+  // FRONTEND_URL in production; falls back to localhost dev ports. The frontend
+  // is also served by this same app, so requests from our own deploy domains
+  // (Railway, and any configured custom domain) are always allowed.
   const allowedOrigins = (process.env.CORS_ORIGINS ?? process.env.FRONTEND_URL ?? 'http://localhost:3000,http://localhost:3002')
     .split(',').map(o => o.trim()).filter(Boolean);
+  if (process.env.API_BASE_URL) allowedOrigins.push(process.env.API_BASE_URL.trim());
+
+  const isAllowedOrigin = (origin: string): boolean => {
+    if (allowedOrigins.includes(origin)) return true;
+    try {
+      const host = new URL(origin).hostname;
+      // Our own platform domains — the SPA is served from the same origin as the API.
+      if (host.endsWith('.railway.app')) return true;
+      if (host.endsWith('theloyaly.com') || host.endsWith('theloyaly.online')) return true;
+    } catch { /* malformed origin → reject below */ }
+    return false;
+  };
+
   app.use(cors({
     origin: (origin, cb) => {
       // Allow non-browser clients (no Origin header: WAHA, Stripe, curl, mobile).
       if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS: origin ${origin} not allowed`));
+      if (isAllowedOrigin(origin)) return cb(null, true);
+      // Don't throw (which surfaces as a 500). Just deny CORS headers.
+      console.warn(`[app] CORS: origin not allowed: ${origin}`);
+      return cb(null, false);
     },
     credentials: true,
   }));
