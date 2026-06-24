@@ -221,7 +221,8 @@ export const WahaGateway = {
       // 422/409 means session already exists — proceed to poll for QR.
       const status = err?.response?.status;
       if (status !== 422 && status !== 409) {
-        console.error('[waha] session create failed:', err?.response?.data ?? err?.message);
+        const detail = err?.response?.data ?? err?.message ?? err?.code ?? 'network error (is WAHA_BASE_URL set correctly?)';
+        console.error('[waha] session create failed:', detail);
         throw err;
       }
     }
