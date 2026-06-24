@@ -19,6 +19,7 @@ import { prisma } from '../config/prisma';
 import { tenantScope }               from '../middleware/tenant-scope-middleware';
 import { getRedisClient }            from '../config/redis';
 import { WahaGateway, toChatId }     from '../services/messaging-gateway';
+import { getWahaConfig }             from '../config/waha';
 
 
 // ── Portal JWT helpers ────────────────────────────────────────────
@@ -228,9 +229,7 @@ const loginHandler = async (req: Request, res: Response): Promise<void> => {
   await redis.del(`portal:otpattempts:${biz.id}:${normalized}`);
 
   // Deliver the code over WhatsApp.
-  const baseUrl   = biz.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001';
-  const sessionId = biz.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default';
-  const apiKey    = biz.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '';
+  const { baseUrl, sessionId, apiKey } = await getWahaConfig(biz.id);
   const sent = await WahaGateway.sendText(
     toChatId(normalized),
     `Your ${biz.name} verification code is ${code}. It expires in 5 minutes.`,

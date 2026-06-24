@@ -7,35 +7,23 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { WahaGateway } from '../services/messaging-gateway';
+import { getWahaConfig as resolveWahaConfig } from '../config/waha';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 
 export const whatsappRouter = Router();
 
 async function getWahaConfig(bizId: string) {
+  const cfg = await resolveWahaConfig(bizId);
   const biz = await prisma.business.findUnique({
     where:  { id: bizId },
-    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
+    select: { wahaSessionId: true, wahaApiKey: true },
   });
-  // This is a single-operator SaaS: one shared WAHA instance configured via the
-  // WAHA_BASE_URL env var. A stale DB value (localhost, or an old/dead Railway
-  // domain from a previous connect) must NEVER override a configured env var.
-  // So: env var always wins when present; the DB value is only a fallback for
-  // the case where no env var is set at all.
-  const envBaseUrl = process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
-    ? process.env.WAHA_BASE_URL.trim()
-    : null;
-  const dbBaseUrl = biz?.wahaBaseUrl && !biz.wahaBaseUrl.includes('localhost')
-    ? biz.wahaBaseUrl
-    : null;
-  const baseUrl = envBaseUrl ?? dbBaseUrl ?? 'http://localhost:3001';
   return {
-    baseUrl,
-    sessionId: biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default',
-    apiKey:    biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '',
-    baseUrlRaw: baseUrl === 'http://localhost:3001' ? null : baseUrl,
-    sessionIdRaw: biz?.wahaSessionId,
-    apiKeyRaw: biz?.wahaApiKey,
+    ...cfg,
+    baseUrlRaw:   cfg.baseUrl === 'http://localhost:3001' ? null : cfg.baseUrl,
+    sessionIdRaw: biz?.wahaSessionId ?? null,
+    apiKeyRaw:    biz?.wahaApiKey    ?? null,
   };
 }
 

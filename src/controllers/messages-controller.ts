@@ -3,21 +3,11 @@ import { } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
 import { WahaGateway, toChatId } from '../services/messaging-gateway';
+import { getWahaConfig } from '../config/waha';
 
 export const messagesRouter = Router();
 
-// Resolve a business's WAHA connection config (DB → env → defaults).
-async function wahaConfig(businessId: string) {
-  const biz = await prisma.business.findUnique({
-    where:  { id: businessId },
-    select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-  });
-  return {
-    baseUrl:   biz?.wahaBaseUrl   ?? process.env.WAHA_BASE_URL   ?? 'http://localhost:3001',
-    sessionId: biz?.wahaSessionId ?? process.env.WAHA_SESSION_ID ?? 'default',
-    apiKey:    biz?.wahaApiKey    ?? process.env.WAHA_API_KEY    ?? '',
-  };
-}
+const wahaConfig = (businessId: string) => getWahaConfig(businessId);
 
 // Normalise a WAHA chatId / sender into a displayable phone (+447911123456).
 const chatIdToPhone = (raw: string): string => {
