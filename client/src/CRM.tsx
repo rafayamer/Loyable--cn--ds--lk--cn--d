@@ -59,6 +59,70 @@ const computeChurnRisk = (c: any): number => {
   return Math.max(0, Math.min(100, Math.round(recencyScore + freqScore + segBonus)));
 };
 
+// ════════════════════════════════════════════════════════════════
+// PHONE INPUT  — country code dropdown + local number
+// ════════════════════════════════════════════════════════════════
+const COUNTRY_CODES = [
+  {code:"+44",flag:"🇬🇧"},{code:"+1",flag:"🇺🇸"},{code:"+92",flag:"🇵🇰"},
+  {code:"+971",flag:"🇦🇪"},{code:"+966",flag:"🇸🇦"},{code:"+91",flag:"🇮🇳"},
+  {code:"+61",flag:"🇦🇺"},{code:"+49",flag:"🇩🇪"},{code:"+33",flag:"🇫🇷"},
+  {code:"+39",flag:"🇮🇹"},{code:"+34",flag:"🇪🇸"},{code:"+31",flag:"🇳🇱"},
+  {code:"+55",flag:"🇧🇷"},{code:"+27",flag:"🇿🇦"},{code:"+234",flag:"🇳🇬"},
+  {code:"+254",flag:"🇰🇪"},{code:"+60",flag:"🇲🇾"},{code:"+65",flag:"🇸🇬"},
+  {code:"+62",flag:"🇮🇩"},{code:"+63",flag:"🇵🇭"},{code:"+20",flag:"🇪🇬"},
+  {code:"+212",flag:"🇲🇦"},{code:"+90",flag:"🇹🇷"},{code:"+7",flag:"🇷🇺"},
+];
+
+function detectCC(value: string) {
+  // Sort by length descending so +234 matches before +23
+  const sorted = [...COUNTRY_CODES].sort((a,b)=>b.code.length-a.code.length);
+  return sorted.find(c=>value.startsWith(c.code))?.code ?? "+44";
+}
+
+function PhoneInput({
+  value, onChange, inputStyle, placeholder="7911 123456",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  inputStyle?: React.CSSProperties;
+  placeholder?: string;
+}) {
+  const cc = detectCC(value);
+  const local = value.startsWith(cc) ? value.slice(cc.length) : (value.startsWith("+") ? "" : value);
+  const selectSt: React.CSSProperties = {
+    ...(inputStyle ?? {}),
+    width:"90px", flexShrink:0, paddingLeft:"8px", paddingRight:"4px",
+    fontFamily:"inherit", fontSize:"12px", cursor:"pointer",
+  };
+  return (
+    <div style={{display:"flex",gap:"6px",alignItems:"stretch"}}>
+      <select
+        value={cc}
+        onChange={e=>onChange(e.target.value+local)}
+        style={selectSt}
+        className="rounded-lg outline-none text-white"
+      >
+        {COUNTRY_CODES.map(c=>(
+          <option key={c.code} value={c.code} style={{background:"#1a1030"}}>
+            {c.flag} {c.code}
+          </option>
+        ))}
+      </select>
+      <input
+        type="tel"
+        value={local}
+        onChange={e=>{
+          const d=e.target.value.replace(/[^\d\s\-]/g,"").replace(/^0+/,"");
+          onChange(cc+d);
+        }}
+        placeholder={placeholder}
+        style={{...(inputStyle??{}),flex:1,minWidth:0}}
+        className="rounded-lg outline-none text-white"
+      />
+    </div>
+  );
+}
+
 // Map API customer to UI shape
 const mapCustomer = (c: any) => ({
   id:           c.id,
@@ -1741,7 +1805,7 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
         {/* Manual phone fallback */}
         {!selected&&<div>
           <label className="text-xs text-slate-400 mb-1 block">Or enter phone number directly</label>
-          <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+447700000000" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <PhoneInput value={phone} onChange={setPhone} inputStyle={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",padding:"7px 10px",fontSize:"12px"}}/>
         </div>}
 
         {/* Message */}
@@ -2592,7 +2656,7 @@ const DataHubPage=()=>{
         <div><h3 className="text-sm font-semibold text-white flex items-center gap-2"><UserPlus size={14} className="text-violet-400"/>Add Customer Manually</h3><p className="text-xs text-slate-400 mt-1">Register a new customer, optionally assign initial points and send a welcome message.</p></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label className="text-xs text-slate-400 mb-1 block">Full Name *</label><input value={acName} onChange={e=>setAcName(e.target.value)} placeholder="Jane Smith" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-          <div><label className="text-xs text-slate-400 mb-1 block">WhatsApp Phone *</label><input value={acPhone} onChange={e=>setAcPhone(e.target.value)} placeholder="+44 7911 123456" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">WhatsApp Phone *</label><PhoneInput value={acPhone} onChange={setAcPhone} inputStyle={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",padding:"8px 12px",fontSize:"14px"}}/></div>
           <div><label className="text-xs text-slate-400 mb-1 block">Category / Segment</label><select value={acCategory} onChange={e=>setAcCategory(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.3)"}}>{["NEW","REGULAR","VIP","AT_RISK","LOST","BIG_SPENDER"].map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s}</option>)}</select></div>
           <div><label className="text-xs text-slate-400 mb-1 block">Starting Points</label><input type="number" value={acPoints} onChange={e=>setAcPoints(Number(e.target.value))} min={0} placeholder="0" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
         </div>
@@ -3659,7 +3723,7 @@ const AddStaffForm=()=>{
         </div>
         <div className="sm:col-span-2">
           <label className="block text-xs text-slate-400 mb-1">Their WhatsApp Number <span className="text-slate-500">(optional — so campaigns never message them)</span></label>
-          <input value={staffPhone} onChange={e=>{setStaffPhone(e.target.value);setErr("");}} placeholder="+447911123456" style={inpSt}/>
+          <PhoneInput value={staffPhone} onChange={v=>{setStaffPhone(v);setErr("");}} inputStyle={inpSt}/>
         </div>
       </div>
       <div className="rounded-lg px-3 py-2 text-xs text-slate-400" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
@@ -3813,7 +3877,7 @@ const GdprTab=({onAccountDeleted}:{onAccountDeleted:()=>void})=>{
         <div className="text-xs font-semibold text-red-400 mb-2">🗑️ Delete a Customer's Data</div>
         <div className="text-xs text-slate-400 mb-3">If a customer asks you to delete their information, enter their phone number below. All their personal details will be permanently removed from your account.</div>
         <div className="flex gap-2">
-          <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+447911123456" className="flex-1 rounded-lg px-3 py-2 text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(239,68,68,0.25)"}}/>
+          <div className="flex-1"><PhoneInput value={phone} onChange={setPhone} inputStyle={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(239,68,68,0.25)",padding:"6px 10px",fontSize:"12px"}}/></div>
           <button onClick={doPurge} disabled={purging} className="px-3 py-2 rounded-lg text-xs font-medium text-red-300 disabled:opacity-50 flex items-center gap-1.5" style={{border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.08)"}}>
             {purging?<RefreshCw size={11} className="animate-spin"/>:<Trash2 size={11}/>}{purging?"Deleting…":"Delete Data"}
           </button>
@@ -4886,7 +4950,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="+44xxxxxxxxx" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><PhoneInput value={phone} onChange={setPhone} inputStyle={{...inpS,padding:"7px 10px",fontSize:"12px",color:"white"}}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
           </div>
           <div className="flex gap-2 mb-4">

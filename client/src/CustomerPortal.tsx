@@ -1,4 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+// ── Phone input with country code picker ────────────────────────────
+const PORTAL_CC = [
+  {code:"+44",flag:"🇬🇧"},{code:"+1",flag:"🇺🇸"},{code:"+92",flag:"🇵🇰"},
+  {code:"+971",flag:"🇦🇪"},{code:"+966",flag:"🇸🇦"},{code:"+91",flag:"🇮🇳"},
+  {code:"+61",flag:"🇦🇺"},{code:"+49",flag:"🇩🇪"},{code:"+33",flag:"🇫🇷"},
+  {code:"+39",flag:"🇮🇹"},{code:"+34",flag:"🇪🇸"},{code:"+31",flag:"🇳🇱"},
+  {code:"+55",flag:"🇧🇷"},{code:"+27",flag:"🇿🇦"},{code:"+234",flag:"🇳🇬"},
+  {code:"+254",flag:"🇰🇪"},{code:"+60",flag:"🇲🇾"},{code:"+65",flag:"🇸🇬"},
+  {code:"+62",flag:"🇮🇩"},{code:"+63",flag:"🇵🇭"},{code:"+20",flag:"🇪🇬"},
+  {code:"+212",flag:"🇲🇦"},{code:"+90",flag:"🇹🇷"},{code:"+7",flag:"🇷🇺"},
+];
+function detectPortalCC(v:string){
+  const sorted=[...PORTAL_CC].sort((a,b)=>b.code.length-a.code.length);
+  return sorted.find(c=>v.startsWith(c.code))?.code??"+44";
+}
+function PortalPhoneInput({value,onChange}:{value:string;onChange:(v:string)=>void}){
+  const cc=detectPortalCC(value);
+  const local=value.startsWith(cc)?value.slice(cc.length):(value.startsWith("+")?"":value);
+  const base:React.CSSProperties={background:"rgba(255,255,255,0.08)",border:"none",color:"white",outline:"none",fontSize:"14px"};
+  return(
+    <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)"}}>
+      <select value={cc} onChange={e=>onChange(e.target.value+local)} style={{...base,width:"72px",flexShrink:0,cursor:"pointer",borderRadius:"8px",padding:"2px 4px"}} className="bg-transparent">
+        {PORTAL_CC.map(c=><option key={c.code} value={c.code} style={{background:"#2d1b6e"}}>{c.flag} {c.code}</option>)}
+      </select>
+      <div style={{width:"1px",height:"20px",background:"rgba(255,255,255,0.2)"}}/>
+      <input type="tel" value={local} onChange={e=>onChange(cc+e.target.value.replace(/[^\d\s\-]/g,"").replace(/^0+/,""))} placeholder="7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+    </div>
+  );
+}
 import { api } from './api/index';
 
 // Plain fetch for portal public endpoints — avoids the auth wrapper's
@@ -188,10 +218,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
-              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Icon.phone />
-                <input type="tel" inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+44 7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
-              </div>
+              <PortalPhoneInput value={phone} onChange={setPhone}/>
             </div>
             <div>
               <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">First Name</label>
