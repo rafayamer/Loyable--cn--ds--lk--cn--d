@@ -131,36 +131,63 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
 });
 
 // ── GET /api/messages/inbox ───────────────────────────────────────
-// Live conversation list pulled straight from WAHA, enriched with the
-// matching loyalty customer (so the UI can show real names).
 messagesRouter.get('/inbox', tenantScope, async (req: Request, res: Response) => {
   const { businessId } = (req as any).tenantContext;
+
+  if (GLOBAL_BAILEYS) {
+    // Serve from DB — group messages by chatId, pick latest per chat
+    const rows = await (prisma as any).whatsAppMessage.findMany({
+      where:   { businessId },
+      orderBy: { timestamp: 'desc' },
+      take:    500,
+    });
+    // Deduplicate: one entry per chatId (latest message)
+    const seen = new Set<string>();
+    const latest: typeof rows = [];
+    for (const r of rows) {
+      if (!seen.has(r.chatId)) { seen.add(r.chatId); latest.push(r); }
+    }
+    // Enrich with customer names
+    const phones = latest.map((r:any) => r.phone).filter(Boolean);
+    const customers = phones.length ? await prisma.customer.findMany({
+      where:  { businessId, whatsappNumber: { in: phones } },
+      select: { id: true, fullName: true, whatsappNumber: true },
+    }) : [];
+    const byPhone = new Map(customers.map(c => [c.whatsappNumber, c]));
+    const conversations = latest.map((r:any) => {
+      const cust = byPhone.get(r.phone);
+      return {
+        chatId:     r.chatId,
+        phone:      r.phone,
+        name:       cust?.fullName || r.phone || 'Unknown',
+        customerId: r.customerId ?? cust?.id ?? null,
+        picture:    null,
+        lastText:   r.body,
+        lastFromMe: r.fromMe,
+        timestamp:  r.timestamp.getTime(),
+        unread:     0,
+      };
+    });
+    return res.json({ conversations });
+  }
+
+  // WAHA path
   const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
-
   const overview = await WahaGateway.getChatsOverview(baseUrl, sessionId, apiKey, 60);
-
-  // Map known phone numbers → customer records for name enrichment.
-  const phones = overview
-    .map(c => chatIdToPhone(c.id))
-    .filter(Boolean);
-
-  const customers = phones.length
-    ? await prisma.customer.findMany({
-        where:  { businessId, whatsappNumber: { in: phones } },
-        select: { id: true, fullName: true, whatsappNumber: true },
-      })
-    : [];
+  const phones = overview.map(c => chatIdToPhone(c.id)).filter(Boolean);
+  const customers = phones.length ? await prisma.customer.findMany({
+    where:  { businessId, whatsappNumber: { in: phones } },
+    select: { id: true, fullName: true, whatsappNumber: true },
+  }) : [];
   const byPhone = new Map(customers.map(c => [c.whatsappNumber, c]));
-
   const conversations = overview
-    .filter(c => !String(c.id).endsWith('@g.us'))   // skip group chats
+    .filter(c => !String(c.id).endsWith('@g.us'))
     .map(c => {
       const phone    = chatIdToPhone(c.id);
       const customer = byPhone.get(phone);
       const last     = c.lastMessage ?? {};
       return {
-        chatId:     c.id,
-        phone,
+        chatId: c.id, phone,
         name:       customer?.fullName || c.name || phone || 'Unknown',
         customerId: customer?.id ?? null,
         picture:    c.picture ?? null,
@@ -171,34 +198,45 @@ messagesRouter.get('/inbox', tenantScope, async (req: Request, res: Response) =>
       };
     })
     .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-
   res.json({ conversations });
 });
 
 // ── GET /api/messages/inbox/:chatId ───────────────────────────────
-// Full thread for one conversation. Defaults to the last 3 days.
 messagesRouter.get('/inbox/:chatId', tenantScope, async (req: Request, res: Response) => {
   const { businessId } = (req as any).tenantContext;
   const chatId = decodeURIComponent(req.params.chatId);
   const days   = parseInt(String(req.query.days ?? 3), 10);
+
+  if (GLOBAL_BAILEYS) {
+    const cutoff = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
+    const rows = await (prisma as any).whatsAppMessage.findMany({
+      where:   { businessId, chatId, timestamp: { gte: cutoff } },
+      orderBy: { timestamp: 'asc' },
+      take:    200,
+    });
+    const messages = rows.map((r:any) => ({
+      id:        r.msgId ?? r.id,
+      body:      r.body,
+      fromMe:    r.fromMe,
+      timestamp: r.timestamp.getTime(),
+      ack:       null,
+      type:      r.mediaType ?? 'chat',
+    }));
+    return res.json({ chatId, days, messages });
+  }
+
+  // WAHA path
   const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
-
   const raw = await WahaGateway.getChatMessages(baseUrl, sessionId, apiKey, chatId, 200);
-
   const cutoff = days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
-
   const messages = raw
     .map((m: any) => ({
-      id:        m.id,
-      body:      m.body ?? m.caption ?? (m.hasMedia ? '[media]' : ''),
-      fromMe:    !!m.fromMe,
-      timestamp: m.timestamp ? m.timestamp * 1000 : null,
-      ack:       m.ack ?? null,
-      type:      m.type ?? 'chat',
+      id: m.id, body: m.body ?? m.caption ?? (m.hasMedia ? '[media]' : ''),
+      fromMe: !!m.fromMe, timestamp: m.timestamp ? m.timestamp * 1000 : null,
+      ack: m.ack ?? null, type: m.type ?? 'chat',
     }))
     .filter((m: any) => m.timestamp == null || m.timestamp >= cutoff)
     .sort((a: any, b: any) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-
   res.json({ chatId, days, messages });
 });
 

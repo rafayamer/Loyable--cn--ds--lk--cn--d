@@ -1205,3 +1205,21 @@ model FeedbackResponse {
   @@index([businessId, score])
   @@map("feedback_responses")
 }
+
+model WhatsAppMessage {
+  id         String   @id @default(cuid())
+  businessId String
+  chatId     String   // e.g. "923001234567@s.whatsapp.net"
+  phone      String   // normalised "+923001234567"
+  body       String   @default("")
+  fromMe     Boolean  @default(false)
+  timestamp  DateTime @default(now())
+  msgId      String?  // Baileys message key id (for dedup)
+  mediaType  String?  // "image" | "video" | "audio" | "document" | null
+  customerId String?  // resolved FK if customer exists
+
+  @@unique([businessId, msgId])
+  @@index([businessId, chatId, timestamp])
+  @@index([businessId, timestamp])
+  @@map("whatsapp_messages")
+}

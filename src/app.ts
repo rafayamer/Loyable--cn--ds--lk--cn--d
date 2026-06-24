@@ -57,6 +57,24 @@ async function ensureSchemaPatches() {
       sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "dailyMessageCapOverride" INTEGER' },
     { label: 'customers.marketingConsentWhatsapp default true',
       sql: 'UPDATE "customers" SET "marketingConsentWhatsapp" = true WHERE "marketingConsentWhatsapp" = false AND "isSuppressed" = false' },
+    { label: 'whatsapp_messages table',
+      sql: `CREATE TABLE IF NOT EXISTS "whatsapp_messages" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "chatId" TEXT NOT NULL,
+        "phone" TEXT NOT NULL,
+        "body" TEXT NOT NULL DEFAULT '',
+        "fromMe" BOOLEAN NOT NULL DEFAULT false,
+        "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "msgId" TEXT,
+        "mediaType" TEXT,
+        "customerId" TEXT,
+        CONSTRAINT "whatsapp_messages_businessId_msgId_key" UNIQUE ("businessId","msgId")
+      )` },
+    { label: 'whatsapp_messages idx chatId',
+      sql: 'CREATE INDEX IF NOT EXISTS "wam_biz_chat_ts" ON "whatsapp_messages" ("businessId","chatId","timestamp")' },
+    { label: 'whatsapp_messages idx ts',
+      sql: 'CREATE INDEX IF NOT EXISTS "wam_biz_ts" ON "whatsapp_messages" ("businessId","timestamp")' },
     // Clear stale WAHA URLs so the WAHA_BASE_URL env var takes effect. This
     // covers localhost (saved before the env var existed) and any persisted
     // value that no longer matches the configured env var (e.g. an old/dead

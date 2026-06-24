@@ -211,8 +211,16 @@ export async function sendBaileysText(
     return { success: false, error: `WhatsApp session not ready (${getBaileysStatus(bizId)}). Connect first.` };
   }
   try {
-    const sent = await session.socket.sendMessage(toChatId(phone), { text });
-    return { success: true, messageId: sent?.key?.id ?? undefined };
+    const jid  = toChatId(phone);
+    const sent = await session.socket.sendMessage(jid, { text });
+    const msgId = sent?.key?.id ?? null;
+    // Store outbound message for inbox
+    (prisma as any).whatsAppMessage.upsert({
+      where:  { businessId_msgId: { businessId: bizId, msgId: msgId ?? `out-${Date.now()}` } },
+      update: {},
+      create: { businessId: bizId, chatId: jid, phone: `+${phone.replace(/[^\d]/g, '')}`, body: text, fromMe: true, msgId },
+    }).catch(() => {});
+    return { success: true, messageId: msgId ?? undefined };
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'BAILEYS_SEND_FAILED' };
   }
@@ -266,21 +274,47 @@ const OPT_OUT_RE = /\b(STOP|UNSUBSCRIBE|OPTOUT|CANCEL|QUIT)\b|OPT[- ]OUT|REMOVE 
 
 async function handleInboundBaileys(bizId: string, msg: proto.IWebMessageInfo): Promise<void> {
   const jid  = msg.key?.remoteJid ?? '';
+  if (!jid || jid.endsWith('@g.us')) return; // skip group messages
+
   const text = (
     msg.message?.conversation ??
     msg.message?.extendedTextMessage?.text ??
     ''
   ).trim();
 
-  if (!text || !jid) return;
-
   const phone = '+' + jid.replace('@s.whatsapp.net', '').replace(/[^\d]/g, '');
 
+  // Detect media type
+  const mediaType = msg.message?.imageMessage ? 'image'
+    : msg.message?.videoMessage ? 'video'
+    : msg.message?.audioMessage ? 'audio'
+    : msg.message?.documentMessage ? 'document'
+    : null;
+
+  // Store message in DB for inbox display
   const customer = await prisma.customer.findFirst({
     where:  { whatsappNumber: phone, businessId: bizId },
     select: { id: true, marketingConsentWhatsapp: true },
   });
-  if (!customer) return;
+  await (prisma as any).whatsAppMessage.upsert({
+    where:  { businessId_msgId: { businessId: bizId, msgId: msg.key?.id ?? '' } },
+    update: {},
+    create: {
+      businessId: bizId,
+      chatId:     jid,
+      phone,
+      body:       text || (mediaType ? `[${mediaType}]` : ''),
+      fromMe:     false,
+      timestamp:  msg.messageTimestamp
+        ? new Date(Number(msg.messageTimestamp) * 1000)
+        : new Date(),
+      msgId:      msg.key?.id ?? null,
+      mediaType,
+      customerId: customer?.id ?? null,
+    },
+  }).catch(() => {});
+
+  if (!customer || !text) return;
 
   if (OPT_OUT_RE.test(text)) {
     await prisma.$transaction([

@@ -1735,26 +1735,104 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
   );
 };
 
-// ── Live two-way WhatsApp inbox (pulls real chats from WAHA) ──────
+// ── Live two-way WhatsApp inbox ───────────────────────────────────
 const chatTime=(ts:number|null)=>{if(!ts)return"";const d=new Date(ts);const now=new Date();const sameDay=d.toDateString()===now.toDateString();return sameDay?d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString([],{day:"2-digit",month:"short"});};
-const ackLabel=(a:number|null)=>a==null?"":a>=3?"✓✓":a===2?"✓✓":a===1?"✓":"…";
-const InboxView=({connected}:{connected:boolean})=>(
-  <div className="gc rounded-xl p-12 flex flex-col items-center justify-center text-center" style={CARD}>
-    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.2)"}}>
-      <MessageSquare size={28} className="text-violet-400"/>
+const InboxView=({connected}:{connected:boolean})=>{
+  const {dark}=useTheme();
+  const [convos,setConvos]=useState<any[]>([]);
+  const [active,setActive]=useState<any>(null);
+  const [thread,setThread]=useState<any[]>([]);
+  const [reply,setReply]=useState("");
+  const [sending,setSending]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const threadRef=useRef<HTMLDivElement>(null);
+  const token=()=>localStorage.getItem("accessToken")??"";
+  const fetchConvos=async()=>{
+    try{const r=await fetch("/api/messages/inbox",{headers:{Authorization:`Bearer ${token()}`}});const d=await r.json();setConvos(d.conversations??[]);}catch{}finally{setLoading(false);}
+  };
+  const fetchThread=async(chatId:string)=>{
+    try{const r=await fetch(`/api/messages/inbox/${encodeURIComponent(chatId)}`,{headers:{Authorization:`Bearer ${token()}`}});const d=await r.json();setThread(d.messages??[]);}catch{}
+  };
+  useEffect(()=>{fetchConvos();const iv=setInterval(fetchConvos,8000);return()=>clearInterval(iv);},[]);
+  useEffect(()=>{if(active){fetchThread(active.chatId);const iv=setInterval(()=>fetchThread(active.chatId),5000);return()=>clearInterval(iv);}},[active?.chatId]);
+  useEffect(()=>{if(threadRef.current)threadRef.current.scrollTop=threadRef.current.scrollHeight;},[thread]);
+  const sendReply=async()=>{
+    if(!reply.trim()||!active)return;
+    setSending(true);
+    try{
+      await fetch("/api/messages/send",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token()}`},body:JSON.stringify({phone:active.phone,message:reply.trim()})});
+      setReply("");fetchThread(active.chatId);fetchConvos();
+    }catch{}finally{setSending(false);}
+  };
+  const bg=dark?"#0f0a1e":"#f4f2fb";
+  const card=dark?"rgba(255,255,255,0.04)":"#fff";
+  const border=dark?"rgba(255,255,255,0.08)":"rgba(124,58,237,0.1)";
+  const txt=dark?"#e2d9f3":"#1e1333";
+  const sub=dark?"#9488b8":"#6b7280";
+  if(!connected)return(
+    <div className="rounded-xl p-12 flex flex-col items-center justify-center text-center" style={{background:card,border:`1px solid ${border}`}}>
+      <MessageSquare size={32} className="text-slate-500 mb-3"/>
+      <p className="text-sm font-medium" style={{color:sub}}>Connect WhatsApp in Settings to see your inbox</p>
     </div>
-    <h3 className="text-white font-bold text-lg mb-2">WhatsApp Inbox</h3>
-    <p className="text-slate-400 text-sm max-w-xs mb-4">Live inbox with real-time conversations, read receipts and direct replies is coming soon.</p>
-    <div className="flex flex-wrap gap-2 justify-center mb-6">
-      {["Real-time messages","Read receipts","Quick replies","Media support","Conversation history"].map(f=>(
-        <span key={f} className="px-2.5 py-1 rounded-lg text-xs text-violet-300" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.15)"}}>{f}</span>
-      ))}
+  );
+  return(
+    <div className="flex rounded-xl overflow-hidden" style={{height:"calc(100vh - 200px)",background:card,border:`1px solid ${border}`}}>
+      {/* Conversation list */}
+      <div className="w-72 flex-shrink-0 flex flex-col border-r" style={{borderColor:border}}>
+        <div className="p-3 border-b text-xs font-semibold" style={{borderColor:border,color:sub}}>CONVERSATIONS</div>
+        <div className="flex-1 overflow-y-auto">
+          {loading?<div className="p-4 text-center"><RefreshCw size={18} className="animate-spin text-slate-500 mx-auto"/></div>
+          :convos.length===0?<div className="p-6 text-center text-xs" style={{color:sub}}>No messages yet.<br/>Send a message to start a conversation.</div>
+          :convos.map(c=>(
+            <div key={c.chatId} onClick={()=>setActive(c)} className="flex items-center gap-3 p-3 cursor-pointer transition-colors" style={{background:active?.chatId===c.chatId?(dark?"rgba(139,92,246,0.15)":"rgba(139,92,246,0.08)"):"transparent"}}>
+              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{(c.name||"?")[0].toUpperCase()}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold truncate" style={{color:txt}}>{c.name}</span>
+                  <span className="text-xs flex-shrink-0" style={{color:sub}}>{chatTime(c.timestamp)}</span>
+                </div>
+                <p className="text-xs truncate mt-0.5" style={{color:sub}}>{c.lastFromMe?"You: ":""}{c.lastText||"…"}</p>
+              </div>
+              {c.unread>0&&<div className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:"#25D366",fontSize:"10px"}}>{c.unread}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Thread */}
+      <div className="flex-1 flex flex-col">
+        {!active?(
+          <div className="flex-1 flex items-center justify-center flex-col gap-2" style={{color:sub}}>
+            <MessageSquare size={32} className="opacity-30"/>
+            <p className="text-sm">Select a conversation</p>
+          </div>
+        ):(
+          <>
+            <div className="flex items-center gap-3 p-3 border-b" style={{borderColor:border}}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{(active.name||"?")[0].toUpperCase()}</div>
+              <div><p className="text-sm font-semibold" style={{color:txt}}>{active.name}</p><p className="text-xs" style={{color:sub}}>{active.phone}</p></div>
+            </div>
+            <div ref={threadRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+              {thread.map((m,i)=>(
+                <div key={m.id??i} className={`flex ${m.fromMe?"justify-end":"justify-start"}`}>
+                  <div className="max-w-xs px-3 py-2 rounded-xl text-sm" style={{background:m.fromMe?"linear-gradient(135deg,#8b5cf6,#7c3aed)":dark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:m.fromMe?"#fff":txt,borderRadius:m.fromMe?"16px 16px 4px 16px":"16px 16px 16px 4px"}}>
+                    <p style={{wordBreak:"break-word"}}>{m.body}</p>
+                    <p className="text-xs mt-1 opacity-60 text-right">{chatTime(m.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t flex gap-2" style={{borderColor:border}}>
+              <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendReply()} placeholder="Type a reply…" className="flex-1 px-3 py-2 rounded-xl text-sm outline-none" style={{background:dark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.04)",border:`1px solid ${border}`,color:txt}}/>
+              <button onClick={sendReply} disabled={!reply.trim()||sending} className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}>
+                {sending?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-    <div className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))"}}>
-      🚀 Coming Soon
-    </div>
-  </div>
-);
+  );
+};
 
 const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
   const ct=useCard();
