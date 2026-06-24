@@ -196,10 +196,10 @@ const getPosBizType=():string=>{
 // ════════════════════════════════════════════════════════════════
 const NAV_ALL=[
   {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER]},
-  {id:"customers",icon:Users,label:"Customers & Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER]},
-  {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN]},
+  {id:"customers",icon:Users,label:"Customers & Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+  {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
   {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-  {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
+  {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
@@ -5353,10 +5353,10 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   // Bottom nav — role-filtered, capped at 5 most relevant items
   const BOT_NAV_ALL=[
     {id:"dashboard",icon:LayoutDashboard,label:"Home",roles:[ROLES.OWNER]},
-    {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN]},
-    {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
+    {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-    {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER]},
   ];
   const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
