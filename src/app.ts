@@ -38,9 +38,16 @@ async function ensureSchemaPatches() {
     // index; if legacy duplicate rows exist this will warn but never crash boot.
     { label: 'reward_points_ledger uniq(customerId,reason,referenceId)',
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "reward_points_ledger_customerId_reason_referenceId_key" ON "reward_points_ledger" ("customerId", "reason", "referenceId")' },
-    // Clear stale localhost WAHA URLs so the WAHA_BASE_URL env var takes effect.
+    // Clear stale WAHA URLs so the WAHA_BASE_URL env var takes effect. This
+    // covers localhost (saved before the env var existed) and any persisted
+    // value that no longer matches the configured env var (e.g. an old/dead
+    // Railway public domain from a previous WAHA service).
     { label: 'businesses.wahaBaseUrl clear localhost',
       sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" LIKE '%localhost%'` },
+    ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
+      ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
+          sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]
+      : []),
   ];
   for (const { label, sql } of stmts) {
     try {
