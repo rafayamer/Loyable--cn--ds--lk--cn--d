@@ -506,7 +506,9 @@ const processInboundSentiment = async (phone: string, businessId: string, text: 
 
 export const toChatId = (phone: string): string => {
   const digits = phone.replace(/[^\d]/g, '');
-  return `${digits}@c.us`;
+  // Baileys uses @s.whatsapp.net for individual chats; @c.us is WAHA-specific.
+  // Using @s.whatsapp.net so outbound chatIds match the inbound remoteJid from Baileys.
+  return `${digits}@s.whatsapp.net`;
 };
 
 const normalizePhone = (raw: string): string => {

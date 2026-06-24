@@ -141,11 +141,14 @@ messagesRouter.get('/inbox', tenantScope, async (req: Request, res: Response) =>
       orderBy: { timestamp: 'desc' },
       take:    500,
     });
-    // Deduplicate: one entry per chatId (latest message)
+    // Deduplicate: one entry per customer phone (latest message).
+    // Normalise chatId suffix (@s.whatsapp.net / @c.us) so inbound and outbound
+    // for the same number are always treated as one conversation.
     const seen = new Set<string>();
     const latest: typeof rows = [];
     for (const r of rows) {
-      if (!seen.has(r.chatId)) { seen.add(r.chatId); latest.push(r); }
+      const key = r.phone || r.chatId.replace(/@.*$/, '');
+      if (!seen.has(key)) { seen.add(key); latest.push(r); }
     }
     // Enrich with customer names
     const phones = latest.map((r:any) => r.phone).filter(Boolean);

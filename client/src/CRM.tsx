@@ -2800,7 +2800,8 @@ const PortalCard=({children,className=""}:{children:any,className?:string})=>(
 const CustomerPortalPage=()=>{
   const slug=localStorage.getItem("biz_slug")||"";
   const bizName=localStorage.getItem("biz_name")||"Your Business";
-  const portalUrl=`${window.location.origin}/portal/${slug}`;
+  const portalBase=(import.meta as any).env?.VITE_PORTAL_BASE_URL||"https://theloyaly.com";
+  const portalUrl=`${portalBase}/portal/${slug}`;
 
   const [copied,setCopied]=useState(false);
   const [qrDataUrl,setQrDataUrl]=useState("");
