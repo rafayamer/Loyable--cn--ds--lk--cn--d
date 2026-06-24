@@ -1303,6 +1303,63 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
 const LoginPage=({onLogin}:{onLogin:(u:any)=>void})=><LandingPage onLogin={onLogin}/>;
 
+// ── Accept Staff Invite ───────────────────────────────────────────
+const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
+  const {dark}=useTheme();
+  const token=new URLSearchParams(window.location.search).get("token")||"";
+  const [name,setName]=useState("");
+  const [pw,setPw]=useState("");
+  const [pw2,setPw2]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [done,setDone]=useState(false);
+  const card:React.CSSProperties={background:dark?"#1e1333":"#fff",borderRadius:"20px",padding:"40px",maxWidth:"420px",width:"100%",boxShadow:"0 8px 32px rgba(124,58,237,0.15)"};
+  const fld:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035",marginTop:"6px"};
+  const lbl:React.CSSProperties={fontSize:"12px",fontWeight:600,color:dark?"#94a3b8":"#374151"};
+  const submit=async()=>{
+    if(!name.trim()){setErr("Please enter your name.");return;}
+    if(pw.length<8){setErr("Password must be at least 8 characters.");return;}
+    if(pw!==pw2){setErr("Passwords do not match.");return;}
+    setErr("");setLoading(true);
+    try{
+      const res=await fetch("/api/auth/accept-invite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,name:name.trim(),password:pw})});
+      const d=await res.json();
+      if(!res.ok)throw new Error(d.error||"Failed to accept invite");
+      localStorage.setItem("accessToken",d.accessToken);
+      if(d.user?.id)localStorage.setItem("userId",d.user.id);
+      if(d.user?.role)localStorage.setItem("userRole",d.user.role);
+      window.history.replaceState({},"","/");
+      setDone(true);
+      setTimeout(()=>onLogin(d.user),800);
+    }catch(ex){setErr((ex as Error).message);}
+    finally{setLoading(false);}
+  };
+  return(
+    <div style={{minHeight:"100vh",background:dark?"#0f0a1e":"#f4f2fb",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+      <div style={card}>
+        <div style={{textAlign:"center",marginBottom:"28px"}}>
+          <span style={{fontSize:"28px",fontWeight:800,background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>♥ Loyable</span>
+          <p style={{marginTop:"8px",fontSize:"15px",fontWeight:600,color:dark?"#e2d9f3":"#1e1333"}}>Accept Your Invitation</p>
+          <p style={{fontSize:"13px",color:dark?"#9488b8":"#6b7280",marginTop:"4px"}}>Set your name and password to get started</p>
+        </div>
+        {done?(
+          <div style={{textAlign:"center",color:"#8b5cf6",fontWeight:600}}>Account created! Logging you in…</div>
+        ):(
+          <div className="space-y-4">
+            <div><label style={lbl}>Full Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" style={fld}/></div>
+            <div><label style={lbl}>Password</label><input value={pw} onChange={e=>setPw(e.target.value)} type="password" placeholder="Min 8 characters" style={fld}/></div>
+            <div><label style={lbl}>Confirm Password</label><input value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} type="password" placeholder="Repeat password" style={fld}/></div>
+            {err&&<div style={{color:"#ef4444",fontSize:"13px",fontWeight:500}}>{err}</div>}
+            <button onClick={submit} disabled={loading} className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",marginTop:"8px"}}>
+              {loading&&<RefreshCw size={14} className="animate-spin"/>}Create Account & Sign In
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ════════════════════════════════════════════════════════════════
 // LOADING SKELETON
 // ════════════════════════════════════════════════════════════════
@@ -4831,6 +4888,15 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     return()=>clearInterval(iv);
   },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
+  if(window.location.pathname==="/auth/accept-invite")return(
+    <ThemeCtx.Provider value={{dark:true,toggle:()=>{}}}>
+      <AcceptInvitePage onLogin={(u:any)=>{
+        if(u?.role)localStorage.setItem("userRole",u.role);
+        onRoleChange?.(u?.role??'');
+        setLoggedIn(true);
+      }}/>
+    </ThemeCtx.Provider>
+  );
   if(!loggedIn)return <LoginPage onLogin={(u:any)=>{
     if(u?.role)localStorage.setItem("userRole",u.role);
     onRoleChange?.(u?.role??'');
