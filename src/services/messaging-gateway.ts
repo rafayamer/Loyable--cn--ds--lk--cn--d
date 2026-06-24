@@ -18,9 +18,6 @@ import { BaileysGateway, getBaileysStatus, getBaileysQrCode, startBaileysSession
 // Per-business override is supported via the wahaProvider DB field when it exists.
 const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
 
-function useBaileys(wahaProvider?: string | null): boolean {
-  return GLOBAL_BAILEYS || wahaProvider === 'BAILEYS';
-}
 
 
 const WAHA_TIMEOUT_MS = 15_000;
@@ -59,12 +56,10 @@ export const routeMessage = async (opts: {
   const wahaSelect = {
     wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true,
     wahaBackupSessionId: true, wahaActiveSlot: true,
-    wahaProvider: true,
   } as const;
   type WahaCfg = {
     wahaBaseUrl: string | null; wahaSessionId: string | null; wahaApiKey: string | null;
     wahaBackupSessionId: string | null; wahaActiveSlot: string | null;
-    wahaProvider: string | null;
   };
   let business: WahaCfg | null = null;
   try {
@@ -81,8 +76,8 @@ export const routeMessage = async (opts: {
 
   if (!business) return { success: false, error: 'BUSINESS_NOT_FOUND' };
 
-  // Per-business Baileys override
-  if (useBaileys(business.wahaProvider)) {
+  // Global Baileys override via WHATSAPP_PROVIDER env var
+  if (GLOBAL_BAILEYS) {
     return BaileysGateway.send(recipientPhone, payload, businessId);
   }
 

@@ -21,16 +21,8 @@ import { z } from 'zod';
 
 const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
 
-async function getProviderForBiz(bizId: string): Promise<'BAILEYS' | 'WAHA'> {
-  if (GLOBAL_BAILEYS) return 'BAILEYS';
-  try {
-    const biz = await prisma.business.findUnique({
-      where:  { id: bizId },
-      select: { wahaProvider: true } as any,
-    }) as any;
-    if (biz?.wahaProvider === 'BAILEYS') return 'BAILEYS';
-  } catch { /* column may not exist yet */ }
-  return 'WAHA';
+function getProviderForBiz(_bizId: string): 'BAILEYS' | 'WAHA' {
+  return GLOBAL_BAILEYS ? 'BAILEYS' : 'WAHA';
 }
 
 export const whatsappRouter = Router();
