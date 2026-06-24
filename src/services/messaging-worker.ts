@@ -385,8 +385,9 @@ export const processAutomationJob = async (
         case 'CHANGE_SEGMENT': {
           if (action.segmentChange) {
             await prisma.customer.update({
-              where: { id: customerId },
-              data:  { segment: action.segmentChange as any },
+              where:  { id: customerId },
+              data:   { segment: action.segmentChange as any },
+              select: { id: true },
             });
           }
           break;
@@ -694,8 +695,9 @@ const awardAutomationPoints = async (
       },
     }),
     prisma.customer.update({
-      where: { id: customerId },
-      data:  { currentPointsBalance: newBalance },
+      where:  { id: customerId },
+      data:   { currentPointsBalance: newBalance },
+      select: { id: true },
     }),
   ]);
 };

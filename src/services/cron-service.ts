@@ -207,8 +207,9 @@ const refreshSegmentsForBusiness = async (biz: {
       await prisma.$transaction(
         updates.flatMap(u => [
           prisma.customer.update({
-            where: { id: u.id },
-            data:  { segment: u.segment as any, updatedAt: new Date() },
+            where:  { id: u.id },
+            data:   { segment: u.segment as any, updatedAt: new Date() },
+            select: { id: true },
           }),
           prisma.customerSegmentHistory.create({
             data: {
@@ -580,8 +581,9 @@ const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
 
         await prisma.$transaction([
           prisma.customer.update({
-            where: { id: c.id },
-            data:  { currentPointsBalance: 0, updatedAt: new Date() },
+            where:  { id: c.id },
+            data:   { currentPointsBalance: 0, updatedAt: new Date() },
+            select: { id: true },
           }),
           prisma.rewardPointsLedger.create({
             data: {

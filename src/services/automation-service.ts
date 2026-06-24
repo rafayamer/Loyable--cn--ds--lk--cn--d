@@ -585,8 +585,9 @@ const dispatchAction = async (
       const targetSegment = action.config.targetSegment as string;
       await prisma.$transaction([
         prisma.customer.update({
-          where: { id: customer.id },
-          data:  { segment: targetSegment as any, updatedAt: new Date() },
+          where:  { id: customer.id },
+          data:   { segment: targetSegment as any, updatedAt: new Date() },
+          select: { id: true },
         }),
         prisma.customerSegmentHistory.create({
           data: {

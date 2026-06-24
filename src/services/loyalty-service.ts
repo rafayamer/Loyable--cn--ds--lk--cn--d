@@ -77,8 +77,9 @@ export const creditPoints = async (
     },
   });
   await tx.customer.update({
-    where: { id: customerId },
-    data:  { currentPointsBalance: newBalance },
+    where:  { id: customerId },
+    data:   { currentPointsBalance: newBalance },
+    select: { id: true },
   });
 
   return newBalance;
@@ -121,8 +122,9 @@ export const debitPoints = async (
     },
   });
   await tx.customer.update({
-    where: { id: customerId },
-    data:  { currentPointsBalance: newBalance },
+    where:  { id: customerId },
+    data:   { currentPointsBalance: newBalance },
+    select: { id: true },
   });
 
   return newBalance;
@@ -149,8 +151,9 @@ export const reconcilePointsBalance = async (
   const corrected = Math.max(0, balance);
 
   await prisma.customer.update({
-    where: { id: customerId },
-    data:  { currentPointsBalance: corrected },
+    where:  { id: customerId },
+    data:   { currentPointsBalance: corrected },
+    select: { id: true },
   });
 
   return corrected;
@@ -303,12 +306,13 @@ export const evaluateAndUpgradeTier = async (
 
   await prisma.$transaction([
     prisma.customer.update({
-      where: { id: customerId },
-      data: {
+      where:  { id: customerId },
+      data:   {
         currentTierId: qualifyingTier.id,
         ...(isHighestTier && { segment: 'VIP' }),
         updatedAt: new Date(),
       },
+      select: { id: true },
     }),
     prisma.customerTierHistory.create({
       data: {
@@ -485,8 +489,9 @@ export const processReferralConversion = async (
     await prisma.$transaction(async (tx) => {
       // 1. Bind referral to new customer
       await tx.customer.update({
-        where: { id: newCustomerId },
-        data:  { referredByCode: referralCode },
+        where:  { id: newCustomerId },
+        data:   { referredByCode: referralCode },
+        select: { id: true },
       });
 
       // 2. Create signup discount coupon
@@ -760,8 +765,9 @@ export const evaluateAndDowngradeTier = async (
 
   await prisma.$transaction([
     prisma.customer.update({
-      where: { id: customerId },
-      data:  { currentTierId: targetTier.id, updatedAt: new Date() },
+      where:  { id: customerId },
+      data:   { currentTierId: targetTier.id, updatedAt: new Date() },
+      select: { id: true },
     }),
     prisma.customerTierHistory.create({
       data: { businessId, customerId, tierId: targetTier.id, reason: 'DEMOTION', changedAt: new Date() },
@@ -842,7 +848,7 @@ export const evaluateCustomerSegment = async (
   }
 
   if (next !== c.segment) {
-    await prisma.customer.update({ where: { id: customerId }, data: { segment: next as any, updatedAt: now } });
+    await prisma.customer.update({ where: { id: customerId }, data: { segment: next as any, updatedAt: now }, select: { id: true } });
   }
 };
 

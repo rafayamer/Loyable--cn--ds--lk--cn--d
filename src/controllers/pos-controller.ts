@@ -309,12 +309,13 @@ posRouter.post('/sale', async (req: Request, res: Response) => {
 
     // Update customer spend metrics
     await prisma.customer.update({
-      where: { id: customerId },
-      data:  {
-        visitCount:    { increment: 1 },
-        totalSpend:    { increment: new Prisma.Decimal(totalAmount.toFixed(2)) },
-        lastVisitAt:   new Date(),
+      where:  { id: customerId },
+      data:   {
+        visitCount:  { increment: 1 },
+        totalSpend:  { increment: new Prisma.Decimal(totalAmount.toFixed(2)) },
+        lastVisitAt: new Date(),
       },
+      select: { id: true },
     });
 
     // Accrue loyalty points for this visit

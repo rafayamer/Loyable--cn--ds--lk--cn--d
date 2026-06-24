@@ -115,8 +115,8 @@ export const purgeCustomerData = async (
   await prisma.$transaction(async (tx) => {
     // ── Step 1: Pseudonymize Customer PII ────────────────────
     await tx.customer.update({
-      where: { id: customerId },
-      data: {
+      where:  { id: customerId },
+      data:   {
         fullName:              `deleted_${anonymizedId}`,
         whatsappNumber:        null,
         email:                 null,
@@ -138,6 +138,7 @@ export const purgeCustomerData = async (
         marketingPausedUntil:  null,
         updatedAt:             new Date(),
       },
+      select: { id: true },
     });
 
     // ── Step 2: Hard-delete personal content ─────────────────
@@ -378,16 +379,16 @@ export const updateConsent = async (
 
   await prisma.$transaction([
     prisma.customer.update({
-      where: { id: customerId },
-      data: {
+      where:  { id: customerId },
+      data:   {
         ...(consents.whatsapp !== undefined && { marketingConsentWhatsapp: consents.whatsapp }),
         ...(consents.email    !== undefined && { marketingConsentEmail:    consents.email }),
         ...(consents.sms      !== undefined && { marketingConsentSms:      consents.sms }),
         ...(consents.push     !== undefined && { marketingConsentPush:     consents.push }),
-        // Auto-suppress if all channels withdrawn
         isSuppressed: Object.values({ ...current, ...consents }).every(v => v === false),
         updatedAt:    new Date(),
       },
+      select: { id: true },
     }),
     ...updates.map(u =>
       prisma.consentChangeLog.create({

@@ -287,13 +287,14 @@ const processTransaction = async (
     customerId = existingCustomer.id;
     // Update any missing contact info
     await prisma.customer.update({
-      where: { id: customerId },
-      data:  {
+      where:  { id: customerId },
+      data:   {
         ...(normPhone && !existingCustomer ? { whatsappNumber: normPhone } : {}),
         ...(normEmail && !existingCustomer ? { email:          normEmail } : {}),
         totalSpend: { increment: amountPence / 100 },
         updatedAt:  new Date(),
       },
+      select: { id: true },
     });
   } else {
     // Create new customer from POS data
@@ -342,12 +343,13 @@ const processTransaction = async (
 
   // Increment customer counters
   await prisma.customer.update({
-    where: { id: customerId },
-    data: {
+    where:  { id: customerId },
+    data:   {
       visitCount:  { increment: 1 },
       lastVisitAt: timestamp,
       ...(isNewCustomer ? { firstVisitAt: timestamp } : {}),
     },
+    select: { id: true },
   });
 
   // ── 5. Accrue points + tier evaluation ───────────────────────

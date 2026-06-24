@@ -414,8 +414,9 @@ const processOptOut = async (phone: string, businessId: string, rawKeyword: stri
 
   await prisma.$transaction([
     prisma.customer.update({
-      where: { id: customer.id },
-      data:  { marketingConsentWhatsapp: false, isSuppressed: true, updatedAt: new Date() },
+      where:  { id: customer.id },
+      data:   { marketingConsentWhatsapp: false, isSuppressed: true, updatedAt: new Date() },
+      select: { id: true },
     }),
     prisma.consentChangeLog.create({
       data: {
@@ -457,7 +458,7 @@ const processInboundSentiment = async (phone: string, businessId: string, text: 
   };
   if (isVeryNeg) updateData.marketingPausedUntil = new Date(Date.now() + 72 * 60 * 60 * 1_000);
 
-  await prisma.customer.update({ where: { id: customer.id }, data: updateData as any });
+  await prisma.customer.update({ where: { id: customer.id }, data: updateData as any, select: { id: true } });
 };
 
 // ================================================================
