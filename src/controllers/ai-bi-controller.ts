@@ -344,9 +344,8 @@ async function loadBusinessContext(businessId: string): Promise<string> {
     prisma.business.findUnique({
       where:  { id: businessId },
       select: {
-        name: true, industry: true, description: true, city: true, country: true,
+        name: true, industry: true, address: true, country: true,
         pointsPerPound: true, bigSpenderThreshold: true,
-        subscriptionTier: true, subscriptionStatus: true,
         _count: { select: { customers: true, campaigns: true } },
       },
     }),
@@ -360,7 +359,7 @@ async function loadBusinessContext(businessId: string): Promise<string> {
       where:   { businessId, branchLocationId: null },
       orderBy: { snapshotDate: 'desc' },
       select:  {
-        totalCustomers: true, activeCustomers: true, newCustomers: true,
+        totalCustomers: true, newCustomers: true,
         atRiskCustomers: true, lostCustomers: true, bigSpenders: true,
         retentionRate: true, churnRate: true, averageLtv: true,
         totalRevenue: true, totalVisits: true,
@@ -370,9 +369,7 @@ async function loadBusinessContext(businessId: string): Promise<string> {
 
   const bizName    = biz?.name        ?? 'this business';
   const industry   = biz?.industry    ?? 'retail/hospitality';
-  const city       = biz?.city        ?? '';
-  const country    = biz?.country     ?? '';
-  const desc       = biz?.description ?? '';
+  const location   = [biz?.address, biz?.country].filter(Boolean).join(', ');
   const totalCust  = customerStats._count.id;
   const totalSpend = Number(customerStats._sum.totalSpend ?? 0).toFixed(0);
   const avgSpend   = Number(customerStats._avg.totalSpend ?? 0).toFixed(0);
@@ -395,9 +392,7 @@ Never suggest tools or platforms outside Loyable. If a need can be met inside Lo
 ## BUSINESS PROFILE
 - **Name**: ${bizName}
 - **Industry**: ${industry}
-- **Location**: ${[city, country].filter(Boolean).join(', ') || 'not specified'}
-- **Description**: ${desc || 'not provided'}
-- **Plan**: ${biz?.subscriptionTier ?? 'unknown'} (${biz?.subscriptionStatus ?? 'unknown'})
+- **Location**: ${location || 'not specified'}
 - **Points per £/$ spent**: ${biz?.pointsPerPound ?? 1}
 - **Big Spender threshold**: £${biz?.bigSpenderThreshold ?? 500}
 - **Total campaigns created**: ${biz?._count?.campaigns ?? 0}
