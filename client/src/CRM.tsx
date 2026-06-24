@@ -271,13 +271,11 @@ const pdTokens=(pd:boolean)=>({
   shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(139,92,246,0.1)",
 });
 
-// Theme-aware brand logo — white.png on LIGHT theme, black.png on DARK theme
-// (per brand spec). Falls back to /logo.svg if PNG files not yet in public/
+// Theme-aware brand logo — white.png on dark bg, black.png on light bg (brand spec)
 function ThemeLogo({ dark, className = '', style = {} }: { dark: boolean; className?: string; style?: React.CSSProperties }) {
   return (
     <img
       src={dark ? '/black.png' : '/white.png'}
-      onError={(e) => { (e.target as HTMLImageElement).src = '/logo.svg'; }}
       alt="The Loyaly"
       className={className}
       style={style}
@@ -3769,10 +3767,10 @@ const deductStock=(bizType:string,itemName:string,qty:number)=>{const m=getMenu(
 // ── Bill helpers ──────────────────────────────────────────────────
 const calcOrderTotal=(order:ActiveOrder)=>{const sub=order.items.reduce((s,i)=>s+i.qty*i.price,0)-order.discount;return Math.max(0,sub);};
 const BIZ_THANK_YOU:Record<string,string>={
-  restaurant:"Thank you for dining with us! We hope to see you again soon. 💜",
-  salon:"Thank you for choosing us! We hope to see you again soon. 💜",
-  gym:"Great session! See you next time. 💜",
-  retail:"Thank you for shopping with us! We hope to see you again soon. 💜",
+  restaurant:"Thank you for dining with us! We hope to see you again soon.",
+  salon:"Thank you for choosing us! We hope to see you again soon.",
+  gym:"Great session! See you next time.",
+  retail:"Thank you for shopping with us! We hope to see you again soon.",
 };
 const buildBillText=(order:ActiveOrder,currency:string,bizType?:string)=>{
   const bizName=localStorage.getItem("biz_name")||"Our Store";
