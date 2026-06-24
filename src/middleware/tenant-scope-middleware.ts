@@ -81,10 +81,7 @@ const getRedis = (): RedisClientType => {
 // ENVIRONMENT VALIDATION
 // ================================================================
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('[tenantScope] FATAL: JWT_SECRET environment variable is not set.');
-}
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
 
 // Cache TTL constants
 const BUSINESS_ACTIVE_CACHE_TTL_SECONDS = 300; // 5 minutes
