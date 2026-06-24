@@ -346,8 +346,8 @@ model Customer {
   currentTierId            String?
 
   // GDPR Granular Consent Flags
-  marketingConsentWhatsapp Boolean          @default(false)
-  marketingConsentEmail    Boolean          @default(false)
+  marketingConsentWhatsapp Boolean          @default(true)
+  marketingConsentEmail    Boolean          @default(true)
   marketingConsentSms      Boolean          @default(false)
   marketingConsentPush     Boolean          @default(false)
 

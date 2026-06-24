@@ -55,6 +55,8 @@ async function ensureSchemaPatches() {
       sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "warmupEnabled" BOOLEAN NOT NULL DEFAULT true' },
     { label: 'businesses.dailyMessageCapOverride',
       sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "dailyMessageCapOverride" INTEGER' },
+    { label: 'customers.marketingConsentWhatsapp default true',
+      sql: 'UPDATE "customers" SET "marketingConsentWhatsapp" = true WHERE "marketingConsentWhatsapp" = false AND "isSuppressed" = false' },
     // Clear stale WAHA URLs so the WAHA_BASE_URL env var takes effect. This
     // covers localhost (saved before the env var existed) and any persisted
     // value that no longer matches the configured env var (e.g. an old/dead
