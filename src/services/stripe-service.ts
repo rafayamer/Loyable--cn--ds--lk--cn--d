@@ -412,7 +412,7 @@ export const hasFeature = async (
     redis.sIsMember(featuresKey, feature),
   ]);
 
-  return hasWildcard || hasSpecific;
+  return Boolean(hasWildcard) || Boolean(hasSpecific);
 };
 
 // ================================================================
