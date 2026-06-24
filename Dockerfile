@@ -15,7 +15,7 @@ COPY tsconfig.json ./
 COPY prisma/ ./prisma/
 COPY src/ ./src/
 RUN npx prisma generate
-RUN npm run build
+RUN npx tsc --project tsconfig.json
 
 # ── Stage 3: production image ────────────────────────────────────
 FROM node:20-alpine AS runner
