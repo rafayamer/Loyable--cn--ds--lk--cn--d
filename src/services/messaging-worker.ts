@@ -30,7 +30,8 @@ import {
   routeMessage,
   GatewayResult,
 } from '../services/messaging-gateway';
-import { getRedisConnection } from '../config/redis';
+import { getRedisConnection, getRedisClient as getRedisStore } from '../config/redis';
+import { consumeWarmupSlot, releaseWarmupSlot } from '../services/whatsapp-reliability';
 import { sendEmail }          from '../utils/email.util';
 import type { ConnectionOptions } from 'bullmq';
 
@@ -50,10 +51,10 @@ const GLOBAL_RATE_LIMIT = { max: 3, duration: 1_000 };
 const WA_MIN_DELAY_MS = 45_000;  // 45 seconds minimum
 const WA_MAX_DELAY_MS = 90_000;  // 90 seconds maximum
 
-const getRedisClient = () => {
-  // Reuse the BullMQ connection for rate limit tracking
-  return getRedisConnection() as any;
-};
+// Quota / rate-limit / warmup tracking uses the real node-redis client
+// (the BullMQ getRedisConnection() returns only { host, port } for ioredis,
+// which has no get/set/incr — using it here silently broke every send).
+const getRedisClient = () => getRedisStore();
 
 const enforceWhatsAppDelay = async (businessId: string, isPromotional: boolean): Promise<void> => {
   if (!isPromotional) return; // Transactional messages (OTP, receipts) skip the delay
@@ -247,6 +248,25 @@ const processMessageJob = async (
   }
 
   // ──────────────────────────────────────────────────────────────
+  // PRE-FLIGHT 8: Number warmup cap (WhatsApp ban protection)
+  //   A freshly-connected number ramps daily volume over 30 days.
+  //   Promotional only — transactional (OTP/receipts) is never capped.
+  //   Consumes one slot of today's budget; released below if the send
+  //   then fails so a failed attempt never burns warmup headroom.
+  // ──────────────────────────────────────────────────────────────
+  let warmupConsumed = false;
+  if (isPromotional) {
+    const warmup = await consumeWarmupSlot(businessId);
+    if (!warmup.allowed) {
+      // Refund the quota slot we took above — this message isn't going out today.
+      if (quota !== null && quota !== -1) await redis.incr(quotaKey);
+      await resolveDropped(messageQueueId, 'DROPPED_QUOTA', `WARMUP_CAP_REACHED_${warmup.cap}_PER_DAY`);
+      return;
+    }
+    warmupConsumed = true;
+  }
+
+  // ──────────────────────────────────────────────────────────────
   // SEND — Route to Meta or WAHA gateway
   // ──────────────────────────────────────────────────────────────
 
@@ -265,8 +285,9 @@ const processMessageJob = async (
   try {
     result = await routeMessage({ businessId, provider, recipientPhone, payload });
   } catch (err) {
-    // Re-credit quota on hard gateway throw (network error, not API rejection)
+    // Re-credit quota + warmup on hard gateway throw (network error, not API rejection)
     if (quota !== null && quota !== -1) await redis.incr(quotaKey);
+    if (warmupConsumed) await releaseWarmupSlot(businessId);
 
     const msg = err instanceof Error ? err.message : 'GATEWAY_THROW';
     // Throw — BullMQ will retry with exponential backoff
@@ -303,8 +324,9 @@ const processMessageJob = async (
     });
 
   } else {
-    // Re-credit quota — API rejected the message, we didn't use the slot
+    // Re-credit quota + warmup — API rejected the message, we didn't use the slot
     if (quota !== null && quota !== -1) await redis.incr(quotaKey);
+    if (warmupConsumed) await releaseWarmupSlot(businessId);
 
     await prisma.messageQueue.update({
       where: { id: messageQueueId },

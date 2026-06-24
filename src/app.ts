@@ -38,6 +38,22 @@ async function ensureSchemaPatches() {
     // index; if legacy duplicate rows exist this will warn but never crash boot.
     { label: 'reward_points_ledger uniq(customerId,reason,referenceId)',
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "reward_points_ledger_customerId_reason_referenceId_key" ON "reward_points_ledger" ("customerId", "reason", "referenceId")' },
+    // WhatsApp warmup + failover columns (additive, idempotent — present even
+    // before `prisma db push` runs so the reliability layer can read/write them).
+    { label: 'businesses.wahaConnectedAt',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "wahaConnectedAt" TIMESTAMP(3)' },
+    { label: 'businesses.wahaBackupSessionId',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "wahaBackupSessionId" TEXT' },
+    { label: 'businesses.wahaActiveSlot',
+      sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "wahaActiveSlot" TEXT NOT NULL DEFAULT 'PRIMARY'` },
+    { label: 'businesses.wahaLastHealthyAt',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "wahaLastHealthyAt" TIMESTAMP(3)' },
+    { label: 'businesses.wahaHealthFailCount',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "wahaHealthFailCount" INTEGER NOT NULL DEFAULT 0' },
+    { label: 'businesses.warmupEnabled',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "warmupEnabled" BOOLEAN NOT NULL DEFAULT true' },
+    { label: 'businesses.dailyMessageCapOverride',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "dailyMessageCapOverride" INTEGER' },
     // Clear stale WAHA URLs so the WAHA_BASE_URL env var takes effect. This
     // covers localhost (saved before the env var existed) and any persisted
     // value that no longer matches the configured env var (e.g. an old/dead

@@ -159,6 +159,13 @@ export const renderTemplate = (
       <p>Hi {{name}},</p>
       <p>{{body}}</p>
     `,
+    WHATSAPP_HEALTH_ALERT: `
+      <h1>{{subject}}</h1>
+      <p>Hi {{name}},</p>
+      <p>{{body}}</p>
+      {{cta:Open dashboard:{{dashboardUrl}}}}
+      <p class="muted">You're receiving this because WhatsApp delivery for your account needs attention.</p>
+    `,
   };
 
   let html = templates[templateId] ?? '<h1>{{subject}}</h1><p>{{body}}</p>';

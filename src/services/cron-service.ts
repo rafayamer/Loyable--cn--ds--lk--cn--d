@@ -23,6 +23,7 @@ import { prisma } from '../config/prisma';
 import { processBirthdayAutomations, evaluateAndDowngradeTier } from './loyalty-service';
 import { enqueueAutomationTrigger, getAutomationQueue } from '../services/messaging-queue';
 import { dispatchFeedbackRequests }   from './feedback-service';
+import { runWhatsAppHealthChecks }    from './whatsapp-reliability';
 
 
 // ================================================================
@@ -56,7 +57,10 @@ export const startAllCronJobs = (): void => {
   // Every hour — post-visit feedback requests (sent ~4h after each visit)
   cron.schedule('0 * * * *', jobRunner('feedbackDispatch', feedbackDispatchJob), { timezone: 'UTC' });
 
-  console.log('[cron] 7 jobs registered (6 nightly + 1 hourly).');
+  // Every 5 minutes — WhatsApp session health check + auto-failover to backup
+  cron.schedule('*/5 * * * *', jobRunner('whatsappHealth', whatsappHealthJob), { timezone: 'UTC' });
+
+  console.log('[cron] 8 jobs registered (6 nightly + 1 hourly + 1 every-5-min).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -614,4 +618,17 @@ const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
 const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
   const result = await dispatchFeedbackRequests();
   return result;
+};
+
+// ================================================================
+// JOB 8 — WHATSAPP SESSION HEALTH CHECK (every 5 min)
+// ================================================================
+
+/**
+ * Polls every active tenant's live WAHA session, fails over to a healthy
+ * backup number on sustained outage, and emails the owner. Keeps tenants
+ * from discovering a dead line via angry customers.
+ */
+const whatsappHealthJob = async (): Promise<Record<string, unknown>> => {
+  return runWhatsAppHealthChecks() as unknown as Record<string, unknown>;
 };

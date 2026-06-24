@@ -41,26 +41,27 @@ export const routeMessage = async (opts: {
 
   // Cache WAHA config in Redis (5-min TTL) to avoid a DB hit on every message send
   const redis = getRedisClient();
-  const cacheKey = `waha_cfg:${businessId}`;
-  type WahaCfg = { wahaBaseUrl: string | null; wahaSessionId: string | null; wahaApiKey: string | null };
+  const cacheKey = WAHA_CFG_CACHE_PREFIX + businessId;
+  const wahaSelect = {
+    wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true,
+    wahaBackupSessionId: true, wahaActiveSlot: true,
+  } as const;
+  type WahaCfg = {
+    wahaBaseUrl: string | null; wahaSessionId: string | null; wahaApiKey: string | null;
+    wahaBackupSessionId: string | null; wahaActiveSlot: string | null;
+  };
   let business: WahaCfg | null = null;
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
       business = JSON.parse(cached) as WahaCfg;
     } else {
-      business = await prisma.business.findUnique({
-        where:  { id: businessId },
-        select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-      });
+      business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect });
       if (business) await redis.set(cacheKey, JSON.stringify(business), { EX: 300 });
     }
   } catch {
     // Redis unavailable — fall through to direct DB query
-    business = await prisma.business.findUnique({
-      where:  { id: businessId },
-      select: { wahaBaseUrl: true, wahaSessionId: true, wahaApiKey: true },
-    });
+    business = await prisma.business.findUnique({ where: { id: businessId }, select: wahaSelect });
   }
 
   if (!business) return { success: false, error: 'BUSINESS_NOT_FOUND' };
@@ -68,13 +69,30 @@ export const routeMessage = async (opts: {
     return { success: false, error: 'WAHA_NOT_CONFIGURED' };
   }
 
+  // Honour automatic failover: when the tenant is flipped to BACKUP, route
+  // through the backup session (same baseUrl + apiKey, different session name).
+  const effectiveSession =
+    business.wahaActiveSlot === 'BACKUP' && business.wahaBackupSessionId
+      ? business.wahaBackupSessionId
+      : business.wahaSessionId;
+
   return WahaGateway.send(
     recipientPhone,
     payload,
     business.wahaBaseUrl,
-    business.wahaSessionId,
+    effectiveSession,
     business.wahaApiKey ?? ''
   );
+};
+
+// Redis key prefix for the per-business WAHA config cache. Shared with the
+// reliability layer so a failover can invalidate the exact same entry.
+export const WAHA_CFG_CACHE_PREFIX = 'waha_cfg:';
+
+/** Drop the cached WAHA config so the next send re-reads the active session. */
+export const invalidateWahaCache = async (businessId: string): Promise<void> => {
+  try { await getRedisClient().del(WAHA_CFG_CACHE_PREFIX + businessId); }
+  catch { /* fail-open — cache will expire on its own 5-min TTL */ }
 };
 
 // ================================================================

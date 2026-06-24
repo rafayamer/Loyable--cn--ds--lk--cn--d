@@ -175,6 +175,15 @@ model Business {
   wahaSessionId        String?
   wahaApiKey           String?
 
+  // WhatsApp number warmup + failover (ban protection / reliability)
+  wahaConnectedAt        DateTime?            // when the active number first reached WORKING — drives warmup ramp
+  wahaBackupSessionId    String?              // secondary WAHA session for failover (same baseUrl + apiKey)
+  wahaActiveSlot         String   @default("PRIMARY") // "PRIMARY" | "BACKUP" — which session is live
+  wahaLastHealthyAt      DateTime?            // last successful health check
+  wahaHealthFailCount    Int      @default(0) // consecutive failed health checks (resets on recovery/failover)
+  warmupEnabled          Boolean  @default(true) // ramp daily volume on a new number to avoid bans
+  dailyMessageCapOverride Int?                // manual override of the warmup daily cap (null = use ramp schedule)
+
   // Operational configuration
   messageCooldownHours Int               @default(72)   // Spam protection window
   loyalDaysWindow      Int               @default(7)    // Loyal classification threshold
