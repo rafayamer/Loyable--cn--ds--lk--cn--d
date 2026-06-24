@@ -242,7 +242,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
               <div onClick={() => setConsent(p => !p)} className="mt-0.5 w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center transition-all" style={{ background: consent ? 'linear-gradient(135deg,#8b5cf6,#7c3aed)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(139,92,246,0.5)' }}>
                 {consent && <svg viewBox="0 0 12 12" className="w-3 h-3"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth={2} fill="none"/></svg>}
               </div>
-              <span className="text-xs text-purple-200 leading-relaxed">I agree to receive loyalty messages on WhatsApp and accept the <span className="text-purple-300 underline">terms & conditions</span>. You can opt out anytime by replying STOP.</span>
+              <span className="text-xs text-purple-200 leading-relaxed">I agree to receive loyalty messages on WhatsApp and accept the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-purple-300 underline hover:text-white">terms &amp; conditions</a>. You can opt out anytime by replying STOP.</span>
             </label>
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
             {bonusMsg && <div className="px-4 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fde68a' }}>🎉 {bonusMsg}</div>}

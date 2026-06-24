@@ -885,7 +885,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             </div>
           </div>
           <div className="px-6 py-4 text-center text-xs" style={{color:tx3}}>
-            By signing up, you agree to our <a href="#" className="underline" style={{color:"#7c3aed"}}>Terms</a> and <a href="#" className="underline" style={{color:"#7c3aed"}}>Privacy Policy</a>
+            By signing up, you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#7c3aed"}}>Terms &amp; Conditions</a> and <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#7c3aed"}}>Privacy Policy</a>
           </div>
         </div>
       </div>
@@ -1363,11 +1363,20 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             {[
               {h:"Product",links:["Features","Pricing","Integrations","Changelog","API"]},
               {h:"Company",links:["About Us","Careers","Blog","Press","Contact"]},
-              {h:"Legal",links:["Privacy Policy","Terms of Service","GDPR","Security"]},
+              {h:"Legal",links:[
+                {label:"Privacy Policy",href:"/terms"},
+                {label:"Terms of Service",href:"/terms"},
+                {label:"GDPR",href:"/terms"},
+                {label:"Security",href:"/terms"},
+              ]},
             ].map(col=>(
               <div key={col.h}>
                 <h4 className="font-semibold text-sm mb-5" style={{color:tx}}>{col.h}</h4>
-                <ul className="space-y-2.5">{col.links.map(l=><li key={l}><a href="#" className="text-xs transition-colors hover:opacity-80" style={{color:tx2}}>{l}</a></li>)}</ul>
+                <ul className="space-y-2.5">{col.links.map((l:any)=>{
+                  const label = typeof l === 'string' ? l : l.label;
+                  const href  = typeof l === 'string' ? '#' : l.href;
+                  return <li key={label}><a href={href} target={href!=='#'?'_blank':'_self'} rel="noopener noreferrer" className="text-xs transition-colors hover:opacity-80" style={{color:tx2}}>{label}</a></li>;
+                })}</ul>
               </div>
             ))}
           </div>
@@ -2075,8 +2084,8 @@ const CampaignBuilderPage=({onBack}:any)=>{
     if(!aiPrompt.trim())return;
     setAiLoading(true);
     try{
-      const d=await api.ai.query(`Write a short friendly WhatsApp marketing message (under 80 words) for a business called "${bizName}". Context: ${aiPrompt}. Use {name} for the customer's first name. Include 1-2 emojis. Be warm and personal.`);
-      setMsgText(d.answer||msgText);
+      const d=await api.ai.generateMessage(aiPrompt, bizName);
+      if(d.message) setMsgText(d.message);
     }catch{
       setMsgText(`Hey {name}! 👋 ${aiPrompt} at ${bizName}. We'd love to see you soon!`);
     }finally{setAiLoading(false);setAiPrompt("");}
@@ -2202,7 +2211,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">Send via</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {[{v:"WHATSAPP_WAHA",l:"WhatsApp",ico:"💬"},{v:"EMAIL",l:"Email",ico:"📧"},{v:"SMS",l:"SMS",ico:"📱"}].map(ch=>(
+                  {[{v:"WHATSAPP_WAHA",l:"WhatsApp",ico:"💬"},{v:"EMAIL",l:"Email",ico:"📧"}].map(ch=>(
                     <button key={ch.v} onClick={()=>setCChannel(ch.v)} className={`py-2 rounded-lg text-xs font-medium transition-all ${cChannel===ch.v?"text-white":"text-slate-400"}`} style={cChannel===ch.v?{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.4)"}:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
                       <div>{ch.ico}</div><div className="mt-0.5">{ch.l}</div>
                     </button>
@@ -2252,6 +2261,19 @@ const AutomationBuilderPage=({onBack}:any)=>{
   const [saving,setSaving]=useState(false);
   const [saveErr,setSaveErr]=useState<string|null>(null);
   const [done,setDone]=useState(false);
+  const [autoAiPrompt,setAutoAiPrompt]=useState("");
+  const [autoAiLoading,setAutoAiLoading]=useState(false);
+
+  const runAutoAI=async()=>{
+    if(!autoAiPrompt.trim())return;
+    setAutoAiLoading(true);
+    try{
+      const d=await api.ai.generateMessage(autoAiPrompt,bizName);
+      if(d.message)setMsgBody(d.message.replace(/\{name\}/g,"{{name}}").replace(/\{biz\}/g,"{{biz}}"));
+    }catch{
+      setMsgBody(`Hey {{name}}! 👋 ${autoAiPrompt} at ${bizName}. We'd love to see you soon!`);
+    }finally{setAutoAiLoading(false);setAutoAiPrompt("");}
+  };
 
   // Suggested messages per trigger
   const SUGGESTIONS:Record<string,string>={
@@ -2351,6 +2373,21 @@ const AutomationBuilderPage=({onBack}:any)=>{
               {[["{{name}}","Customer name"],["{{points}}","Points balance"],["{{tier}}","Loyalty tier"],["{{visits}}","Visit count"]].map(([v,d])=>(
                 <button key={v} onClick={()=>setMsgBody(p=>p+v)} title={d} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>+{v}</button>
               ))}
+            </div>
+            {/* Write with AI */}
+            <div className="mt-4 rounded-xl p-4" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+              <div className="flex items-center gap-2 mb-3">
+                <Brain size={13} className="text-violet-400"/>
+                <span className="text-xs font-semibold text-slate-200">Write with AI</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.1)",color:"#06b6d4"}}>Beta</span>
+              </div>
+              <div className="flex gap-2">
+                <input value={autoAiPrompt} onChange={e=>setAutoAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAutoAI()} placeholder={`e.g. "give them a free dessert on their birthday"`} className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+                <button onClick={runAutoAI} disabled={!autoAiPrompt||autoAiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                  {autoAiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}
+                  {autoAiLoading?"Writing…":"Generate"}
+                </button>
+              </div>
             </div>
           </div>
           <div className="gc rounded-xl p-4" style={CARD}>

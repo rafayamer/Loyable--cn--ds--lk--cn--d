@@ -176,7 +176,8 @@ export const api = {
 
   // ── AI ────────────────────────────────────────────────────────
   ai: {
-    query: (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
+    query:           (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
+    generateMessage: (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
   },
 
   // ── Settings (business) ───────────────────────────────────────

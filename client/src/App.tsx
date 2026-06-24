@@ -1,12 +1,14 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 
-const LoyalyAdminPanel = lazy(() => import('./LoyableAdminPanel'));
-const CRM = lazy(() => import('./CRM'));
-const CustomerPortal = lazy(() => import('./CustomerPortal'));
+const LoyalyAdminPanel    = lazy(() => import('./LoyableAdminPanel'));
+const CRM                 = lazy(() => import('./CRM'));
+const CustomerPortal      = lazy(() => import('./CustomerPortal'));
+const TermsAndConditions  = lazy(() => import('./TermsAndConditions'));
 
 type Role = 'PLATFORM_ADMINISTRATOR' | 'TENANT_OWNER' | 'BRANCH_MANAGER' | 'CASHIER' | 'MARKETING_STAFF' | 'CUSTOMER' | null;
 
 const isPortal = window.location.pathname.startsWith('/portal');
+const isTerms  = window.location.pathname.startsWith('/terms');
 // Owner/SaaS-operator console — served on its own path (and its own dev port, see
 // `npm run admin:dev` → http://localhost:3002/admin). Forces the admin panel.
 const isAdmin  = window.location.pathname.startsWith('/admin');
@@ -49,6 +51,7 @@ function PageLoader() {
 
 export default function App() {
   if (isPortal) return <Suspense fallback={<PageLoader />}><CustomerPortal /></Suspense>;
+  if (isTerms)  return <Suspense fallback={<PageLoader />}><TermsAndConditions /></Suspense>;
   if (isAdmin)  return <Suspense fallback={<PageLoader />}><LoyalyAdminPanel /></Suspense>;
   return <AdminOrCRM />;
 }

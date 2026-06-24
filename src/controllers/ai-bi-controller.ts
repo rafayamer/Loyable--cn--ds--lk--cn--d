@@ -599,6 +599,37 @@ aiBiRouter.get(
   queryManifestHandler
 );
 
+// POST /ai/generate-message — generate a WhatsApp campaign message from a short prompt
+aiBiRouter.post(
+  '/generate-message',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    const { prompt, bizName } = req.body as { prompt?: string; bizName?: string };
+    if (!prompt?.trim()) { res.status(400).json({ error: 'prompt is required' }); return; }
+    if (!isAIConfigured()) {
+      res.status(503).json({ error: 'AI_NOT_CONFIGURED', message: 'Add ANTHROPIC_API_KEY or OPENAI_API_KEY to environment variables.' });
+      return;
+    }
+    try {
+      const name = bizName?.trim() || 'our business';
+      const text = await callLLM([
+        {
+          role: 'system',
+          content: `You are a WhatsApp marketing copywriter for SMBs. Write a short, friendly, personal WhatsApp message (under 80 words). Always start with "Hey {name}! " and include 1-2 relevant emojis. Never mention any competitor. Never add hashtags. Return ONLY the message text, nothing else.`,
+        },
+        {
+          role: 'user',
+          content: `Business name: ${name}\nCampaign idea: ${prompt}`,
+        },
+      ], 200);
+      res.json({ message: text.trim() });
+    } catch (err) {
+      console.error('[ai] generate-message error:', err);
+      res.status(502).json({ error: 'AI_SERVICE_ERROR', message: (err as Error).message });
+    }
+  }
+);
+
 // ================================================================
 // MOUNT IN app.ts:
 //   import { aiBiRouter }       from './controllers/ai.bi';
