@@ -92,7 +92,7 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
 
     // Fire-and-forget — don't block the HTTP response for 30s
     WahaGateway.startSession(baseUrl, sessionId, apiKey).catch(e =>
-      console.error('[whatsapp] startSession bg error:', e?.message)
+      console.error('[whatsapp] startSession bg error: code=%s msg=%s', e?.code ?? 'none', e?.message ?? 'none')
     );
     res.json({ ok: true, baseUrl, sessionId, note: 'starting' });
   } catch (err: any) {
