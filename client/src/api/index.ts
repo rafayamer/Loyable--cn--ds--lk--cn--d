@@ -104,6 +104,10 @@ export const api = {
     purge:    (phone: string) => post<any>('/loyalty/customers/purge', { phone }),
   },
 
+  account: {
+    deleteAll: (confirmName: string) => del<any>('/auth/account', { confirmName }),
+  },
+
   // ── Analytics ─────────────────────────────────────────────────
   analytics: {
     snapshot: (days?: number) => get<any[]>(`/loyalty/analytics/snapshot?days=${days ?? 30}`),

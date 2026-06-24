@@ -211,6 +211,7 @@ const hydrateFromApi=async()=>{
     if(biz?.slug)localStorage.setItem("biz_slug",biz.slug);
     if(biz?.currency)localStorage.setItem("biz_currency",biz.currency);
     if(biz?.logoUrl)localStorage.setItem("biz_logo",biz.logoUrl);
+    if(d?.user?.role)localStorage.setItem("role",d.user.role);
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
     if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
     if(biz?.country)localStorage.setItem("biz_country",biz.country);
@@ -420,6 +421,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     if((d.user as any)?.businessSlug)localStorage.setItem("biz_slug",(d.user as any).businessSlug);
     if((d.user as any)?.businessName)localStorage.setItem("biz_name",(d.user as any).businessName);
     if((d.user as any)?.businessIndustry)localStorage.setItem("biz_industry",(d.user as any).businessIndustry);
+    if((d.user as any)?.role)localStorage.setItem("role",(d.user as any).role);
     await hydrateFromApi();
     onLogin(d.user);
   };
@@ -3565,14 +3567,97 @@ const BillingTab=()=>{
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
 
-const GdprTab=()=>{
+// ── Delete Account Modal ─────────────────────────────────────────
+const DeleteAccountModal=({onClose,onDeleted}:{onClose:()=>void,onDeleted:()=>void})=>{
+  const [step,setStep]=useState<1|2>(1);
+  const [typedName,setTypedName]=useState("");
+  const [deleting,setDeleting]=useState(false);
+  const [err,setErr]=useState("");
+  const bizName=localStorage.getItem("biz_name")||"";
+  const nameMatches=typedName.trim().toLowerCase()===bizName.trim().toLowerCase();
+  const doDelete=async()=>{
+    setDeleting(true);setErr("");
+    try{
+      await api.account.deleteAll(typedName.trim());
+      localStorage.clear();
+      onDeleted();
+    }catch(e:any){setErr(e?.message||"Something went wrong. Please try again.");setDeleting(false);}
+  };
+  return(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)"}}>
+      <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{background:"#0f0a1e",border:"1px solid rgba(239,68,68,0.3)"}}>
+        {step===1&&<>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{background:"rgba(239,68,68,0.12)"}}>
+              <Trash2 size={24} className="text-red-400"/>
+            </div>
+            <h2 className="text-lg font-bold text-white mb-1">Delete your account?</h2>
+            <p className="text-sm text-slate-400">This will permanently delete <strong className="text-white">{bizName}</strong> and everything in it — all customers, campaigns, loyalty points, messages, and settings.</p>
+            <p className="text-sm font-semibold text-red-400 mt-3">⚠️ This cannot be undone. Ever.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-2">Type your business name to confirm:</label>
+            <p className="text-xs text-slate-500 mb-2 font-mono bg-white/5 rounded px-2 py-1 text-center">{bizName}</p>
+            <input
+              value={typedName}
+              onChange={e=>{setTypedName(e.target.value);setErr("");}}
+              placeholder="Type business name exactly"
+              className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none"
+              style={{background:"rgba(255,255,255,0.07)",border:`1px solid ${nameMatches&&typedName?"rgba(239,68,68,0.5)":"rgba(255,255,255,0.1)"}`}}
+            />
+          </div>
+          {err&&<div className="text-xs text-red-400 text-center">{err}</div>}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-300" style={{background:"rgba(255,255,255,0.07)"}}>Cancel</button>
+            <button
+              onClick={()=>{if(!nameMatches){setErr("The name you typed doesn't match. Please type it exactly as shown.");return;}setStep(2);}}
+              disabled={!typedName}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
+              style={{background:nameMatches?"rgba(239,68,68,0.8)":"rgba(239,68,68,0.3)"}}>
+              Continue
+            </button>
+          </div>
+        </>}
+        {step===2&&<>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{background:"rgba(239,68,68,0.15)"}}>
+              <AlertTriangle size={24} className="text-red-400"/>
+            </div>
+            <h2 className="text-lg font-bold text-white mb-2">Last chance — are you sure?</h2>
+            <p className="text-sm text-slate-400 mb-3">You are about to permanently delete <strong className="text-white">{bizName}</strong> and all of its data. Once deleted, it is gone forever and cannot be recovered by anyone.</p>
+            <div className="rounded-xl p-3 text-left space-y-1.5 mb-2" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)"}}>
+              {["All customers and their loyalty points","All campaigns and messages","All automations and settings","Your WhatsApp connection","Your subscription and billing history"].map((item,i)=>(
+                <div key={i} className="flex items-center gap-2 text-xs text-red-300"><X size={10} className="flex-shrink-0"/>{item}</div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">A confirmation email will be sent to you after deletion.</p>
+          </div>
+          {err&&<div className="text-xs text-red-400 text-center">{err}</div>}
+          <div className="flex gap-3 pt-1">
+            <button onClick={()=>setStep(1)} disabled={deleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-300" style={{background:"rgba(255,255,255,0.07)"}}>Go Back</button>
+            <button
+              onClick={doDelete}
+              disabled={deleting}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{background:"rgba(220,38,38,0.9)"}}>
+              {deleting?<><RefreshCw size={13} className="animate-spin"/>Deleting…</>:<><Trash2 size={13}/>Yes, Delete Everything</>}
+            </button>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+};
+
+const GdprTab=({onAccountDeleted}:{onAccountDeleted:()=>void})=>{
   const [purging,setPurging]=useState(false);
   const [phone,setPhone]=useState("");
   const [done,setDone]=useState("");
-  const ct=useCard();
+  const [showDeleteModal,setShowDeleteModal]=useState(false);
+  const role=localStorage.getItem("role")||"";
+  const isOwner=role==="TENANT_OWNER";
   const doPurge=async()=>{
     if(!phone.trim()){alert("Please enter a phone number.");return;}
-    if(!window.confirm(`Are you sure you want to permanently delete all data for ${phone}? This cannot be undone.`))return;
     setPurging(true);setDone("");
     try{
       await api.customers.purge(phone.trim());
@@ -3583,6 +3668,7 @@ const GdprTab=()=>{
   };
   return(
     <div className="space-y-4">
+      {showDeleteModal&&<DeleteAccountModal onClose={()=>setShowDeleteModal(false)} onDeleted={onAccountDeleted}/>}
       <p className="text-xs text-slate-400">Control how your customers' personal information is handled. All settings below are active by default.</p>
       <div className="space-y-2">
         {[
@@ -3612,6 +3698,13 @@ const GdprTab=()=>{
         </div>
         {done&&<div className="mt-2 text-xs text-green-400">{done}</div>}
       </div>
+      {isOwner&&<div className="p-4 rounded-xl" style={{background:"rgba(239,68,68,0.04)",border:"1px solid rgba(239,68,68,0.2)"}}>
+        <div className="text-xs font-semibold text-red-400 mb-1">⛔ Delete My Account</div>
+        <div className="text-xs text-slate-400 mb-3">This will permanently delete your entire business account — all customers, campaigns, points, and data. This action cannot be undone.</div>
+        <button onClick={()=>setShowDeleteModal(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-300 flex items-center gap-1.5" style={{background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.35)"}}>
+          <Trash2 size={11}/>Delete My Account
+        </button>
+      </div>}
     </div>
   );
 };
@@ -3777,7 +3870,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         </div>}
         {tab==="stripe"&&<BillingTab/>}
         {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
-        {tab==="gdpr"&&<GdprTab/>}
+        {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
       </div>
     </div>
   );

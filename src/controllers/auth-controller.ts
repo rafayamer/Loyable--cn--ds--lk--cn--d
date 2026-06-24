@@ -528,6 +528,63 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
 // ROUTER ASSEMBLY
 // ================================================================
 
+/** DELETE /api/auth/account — TENANT_OWNER only. Permanently deletes the entire business. */
+const deleteAccountHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, businessId, role } = req.tenantContext;
+    if (role !== Role.TENANT_OWNER) {
+      res.status(403).json({ error: 'Only the business owner can delete this account.' });
+      return;
+    }
+
+    const { confirmName } = req.body as { confirmName?: string };
+    if (!confirmName?.trim()) {
+      res.status(400).json({ error: 'Business name confirmation required.' });
+      return;
+    }
+
+    // Verify the typed name matches the actual business name
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true },
+    });
+    if (!business) { res.status(404).json({ error: 'Business not found.' }); return; }
+    if (business.name.trim().toLowerCase() !== confirmName.trim().toLowerCase()) {
+      res.status(400).json({ error: 'Business name does not match. Please type it exactly.' });
+      return;
+    }
+
+    // Fetch owner details before deletion for goodbye email
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+
+    // Hard-delete the business — cascade deletes everything via schema FK onDelete
+    await prisma.business.delete({ where: { id: businessId } });
+
+    // Send goodbye email (non-blocking)
+    if (owner?.email) {
+      const { sendEmail } = await import('../utils/email.util');
+      sendEmail({
+        to:         owner.email,
+        subject:    'Your Loyaly account has been deleted',
+        templateId: 'ACCOUNT_DELETED',
+        variables:  {
+          name:         owner.name ?? 'there',
+          businessName: business.name,
+          signupUrl:    `${process.env.API_BASE_URL ?? 'https://theloyaly.com'}`,
+        },
+      }).catch(e => console.error('[auth] goodbye email failed:', e?.message));
+    }
+
+    clearRefreshCookie(res);
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    handleAuthError(err, res);
+  }
+};
+
 export const authRouter = Router();
 
 // Public routes (no tenantScope)
@@ -545,6 +602,8 @@ authRouter.put('/me',         tenantScope, validate(UpdateMeSchema),            
 authRouter.post('/invite',    tenantScope, inviteLimit, validate(InviteStaffSchema),
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), inviteStaffHandler
 );
+
+authRouter.delete('/account', tenantScope, requireRoles(Role.TENANT_OWNER), deleteAccountHandler);
 
 // Super Admin only
 authRouter.post('/impersonate/:businessId',

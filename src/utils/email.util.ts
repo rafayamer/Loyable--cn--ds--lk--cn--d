@@ -166,6 +166,16 @@ export const renderTemplate = (
       {{cta:Open dashboard:{{dashboardUrl}}}}
       <p class="muted">You're receiving this because WhatsApp delivery for your account needs attention.</p>
     `,
+    ACCOUNT_DELETED: `
+      <h1>Your account has been deleted</h1>
+      <p>Hi {{name}},</p>
+      <p>We're sorry to see you go. As requested, your <strong>{{businessName}}</strong> account and all associated data has been permanently deleted from The Loyaly.</p>
+      <p>This includes all customer records, campaigns, messages, loyalty points, and settings. Nothing has been retained.</p>
+      <p style="margin-top:24px;">If you ever want to start fresh or give us another try, you're always welcome back. We'd love to have you.</p>
+      {{cta:Come Back Anytime:{{signupUrl}}}}
+      <p class="muted">Thank you for being part of The Loyaly. We wish you and your business all the best.</p>
+      <p class="muted">— The Loyaly Team</p>
+    `,
   };
 
   let html = templates[templateId] ?? '<h1>{{subject}}</h1><p>{{body}}</p>';
