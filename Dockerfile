@@ -37,4 +37,4 @@ COPY prisma/ ./prisma/
 EXPOSE 4000
 
 # Use local prisma v5 binary for migrations, then start app
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/app.js"]
+CMD ["node", "dist/app.js"]
