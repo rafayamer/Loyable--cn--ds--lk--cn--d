@@ -49,18 +49,31 @@ function frontendUrl(path: string) {
   return `${process.env.CLIENT_URL ?? process.env.API_BASE_URL ?? ''}${path}`;
 }
 
-// Store OAuth state in Redis (10 minutes TTL) to prevent CSRF
-async function saveOAuthState(state: string) {
-  const redis = getRedisClient();
-  await redis.set(`oauth:state:${state}`, '1', { EX: 600 });
+// CSRF state: self-contained HMAC-signed token (no Redis needed).
+// Format: `${nonce}.${ts}.${hmac}` where hmac = HMAC-SHA256(nonce+ts, JWT_SECRET).
+// Valid for 10 minutes. Eliminates dependency on Redis for the OAuth round-trip.
+function createOAuthState(): string {
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const ts    = Date.now().toString(36);
+  const secret = process.env.JWT_SECRET ?? 'fallback';
+  const hmac  = crypto.createHmac('sha256', secret).update(`${nonce}.${ts}`).digest('hex');
+  return `${nonce}.${ts}.${hmac}`;
 }
 
-async function consumeOAuthState(state: string): Promise<boolean> {
-  const redis = getRedisClient();
-  const val = await redis.get(`oauth:state:${state}`);
-  if (!val) return false;
-  await redis.del(`oauth:state:${state}`);
-  return true;
+function verifyOAuthState(state: string): boolean {
+  try {
+    const parts = state.split('.');
+    if (parts.length !== 3) return false;
+    const [nonce, ts, hmac] = parts;
+    const secret = process.env.JWT_SECRET ?? 'fallback';
+    const expected = crypto.createHmac('sha256', secret).update(`${nonce}.${ts}`).digest('hex');
+    if (!crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(expected, 'hex'))) return false;
+    // Expire after 10 minutes
+    const age = Date.now() - parseInt(ts, 36);
+    return age < 600_000;
+  } catch {
+    return false;
+  }
 }
 
 // Find or create a User for a Google-authenticated identity.
@@ -157,8 +170,7 @@ async function findOrCreateGoogleUser(profile: {
 oauthRouter.get('/google', async (req: Request, res: Response) => {
   try {
     const { clientId, callbackUrl } = getGoogleCreds();
-    const state = crypto.randomBytes(16).toString('hex');
-    await saveOAuthState(state);
+    const state = createOAuthState();
 
     const params = new URLSearchParams({
       client_id:     clientId,
@@ -195,7 +207,7 @@ oauthRouter.get('/google/callback', async (req: Request, res: Response) => {
     return;
   }
 
-  const stateValid = await consumeOAuthState(state).catch(() => false);
+  const stateValid = verifyOAuthState(state);
   if (!stateValid) {
     res.redirect(frontendUrl(`/?error=oauth_state_mismatch`));
     return;
