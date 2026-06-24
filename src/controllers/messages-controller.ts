@@ -4,8 +4,11 @@ import { prisma } from '../config/prisma';
 import { tenantScope } from '../middleware/tenant-scope-middleware';
 import { WahaGateway, toChatId } from '../services/messaging-gateway';
 import { getWahaConfig } from '../config/waha';
+import { sendBaileysText } from '../services/baileys-service';
 
 export const messagesRouter = Router();
+
+const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
 
 const wahaConfig = (businessId: string) => getWahaConfig(businessId);
 
@@ -53,9 +56,15 @@ messagesRouter.post('/send', tenantScope, async (req: Request, res: Response) =>
     }
   }
 
-  const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
-
-  const result = await WahaGateway.sendText(resolvedChatId, message, baseUrl, sessionId, apiKey);
+  // Route through Baileys or WAHA depending on provider
+  let result: { success: boolean; error?: string; messageId?: string };
+  if (GLOBAL_BAILEYS) {
+    const phone = resolvedChatId.replace(/@.*$/, '');
+    result = await sendBaileysText(businessId, phone, message);
+  } else {
+    const { baseUrl, sessionId, apiKey } = await wahaConfig(businessId);
+    result = await WahaGateway.sendText(resolvedChatId, message, baseUrl, sessionId, apiKey);
+  }
 
   if (!result.success) {
     console.error('[messages] send failed:', result.error);
