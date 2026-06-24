@@ -193,6 +193,8 @@ model Business {
   pointsPerPound       Int               @default(1)    // Points earned per £1 spent
   visitBasePoints      Int               @default(5)    // Flat bonus points per visit
   bigSpenderThreshold  Int               @default(500)  // Total spend (in currency units) to classify as BIG_SPENDER
+  redeemRate           Int               @default(100)  // Points needed to redeem 1 currency unit (e.g. 100 pts = £1)
+  minRedeemPoints      Int               @default(100)  // Minimum points required to use wallet payment
 
   isActive             Boolean           @default(true)
   createdAt            DateTime          @default(now())

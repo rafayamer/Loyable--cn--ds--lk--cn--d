@@ -284,6 +284,8 @@ export const api = {
     sale:       (id: string)   => get<any>(`/pos/sale/${id}`),
     createSale: (body: any)    => post<any>('/pos/sale', body),
     retryFbr:   (id: string)   => post<any>(`/pos/sale/${id}/fbr-retry`, {}),
-    receipt:    (id: string)   => `/api/pos/receipt/${id}`,
+    receipt:      (id: string)   => `/api/pos/receipt/${id}`,
+    walletLookup: (phone: string) => get<any>(`/pos/wallet-lookup?phone=${encodeURIComponent(phone)}`),
+    walletRedeem: (body: { customerId: string; pointsToRedeem: number; amountDeducted: number }) => post<any>('/pos/wallet-redeem', body),
   },
 };

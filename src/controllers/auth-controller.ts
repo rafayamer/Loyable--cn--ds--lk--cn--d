@@ -404,6 +404,8 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
             brandingColors:  true,
             pointsPerPound:  true,
             visitBasePoints: true,
+            redeemRate:      true,
+            minRedeemPoints: true,
             country:         true,
             ntn:             true,
             strn:            true,
@@ -489,6 +491,8 @@ const UpdateMeSchema = z.object({
   fbrEnabled:      z.boolean().optional(),
   pointsPerPound:  z.number().int().min(0).max(100).optional(),
   visitBasePoints: z.number().int().min(0).max(1000).optional(),
+  redeemRate:      z.number().int().min(1).max(100000).optional(),
+  minRedeemPoints: z.number().int().min(0).max(100000).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
@@ -515,6 +519,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.fbrEnabled      !== undefined && { fbrEnabled:      body.fbrEnabled }),
         ...(body.pointsPerPound  !== undefined && { pointsPerPound:  body.pointsPerPound }),
         ...(body.visitBasePoints !== undefined && { visitBasePoints: body.visitBasePoints }),
+        ...(body.redeemRate      !== undefined && { redeemRate:      body.redeemRate }),
+        ...(body.minRedeemPoints !== undefined && { minRedeemPoints: body.minRedeemPoints }),
       } as any,
       select: { id: true, name: true, industry: true, currency: true, logoUrl: true,
                 country: true, ntn: true, taxNumber: true, gstRate: true, fbrEnabled: true } as any,

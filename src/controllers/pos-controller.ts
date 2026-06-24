@@ -486,3 +486,112 @@ ${qrUrl ? `<div class="center"><img src="https://api.qrserver.com/v1/create-qr-c
     res.status(500).json({ error: 'Failed to generate receipt' });
   }
 });
+
+// ── GET /api/pos/wallet-lookup?phone= ────────────────────────────
+// Returns customer points balance + redemption config for POS wallet payment
+posRouter.get('/wallet-lookup', async (req: Request, res: Response) => {
+  try {
+    const businessId = getBizId(req);
+    const rawPhone = String(req.query.phone ?? '').trim();
+    if (!rawPhone) { res.status(400).json({ error: 'phone required' }); return; }
+
+    const phone = normalisePhone(rawPhone);
+
+    const [customer, biz] = await Promise.all([
+      prisma.customer.findFirst({
+        where:  { businessId, whatsappNumber: phone },
+        select: { id: true, fullName: true, currentPointsBalance: true, isSuppressed: true },
+      }),
+      prisma.business.findUnique({
+        where:  { id: businessId },
+        select: { redeemRate: true, minRedeemPoints: true, currency: true } as any,
+      }),
+    ]);
+
+    const redeemRate      = (biz as any)?.redeemRate      ?? 100; // pts per 1 currency unit
+    const minRedeemPoints = (biz as any)?.minRedeemPoints ?? 100;
+    const currency        = (biz as any)?.currency        ?? 'GBP';
+
+    if (!customer) {
+      res.json({ found: false, phone, redeemRate, minRedeemPoints, currency });
+      return;
+    }
+
+    const balance = customer.currentPointsBalance ?? 0;
+    const maxDiscount = balance >= minRedeemPoints
+      ? parseFloat((balance / redeemRate).toFixed(2))
+      : 0;
+
+    res.json({
+      found:            true,
+      customerId:       customer.id,
+      fullName:         customer.fullName,
+      phone,
+      pointsBalance:    balance,
+      redeemRate,
+      minRedeemPoints,
+      maxDiscount,
+      currency,
+    });
+  } catch (err) {
+    console.error('[pos] wallet-lookup error', err);
+    res.status(500).json({ error: 'Lookup failed' });
+  }
+});
+
+// ── POST /api/pos/wallet-redeem ───────────────────────────────────
+// Debit points from customer wallet during POS checkout
+posRouter.post('/wallet-redeem', async (req: Request, res: Response) => {
+  try {
+    const businessId = getBizId(req);
+    const { customerId, pointsToRedeem, amountDeducted } = req.body as {
+      customerId:     string;
+      pointsToRedeem: number;
+      amountDeducted: number;
+    };
+
+    if (!customerId || !pointsToRedeem || pointsToRedeem <= 0) {
+      res.status(400).json({ error: 'customerId and pointsToRedeem required' });
+      return;
+    }
+
+    const customer = await prisma.customer.findFirst({
+      where:  { id: customerId, businessId },
+      select: { currentPointsBalance: true, isSuppressed: true },
+    });
+    if (!customer) { res.status(404).json({ error: 'Customer not found' }); return; }
+
+    const balance = customer.currentPointsBalance ?? 0;
+    if (balance < pointsToRedeem) {
+      res.status(400).json({ error: 'Insufficient points', balance });
+      return;
+    }
+
+    const newBalance = balance - pointsToRedeem;
+
+    await prisma.$transaction([
+      prisma.rewardPointsLedger.create({
+        data: {
+          customerId,
+          businessId,
+          type:         'DEBIT',
+          points:       pointsToRedeem,
+          balanceAfter: newBalance,
+          reason:       'MANUAL_ADJUSTMENT',
+          referenceType:'WALLET_REDEMPTION',
+          notes:        `POS wallet payment — ${pointsToRedeem} pts = ${amountDeducted} currency units`,
+        } as any,
+      }),
+      prisma.customer.update({
+        where: { id: customerId },
+        data:  { currentPointsBalance: newBalance },
+        select: { id: true },
+      }),
+    ]);
+
+    res.json({ ok: true, pointsDebited: pointsToRedeem, newBalance, amountDeducted });
+  } catch (err) {
+    console.error('[pos] wallet-redeem error', err);
+    res.status(500).json({ error: 'Redemption failed' });
+  }
+});

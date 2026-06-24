@@ -2566,8 +2566,8 @@ const LoyaltyPage=()=>{
             {key:"referralBonusPoints",label:"Points for new referral (referee)",min:0,max:500,step:10,icon:"🎁"},
             {key:"referralReferrerPoints",label:"Points for referring (referrer)",min:0,max:500,step:10,icon:"🤝"},
             {key:"pointsExpiryDays",label:"Points expiry (days)",min:30,max:730,step:30,icon:"⏱️"},
-            {key:"minRedeemPoints",label:"Min points to redeem",min:10,max:1000,step:10,icon:"🔑"},
-            {key:"redeemRate",label:"Points per £1 discount",min:10,max:500,step:10,icon:"💰"},
+            {key:"minRedeemPoints",label:"Min points to use wallet (POS)",min:0,max:2000,step:10,icon:"🔑"},
+            {key:"redeemRate",label:"Points = 1 currency unit (e.g. 100 pts = £1)",min:1,max:1000,step:1,icon:"💰"},
             {key:"emailBonusPoints",label:"Bonus pts for adding email",min:0,max:500,step:10,icon:"📧"},
           ].map(({key,label,min,max,step,icon})=>(
             <div key={key} className="p-3 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
@@ -5038,6 +5038,11 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [phone,setPhone]=useState("");const [cname,setCname]=useState("");const [discount,setDiscount]=useState(0);const [discountMode,setDiscountMode]=useState<'value'|'percent'>('value');
   const [table,setTable]=useState("");const [notes,setNotes]=useState("");
   const [placing,setPlacing]=useState(false);const [placed,setPlaced]=useState(false);
+  // Wallet state
+  const [walletCustomer,setWalletCustomer]=useState<any>(null);
+  const [walletLooking,setWalletLooking]=useState(false);
+  const [walletPoints,setWalletPoints]=useState(0); // pts to redeem
+  const walletLookupTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const [barcodeFlash,setBarcodeFlash]=useState<string|null>(null);
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
   const cats=[...new Set(menuItems.map(i=>i.cat))];
@@ -5087,19 +5092,52 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   };
   const removeItem=(n:string)=>setOrder(p=>p.map(x=>x.name===n?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
 
-  const placeOrder=()=>{
-    if(!order.length)return;
-    setPlacing(true);
-    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount:discountValue,phone,cname,payMode:mode,status:"UNPAID",notes});
-    setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");
-    setPlaced(true);setTimeout(()=>setPlaced(false),3000);
-    setPlacing(false);
-  };
+  // Auto-lookup wallet customer when phone changes + WALLET mode active
+  useEffect(()=>{
+    if(mode!=="WALLET"||!phone||phone.replace(/\D/g,"").length<7){setWalletCustomer(null);setWalletPoints(0);return;}
+    if(walletLookupTimer.current)clearTimeout(walletLookupTimer.current);
+    walletLookupTimer.current=setTimeout(async()=>{
+      setWalletLooking(true);
+      try{
+        const r=await api.pos.walletLookup(phone);
+        setWalletCustomer(r);
+        // Pre-fill customer name if found
+        if(r.found&&r.fullName&&!cname)setCname(r.fullName);
+        setWalletPoints(0);
+      }catch{}finally{setWalletLooking(false);}
+    },600);
+    return()=>{if(walletLookupTimer.current)clearTimeout(walletLookupTimer.current);};
+  },[phone,mode]);
+
+  // Reset wallet state when switching away from WALLET mode
+  useEffect(()=>{if(mode!=="WALLET"){setWalletCustomer(null);setWalletPoints(0);}}, [mode]);
 
   const orderRaw=order.reduce((s,i)=>s+i.qty*i.price,0);
   const discountValue=discountMode==='percent'?orderRaw*(discount/100):discount;
-  const subtotal=orderRaw-discountValue;
+  // Wallet discount: points redeemed → currency value
+  const walletDiscount=walletCustomer&&mode==="WALLET"&&walletPoints>0
+    ? Math.min(parseFloat((walletPoints/(walletCustomer.redeemRate??100)).toFixed(2)), orderRaw-discountValue)
+    : 0;
+  const subtotal=orderRaw-discountValue-walletDiscount;
   const total=Math.max(0,subtotal);
+
+  const placeOrder=async()=>{
+    if(!order.length)return;
+    setPlacing(true);
+    // If wallet mode with points → debit points first
+    if(mode==="WALLET"&&walletCustomer?.found&&walletPoints>0){
+      try{
+        await api.pos.walletRedeem({customerId:walletCustomer.customerId,pointsToRedeem:walletPoints,amountDeducted:walletDiscount});
+      }catch(e){
+        setPlacing(false);
+        return;
+      }
+    }
+    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount:discountValue+walletDiscount,phone,cname,payMode:mode,status:"UNPAID",notes});
+    setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");setWalletCustomer(null);setWalletPoints(0);
+    setPlaced(true);setTimeout(()=>setPlaced(false),3000);
+    setPlacing(false);
+  };
 
   const cartCount=order.reduce((s,i)=>s+i.qty,0);
   const total2=Math.max(0,orderRaw-discountValue);
@@ -5198,11 +5236,61 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
             <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><PhoneInput value={phone} onChange={setPhone} inputStyle={{...inpS,padding:"7px 10px",fontSize:"12px",color:"white"}}/></div>
             <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
           </div>
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-3">
             {(["CASH","CARD","WALLET"] as const).map(m=>(
-              <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>{m}</button>
+              <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {m==="CASH"&&"💵"}{m==="CARD"&&"💳"}{m==="WALLET"&&"⭐"}{m}
+              </button>
             ))}
           </div>
+          {/* Wallet panel */}
+          {mode==="WALLET"&&(
+            <div className="mb-4 rounded-2xl p-4 space-y-3" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.25)"}}>
+              {walletLooking&&<div className="text-xs text-violet-300 flex items-center gap-2"><RefreshCw size={12} className="animate-spin"/>Looking up points…</div>}
+              {!walletLooking&&walletCustomer&&!walletCustomer.found&&phone.replace(/\D/g,"").length>=7&&(
+                <div className="text-xs text-amber-400 flex items-center gap-2">⚠️ No loyalty account found for this number — they'll earn points but can't redeem yet</div>
+              )}
+              {!walletLooking&&walletCustomer?.found&&(
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-white">{walletCustomer.fullName}</div>
+                      <div className="text-[11px] text-violet-300 mt-0.5">⭐ {walletCustomer.pointsBalance.toLocaleString()} points available</div>
+                      {walletCustomer.minRedeemPoints>0&&walletCustomer.pointsBalance<walletCustomer.minRedeemPoints&&(
+                        <div className="text-[10px] text-amber-400 mt-0.5">Minimum {walletCustomer.minRedeemPoints} pts needed to redeem</div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] text-slate-400">{walletCustomer.redeemRate} pts = 1 {currency}</div>
+                      <div className="text-xs font-bold text-green-400">Max off: {currency} {walletCustomer.maxDiscount.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  {walletCustomer.pointsBalance>=walletCustomer.minRedeemPoints&&(
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Points to redeem</span>
+                        <span className="text-violet-300 font-semibold">{walletPoints} pts = <span className="text-green-400 font-bold">{currency} {(walletPoints/(walletCustomer.redeemRate??100)).toFixed(2)}</span> off</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.min(walletCustomer.pointsBalance, Math.ceil((orderRaw-discountValue)*(walletCustomer.redeemRate??100)))}
+                        step={walletCustomer.redeemRate??100}
+                        value={walletPoints}
+                        onChange={e=>setWalletPoints(Number(e.target.value))}
+                        className="w-full h-1.5 rounded-full appearance-none"
+                        style={{accentColor:"#8b5cf6"}}
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-500"><span>0 pts</span><span>{Math.min(walletCustomer.pointsBalance,Math.ceil((orderRaw-discountValue)*(walletCustomer.redeemRate??100)))} pts</span></div>
+                    </div>
+                  )}
+                </>
+              )}
+              {!walletLooking&&!walletCustomer&&(
+                <div className="text-xs text-slate-400">Enter the customer's WhatsApp number above to look up their points balance</div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <label className="text-xs text-slate-400">Discount</label>
             <div className="flex rounded-lg overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.1)"}}>
@@ -5222,6 +5310,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
             {order.map((i,idx)=><div key={idx} className="flex justify-between text-slate-300"><span>{i.name} ×{i.qty}</span><span>{currency} {(i.qty*i.price).toFixed(2)}</span></div>)}
             {!order.length&&<div className="text-slate-500 text-center py-3">Tap items from the menu</div>}
             {discountValue>0&&<div className="flex justify-between text-amber-400"><span>Discount {discount>0?`(${discount}${discountMode==='percent'?'%':''})`:''}  </span><span>-{currency} {discountValue.toFixed(2)}</span></div>}
+            {walletDiscount>0&&<div className="flex justify-between text-violet-400"><span>⭐ Wallet ({walletPoints} pts)</span><span>-{currency} {walletDiscount.toFixed(2)}</span></div>}
           </div>
           <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
           <button onClick={placeOrder} disabled={placing||!order.length} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#f59e0b,#d97706)"}}>
