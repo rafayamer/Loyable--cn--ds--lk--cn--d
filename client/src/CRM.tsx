@@ -3891,6 +3891,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [tab,setTab]=useState("business");
   const [industry,setIndustry]=useState(()=>localStorage.getItem("biz_industry")||"Café & Restaurant");
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
+  const [countryVal,setCountryVal]=useState(()=>localStorage.getItem("biz_country")||"GB");
   const [currencyVal,setCurrencyVal]=useState(()=>localStorage.getItem("biz_currency")||"GBP");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
   const [bizSaved,setBizSaved]=useState(false);
@@ -3912,14 +3913,16 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const saveBizSettings=async()=>{
     try{
-      await api.settings.update({name:bizNameVal,currency:currencyVal,logoUrl:logoUrlVal||undefined,industry});
+      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry});
       localStorage.setItem("biz_name",bizNameVal);
       localStorage.setItem("biz_currency",currencyVal);
+      localStorage.setItem("biz_country",countryVal);
       if(logoUrlVal)localStorage.setItem("biz_logo",logoUrlVal);
       setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
     }catch{}
   };
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe}];
+  const isPK=countryVal==="PK";
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
@@ -3939,7 +3942,8 @@ const SettingsPage=({wa,onConnect}:any)=>{
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>setBizNameVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Logo URL (for receipts & portal)</label><input value={logoUrlVal} onChange={e=>setLogoUrlVal(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Currency (ISO 4217)</label><input value={currencyVal} onChange={e=>setCurrencyVal(e.target.value.toUpperCase())} placeholder="GBP" maxLength={3} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Country</label><select value={countryVal} onChange={e=>setCountryVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">{countryVal==="PK"?"🇵🇰 FBR tax integration is available — see the FBR / Tax tab after saving.":""}</div></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Currency</label><select value={currencyVal} onChange={e=>setCurrencyVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
               <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
@@ -4037,6 +4041,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         {tab==="stripe"&&<BillingTab/>}
         {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
+        {tab==="fbr"&&<FBRPanel/>}
       </div>
     </div>
   );
