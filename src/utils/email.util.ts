@@ -170,12 +170,15 @@ export const renderTemplate = (
 
   let html = templates[templateId] ?? '<h1>{{subject}}</h1><p>{{body}}</p>';
 
-  // {{cta:Label:URL}} → branded button
+  // Interpolate variables first so nested {{var}} inside {{cta:}} are resolved
+  html = interpolate(html, vars);
+
+  // {{cta:Label:URL}} → branded button (URL already interpolated above)
   html = html.replace(/\{\{cta:([^:]+):(.+?)\}\}/g, (_m, label, url) =>
-    `<p style="text-align:center;margin:28px 0;"><a class="btn" href="${interpolate(String(url), vars)}">${label}</a></p>`
+    `<p style="text-align:center;margin:28px 0;"><a class="btn" href="${url.trim()}">${label}</a></p>`
   );
 
-  return interpolate(html, vars);
+  return html;
 };
 
 function interpolate(html: string, vars: Record<string, unknown>): string {
