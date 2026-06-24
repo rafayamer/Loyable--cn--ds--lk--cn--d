@@ -25,6 +25,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Prisma needs OpenSSL on Alpine
+RUN apk add --no-cache openssl
+
 COPY package*.json ./
 # Install prod deps including prisma CLI (moved to dependencies for migrate)
 RUN npm install --legacy-peer-deps --omit=dev
