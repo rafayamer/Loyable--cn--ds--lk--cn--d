@@ -159,6 +159,18 @@ export const renderTemplate = (
       <p>Hi {{name}},</p>
       <p>{{body}}</p>
     `,
+    STAFF_CREDENTIALS: `
+      <h1>Welcome to {{businessName}}! 👋</h1>
+      <p>Hi {{name}},</p>
+      <p>You've been added to <strong>{{businessName}}</strong> as <strong>{{role}}</strong>. Here are your login details:</p>
+      <div style="background:#f9f8ff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:20px 0;font-family:monospace;">
+        <div style="margin-bottom:10px;"><span style="color:#6b7280;font-size:12px;">Login Email</span><br/><strong style="color:#1a1035;font-size:15px;">{{loginEmail}}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px;">Password</span><br/><strong style="color:#1a1035;font-size:15px;">{{password}}</strong></div>
+      </div>
+      <p style="color:#ef4444;font-size:13px;">⚠️ Keep these details safe and do not share them with anyone.</p>
+      {{cta:Log In Now:{{loginUrl}}}}
+      <p class="muted">If you have any questions, contact your manager at {{businessName}}.</p>
+    `,
     WHATSAPP_HEALTH_ALERT: `
       <h1>{{subject}}</h1>
       <p>Hi {{name}},</p>

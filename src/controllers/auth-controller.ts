@@ -33,6 +33,7 @@ import {
   resetPassword,
   inviteStaff,
   acceptStaffInvite,
+  createStaffDirect,
 } from '../services/auth-service';
 
 import {
@@ -528,6 +529,36 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
 // ROUTER ASSEMBLY
 // ================================================================
 
+/** POST /api/auth/staff — owner creates staff with credentials directly */
+const createStaffDirectHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, businessId } = req.tenantContext;
+    const { name, role, password, personalEmail, branchLocationId } = req.body as {
+      name:              string;
+      role:              string;
+      password:          string;
+      personalEmail:     string;
+      branchLocationId?: string;
+    };
+    if (!name?.trim())          { res.status(400).json({ error: 'Name is required' }); return; }
+    if (!password || password.length < 6) { res.status(400).json({ error: 'Password must be at least 6 characters' }); return; }
+    if (!personalEmail?.includes('@')) { res.status(400).json({ error: 'Valid personal email required' }); return; }
+
+    const result = await createStaffDirect({
+      inviterUserId:    userId,
+      businessId,
+      name:             name.trim(),
+      role:             role as any,
+      password,
+      personalEmail,
+      branchLocationId,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    handleAuthError(err, res);
+  }
+};
+
 /** DELETE /api/auth/account — TENANT_OWNER only. Permanently deletes the entire business. */
 const deleteAccountHandler = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -601,6 +632,9 @@ authRouter.get('/me',         tenantScope,                                      
 authRouter.put('/me',         tenantScope, validate(UpdateMeSchema),                  updateMeHandler);
 authRouter.post('/invite',    tenantScope, inviteLimit, validate(InviteStaffSchema),
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), inviteStaffHandler
+);
+authRouter.post('/staff',     tenantScope, inviteLimit,
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), createStaffDirectHandler
 );
 
 authRouter.delete('/account', tenantScope, requireRoles(Role.TENANT_OWNER), deleteAccountHandler);

@@ -3567,6 +3567,95 @@ const BillingTab=()=>{
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
 
+// ── Add Staff Form ───────────────────────────────────────────────
+const AddStaffForm=()=>{
+  const [staffName,setStaffName]=useState("");
+  const [staffRole,setStaffRole]=useState("MARKETING_STAFF");
+  const [staffPass,setStaffPass]=useState("");
+  const [personalEmail,setPersonalEmail]=useState("");
+  const [showPass,setShowPass]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [result,setResult]=useState<{loginEmail:string;name:string;role:string}|null>(null);
+  const [err,setErr]=useState("");
+
+  const roleLabelMap:Record<string,string>={BRANCH_MANAGER:"Branch Manager",MARKETING_STAFF:"Marketing Staff",CASHIER:"Cashier / Kitchen"};
+
+  const create=async()=>{
+    if(!staffName.trim()){setErr("Please enter the staff member's name.");return;}
+    if(staffPass.length<6){setErr("Password must be at least 6 characters.");return;}
+    if(!personalEmail.includes("@")){setErr("Please enter a valid personal email to send credentials to.");return;}
+    setErr("");setSaving(true);
+    try{
+      const d:any=await fetch("/api/auth/staff",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""`},body:JSON.stringify({name:staffName.trim(),role:staffRole,password:staffPass,personalEmail:personalEmail.trim()})}).then(r=>r.json());
+      if(d.error)throw new Error(d.error);
+      setResult(d);
+      setStaffName("");setStaffPass("");setPersonalEmail("");
+    }catch(e:any){setErr(e.message||"Something went wrong.");}
+    finally{setSaving(false);}
+  };
+
+  const inpSt={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"10px",padding:"10px 12px",fontSize:"13px",color:"white",width:"100%",outline:"none"};
+
+  if(result) return(
+    <div className="rounded-xl p-4 space-y-3" style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)"}}>
+      <div className="flex items-center gap-2 text-green-400 font-semibold text-sm"><CheckCircle size={16}/>Staff member added successfully!</div>
+      <p className="text-xs text-slate-400">Credentials have been emailed to <strong className="text-white">{personalEmail||"their personal email"}</strong>. Share the login details below with them directly as well.</p>
+      <div className="rounded-xl p-4 space-y-2" style={{background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.08)"}}>
+        <div className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Login Credentials</div>
+        <div className="flex items-center justify-between">
+          <div><div className="text-xs text-slate-500">Login Email</div><div className="text-sm font-mono text-white mt-0.5">{result.loginEmail}</div></div>
+          <button onClick={()=>navigator.clipboard.writeText(result.loginEmail)} className="p-1.5 rounded-lg text-slate-400 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}><Copy size={13}/></button>
+        </div>
+        <div className="flex items-center justify-between">
+          <div><div className="text-xs text-slate-500">Name</div><div className="text-sm text-white mt-0.5">{result.name}</div></div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div><div className="text-xs text-slate-500">Role</div><div className="text-sm text-white mt-0.5">{roleLabelMap[result.role]||result.role}</div></div>
+        </div>
+        <p className="text-xs text-amber-400 mt-2">⚠️ Save the password now — it is not shown again after this screen.</p>
+      </div>
+      <button onClick={()=>setResult(null)} className="text-xs font-medium px-3 py-2 rounded-lg text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Add Another Staff Member</button>
+    </div>
+  );
+
+  return(
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Full Name *</label>
+          <input value={staffName} onChange={e=>{setStaffName(e.target.value);setErr("");}} placeholder="e.g. Sarah Khan" style={inpSt}/>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Role *</label>
+          <select value={staffRole} onChange={e=>setStaffRole(e.target.value)} style={{...inpSt,appearance:"none" as const}}>
+            <option value="BRANCH_MANAGER">Branch Manager</option>
+            <option value="MARKETING_STAFF">Marketing Staff</option>
+            <option value="CASHIER">Cashier / Kitchen</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Their Personal Email (to receive credentials) *</label>
+          <input value={personalEmail} onChange={e=>{setPersonalEmail(e.target.value);setErr("");}} type="email" placeholder="sarah@gmail.com" style={inpSt}/>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Set Their Password *</label>
+          <div className="relative">
+            <input value={staffPass} onChange={e=>{setStaffPass(e.target.value);setErr("");}} type={showPass?"text":"password"} placeholder="Min 6 characters" style={{...inpSt,paddingRight:"36px"}}/>
+            <button type="button" onClick={()=>setShowPass(p=>!p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{showPass?<EyeOff size={13}/>:<Eye size={13}/>}</button>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-lg px-3 py-2 text-xs text-slate-400" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+        🔑 Login email will be auto-generated as <span className="font-mono text-violet-300">{staffName.trim()?`${staffName.trim().split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g,"")}.${staffRole==="BRANCH_MANAGER"?"manager":staffRole==="MARKETING_STAFF"?"marketing":"staff"}XX@theloyaly.com`:"name.roleXX@theloyaly.com"}</span>
+      </div>
+      {err&&<div className="text-xs text-red-400">{err}</div>}
+      <button onClick={create} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+        {saving?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{saving?"Creating…":"Create Staff Account"}
+      </button>
+    </div>
+  );
+};
+
 // ── Delete Account Modal ─────────────────────────────────────────
 const DeleteAccountModal=({onClose,onDeleted}:{onClose:()=>void,onDeleted:()=>void})=>{
   const [step,setStep]=useState<1|2>(1);
@@ -3814,7 +3903,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
-          <p className="text-xs text-slate-400">Staff members receive an email invitation with a link to set their password and access the CRM. Each role has restricted access to specific features.</p>
+          <p className="text-xs text-slate-400">Add staff members to your account. You set their login email and password — credentials are shown to you and emailed directly to them.</p>
 
           {/* Role permission matrix */}
           <div className="rounded-xl overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.06)"}}>
@@ -3843,20 +3932,9 @@ const SettingsPage=({wa,onConnect}:any)=>{
 
           {/* Invite form */}
           <div className="p-4 rounded-xl space-y-3" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
-            <h4 className="text-xs font-semibold text-white">Invite a Staff Member</h4>
-            <p className="text-xs text-slate-400">They will receive an email with a secure link to create their password. Staff login at the same URL as you.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="colleague@email.com" type="email" className="sm:col-span-2 px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-              <select value={inviteRole} onChange={e=>setInviteRole(e.target.value)} className="px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>
-                <option value="BRANCH_MANAGER">Branch Manager</option>
-                <option value="MARKETING_STAFF">Marketing Staff</option>
-                <option value="KITCHEN_STAFF">Kitchen / Cashier</option>
-              </select>
-            </div>
-            <button disabled={inviting||!inviteEmail.includes("@")} onClick={async()=>{setInviting(true);setInviteMsg("");try{await fetch("/api/auth/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""}`},body:JSON.stringify({email:inviteEmail,role:inviteRole})});setInviteMsg("Invite sent to "+inviteEmail);setInviteEmail("");}catch(e:any){setInviteMsg("Error: "+(e.message??'Failed to send invite'));}finally{setInviting(false);}}} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
-              {inviting?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{inviting?"Sending…":"Send Invite"}
-            </button>
-            {inviteMsg&&<p className="text-xs" style={{color:inviteMsg.startsWith("Error")?"#ef4444":"#22c55e"}}>{inviteMsg}</p>}
+            <h4 className="text-xs font-semibold text-white">Add a Staff Member</h4>
+            <p className="text-xs text-slate-400">Fill in their details. The system will generate a login email for them. You set the password. Their credentials will be emailed to them.</p>
+            <AddStaffForm/>
           </div>
 
           {/* Note about login */}
@@ -3864,7 +3942,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
             <Info size={14} className="text-cyan-400 flex-shrink-0 mt-0.5"/>
             <div className="text-xs text-slate-400 space-y-1">
               <div className="text-cyan-300 font-medium">How staff login works</div>
-              <div>Staff members log in at the same URL as you. They receive an email invite with a magic link to set their password. Their access is automatically restricted to the features their role allows — they will never see Settings, billing, or owner-level analytics.</div>
+              <div>Staff log in at the same URL as you using their <strong>@theloyaly.com</strong> login email. Their access is automatically limited to the features their role allows — they will never see Settings, billing, or owner-level data.</div>
             </div>
           </div>
         </div>}
