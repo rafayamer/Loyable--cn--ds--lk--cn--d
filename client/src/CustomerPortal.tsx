@@ -179,24 +179,6 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
           <p className="text-purple-300 text-sm mt-1">Your Loyalty Rewards</p>
         </div>
 
-        {/* Announcement banner (public, shown before login too) */}
-        {ps.showAnnouncement && ps.announcementText && (
-          <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-white" style={{ background: 'rgba(139,92,246,0.3)', border: '1px solid rgba(139,92,246,0.5)' }}>
-            📢 {ps.announcementText}
-          </div>
-        )}
-
-        {/* WiFi info (public) */}
-        {ps.showWifi && (ps.wifiName || ps.wifiPassword) && (
-          <div className="mb-4 rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <div className="flex items-center gap-2 text-white mb-2">
-              <Icon.wifi/><span className="font-bold text-sm">Free WiFi</span>
-            </div>
-            {ps.wifiName && <p className="text-purple-200 text-xs">Network: <span className="font-mono font-bold text-white">{ps.wifiName}</span></p>}
-            {ps.wifiPassword && <p className="text-purple-200 text-xs mt-0.5">Password: <span className="font-mono font-bold text-white">{ps.wifiPassword}</span></p>}
-          </div>
-        )}
-
         <div className="rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
           <h2 className="text-white font-bold text-lg mb-1">Check your rewards</h2>
           <p className="text-purple-200 text-sm mb-5">{otpStep ? `We sent a 6-digit code to ${maskedPhone} on WhatsApp. Enter it below.` : 'Enter your phone number and first name to view your loyalty account.'}</p>
@@ -661,8 +643,6 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
             📢 {ps.announcementText}
           </div>
         )}
-
-        {/* Geo Check-in */}
         {checkInConfig?.enabled && (
           <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div className="flex items-center justify-between">
@@ -732,7 +712,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
         )}
 
         {/* Tabs */}
-        {TABS.length > 1 && (
+        {TABS.length > 0 && (
           <div className="flex gap-1 p-1 rounded-2xl" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
             {TABS.map(t => (
               <button
