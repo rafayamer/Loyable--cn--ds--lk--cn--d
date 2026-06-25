@@ -4115,7 +4115,8 @@ const SettingsPage=({wa,onConnect}:any)=>{
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
       <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
-      <div className="gc rounded-xl p-5" style={CARD}>
+      {tab==="loyalty"&&<LoyaltyPage/>}
+      <div className="gc rounded-xl p-5" style={{...CARD,...(tab==="loyalty"?{display:"none"}:{})}}>
         {tab==="business"&&<div className="space-y-4">
           <div className="flex items-center gap-4 mb-2">
             {logoUrlVal
@@ -4145,40 +4146,6 @@ const SettingsPage=({wa,onConnect}:any)=>{
           <div className="flex items-center gap-3">
             <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
             {bizSaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
-          </div>
-        </div>}
-        {tab==="loyalty"&&<div className="space-y-5">
-          <div>
-            <h3 className="text-sm font-semibold mb-1" style={{color:ct.tx}}>Points Earning Rate</h3>
-            <p className="text-xs mb-4" style={{color:ct.tx2}}>Every customer earns {pointsPerPound} point{pointsPerPound!==1?"s":""} per £1 spent, plus {visitBasePoints} bonus point{visitBasePoints!==1?"s":""} just for visiting.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs mb-1 block" style={{color:ct.tx2}}>Points per £1 spent</label>
-              <input type="number" min={0} max={100} value={pointsPerPound} onChange={e=>setPointsPerPound(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
-              <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Customers earn this many points for every £1 they spend</div>
-            </div>
-            <div>
-              <label className="text-xs mb-1 block" style={{color:ct.tx2}}>Bonus points per visit</label>
-              <input type="number" min={0} max={1000} value={visitBasePoints} onChange={e=>setVisitBasePoints(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
-              <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Flat bonus points awarded on every visit, regardless of spend</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={saveLoyaltySettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Loyalty Settings</button>
-            {loyaltySaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
-          </div>
-          <div className="p-4 rounded-xl" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
-            <h4 className="text-xs font-semibold mb-3" style={{color:ct.tx}}>Default Tier Thresholds (read-only)</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[{name:"Bronze",pts:0,color:"#cd7f32"},{name:"Silver",pts:100,color:"#c0c0c0"},{name:"Gold",pts:500,color:"#ffd700"},{name:"Platinum",pts:1000,color:"#b19cd9"}].map(t=>(
-                <div key={t.name} className="p-3 rounded-xl text-center" style={{background:t.color+"0d",border:`1px solid ${t.color}30`}}>
-                  <Crown size={14} style={{color:t.color}} className="mx-auto mb-1"/>
-                  <div className="text-xs font-bold" style={{color:t.color}}>{t.name}</div>
-                  <div className="text-[10px] mt-0.5" style={{color:ct.tx2}}>{t.pts} pts</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
