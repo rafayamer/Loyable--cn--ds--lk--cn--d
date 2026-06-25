@@ -23,14 +23,24 @@ export const getRedisClient = (): RedisClientType => {
 };
 
 /**
- * Returns a plain connection config object for BullMQ.
- * BullMQ uses ioredis internally and expects { host, port }.
+ * Returns a connection config object for BullMQ (ioredis).
+ * Handles Upstash rediss:// URLs with TLS + keepAlive to prevent ECONNRESET.
  */
-export const getRedisConnection = (): { host: string; port: number } => {
-  const url  = new URL(process.env.REDIS_URL ?? 'redis://localhost:6379');
+export const getRedisConnection = (): Record<string, unknown> => {
+  const raw = process.env.REDIS_URL ?? 'redis://localhost:6379';
+  const url = new URL(raw);
+  const tls = url.protocol === 'rediss:';
   return {
-    host: url.hostname,
-    port: parseInt(url.port || '6379', 10),
+    host:              url.hostname,
+    port:              parseInt(url.port || (tls ? '6380' : '6379'), 10),
+    username:          url.username || undefined,
+    password:          url.password || undefined,
+    tls:               tls ? {} : undefined,
+    enableAutoPipelining: true,
+    keepAlive:         10000,
+    connectTimeout:    10000,
+    maxRetriesPerRequest: null, // required by BullMQ
+    retryStrategy:     (times: number) => Math.min(times * 200, 5000),
   };
 };
 
