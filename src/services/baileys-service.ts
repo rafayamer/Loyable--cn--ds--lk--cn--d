@@ -49,6 +49,28 @@ const QR_REDIS_KEY  = (bizId: string) => `baileys:qr:${bizId}`;
 const QR_TTL_SECS   = 60;
 const SILENT_LOGGER  = P({ level: 'silent' });
 
+// ── Silence libsignal's raw console noise ────────────────────────
+// libsignal (Baileys' encryption layer) prints session-lifecycle lines via
+// raw console.info / console.warn that bypass the silent pino logger above —
+// most notably `Closing session: <SessionEntry…>`, which dumps crypto key
+// buffers to stdout on every session close (frequent during reconnects and
+// logouts). Filter out just this known-noisy set; genuine console.error
+// output (decrypt failures, session errors) is deliberately left intact.
+function installSignalLogFilter(): void {
+  const g = globalThis as unknown as { __loyableSignalLogFilter?: boolean };
+  if (g.__loyableSignalLogFilter) return;
+  g.__loyableSignalLogFilter = true;
+  const NOISE = /^(Closing session:|Closing open session|Closing stale open session|Opening session:|Migrating session to:|Removing old closed session:|Decrypted message with closed session|Session already (closed|open)|Unhandled bucket type)/;
+  (['info', 'warn'] as const).forEach((method) => {
+    const original = console[method].bind(console);
+    console[method] = (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && NOISE.test(args[0])) return;
+      original(...args);
+    };
+  });
+}
+installSignalLogFilter();
+
 // ── Helpers ──────────────────────────────────────────────────────
 
 function toChatId(phone: string): string {
