@@ -1897,7 +1897,7 @@ const InboxView=({connected}:{connected:boolean})=>{
               </div>
               {c.unread>0&&<div className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:"#25D366",fontSize:"10px"}}>{c.unread}</div>}
             </div>
-          );})
+          );})}
         </div>
       </div>
       {/* Thread */}
