@@ -2492,7 +2492,7 @@ const LoyaltyPage=()=>{
   const [saving,setSaving]=useState(false);
   const [saved,setSaved]=useState(false);
   const [dashKpis,setDashKpis]=useState<any>(null);
-  const [pointsConfig,setPointsConfig]=useState({pointsPerPound:1,referralBonusPoints:50,referralReferrerPoints:25,pointsExpiryDays:365,minRedeemPoints:100,redeemRate:100,emailBonusPoints:0});
+  const [pointsConfig,setPointsConfig]=useState({pointsPerPound:1,referralBonusPoints:50,referralReferrerPoints:25,pointsExpiryDays:365,minRedeemPoints:100,redeemRate:100,emailBonusPoints:0,birthdayBonusPoints:0});
   const [savingConfig,setSavingConfig]=useState(false);
   const [savedConfig,setSavedConfig]=useState(false);
   useEffect(()=>{
@@ -2508,6 +2508,7 @@ const LoyaltyPage=()=>{
         minRedeemPoints:b.minRedeemPoints??100,
         redeemRate:b.redeemRate??100,
         emailBonusPoints:Number(b.portalSettings?.emailBonusPoints??0),
+        birthdayBonusPoints:Number(b.portalSettings?.birthdayBonusPoints??0),
       }));
     }).catch(()=>{});
   },[]);
@@ -2571,6 +2572,7 @@ const LoyaltyPage=()=>{
             {key:"minRedeemPoints",label:"Min points to use wallet (POS)",min:0,max:2000,step:10,icon:"🔑"},
             {key:"redeemRate",label:"Points = 1 currency unit (e.g. 100 pts = £1)",min:1,max:1000,step:1,icon:"💰"},
             {key:"emailBonusPoints",label:"Bonus pts for adding email",min:0,max:500,step:10,icon:"📧"},
+            {key:"birthdayBonusPoints",label:"Bonus pts on customer's birthday",min:0,max:1000,step:10,icon:"🎂"},
           ].map(({key,label,min,max,step,icon})=>(
             <div key={key} className="p-3 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
               <div className="flex items-center gap-1.5 mb-2">

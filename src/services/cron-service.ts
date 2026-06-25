@@ -20,7 +20,7 @@
 import cron                         from 'node-cron';
 import { Prisma }     from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { processBirthdayAutomations, evaluateAndDowngradeTier } from './loyalty-service';
+import { processBirthdayAutomations, creditBirthdayBonuses, evaluateAndDowngradeTier } from './loyalty-service';
 import { enqueueAutomationTrigger, getAutomationQueue } from '../services/messaging-queue';
 import { dispatchFeedbackRequests }   from './feedback-service';
 import { runWhatsAppHealthChecks }    from './whatsapp-reliability';
@@ -81,7 +81,11 @@ const jobRunner = (name: string, fn: () => Promise<Record<string, unknown>>) =>
 // ================================================================
 
 const birthdayJob = async (): Promise<Record<string, unknown>> => {
-  return processBirthdayAutomations();
+  // Credit the configured birthday bonus points, then dispatch any
+  // BIRTHDAY automation messages. Both are keyed to today's birthdays.
+  const bonus     = await creditBirthdayBonuses();
+  const automation = await processBirthdayAutomations();
+  return { bonus, automation };
 };
 
 // ================================================================

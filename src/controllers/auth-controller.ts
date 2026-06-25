@@ -406,6 +406,8 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
             visitBasePoints: true,
             redeemRate:      true,
             minRedeemPoints: true,
+            pointsExpiryDays:true,
+            portalSettings:  true,
             country:         true,
             ntn:             true,
             strn:            true,
@@ -493,12 +495,34 @@ const UpdateMeSchema = z.object({
   visitBasePoints: z.number().int().min(0).max(1000).optional(),
   redeemRate:      z.number().int().min(1).max(100000).optional(),
   minRedeemPoints: z.number().int().min(0).max(100000).optional(),
+  pointsExpiryDays:z.number().int().min(0).max(3650).optional(),
+  // Bonus-point incentives — stored inside the portalSettings JSON blob
+  emailBonusPoints:   z.number().int().min(0).max(100000).optional(),
+  birthdayBonusPoints:z.number().int().min(0).max(100000).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { businessId } = req.tenantContext;
     const body = UpdateMeSchema.parse(req.body);
+
+    // Bonus-point incentives live inside the portalSettings JSON blob. Merge
+    // them into the existing object so other portal keys (wifi, announcement,
+    // menu, etc.) are preserved rather than overwritten.
+    let portalSettingsUpdate: Record<string, unknown> | undefined;
+    if (body.emailBonusPoints !== undefined || body.birthdayBonusPoints !== undefined) {
+      const current = await prisma.business.findUnique({
+        where:  { id: businessId },
+        select: { portalSettings: true },
+      });
+      const ps = (current?.portalSettings as Record<string, unknown> | null) ?? {};
+      portalSettingsUpdate = {
+        ...ps,
+        ...(body.emailBonusPoints    !== undefined && { emailBonusPoints:    body.emailBonusPoints }),
+        ...(body.birthdayBonusPoints !== undefined && { birthdayBonusPoints: body.birthdayBonusPoints }),
+      };
+    }
+
     const updated = await prisma.business.update({
       where: { id: businessId },
       data: {
@@ -521,6 +545,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.visitBasePoints !== undefined && { visitBasePoints: body.visitBasePoints }),
         ...(body.redeemRate      !== undefined && { redeemRate:      body.redeemRate }),
         ...(body.minRedeemPoints !== undefined && { minRedeemPoints: body.minRedeemPoints }),
+        ...(body.pointsExpiryDays!== undefined && { pointsExpiryDays:body.pointsExpiryDays }),
+        ...(portalSettingsUpdate !== undefined && { portalSettings:  portalSettingsUpdate as any }),
       } as any,
       select: { id: true, name: true, industry: true, currency: true, logoUrl: true,
                 country: true, ntn: true, taxNumber: true, gstRate: true, fbrEnabled: true } as any,

@@ -686,6 +686,77 @@ export const processBirthdayAutomations = async (): Promise<{
   return { processed, enqueued, errors };
 };
 
+/**
+ * Credits the configured birthday bonus points to every customer whose
+ * birthday is today. Driven by `portalSettings.birthdayBonusPoints`, so it
+ * works for all businesses — including those without a BIRTHDAY automation —
+ * and matches exactly what the customer portal advertises.
+ *
+ * Idempotent: a ledger entry is keyed by `birthday-<year>` per customer, so
+ * re-running the cron (or a restart) never double-credits within a year.
+ * Marketing consent is NOT required — awarding points is not a marketing
+ * message.
+ */
+export const creditBirthdayBonuses = async (): Promise<{
+  processed: number;
+  credited:  number;
+  skipped:   number;
+  errors:    number;
+}> => {
+  const today = new Date();
+  const month = today.getUTCMonth() + 1;
+  const day   = today.getUTCDate();
+  const year  = today.getUTCFullYear();
+
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true, portalSettings: true },
+  });
+
+  let processed = 0, credited = 0, skipped = 0, errors = 0;
+
+  for (const biz of businesses) {
+    const ps    = (biz.portalSettings as Record<string, unknown> | null) ?? {};
+    const bonus = Math.floor(Number(ps.birthdayBonusPoints ?? 0));
+    if (!Number.isFinite(bonus) || bonus <= 0) continue;
+
+    const birthdayCustomers = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id
+      FROM   customers
+      WHERE  "businessId"   = ${biz.id}
+        AND  "isActive"     = true
+        AND  "isSuppressed" = false
+        AND  birthday IS NOT NULL
+        AND  EXTRACT(MONTH FROM birthday) = ${month}
+        AND  EXTRACT(DAY   FROM birthday) = ${day}
+    `;
+
+    const refId = `birthday-${year}`;
+
+    for (const c of birthdayCustomers) {
+      processed++;
+      try {
+        // Idempotency guard — one birthday credit per customer per year.
+        const existing = await prisma.rewardPointsLedger.findFirst({
+          where:  { customerId: c.id, referenceType: 'BIRTHDAY_BONUS', referenceId: refId },
+          select: { id: true },
+        });
+        if (existing) { skipped++; continue; }
+
+        await prisma.$transaction(async (tx) => {
+          await creditPoints(tx, biz.id, c.id, bonus, 'BIRTHDAY_BONUS', refId, 'BIRTHDAY_BONUS');
+        });
+        credited++;
+      } catch (err) {
+        errors++;
+        console.error(`[loyalty.service] Birthday bonus error for ${c.id}:`, err);
+      }
+    }
+  }
+
+  return { processed, credited, skipped, errors };
+};
+
 // ================================================================
 // PART 7 — READ OPERATIONS (Controller-facing)
 // ================================================================
