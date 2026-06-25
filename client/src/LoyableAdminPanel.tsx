@@ -1086,12 +1086,9 @@ export const LoyalyAdminPanel: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <img src="/black.png" alt="The Loyaly" className="h-8 w-8 object-contain"/>
-            <div>
-              <p className="text-sm font-bold text-slate-800 leading-tight">The Loyaly</p>
-              <p className="text-xs text-slate-400">Platform Admin</p>
-            </div>
+          <div className="flex flex-col gap-1">
+            <img src="/black.png" alt="The Loyaly" className="h-7 w-auto object-contain object-left"/>
+            <p className="text-xs text-slate-400">Platform Admin</p>
           </div>
         </div>
 

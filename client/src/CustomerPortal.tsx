@@ -85,7 +85,7 @@ const STORAGE_KEY = 'loyable_portal';
 function ThemeLogo({ dark, className = '' }: { dark: boolean; className?: string }) {
   return (
     <img
-      src={dark ? '/black.png' : '/white.png'}
+      src={dark ? '/white.png' : '/black.png'}
       alt="The Loyaly"
       className={className}
     />

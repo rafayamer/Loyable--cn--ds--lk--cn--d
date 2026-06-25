@@ -212,16 +212,13 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
   <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:portalDark?"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)":"linear-gradient(180deg,#ffffff 0%,#faf5ff 60%,#ffffff 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:portalDark?"1px solid rgba(139,92,246,0.12)":"1px solid rgba(139,92,246,0.18)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
     {/* Logo area */}
     <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${col?"justify-center flex-col":""}`}>
-      <div className="relative flex-shrink-0">
-        <div className="absolute inset-0 rounded-xl blur-md opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}/>
-        <div className="relative w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.3),rgba(6,182,212,0.2))",border:"1px solid rgba(139,92,246,0.3)"}}>
-          <svg width="24" height="24" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
-        </div>
-      </div>
-      {!col&&<div className="flex-1 min-w-0">
-        <ThemeLogo dark={true} className="w-24 h-6 object-contain object-left"/>
-        <div className="text-slate-500 text-[9px] tracking-wide uppercase">CRM Platform</div>
-      </div>}
+      {col
+        ? <ThemeLogo dark={true} className="w-9 h-9 object-contain"/>
+        : <div className="flex-1 min-w-0">
+            <ThemeLogo dark={true} className="w-28 h-8 object-contain object-left"/>
+            <div className="text-slate-500 text-[9px] tracking-wide uppercase mt-0.5">CRM Platform</div>
+          </div>
+      }
       {!col&&<button onClick={()=>setCol(!col)} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5"><ChevronLeft size={14}/></button>}
       {col&&<button onClick={()=>setCol(!col)} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5 mt-1"><ChevronRight size={14}/></button>}
     </div>
@@ -334,7 +331,7 @@ const pdTokens=(pd:boolean)=>({
 function ThemeLogo({ dark, className = '', style = {} }: { dark: boolean; className?: string; style?: React.CSSProperties }) {
   return (
     <img
-      src={dark ? '/black.png' : '/white.png'}
+      src={dark ? '/white.png' : '/black.png'}
       alt="The Loyaly"
       className={className}
       style={style}
@@ -828,8 +825,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#6d28d9 0%,#7c3aed 40%,#4f46e5 100%)"}}>
           <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
           <div className="relative z-10">
-            <button onClick={()=>setView("landing")} className="flex items-center gap-2 mb-12">
-              <svg width="40" height="40" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
+            <button onClick={()=>setView("landing")} className="mb-12">
+              <img src="/white.png" alt="The Loyaly" className="h-9 w-auto object-contain"/>
             </button>
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
               {view==="signup"?"Create Your The Loyaly Account":"Welcome Back to The Loyaly"}
@@ -853,7 +850,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           {/* Dashboard mockup preview */}
           <div className="relative z-10 mt-6 rounded-2xl overflow-hidden shadow-2xl" style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)"}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{borderColor:"rgba(255,255,255,0.1)"}}>
-              <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
+              <img src="/white.png" alt="" className="w-5 h-5 object-contain"/>
               <span className="text-white text-xs font-semibold">Dashboard</span>
               <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-purple-200 text-[10px]">Davita ▾</span></div>
             </div>
@@ -871,8 +868,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         {/* Right panel — form */}
         <div className="flex-1 flex flex-col" style={{background:bg}}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{borderColor:bdr}}>
-            <button onClick={()=>setView("landing")} className="lg:hidden flex items-center gap-2">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
+            <button onClick={()=>setView("landing")} className="lg:hidden">
+              <ThemeLogo dark={dark} className="h-7 w-auto object-contain"/>
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
               {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
@@ -935,9 +932,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
       {/* ── Navbar ──────────────────────────────────────────── */}
       <nav className="flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 py-4" style={{backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",background:navBg,borderBottom:`1px solid ${bdr}`}}>
-        <button onClick={()=>nav("landing")} className="flex items-center gap-2.5 flex-shrink-0">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6" opacity="0.9"/></svg>
-          <ThemeLogo dark={dark} className="h-6 w-auto object-contain"/>
+        <button onClick={()=>nav("landing")} className="flex items-center flex-shrink-0">
+          <ThemeLogo dark={dark} className="h-7 w-auto object-contain"/>
         </button>
 
         {/* Desktop nav links */}
@@ -1036,7 +1032,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           <div className="absolute -inset-4 rounded-3xl opacity-20 blur-3xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#111118":"#ffffff",borderColor:bdr}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.03)":"#f8fafc",borderColor:bdr}}>
-              <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
+              <img src={D?'/white.png':'/black.png'} alt="" className="w-4 h-4 object-contain"/>
               <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
               <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
             </div>
@@ -1351,9 +1347,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         </div>
         <div className="relative flex flex-col md:flex-row justify-between w-full gap-10 border-b pb-10 mb-6" style={{borderColor:bdr}}>
           <div className="max-w-xs">
-            <div className="flex items-center gap-2 mb-4">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
-              <ThemeLogo dark={dark} className="h-5 w-auto object-contain"/>
+            <div className="mb-4">
+              <ThemeLogo dark={dark} className="h-7 w-auto object-contain"/>
             </div>
             <p className="text-xs leading-relaxed mb-4" style={{color:tx2}}>The all-in-one loyalty and customer retention platform for businesses that want to grow. WhatsApp-first, SMB-focused.</p>
             <div className="flex gap-2">
@@ -1434,7 +1429,7 @@ const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
     <div style={{minHeight:"100vh",background:dark?"#0f0a1e":"#f4f2fb",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
       <div style={card}>
         <div style={{textAlign:"center",marginBottom:"28px"}}>
-          <span style={{fontSize:"28px",fontWeight:800,background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>♥ Loyable</span>
+          <img src={dark?'/white.png':'/black.png'} alt="The Loyaly" style={{height:40,objectFit:'contain',marginBottom:4}}/>
           <p style={{marginTop:"8px",fontSize:"15px",fontWeight:600,color:dark?"#e2d9f3":"#1e1333"}}>Accept Your Invitation</p>
           <p style={{fontSize:"13px",color:dark?"#9488b8":"#6b7280",marginTop:"4px"}}>Set your name and password to get started</p>
         </div>
@@ -5704,8 +5699,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role} portalDark={portalDark} setPortalDark={setPortalDark}/></div>
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${pt.bdr}`}}>
-        <div className="flex items-center gap-2">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 27.5C16 27.5 4 19.5 4 11a6 6 0 0 1 12-0.3A6 6 0 0 1 28 11c0 8.5-12 16.5-12 16.5Z" fill="#8b5cf6"/></svg>
+        <div className="flex items-center">
+          <ThemeLogo dark={portalDark} className="h-6 w-auto object-contain"/>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 capitalize">{NAV_ALL.find(n=>n.id===page)?.label||""}</span>
