@@ -1869,6 +1869,7 @@ const InboxView=({connected}:{connected:boolean})=>{
       <p className="text-sm font-medium" style={{color:sub}}>Connect WhatsApp in Settings to see your inbox</p>
     </div>
   );
+  const phoneRe=/^\+?\d[\d\s-]+$/;
   return(
     <div className="flex rounded-xl overflow-hidden" style={{height:"calc(100vh - 200px)",background:card,border:`1px solid ${border}`}}>
       {/* Conversation list */}
@@ -1878,7 +1879,7 @@ const InboxView=({connected}:{connected:boolean})=>{
           {loading?<div className="p-4 text-center"><RefreshCw size={18} className="animate-spin text-slate-500 mx-auto"/></div>
           :convos.length===0?<div className="p-6 text-center text-xs" style={{color:sub}}>No messages yet.<br/>Send a message to start a conversation.</div>
           :convos.map(c=>{
-            const hasRealName=c.name&&c.name!==c.phone&&!/^\+?\d[\d\s\-]+$/.test(c.name);
+            const hasRealName=c.name&&c.name!==c.phone&&!phoneRe.test(c.name);
             const displayName=hasRealName?c.name:c.phone||"Unknown";
             const displayPhone=hasRealName?c.phone:null;
             return(
@@ -1910,10 +1911,10 @@ const InboxView=({connected}:{connected:boolean})=>{
           <>
             <div className="flex items-center gap-3 p-3 border-b" style={{borderColor:border}}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>
-                {(active.name&&active.name!==active.phone&&!/^\+?\d[\d\s\-]+$/.test(active.name)?active.name:active.phone||"?")[0]?.toUpperCase()}
+                {(active.name&&active.name!==active.phone&&!phoneRe.test(active.name)?active.name:active.phone||"?")[0]?.toUpperCase()}
               </div>
               <div>
-                {active.name&&active.name!==active.phone&&!/^\+?\d[\d\s\-]+$/.test(active.name)
+                {active.name&&active.name!==active.phone&&!phoneRe.test(active.name)
                   ?<><p className="text-sm font-semibold" style={{color:txt}}>{active.name}</p><p className="text-xs" style={{color:sub}}>{active.phone}</p></>
                   :<p className="text-sm font-semibold" style={{color:txt}}>{active.phone||active.name}</p>
                 }
