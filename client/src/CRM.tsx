@@ -697,6 +697,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const LS_FEATURES=[
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,title:"QR Check-In",desc:"Instant QR scanning for seamless customer check-ins."},
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,title:"Loyalty Programs",desc:"Create membership tiers and reward loyal customers."},
+    {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>,title:"Built-in POS",desc:"Take payments at the counter and let customers pay with loyalty points — bill adjusts automatically."},
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,title:"Points System",desc:"Reward points automatically for every visit or purchase."},
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,title:"Coupons & Offers",desc:"Create powerful discount coupons and exclusive offers."},
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,title:"Automated Campaigns",desc:"WhatsApp and email campaigns on autopilot."},
@@ -1008,7 +1009,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         </div>
 
         {/* Headline */}
-        <h1 className="mt-2 text-5xl md:text-[64px] font-black leading-tight max-w-3xl tracking-tight" style={{color:tx}}>
+        <h1 className="mt-2 text-4xl sm:text-5xl md:text-[64px] font-black leading-tight max-w-3xl tracking-tight px-2" style={{color:tx}}>
           Turn One-Time Customers Into{" "}
           <span style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
         </h1>
@@ -1097,12 +1098,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Features</p>
         <h2 className="text-3xl font-black text-center mx-auto mt-1" style={{color:tx}}>Everything You Need to Build Loyalty</h2>
         <p className="mt-2 max-w-xl mx-auto text-sm" style={{color:tx2}}>All the tools you need to engage, reward and retain your customers — in one platform.</p>
-        <div className="flex flex-wrap items-center justify-center gap-5 mt-12 max-w-6xl mx-auto">
+        <div className="mt-12 max-w-6xl mx-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"16px"}}>
           {LS_FEATURES.map((f,i)=>(
-            <div key={i} className="p-6 rounded-xl space-y-3 border text-left transition-all hover:shadow-md hover:-translate-y-0.5 w-64" style={{border:`1px solid ${bdr}`,background:card}}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:D?"rgba(139,92,246,0.15)":"#ede9fe",color:"#8b5cf6"}}>{f.icon}</div>
-              <h3 className="text-sm font-semibold" style={{color:tx}}>{f.title}</h3>
-              <p className="text-xs leading-relaxed" style={{color:tx2}}>{f.desc}</p>
+            <div key={i} className="rounded-xl border text-left transition-all hover:shadow-md hover:-translate-y-0.5" style={{border:`1px solid ${bdr}`,background:card,padding:"22px",display:"flex",flexDirection:"column",gap:"12px"}}>
+              <div className="rounded-xl flex items-center justify-center" style={{width:"40px",height:"40px",background:D?"rgba(139,92,246,0.15)":"#ede9fe",color:"#8b5cf6"}}>{f.icon}</div>
+              <h3 className="font-semibold" style={{color:tx,fontSize:"14px"}}>{f.title}</h3>
+              <p className="leading-relaxed" style={{color:tx2,fontSize:"12px"}}>{f.desc}</p>
             </div>
           ))}
         </div>
