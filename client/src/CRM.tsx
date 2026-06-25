@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, createContext, useContext, la
 const QRCodeSVG = lazy(()=>import("qrcode.react").then(m=>({default:m.QRCodeSVG})));
 import { api } from "./api/index";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
-import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon, QrCode, ScanLine, ExternalLink, UserCheck, Upload } from "lucide-react";
+import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, Search, Plus, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Send, CheckCheck, Clock, Star, Crown, UserPlus, UserMinus, Gift, TrendingUp, Bell, Menu, X, ChevronLeft, Mail, Phone, Building, Globe, CreditCard, Shield, Palette, Play, Edit, Target, Heart, Check, LayoutDashboard, Image, Paperclip, FileText, ArrowLeft, RefreshCw, CircleCheck, Info, WifiOff, Database, Brain, Activity, AlertTriangle, Table, Terminal, Layers, Download, Wifi, Tag, Link, Type, MousePointer, Cpu, Award, Repeat, RotateCcw, Sliders, Gift as GiftIcon, Star as StarIcon, Zap as ZapIcon, ChevronDown, ChevronUp, Hash, DollarSign, ShoppingBag, MoreVertical, Filter, Copy, Trash2, Smartphone, Lock, ShoppingCart, Receipt, Printer, CheckCircle, XCircle, Wifi as WifiIcon, QrCode, ScanLine, ExternalLink, UserCheck, Upload } from "lucide-react";
 
 // ════════════════════════════════════════════════════════════════
 // SCHEMA ENUMS (mirrors Prisma schema)
@@ -4305,7 +4305,7 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
 
   useEffect(()=>{
     if(!showTest)return;
-    api.customers.list({limit:50,search:custSearch||undefined}).then((d:any)=>setCustomers(d.customers??d??[])).catch(()=>{});
+    api.customers.list({limit:50,q:custSearch||undefined}).then((d:any)=>setCustomers(d.customers??d??[])).catch(()=>{});
   },[showTest,custSearch]);
 
   const testFire=async(customerId:string,customerName:string)=>{
@@ -5621,7 +5621,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
   if(window.location.pathname==="/auth/accept-invite")return(
-    <ThemeCtx.Provider value={{dark:true,toggle:()=>{}}}>
+    <ThemeCtx.Provider value={{dark:true}}>
       <AcceptInvitePage onLogin={(u:any)=>{
         if(u?.role)localStorage.setItem("userRole",u.role);
         onRoleChange?.(u?.role??'');
