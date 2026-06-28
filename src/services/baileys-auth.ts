@@ -78,13 +78,21 @@ export async function clearAuthState(bizId: string): Promise<void> {
   try {
     const redis = getRedisClient();
     const pattern = KEY_PREFIX(bizId) + '*';
-    let cursor = 0;
+    // Use the raw SCAN command via sendCommand so behaviour is stable across
+    // node-redis client versions. (The previous ioredis-style positional
+    // scan() call threw and was swallowed by the catch, so credentials were
+    // never actually deleted — which broke the "force fresh" reset and left
+    // zombie sessions resuming dead credentials on every reboot.)
+    let cursor = '0';
     do {
-      const [next, keys] = await (redis as any).scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-      cursor = Number(next);
+      const reply: any = await (redis as any).sendCommand(['SCAN', cursor, 'MATCH', pattern, 'COUNT', '200']);
+      cursor = Array.isArray(reply) ? String(reply[0]) : '0';
+      const keys: string[] = Array.isArray(reply) ? (reply[1] ?? []) : [];
       if (keys.length) await redis.del(keys);
-    } while (cursor !== 0);
-  } catch { /* best-effort */ }
+    } while (cursor !== '0');
+  } catch (e) {
+    console.warn('[baileys-auth] clearAuthState failed for %s: %s', bizId, (e as Error)?.message);
+  }
 }
 
 /** Returns true if there are stored credentials (session can auto-reconnect). */
