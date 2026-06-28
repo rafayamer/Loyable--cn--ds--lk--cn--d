@@ -4116,21 +4116,30 @@ const WhatsAppSettingsTab=()=>{
         </div>
       )}
 
-      {/* Advanced config — collapsed by default */}
+      {/* Advanced config — collapsed by default. WAHA override fields are
+          only relevant when the platform is running the external WAHA
+          provider; with the default in-process gateway there's nothing to
+          configure, so we show a short explainer instead. */}
       <div>
         <button onClick={()=>setShowAdvanced(v=>!v)} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
           <RefreshCw size={10}/>{showAdvanced?"Hide":"Show"} advanced settings
         </button>
-        {showAdvanced&&<div className="mt-3 space-y-3 p-4 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
-          <div className="text-xs text-slate-400 mb-2">Override WAHA server defaults (leave blank to use server config)</div>
-          {[{l:"WAHA Base URL",k:"wahaBaseUrl",ph:"http://localhost:3001"},{l:"Session Name",k:"wahaSessionId",ph:"default"},{l:"API Key",k:"wahaApiKey",ph:"••••••",type:"password"}].map(f=>(
-            <div key={f.k}>
-              <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
-              <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-            </div>
-          ))}
-          <button onClick={saveAdvanced} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"rgba(139,92,246,0.3)"}}>{saving?"Saving…":"Save"}</button>
-        </div>}
+        {showAdvanced&&(status?.provider==="BAILEYS"
+          ?<div className="mt-3 p-4 rounded-xl text-xs text-slate-400 leading-relaxed" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div className="flex items-center gap-1.5 text-slate-300 font-medium mb-1"><Shield size={12} className="text-green-400"/>Built-in WhatsApp gateway</div>
+            WhatsApp runs directly inside Loyable — no external server to configure. Just scan the QR code above to connect your number.
+          </div>
+          :<div className="mt-3 space-y-3 p-4 rounded-xl" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div className="text-xs text-slate-400 mb-2">Override WAHA server defaults (leave blank to use server config)</div>
+            {[{l:"WAHA Base URL",k:"wahaBaseUrl",ph:"http://localhost:3001"},{l:"Session Name",k:"wahaSessionId",ph:"default"},{l:"API Key",k:"wahaApiKey",ph:"••••••",type:"password"}].map(f=>(
+              <div key={f.k}>
+                <label className="text-xs text-slate-400 mb-1 block">{f.l}</label>
+                <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              </div>
+            ))}
+            <button onClick={saveAdvanced} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"rgba(139,92,246,0.3)"}}>{saving?"Saving…":"Save"}</button>
+          </div>
+        )}
       </div>
     </div>
   );
