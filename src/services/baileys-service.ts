@@ -44,6 +44,16 @@ interface BaileysSession {
 
 const sessions = new Map<string, BaileysSession>();
 const loggingOut = new Set<string>(); // guard against duplicate logout handlers
+const starting   = new Set<string>(); // prevents overlapping start calls
+const manualStop = new Set<string>(); // marks a deliberate stop so close-handler skips reconnect
+const reconnectTimers   = new Map<string, NodeJS.Timeout>();
+const reconnectAttempts = new Map<string, number>();
+const MAX_RECONNECTS = 5; // give up after this many consecutive transient failures
+
+function clearReconnectTimer(bizId: string): void {
+  const t = reconnectTimers.get(bizId);
+  if (t) { clearTimeout(t); reconnectTimers.delete(bizId); }
+}
 
 const QR_REDIS_KEY  = (bizId: string) => `baileys:qr:${bizId}`;
 const QR_TTL_SECS   = 60;
@@ -91,6 +101,20 @@ async function clearQr(bizId: string): Promise<void> {
 // ── Core: create a socket for one business ───────────────────────
 
 export async function startBaileysSession(bizId: string, forceFresh = false): Promise<void> {
+  // Guard against overlapping starts (boot + reconnect + user click can race),
+  // which is what produced the runaway "disconnected → reconnecting" storm.
+  if (starting.has(bizId)) return;
+  starting.add(bizId);
+  try {
+    await startBaileysSessionInner(bizId, forceFresh);
+  } finally {
+    starting.delete(bizId);
+  }
+}
+
+async function startBaileysSessionInner(bizId: string, forceFresh: boolean): Promise<void> {
+  clearReconnectTimer(bizId);
+
   // Tear down any existing socket first
   await stopBaileysSession(bizId);
 
@@ -98,7 +122,7 @@ export async function startBaileysSession(bizId: string, forceFresh = false): Pr
   // into registration (QR) mode. Without this, lingering invalid creds make
   // Baileys try to *resume* a dead session — it logs out and never emits a
   // QR, so the "Connect WhatsApp" screen hangs forever.
-  if (forceFresh) await clearAuthState(bizId).catch(() => {});
+  if (forceFresh) { await clearAuthState(bizId).catch(() => {}); reconnectAttempts.delete(bizId); }
 
   // A transient network hiccup fetching the latest WA version must not block
   // connection — makeWASocket ships a sane bundled default when omitted.
@@ -156,6 +180,8 @@ export async function startBaileysSession(bizId: string, forceFresh = false): Pr
     if (connection === 'open') {
       session.status  = 'WORKING';
       session.qrCode  = null;
+      reconnectAttempts.delete(bizId);
+      clearReconnectTimer(bizId);
       await clearQr(bizId);
       // Persist the connected timestamp
       await prisma.business.update({
@@ -166,6 +192,9 @@ export async function startBaileysSession(bizId: string, forceFresh = false): Pr
     }
 
     if (connection === 'close') {
+      // Deliberate teardown (stop / restart) — never auto-reconnect.
+      if (manualStop.has(bizId)) return;
+
       const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const loggedOut = reason === DisconnectReason.loggedOut;
 
@@ -175,18 +204,47 @@ export async function startBaileysSession(bizId: string, forceFresh = false): Pr
         console.log('[baileys] %s logged out — clearing credentials', bizId);
         session.status = 'STOPPED';
         sessions.delete(bizId);
+        clearReconnectTimer(bizId);
+        reconnectAttempts.delete(bizId);
         await clearAuthState(bizId);
         await clearQr(bizId);
         loggingOut.delete(bizId);
-      } else {
-        // Transient disconnect — reconnect after short backoff
-        session.status = 'STARTING';
-        const backoffMs = reason === DisconnectReason.restartRequired ? 1_000 : 5_000;
-        console.log('[baileys] %s disconnected (reason=%s) — reconnecting in %dms', bizId, reason, backoffMs);
-        setTimeout(() => startBaileysSession(bizId).catch(e =>
-          console.error('[baileys] reconnect error for %s: %s', bizId, e?.message)
-        ), backoffMs);
+        return;
       }
+
+      // A close while still waiting for a QR scan (no credentials yet) means
+      // the QR expired or the link attempt was abandoned. Don't hammer a
+      // reconnect loop — leave it STOPPED so the user can re-initiate.
+      const hasCreds = await hasStoredCredentials(bizId).catch(() => false);
+      if (!hasCreds) {
+        console.log('[baileys] %s closed before linking (reason=%s) — awaiting fresh connect', bizId, reason);
+        session.status = 'STOPPED';
+        sessions.delete(bizId);
+        clearReconnectTimer(bizId);
+        return;
+      }
+
+      // Transient disconnect on a *linked* session — bounded reconnect.
+      const attempts = (reconnectAttempts.get(bizId) ?? 0) + 1;
+      if (attempts > MAX_RECONNECTS) {
+        console.warn('[baileys] %s gave up after %d reconnect attempts', bizId, MAX_RECONNECTS);
+        session.status = 'FAILED';
+        sessions.delete(bizId);
+        clearReconnectTimer(bizId);
+        reconnectAttempts.delete(bizId);
+        return;
+      }
+      reconnectAttempts.set(bizId, attempts);
+      session.status = 'STARTING';
+      const backoffMs = reason === DisconnectReason.restartRequired ? 1_000 : Math.min(30_000, 5_000 * attempts);
+      console.log('[baileys] %s disconnected (reason=%s) — reconnect %d/%d in %dms', bizId, reason, attempts, MAX_RECONNECTS, backoffMs);
+      clearReconnectTimer(bizId);
+      reconnectTimers.set(bizId, setTimeout(() => {
+        reconnectTimers.delete(bizId);
+        startBaileysSession(bizId).catch(e =>
+          console.error('[baileys] reconnect error for %s: %s', bizId, e?.message)
+        );
+      }, backoffMs));
     }
   });
 
@@ -210,13 +268,20 @@ export async function startBaileysSession(bizId: string, forceFresh = false): Pr
 }
 
 export async function stopBaileysSession(bizId: string): Promise<void> {
+  clearReconnectTimer(bizId);
   const existing = sessions.get(bizId);
   if (!existing) return;
+  // Mark the close as deliberate so the connection.update('close') handler
+  // does NOT schedule a reconnect (this was the source of the reconnect storm:
+  // every start() tears down the old socket, which fired a reconnect).
+  manualStop.add(bizId);
   try {
     existing.socket.end(new Error('manual_stop'));
   } catch { /* already closed */ }
   sessions.delete(bizId);
   await clearQr(bizId);
+  // Release the guard shortly after — long enough for the close event to fire.
+  setTimeout(() => manualStop.delete(bizId), 2_000);
 }
 
 // ── Status & QR ──────────────────────────────────────────────────
