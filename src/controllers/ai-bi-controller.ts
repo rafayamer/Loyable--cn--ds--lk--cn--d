@@ -273,7 +273,7 @@ interface LLMMessage { role: 'system' | 'user' | 'assistant'; content: string; }
 export const isAIConfigured = (): boolean =>
   !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
 
-const callLLM = async (messages: LLMMessage[], maxTokens = 500): Promise<string> => {
+export const callLLM = async (messages: LLMMessage[], maxTokens = 500): Promise<string> => {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const openaiKey    = process.env.OPENAI_API_KEY;
 

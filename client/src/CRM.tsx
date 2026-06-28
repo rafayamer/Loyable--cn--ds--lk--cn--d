@@ -1473,6 +1473,9 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const [snapshot,setSnapshot]=useState<any[]>([]);
   const [analyticsLoading,setAnalyticsLoading]=useState(true);
   const [atRisk,setAtRisk]=useState<any[]>([]);
+  const [exec,setExec]=useState<any>(null);
+  const [advisor,setAdvisor]=useState<any>(null);
+  const [advisorLoading,setAdvisorLoading]=useState(true);
 
   const applyPreset=(p:"7d"|"30d"|"90d")=>{
     const days=p==="7d"?7:p==="30d"?30:90;
@@ -1491,6 +1494,10 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
       setAtRisk(ranked);
     }).catch(()=>{});
     api.analytics.snapshot(preset==="7d"?7:preset==="90d"?90:30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setAnalyticsLoading(false));
+    const days=preset==="7d"?7:preset==="90d"?90:30;
+    api.dashboard.overview(days).then(setExec).catch(()=>{});
+    setAdvisorLoading(true);
+    api.dashboard.advisor().then(setAdvisor).catch(()=>{}).finally(()=>setAdvisorLoading(false));
   },[preset]);
 
   useEffect(()=>{load();},[load]);
@@ -1505,6 +1512,17 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const avgLtv=latest.averageLtv!=null?`£${Math.round(Number(latest.averageLtv))}`:"-";
   const churnRate=latest.churnRate!=null?`${Math.round(Number(latest.churnRate))}%`:"-";
   const repeatRate=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
+
+  // ── Executive dashboard derived state ──────────────────────────
+  const ek=exec?.kpis??{};
+  const ew=exec?.widgets??{};
+  const money=(v:number)=>`£${Math.round(v??0).toLocaleString()}`;
+  const ekMoney=(key:string)=>({value:money(ek[key]?.value),change:ek[key]?.deltaPct!=null?`${ek[key].deltaPct>=0?"+":""}${ek[key].deltaPct}%`:undefined,positive:ek[key]?.trend!=="down"});
+  const ekNum=(key:string,suffix="")=>({value:`${Math.round(ek[key]?.value??0).toLocaleString()}${suffix}`,change:ek[key]?.deltaPct!=null?`${ek[key].deltaPct>=0?"+":""}${ek[key].deltaPct}%`:undefined,positive:ek[key]?.trend!=="down"});
+  const tasks=exec?.tasks??[];
+  const SEV_COLOR:Record<string,string>={opportunity:C.accent,positive:C.green,warning:C.amber,critical:C.red};
+  const PRI_COLOR:Record<string,string>={HIGH:C.red,MEDIUM:C.amber,LOW:C.accent};
+  const go=(path:string)=>{const seg=path.replace(/^\//,"").split("/")[0]||"dashboard";const map:Record<string,string>={customers:"customers",campaigns:"campaigns",automations:"automations",settings:"settings"};setPage(map[seg]??"dashboard");};
 
   return(
     <div className="space-y-5" style={{color:ct.tx}}>
@@ -1552,6 +1570,100 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
           <KPI icon={Repeat} label="Repeat Visit Rate" value={repeatRate} change="came back" positive color={C.green}/>
         </>}
       </div>
+
+      {/* ═══ EXECUTIVE REVENUE KPIs (recovered / loyalty / referral) ═══ */}
+      <div>
+        <div className="flex items-center gap-2 mb-3"><DollarSign size={15} style={{color:C.green}}/><h2 className="text-sm font-bold text-white">Where your revenue comes from</h2><span className="text-[11px] text-slate-500">last {exec?.windowDays??30} days</span></div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {!exec?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
+            <KPI icon={DollarSign} label="Total Revenue" {...ekMoney("revenue")} color={C.green} sub="all visits in period"/>
+            <KPI icon={RotateCcw} label="Recovered Revenue" {...ekMoney("recoveredRevenue")} color={C.accent} sub="won back by automations"/>
+            <KPI icon={Crown} label="Loyalty Revenue" {...ekMoney("loyaltyRevenue")} color={C.amber} sub="from tier members"/>
+            <KPI icon={UserPlus} label="Referral Revenue" {...ekMoney("referralRevenue")} color={C.pink} sub="from referred customers"/>
+            <KPI icon={ShoppingBag} label="Avg. Order Value" {...ekMoney("averageOrderValue")} color={C.blue}/>
+            <KPI icon={TrendingUp} label="Customer LTV" {...ekMoney("customerLifetimeValue")} color={C.primary} sub="avg lifetime spend"/>
+            <KPI icon={Activity} label="Customer Health" value={`${Math.round(ek.customerHealth?.value??0)}/100`} change={ek.customerHealth?.deltaPct!=null?`${ek.customerHealth.deltaPct>=0?"+":""}${ek.customerHealth.deltaPct}%`:undefined} positive={ek.customerHealth?.trend!=="down"} color={C.green} sub="retention + sentiment"/>
+            <KPI icon={Star} label="Reviews" {...ekNum("reviews")} color={C.amber} sub="feedback received"/>
+          </>}
+        </div>
+      </div>
+
+      {/* ═══ TODAY'S TASKS + AI BUSINESS ADVISOR ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Today's Tasks */}
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2"><CheckCircle size={15} style={{color:C.primary}}/><h3 className="text-sm font-bold text-white">Today's Tasks</h3></div>
+            {tasks.length>0&&<span className="text-[11px] px-2 py-0.5 rounded-full font-semibold" style={{background:C.red+"22",color:C.red}}>{tasks.filter((t:any)=>t.priority==="HIGH").length} urgent</span>}
+          </div>
+          {!exec?<div className="space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-14"/>)}</div>:
+            tasks.length===0?<div className="py-8 text-center text-slate-500 text-sm">🎉 You're all caught up. Nothing needs your attention right now.</div>:
+            <div className="space-y-2">{tasks.map((t:any)=>(
+              <div key={t.id} className="flex items-start gap-3 p-3 rounded-lg" style={{background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.05)"}}>
+                <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{background:PRI_COLOR[t.priority]}}/>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold text-white">{t.title}</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">{t.detail}</div>
+                </div>
+                <button onClick={()=>go(t.actionPath)} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg flex-shrink-0 whitespace-nowrap" style={{background:PRI_COLOR[t.priority]+"22",color:PRI_COLOR[t.priority]}}>{t.actionLabel}</button>
+              </div>
+            ))}</div>}
+        </div>
+
+        {/* AI Business Advisor */}
+        <div className="gc rounded-xl p-4" style={{...CARD,border:"1px solid rgba(139,92,246,0.25)"}}>
+          <div className="flex items-center gap-2 mb-3"><Brain size={15} style={{color:C.primary}}/><h3 className="text-sm font-bold text-white">AI Business Advisor</h3><span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"/></div>
+          {advisorLoading?<div className="space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-16"/>)}</div>:
+            (!advisor||(advisor.insights??[]).length===0)?<div className="py-8 text-center text-slate-500 text-sm">Keep using The Loyaly — once there's enough activity, your advisor will surface ways to grow.</div>:
+            <div className="space-y-3">
+              {advisor.summary&&<div className="text-[12px] text-slate-200 leading-relaxed p-3 rounded-lg" style={{background:"rgba(139,92,246,0.1)"}}>💡 {advisor.summary}</div>}
+              {(advisor.insights??[]).map((ins:any)=>(
+                <div key={ins.id} className="p-3 rounded-lg" style={{background:"rgba(255,255,255,0.025)",borderLeft:`2px solid ${SEV_COLOR[ins.severity]||C.primary}`}}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[13px] font-semibold text-white">{ins.title}</span>
+                    {ins.metric&&<span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{background:(SEV_COLOR[ins.severity]||C.primary)+"22",color:SEV_COLOR[ins.severity]||C.primary}}>{ins.metric}</span>}
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-snug mb-2">{ins.body}</div>
+                  <button onClick={()=>go(ins.actionPath)} className="text-[11px] font-semibold flex items-center gap-1" style={{color:SEV_COLOR[ins.severity]||C.primary}}>{ins.actionLabel}<ChevronRight size={12}/></button>
+                </div>
+              ))}
+            </div>}
+        </div>
+      </div>
+
+      {/* ═══ OPERATIONAL WIDGETS (loyalty / staff / birthdays / alerts) ═══ */}
+      {exec&&<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Loyalty performance */}
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <div className="flex items-center gap-2 mb-3"><Crown size={14} style={{color:C.amber}}/><h3 className="text-sm font-semibold text-white">Loyalty Performance</h3></div>
+          <div className="text-2xl font-bold text-white">{(ew.loyaltyPerformance?.pointsOutstanding??0).toLocaleString()}</div>
+          <div className="text-[11px] text-slate-500 mb-3">points outstanding (liability)</div>
+          <div className="space-y-1.5">{(ew.loyaltyPerformance?.tiers??[]).slice(0,4).map((t:any)=>(
+            <div key={t.id} className="flex items-center justify-between text-xs"><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:t.color||C.amber}}/><span className="text-slate-300">{t.name}</span></span><span className="text-white font-medium">{t.members} members</span></div>
+          ))}{(ew.loyaltyPerformance?.tiers??[]).length===0&&<div className="text-[11px] text-slate-500">No tiers configured yet.</div>}</div>
+        </div>
+
+        {/* Staff performance */}
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <div className="flex items-center gap-2 mb-3"><UserCheck size={14} style={{color:C.accent}}/><h3 className="text-sm font-semibold text-white">Staff Performance</h3></div>
+          {(ew.staffPerformance??[]).length===0?<div className="py-6 text-center text-[11px] text-slate-500">No staff-attributed sales in this period.</div>:
+            <div className="space-y-2">{(ew.staffPerformance??[]).slice(0,5).map((s:any,i:number)=>(
+              <div key={s.staffId??i} className="flex items-center justify-between text-xs"><span className="text-slate-300 truncate">{s.staffId?`Staff ${String(s.staffId).slice(-4)}`:"Unassigned"}</span><span className="text-white font-medium">{money(s.revenue)} · {s.visits} visits</span></div>
+            ))}</div>}
+        </div>
+
+        {/* Birthdays + alerts */}
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <div className="flex items-center gap-2 mb-3"><Gift size={14} style={{color:C.pink}}/><h3 className="text-sm font-semibold text-white">Upcoming Birthdays</h3></div>
+          {(ew.birthdays??[]).length===0?<div className="text-[11px] text-slate-500 mb-3">No birthdays in the next 7 days.</div>:
+            <div className="space-y-1.5 mb-3">{(ew.birthdays??[]).slice(0,4).map((b:any)=>(
+              <div key={b.id} className="flex items-center justify-between text-xs"><span className="text-slate-300 truncate">🎂 {b.fullName}</span><span className="text-slate-500">{new Date(b.birthday).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span></div>
+            ))}</div>}
+          {(ew.systemAlerts??[]).length>0&&<div className="space-y-1.5 pt-2 border-t" style={{borderColor:"rgba(255,255,255,0.06)"}}>{(ew.systemAlerts??[]).map((a:any,i:number)=>(
+            <div key={i} className="flex items-start gap-1.5 text-[11px]"><AlertTriangle size={12} className="mt-0.5 flex-shrink-0" style={{color:a.level==="critical"?C.red:C.amber}}/><span className="text-slate-400">{a.message}</span></div>
+          ))}</div>}
+        </div>
+      </div>}
 
       {/* Quota bar (compact) */}
       {k&&k.quotaTotal>0&&<div className="gc rounded-xl px-4 py-3" style={CARD}>

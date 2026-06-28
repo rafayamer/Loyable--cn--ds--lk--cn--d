@@ -85,6 +85,29 @@ export const api = {
       visitTrend: { day: string; visits: number; revenue: number }[];
       segments:   { name: string; value: number }[];
     }>('/loyalty/dashboard'),
+
+    // Executive dashboard: KPIs + operational widgets + today's tasks
+    overview: (days?: number) => get<{
+      windowDays: number;
+      generatedAt: string;
+      kpis: Record<string, { value: number; deltaPct: number | null; trend: 'up' | 'down' | 'flat' }>;
+      widgets: Record<string, any>;
+      tasks: Array<{
+        id: string; type: string; priority: 'HIGH' | 'MEDIUM' | 'LOW';
+        title: string; detail: string; actionPath: string; actionLabel: string;
+        customerId?: string; refId?: string;
+      }>;
+    }>(`/dashboard/overview?days=${days ?? 30}`),
+
+    // AI Business Advisor: rules-engine insights + optional LLM summary
+    advisor: () => get<{
+      generatedAt: string;
+      summary: string | null;
+      insights: Array<{
+        id: string; category: string; severity: 'opportunity' | 'warning' | 'critical' | 'positive';
+        title: string; body: string; metric?: string; actionLabel: string; actionPath: string;
+      }>;
+    }>('/dashboard/advisor'),
   },
 
   // ── Customers ─────────────────────────────────────────────────
