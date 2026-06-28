@@ -140,6 +140,7 @@ const mapCustomer = (c: any) => ({
   points:       c.pointsBalance ?? c.currentPointsBalance ?? 0,
   tier:         c.currentTier?.name ?? (c.currentTierId ? "Member" : "Bronze"),
   referralCode: c.referralCode ?? "",
+  tags:         c.tags ?? [],
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -1738,30 +1739,55 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
 const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
   const ct=useCard();
   const [q,setQ]=useState("");const [seg,setSeg]=useState("ALL");
+  const [tag,setTag]=useState("");const [consent,setConsent]=useState("");const [sort,setSort]=useState("recent:desc");
   const [customers,setCustomers]=useState<any[]>([]);
   const [total,setTotal]=useState(0);
   const [loading,setLoading]=useState(true);
+  const [views,setViews]=useState<any[]>([]);
+  const [exporting,setExporting]=useState(false);
+  const [showSave,setShowSave]=useState(false);const [viewName,setViewName]=useState("");
   const segs=["ALL","NEW","LOYAL","VIP","AT_RISK","BIG_SPENDER","COUPON_HUNTER","LOST"];
+  const params=()=>{const p:any={limit:100,sort};if(seg!=="ALL")p.segment=seg;if(q)p.q=q;if(tag)p.tag=tag;if(consent)p.consent=consent;return p;};
+  const loadViews=()=>api.customers.savedViews().then(d=>setViews(d.views??[])).catch(()=>{});
+  useEffect(()=>{loadViews();},[]);
   useEffect(()=>{
     setLoading(true);
-    const params:any={limit:100};
-    if(seg!=="ALL")params.segment=seg;
-    if(q)params.q=q;
-    api.customers.list(params).then(d=>{setCustomers(d.customers.map(mapCustomer));setTotal(d.total);}).catch(()=>{}).finally(()=>setLoading(false));
-  },[q,seg]);
+    api.customers.search(params()).then(d=>{setCustomers(d.customers.map(mapCustomer));setTotal(d.total);}).catch(()=>{
+      // Fall back to the legacy list endpoint if the rich one is unavailable
+      api.customers.list({limit:100,...(seg!=="ALL"?{segment:seg}:{}),...(q?{q}:{})}).then(d=>{setCustomers(d.customers.map(mapCustomer));setTotal(d.total);}).catch(()=>{});
+    }).finally(()=>setLoading(false));
+  },[q,seg,tag,consent,sort]);
+  const applyView=(v:any)=>{const f=v.filtersJson||{};setQ(f.q||"");setSeg(f.segment||"ALL");setTag(f.tag||"");setConsent(f.consent||"");setSort(f.sort||"recent:desc");};
+  const saveView=async()=>{if(!viewName.trim())return;try{await api.customers.createSavedView(viewName.trim(),{q,segment:seg,tag,consent,sort});setViewName("");setShowSave(false);loadViews();}catch{}};
+  const doExport=async()=>{setExporting(true);try{await api.customers.exportCsv(params());}catch{}finally{setExporting(false);}};
   const filtered=customers;
+  const SORTS:[string,string][]=[["recent:desc","Recent visit"],["spend:desc","Top spend"],["visits:desc","Most visits"],["points:desc","Most points"],["name:asc","Name A–Z"],["created:desc","Newest"]];
   return(
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2"><div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Customers</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>{loading?"Loading…":`${total} total · 7 segments`}</p></div></div>
-      <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name or phone…" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/></div>
-        <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Customers</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>{loading?"Loading…":`${total} total · your retention intelligence`}</p></div>
+        <button onClick={doExport} disabled={exporting} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium" style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${ct.inpBd}`,color:ct.tx2}}>{exporting?<RefreshCw size={13} className="animate-spin"/>:<Download size={13}/>}Export CSV</button>
       </div>
+      {/* Saved views */}
+      {views.length>0&&<div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11px]" style={{color:ct.tx3}}>Saved views:</span>
+        {views.map(v=><span key={v.id} className="group flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] cursor-pointer" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}} onClick={()=>applyView(v)}><Eye size={10}/>{v.name}{v.isShared&&<span className="opacity-60">·shared</span>}<X size={10} className="opacity-0 group-hover:opacity-70 hover:!opacity-100" onClick={(e)=>{e.stopPropagation();api.customers.deleteSavedView(v.id).then(loadViews);}}/></span>)}
+      </div>}
+      {/* Filter bar */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, phone or email…" className="w-full pl-9 pr-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/></div>
+        <input value={tag} onChange={e=>setTag(e.target.value)} placeholder="Tag…" className="w-28 px-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+        <select value={consent} onChange={e=>setConsent(e.target.value)} className="px-2 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx2}}><option value="">All consent</option><option value="OPTED_IN">Opted-in</option><option value="OPTED_OUT">Opted-out</option></select>
+        <select value={sort} onChange={e=>setSort(e.target.value)} className="px-2 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx2}}>{SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+        {showSave?<div className="flex items-center gap-1"><input autoFocus value={viewName} onChange={e=>setViewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveView()} placeholder="View name…" className="w-28 px-2 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/><button onClick={saveView} className="px-2 py-2 rounded-lg text-xs text-white" style={{background:C.primary}}><Check size={13}/></button><button onClick={()=>setShowSave(false)} className="px-2 py-2 rounded-lg text-xs" style={{color:ct.tx3}}><X size={13}/></button></div>
+        :<button onClick={()=>setShowSave(true)} className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${ct.inpBd}`,color:ct.tx2}}><Plus size={12}/>Save view</button>}
+      </div>
+      <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 font-medium" style={{color:ct.tx2}}>Customer</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Segment</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Visits</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>Churn</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>CLV</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Points</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Status</th></tr></thead>
           <tbody>{filtered.map(c=>(
             <tr key={c.id} onClick={()=>onSelect(c)} className="border-b border-white/3 hover:bg-white/3 cursor-pointer">
-              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:any)=>n[0]).join("")}</div><div><div className="font-medium" style={{color:ct.tx}}>{c.name}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
+              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:any)=>n[0]).join("")}</div><div className="min-w-0"><div className="font-medium flex items-center gap-1.5" style={{color:ct.tx}}>{c.name}{(c.tags||[]).slice(0,2).map((t:string)=><span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
               <td className="py-3 px-3"><Badge color={SEG_COLORS[c.segment]||"#8b5cf6"}>{c.segment}</Badge></td>
               <td className="py-3 px-3 hidden sm:table-cell" style={{color:ct.tx2}}>{c.visits}</td>
               <td className="py-3 px-3 hidden md:table-cell"><div className="flex items-center gap-1"><div className="w-12 h-1.5 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full" style={{width:`${c.churnRisk}%`,background:c.churnRisk>75?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div><span className="text-xs text-slate-400">{c.churnRisk}%</span></div></td>
@@ -1775,40 +1801,150 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
   );
 };
 
+const TL_ICON:Record<string,any>={VISIT:ShoppingBag,MESSAGE:Send,POINTS:Star,TIER:Crown,SEGMENT:Users,REVIEW:Star,NOTE:FileText,CONSENT:Shield,JOINED:UserPlus};
+const TL_COLOR:Record<string,string>={VISIT:"#22c55e",MESSAGE:"#3b82f6",POINTS:"#f59e0b",TIER:"#eab308",SEGMENT:"#8b5cf6",REVIEW:"#ec4899",NOTE:"#06b6d4",CONSENT:"#64748b",JOINED:"#8b5cf6"};
+
 const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,onMsg:(c:any)=>void})=>{
+  const [tab,setTab]=useState<"overview"|"timeline"|"financials"|"referrals"|"notes">("overview");
+  const [prof,setProf]=useState<any>(null);
   const [ledger,setLedger]=useState<any[]>([]);
   const [msgs,setMsgs]=useState<any[]>([]);
-  const [ledgerLoading,setLedgerLoading]=useState(true);
+  const [loading,setLoading]=useState(true);
+  // lazy-loaded per tab
+  const [timeline,setTimeline]=useState<any[]|null>(null);
+  const [fin,setFin]=useState<any>(null);
+  const [refData,setRefData]=useState<any>(null);
+  const [reviews,setReviews]=useState<any>(null);
+  // editors
+  const [tags,setTags]=useState<string[]>(c.tags??[]);
+  const [newTag,setNewTag]=useState("");
+  const [notes,setNotes]=useState<any[]>([]);
+  const [noteBody,setNoteBody]=useState("");
+
   useEffect(()=>{
-    setLedgerLoading(true);
-    api.customers.profile(c.id).then(d=>{
-      setLedger(d.rewardPointsLedger??[]);
-      setMsgs(d.messageQueue??[]);
-    }).catch(()=>{}).finally(()=>setLedgerLoading(false));
+    setLoading(true);
+    api.customers.full(c.id).then(d=>{setProf(d);setTags(d.tags??[]);setNotes(d.notes??[]);}).catch(()=>{}).finally(()=>setLoading(false));
+    api.customers.profile(c.id).then(d=>{setLedger(d.rewardPointsLedger??[]);setMsgs(d.messageQueue??[]);}).catch(()=>{});
   },[c.id]);
+  useEffect(()=>{
+    if(tab==="timeline"&&timeline===null)api.customers.timeline(c.id).then(d=>setTimeline(d.events??[])).catch(()=>setTimeline([]));
+    if(tab==="financials"&&!fin)api.customers.financials(c.id).then(setFin).catch(()=>{});
+    if(tab==="referrals"&&!refData){api.customers.referrals2(c.id).then(setRefData).catch(()=>{});api.customers.reviews(c.id).then(setReviews).catch(()=>{});}
+  },[tab]);
+
+  const p=prof??{};
+  const addTag=async()=>{const t=newTag.trim();if(!t||tags.includes(t))return;const next=[...tags,t];setTags(next);setNewTag("");try{await api.customers.setTags(c.id,next);}catch{setTags(tags);}};
+  const removeTag=async(t:string)=>{const next=tags.filter(x=>x!==t);setTags(next);try{await api.customers.setTags(c.id,next);}catch{setTags(tags);}};
+  const addNote=async()=>{const b=noteBody.trim();if(!b)return;setNoteBody("");try{const n=await api.customers.addNote(c.id,b);setNotes([n,...notes]);}catch{}};
+  const delNote=async(id:string)=>{setNotes(notes.filter(n=>n.id!==id));try{await api.customers.deleteNote(c.id,id);}catch{}};
+
+  const fav=p.favouriteProducts??[];const social=p.social??{};const prefs=p.preferences??{};
+  const TABS:[string,string,any][]=[["overview","Overview",Users],["timeline","Timeline",Activity],["financials","Financials",DollarSign],["referrals","Reviews & Referrals",Gift],["notes","Notes & Tags",FileText]];
+
   return(
   <div className="space-y-4">
-    <button onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"><ChevronLeft size={14}/>Back</button>
+    <button onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"><ChevronLeft size={14}/>Back to customers</button>
+    {/* Header */}
     <div className="gc rounded-xl p-5" style={CARD}>
       <div className="flex items-start gap-4 flex-wrap">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
-        <div className="flex-1 min-w-48"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><span className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style={{background:(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"22",border:"1px solid "+(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"44",color:TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}}><Crown size={10}/>{c.tier||"No Tier"}</span></div><div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone}</span><span className="flex items-center gap-1"><Mail size={10}/>{c.email}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span></div></div>
-        <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
+        <div className="flex-1 min-w-48">
+          <div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><span className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style={{background:(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"22",border:"1px solid "+(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"44",color:TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}}><Crown size={10}/>{p.membership?.tier||c.tier||"No Tier"}</span></div>
+          <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone||"—"}</span>{p.email&&<span className="flex items-center gap-1"><Mail size={10}/>{p.email}</span>}{p.birthday&&<span className="flex items-center gap-1"><Gift size={10}/>{new Date(p.birthday).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}{p.consent&&!p.consent.whatsapp&&<span className="flex items-center gap-1 text-amber-400"><EyeOff size={10}/>Opted-out</span>}</div>
+          <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span>{tags.map(t=><span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div>
+        </div>
+        <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium flex-shrink-0" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
       </div>
     </div>
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[{l:"Visits",v:c.visits},{l:"Total Spent",v:`£${c.spent.toLocaleString()}`},{l:"Points Balance",v:c.points.toLocaleString()},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Tier",v:c.tier||"—"},{l:"Referrals",v:c.referralCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3">Points Ledger (Append-Only)</h3>
-        {ledgerLoading?<Skeleton h="h-20"/>:ledger.length===0?<p className="text-xs text-slate-500 text-center py-6">No points activity yet</p>:
-        <div className="space-y-1 max-h-64 overflow-y-auto">{ledger.map((l:any,i:number)=><div key={l.id||i} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${l.type==="CREDIT"?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}</div><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{l.reason||"Transaction"}</div><div className="text-xs text-slate-500 font-mono truncate">{l.externalRef||""}</div></div><div className="text-right flex-shrink-0"><div className={`text-xs font-bold ${l.type==="CREDIT"?"text-green-400":"text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}{l.points}pts</div><div className="text-xs text-slate-500">{(l.balanceAfter??0).toLocaleString()} bal</div></div><div className="text-xs text-slate-600 w-14 text-right flex-shrink-0">{l.createdAt?timeAgo(l.createdAt):""}</div></div>)}</div>}
-      </div>
-      <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3">Message History</h3>
-        {ledgerLoading?<Skeleton h="h-20"/>:msgs.length===0?<p className="text-xs text-slate-500 text-center py-6">No messages sent yet</p>:
-        <div className="space-y-1 max-h-64 overflow-y-auto">{msgs.slice(0,20).map((m:any,i:number)=><div key={m.id||i} className="flex items-center gap-2 py-2 px-3 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.02)"}}><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge><span className="flex-1 text-slate-300 truncate font-mono">{m.templateName||"—"}</span><span className="text-slate-600 flex-shrink-0">{m.createdAt?timeAgo(m.createdAt):""}</span></div>)}</div>}
-      </div>
+    {/* Stat strip */}
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[{l:"Visits",v:p.visitCount??c.visits},{l:"Total Spent",v:`£${(p.totalSpend??c.spent).toLocaleString()}`},{l:"Points",v:(p.membership?.pointsBalance??c.points).toLocaleString()},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Avg Rating",v:p.reviews?.avgScore?`${p.reviews.avgScore}★`:"—"},{l:"Referrals",v:p.referral?.referredCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
+    {/* Tabs */}
+    <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+      {TABS.map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={tab===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>)}
     </div>
+
+    {/* OVERVIEW */}
+    {tab==="overview"&&<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><UserCheck size={14} style={{color:C.accent}}/>Personal & Preferences</h3>
+        {loading?<Skeleton h="h-32"/>:<div className="space-y-2.5 text-xs">
+          {[["Gender",p.gender],["Address",p.address],["Joined",p.createdAt?new Date(p.createdAt).toLocaleDateString("en-GB"):null],["First visit",p.firstVisitAt?new Date(p.firstVisitAt).toLocaleDateString("en-GB"):null],["Last visit",p.lastVisitAt?timeAgo(p.lastVisitAt):"Never"]].filter(r=>r[1]).map(([l,v])=><div key={l} className="flex justify-between"><span className="text-slate-500">{l}</span><span className="text-slate-200">{v}</span></div>)}
+          {fav.length>0&&<div className="pt-2 border-t border-white/5"><div className="text-slate-500 mb-1.5">Favourite products</div><div className="flex flex-wrap gap-1">{fav.map((f:string)=><span key={f} className="px-2 py-0.5 rounded text-[10px]" style={{background:"rgba(245,158,11,0.15)",color:"#fbbf24"}}>{f}</span>)}</div></div>}
+          {Object.keys(prefs).length>0&&<div className="pt-2 border-t border-white/5">{Object.entries(prefs).map(([k,v])=><div key={k} className="flex justify-between"><span className="text-slate-500 capitalize">{k}</span><span className="text-slate-200">{String(v)}</span></div>)}</div>}
+          {Object.keys(social).length>0&&<div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(social).map(([k,v])=><span key={k} className="px-2 py-0.5 rounded text-[10px] flex items-center gap-1" style={{background:"rgba(139,92,246,0.15)",color:"#c4b5fd"}}><Link size={9}/>{k}: {String(v)}</span>)}</div>}
+        </div>}
+      </div>
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Points Ledger</h3>
+        {loading?<Skeleton h="h-32"/>:ledger.length===0?<p className="text-xs text-slate-500 text-center py-6">No points activity yet</p>:
+        <div className="space-y-1 max-h-56 overflow-y-auto">{ledger.map((l:any,i:number)=><div key={l.id||i} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${l.type==="CREDIT"?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}</div><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{l.reason||"Transaction"}</div></div><div className="text-right flex-shrink-0"><div className={`text-xs font-bold ${l.type==="CREDIT"?"text-green-400":"text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}{l.points}pts</div><div className="text-xs text-slate-500">{(l.balanceAfter??0).toLocaleString()} bal</div></div></div>)}</div>}
+      </div>
+    </div>}
+
+    {/* TIMELINE */}
+    {tab==="timeline"&&<div className="gc rounded-xl p-4" style={CARD}>
+      <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Activity size={14} style={{color:C.primary}}/>Customer Timeline</h3>
+      {timeline===null?<Skeleton h="h-40"/>:timeline.length===0?<p className="text-xs text-slate-500 text-center py-8">No history yet.</p>:
+      <div className="relative pl-1">{timeline.map((e,i)=>{const Icon=TL_ICON[e.type]||CircleCheck;const col=TL_COLOR[e.type]||"#8b5cf6";return(
+        <div key={i} className="flex gap-3 pb-4 relative">
+          {i<timeline.length-1&&<div className="absolute left-[13px] top-7 bottom-0 w-px" style={{background:"rgba(255,255,255,0.08)"}}/>}
+          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10" style={{background:col+"22"}}><Icon size={13} style={{color:col}}/></div>
+          <div className="flex-1 min-w-0 pt-0.5"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">{e.title}</span><span className="text-[10px] text-slate-500 flex-shrink-0">{e.at?timeAgo(e.at):""}</span></div>{e.detail&&<div className="text-[11px] text-slate-400 mt-0.5 break-words">{e.detail}</div>}</div>
+        </div>);})}</div>}
+    </div>}
+
+    {/* FINANCIALS */}
+    {tab==="financials"&&<div className="space-y-4">
+      {!fin?<Skeleton h="h-24"/>:<>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI icon={DollarSign} label="Lifetime Value" value={`£${fin.lifetimeValue.toLocaleString()}`} color={C.green} sub="actual spend to date"/>
+          <KPI icon={TrendingUp} label="Predicted CLV" value={`£${fin.predictedClv.toLocaleString()}`} color={C.primary} sub="24-month projection"/>
+          <KPI icon={ShoppingBag} label="Avg Order Value" value={`£${fin.averageOrderValue.toLocaleString()}`} color={C.blue}/>
+          <KPI icon={Activity} label="Revenue Share" value={`${fin.revenueContribution}%`} color={C.amber} sub="of total business revenue"/>
+        </div>
+        <div className="gc rounded-xl p-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-white mb-3">Spending Behaviour</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            {[["Total visits",fin.visitCount],["Visits / month",fin.visitsPerMonth],["Last 90d spend",`£${fin.last90Spend.toLocaleString()}`],["Last 90d visits",fin.last90Visits],["Retention prob.",`${Math.round(fin.retentionProbability*100)}%`]].map(([l,v])=><div key={l as string} className="p-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className="text-base font-bold text-white">{v}</div><div className="text-slate-500 mt-0.5">{l}</div></div>)}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-3 flex items-start gap-1.5"><Info size={12} className="mt-0.5 flex-shrink-0"/>Predicted CLV projects {fin.visitsPerMonth}/mo visits at £{fin.averageOrderValue} AOV over 24 months, discounted by this customer's retention probability ({Math.round(fin.retentionProbability*100)}%).</p>
+        </div>
+      </>}
+    </div>}
+
+    {/* REVIEWS & REFERRALS */}
+    {tab==="referrals"&&<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Gift size={14} style={{color:C.pink}}/>Referrals</h3>
+        {!refData?<Skeleton h="h-24"/>:<>
+          <div className="grid grid-cols-2 gap-3 mb-3"><div className="p-3 rounded-lg text-center" style={{background:"rgba(236,72,153,0.1)"}}><div className="text-xl font-bold text-white">{refData.referredCount}</div><div className="text-[11px] text-slate-400">customers referred</div></div><div className="p-3 rounded-lg text-center" style={{background:"rgba(34,197,94,0.1)"}}><div className="text-xl font-bold text-green-400">£{refData.referralRevenue.toLocaleString()}</div><div className="text-[11px] text-slate-400">referral revenue</div></div></div>
+          {refData.referrer&&<div className="text-[11px] text-slate-400 mb-2">Referred by <span className="text-violet-300">{refData.referrer.fullName}</span></div>}
+          {refData.referred?.length>0?<div className="space-y-1 max-h-44 overflow-y-auto">{refData.referred.map((r:any)=><div key={r.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded" style={{background:"rgba(255,255,255,0.02)"}}><span className="text-slate-300 truncate">{r.fullName}</span><span className="text-green-400">£{r.totalSpend.toLocaleString()}</span></div>)}</div>:<p className="text-[11px] text-slate-500 text-center py-4">No referrals yet. Share their code <span className="font-mono text-violet-300">{refData.referralCode}</span> to start.</p>}
+        </>}
+      </div>
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Feedback History</h3>
+        {!reviews?<Skeleton h="h-24"/>:reviews.count===0?<p className="text-[11px] text-slate-500 text-center py-6">No feedback collected yet.</p>:<>
+          <div className="flex items-center gap-2 mb-3"><span className="text-2xl font-bold text-white">{reviews.avgScore}</span><span className="text-amber-400">★</span><span className="text-[11px] text-slate-400">avg · {reviews.count} review{reviews.count===1?"":"s"}</span></div>
+          <div className="space-y-1.5 max-h-44 overflow-y-auto">{reviews.reviews.map((r:any)=><div key={r.id} className="py-2 px-3 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.02)"}}><div className="flex items-center justify-between"><span style={{color:r.score>=4?"#22c55e":r.score>=3?"#f59e0b":"#ef4444"}}>{"★".repeat(r.score)}{"☆".repeat(5-r.score)}</span><span className="text-slate-600 text-[10px]">{timeAgo(r.createdAt)}</span></div>{r.comment&&<div className="text-slate-400 mt-1">{r.comment}</div>}</div>)}</div>
+        </>}
+      </div>
+    </div>}
+
+    {/* NOTES & TAGS */}
+    {tab==="notes"&&<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Tag size={14} style={{color:C.accent}}/>Tags</h3>
+        <div className="flex flex-wrap gap-1.5 mb-3">{tags.length===0&&<span className="text-[11px] text-slate-500">No tags yet.</span>}{tags.map(t=><span key={t} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px]" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}<X size={11} className="cursor-pointer hover:text-white" onClick={()=>removeTag(t)}/></span>)}</div>
+        <div className="flex gap-2"><input value={newTag} onChange={e=>setNewTag(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTag()} placeholder="Add a tag (e.g. regular, vegan)…" className="flex-1 px-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"white"}}/><button onClick={addTag} className="px-3 py-2 rounded-lg text-xs text-white" style={{background:C.accent}}><Plus size={13}/></button></div>
+      </div>
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><FileText size={14} style={{color:C.primary}}/>Staff Notes</h3>
+        <div className="flex gap-2 mb-3"><input value={noteBody} onChange={e=>setNoteBody(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNote()} placeholder="Add a private note about this customer…" className="flex-1 px-3 py-2 rounded-lg text-xs placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"white"}}/><button onClick={addNote} className="px-3 py-2 rounded-lg text-xs text-white" style={{background:C.primary}}><Send size={13}/></button></div>
+        {notes.length===0?<p className="text-[11px] text-slate-500 text-center py-4">No notes yet. Context here helps every team member serve this customer better.</p>:
+        <div className="space-y-2 max-h-56 overflow-y-auto">{notes.map(n=><div key={n.id} className="group py-2 px-3 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.02)"}}><div className="flex items-center justify-between"><span className="text-slate-300">{n.body}</span><X size={12} className="text-slate-600 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-red-400 flex-shrink-0 ml-2" onClick={()=>delNote(n.id)}/></div><div className="text-[10px] text-slate-600 mt-1">{n.authorName||"Staff"} · {timeAgo(n.createdAt)}</div></div>)}</div>}
+      </div>
+    </div>}
   </div>
   );
 };

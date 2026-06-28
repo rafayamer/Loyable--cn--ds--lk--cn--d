@@ -125,6 +125,35 @@ export const api = {
     remove:   (id: string)  => del<any>(`/loyalty/customers/${id}`),
     setStaff: (id: string, isStaff: boolean) => patch<any>(`/loyalty/customers/${id}`, { isStaff }),
     purge:    (phone: string) => post<any>('/loyalty/customers/purge', { phone }),
+
+    // ── Customers Module (rich CRM) ─────────────────────────────
+    search:   (params?: { q?: string; segment?: string; tag?: string; consent?: string; sort?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v != null && v !== '') as any).toString();
+      return get<{ customers: any[]; total: number; page: number; pages: number }>(`/customers?${qs}`);
+    },
+    full:       (id: string) => get<any>(`/customers/${id}`),
+    timeline:   (id: string) => get<{ events: any[] }>(`/customers/${id}/timeline`),
+    financials: (id: string) => get<any>(`/customers/${id}/financials`),
+    referrals2: (id: string) => get<any>(`/customers/${id}/referrals`),
+    reviews:    (id: string) => get<{ reviews: any[]; count: number; avgScore: number | null }>(`/customers/${id}/reviews`),
+    setTags:    (id: string, tags: string[]) => patch<{ tags: string[] }>(`/customers/${id}/tags`, { tags }),
+    setEnrichment: (id: string, body: { preferences?: Record<string, any>; favouriteProducts?: string[]; social?: Record<string, string> }) => patch<any>(`/customers/${id}/enrichment`, body),
+    addNote:    (id: string, body: string, pinned?: boolean) => post<any>(`/customers/${id}/notes`, { body, pinned }),
+    deleteNote: (id: string, noteId: string) => del<any>(`/customers/${id}/notes/${noteId}`),
+    segments:   () => get<{ total: number; segments: { segment: string; count: number; percentage: number; revenue: number }[] }>('/customers/segments'),
+    savedViews: () => get<{ views: any[] }>('/customers/saved-views'),
+    createSavedView: (name: string, filtersJson: Record<string, any>, isShared?: boolean) => post<any>('/customers/saved-views', { name, filtersJson, isShared }),
+    deleteSavedView: (id: string) => del<any>(`/customers/saved-views/${id}`),
+    exportCsv:  async (params?: Record<string, any>) => {
+      const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v != null && v !== '') as any).toString();
+      const res = await fetch(`/api/customers/export?${qs}`, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    },
   },
 
   account: {

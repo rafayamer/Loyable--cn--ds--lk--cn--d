@@ -81,6 +81,39 @@ async function ensureSchemaPatches() {
     // Railway public domain from a previous WAHA service).
     { label: 'businesses.wahaBaseUrl clear localhost',
       sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" LIKE '%localhost%'` },
+    // ── Customers Module: tags, preferences, notes & saved views ──
+    { label: 'customers.tags',
+      sql: `ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "tags" TEXT[] NOT NULL DEFAULT '{}'` },
+    { label: 'customers.preferencesJson',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "preferencesJson" JSONB' },
+    { label: 'customer_notes table',
+      sql: `CREATE TABLE IF NOT EXISTS "customer_notes" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "customerId" TEXT NOT NULL,
+        "authorUserId" TEXT,
+        "authorName" TEXT,
+        "body" TEXT NOT NULL,
+        "pinned" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'customer_notes idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "customer_notes_businessId_customerId_idx" ON "customer_notes" ("businessId","customerId")' },
+    { label: 'customer_notes idx customer createdAt',
+      sql: 'CREATE INDEX IF NOT EXISTS "customer_notes_businessId_customerId_createdAt_idx" ON "customer_notes" ("businessId","customerId","createdAt")' },
+    { label: 'saved_views table',
+      sql: `CREATE TABLE IF NOT EXISTS "saved_views" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "filtersJson" JSONB NOT NULL,
+        "isShared" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'saved_views idx user',
+      sql: 'CREATE INDEX IF NOT EXISTS "saved_views_businessId_userId_idx" ON "saved_views" ("businessId","userId")' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]
@@ -238,6 +271,7 @@ async function bootstrap() {
   await loadRouter('./controllers/webhook-pos',           'posWebhookRouter',  '/api/webhooks/pos');
   await loadRouter('./controllers/ai-bi-controller',      'aiBiRouter',        '/api/ai');
   await loadRouter('./controllers/dashboard-controller',  'dashboardRouter',   '/api/dashboard');
+  await loadRouter('./controllers/customers-controller',  'customersRouter',   '/api/customers');
   await loadRouter('./controllers/pos-controller',        'posRouter',         '/api/pos');
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
   await loadRouter('./controllers/whatsapp-controller',  'whatsappRouter',    '/api/whatsapp');

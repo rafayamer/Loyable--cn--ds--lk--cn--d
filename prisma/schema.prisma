@@ -229,6 +229,7 @@ model Business {
   posWebhookLogs       PosWebhookLog[]
   consentChangeLogs    ConsentChangeLog[]
   portalLogins         PortalLogin[]
+  savedViews           SavedView[]
 
   @@map("businesses")
 }
@@ -327,6 +328,14 @@ model Customer {
   address                  String?
   avatarUrl                String?
 
+  // CRM enrichment — staff context for messaging & service
+  tags                     String[]         @default([])
+  // Free-form JSONB enrichment:
+  //   { "preferences": { "favouriteDrink": "Flat white" },
+  //     "favouriteProducts": ["Croissant", "Latte"],
+  //     "social": { "instagram": "@jane", "facebook": "jane.doe" } }
+  preferencesJson          Json?
+
   // Mobile app readiness (React Native / Expo future integration)
   devicePushToken          String?
 
@@ -378,6 +387,7 @@ model Customer {
   tierHistory              CustomerTierHistory[]
   segmentHistory           CustomerSegmentHistory[]
   portalLogins             PortalLogin[]
+  notes                    CustomerNote[]
 
   @@unique([whatsappNumber, businessId])
   @@unique([email, businessId])
@@ -852,6 +862,50 @@ model CustomerSegmentHistory {
   @@index([businessId, customerId])
   @@index([businessId, changedAt])
   @@map("customer_segment_history")
+}
+
+// ================================================================
+// CUSTOMER NOTES (staff-authored context, rendered in the timeline)
+// ================================================================
+
+model CustomerNote {
+  id            String   @id @default(cuid())
+  businessId    String
+  customerId    String
+  authorUserId  String?  // User who wrote the note (null = system)
+  authorName    String?  // Denormalised for display without a join
+  body          String   @db.Text
+  pinned        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, customerId])
+  @@index([businessId, customerId, createdAt])
+  @@map("customer_notes")
+}
+
+// ================================================================
+// SAVED VIEWS (reusable customer-list filter presets, per user)
+// ================================================================
+
+model SavedView {
+  id          String   @id @default(cuid())
+  businessId  String
+  userId      String   // Owner of the view
+  name        String
+  // Serialized filter state:
+  //   { "q": "", "segment": "VIP", "tags": ["regular"],
+  //     "consent": "OPTED_IN", "sort": "totalSpend:desc" }
+  filtersJson Json
+  isShared    Boolean  @default(false) // Visible to whole business when true
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, userId])
+  @@map("saved_views")
 }
 
 // ================================================================
