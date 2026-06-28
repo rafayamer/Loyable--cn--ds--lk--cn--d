@@ -28,7 +28,9 @@ const REDEEMERS = [Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.CASHIER, Role.CU
 const handle = (err: unknown, res: Response): void => {
   if (err instanceof ZodError) { res.status(400).json({ error: 'VALIDATION_ERROR', fields: err.errors }); return; }
   console.error('[loyalty-engine]', err);
-  res.status(500).json({ error: 'INTERNAL_ERROR' });
+  // Surface the underlying message so operators see the real cause (e.g. a
+  // missing column) instead of an opaque INTERNAL_ERROR in the UI.
+  res.status(500).json({ error: 'INTERNAL_ERROR', message: err instanceof Error ? err.message : 'Unexpected error' });
 };
 
 const ERR_STATUS: Record<RewardRedeemError | GiftRedeemError, number> = {
