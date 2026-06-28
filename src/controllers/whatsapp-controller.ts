@@ -126,11 +126,20 @@ whatsappRouter.post('/session/start', tenantScope, requireRoles(Role.TENANT_OWNE
 
     if (provider === 'BAILEYS') {
       const current = getBaileysStatus(bizId);
-      if (current === 'WORKING' || current === 'SCAN_QR_CODE' || current === 'STARTING') {
+      // Already linked — nothing to do.
+      if (current === 'WORKING') {
         res.json({ ok: true, note: 'already_running', status: current, provider: 'BAILEYS' });
         return;
       }
-      startBaileysSession(bizId).catch(e =>
+      // If a QR is already on screen, let the user keep scanning it.
+      if (current === 'SCAN_QR_CODE' && (await getBaileysQrCode(bizId))) {
+        res.json({ ok: true, note: 'awaiting_scan', status: current, provider: 'BAILEYS' });
+        return;
+      }
+      // Any other state (STOPPED / FAILED / STARTING / QR-less): force a clean
+      // start so stale credentials can't trap us in a resume→logout loop with
+      // no QR. forceFresh wipes lingering creds → Baileys emits a new QR.
+      startBaileysSession(bizId, true).catch(e =>
         console.error('[whatsapp] Baileys startSession error: %s', e?.message)
       );
       res.json({ ok: true, note: 'starting', provider: 'BAILEYS' });

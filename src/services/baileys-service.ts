@@ -90,11 +90,25 @@ async function clearQr(bizId: string): Promise<void> {
 
 // ── Core: create a socket for one business ───────────────────────
 
-export async function startBaileysSession(bizId: string): Promise<void> {
+export async function startBaileysSession(bizId: string, forceFresh = false): Promise<void> {
   // Tear down any existing socket first
   await stopBaileysSession(bizId);
 
-  const { version } = await fetchLatestBaileysVersion();
+  // forceFresh wipes any stale/logged-out credentials so Baileys is forced
+  // into registration (QR) mode. Without this, lingering invalid creds make
+  // Baileys try to *resume* a dead session — it logs out and never emits a
+  // QR, so the "Connect WhatsApp" screen hangs forever.
+  if (forceFresh) await clearAuthState(bizId).catch(() => {});
+
+  // A transient network hiccup fetching the latest WA version must not block
+  // connection — makeWASocket ships a sane bundled default when omitted.
+  let version: [number, number, number] | undefined;
+  try {
+    ({ version } = await fetchLatestBaileysVersion());
+  } catch (e) {
+    console.warn('[baileys] version fetch failed, using bundled default: %s', (e as Error)?.message);
+  }
+
   const { state, saveCreds } = await useRedisAuthState(bizId);
 
   const session: BaileysSession = {
