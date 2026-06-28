@@ -392,6 +392,12 @@ const checkInHandler = async (req: Request, res: Response): Promise<void> => {
     // Inline segment re-evaluation so customer label is correct immediately
     evaluateCustomerSegment(customerId, businessId).catch(() => {});
 
+    // Re-evaluate gamification challenges (visit-count, streak, spend, …) so
+    // any newly-completed challenge grants its points + badge right away.
+    import('../services/loyalty-engine-service')
+      .then(({ evaluateChallenges }) => evaluateChallenges(customerId, businessId))
+      .catch(() => {});
+
     // Check visit milestone automation (e.g. 10th visit)
     const updatedCustomer = await prisma.customer.findUnique({
       where:  { id: customerId },

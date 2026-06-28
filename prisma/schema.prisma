@@ -74,6 +74,35 @@ enum CouponStatus {
   VOIDED
 }
 
+enum RewardType {
+  FREE_ITEM
+  DISCOUNT
+  VOUCHER
+  CASHBACK
+  EXPERIENCE
+}
+
+enum RewardRedemptionStatus {
+  PENDING      // Awaiting staff fulfilment (e.g. free coffee at counter)
+  FULFILLED
+  CANCELLED
+}
+
+enum GiftCardStatus {
+  ACTIVE
+  REDEEMED     // Balance fully consumed
+  EXPIRED
+  VOIDED
+}
+
+enum ChallengeType {
+  VISIT_COUNT      // N visits within the window
+  SPEND_TOTAL      // £N spent within the window
+  VISIT_STREAK     // N consecutive days/weeks
+  REFERRAL_COUNT   // N successful referrals
+  PRODUCT_TRY      // Try a specific product (manual/POS tagged)
+}
+
 enum SubscriptionTier {
   FREE
   STARTER
@@ -230,6 +259,9 @@ model Business {
   consentChangeLogs    ConsentChangeLog[]
   portalLogins         PortalLogin[]
   savedViews           SavedView[]
+  rewardTemplates      RewardTemplate[]
+  giftCards            GiftCard[]
+  challenges           Challenge[]
 
   @@map("businesses")
 }
@@ -623,6 +655,170 @@ model CouponRedemptionLog {
   @@index([businessId, branchLocationId])
   @@index([businessId, customerId])
   @@map("coupon_redemption_logs")
+}
+
+// ================================================================
+// REWARDS ENGINE — point-priced catalogue linked to tiers
+// ================================================================
+
+model RewardTemplate {
+  id              String      @id @default(cuid())
+  businessId      String
+
+  name            String
+  description     String?
+  type            RewardType
+  imageUrl        String?
+
+  // Cost & value
+  pointsCost      Int         // Points debited on redemption
+  value           Decimal?    @db.Decimal(12, 2) // £ value (discount / cashback / voucher)
+  freeItemName    String?     // For FREE_ITEM rewards
+
+  // Eligibility
+  minTierRank     Int?        // Only customers at/above this tier rank
+  stock           Int?        // NULL = unlimited; otherwise decremented per redemption
+  perCustomerLimit Int?       // Max redemptions per customer (NULL = unlimited)
+
+  isActive        Boolean     @default(true)
+  sortOrder       Int         @default(0)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  redemptions     RewardRedemption[]
+
+  @@index([businessId, isActive])
+  @@map("reward_templates")
+}
+
+// Immutable redemption log (one row per fulfilled reward)
+model RewardRedemption {
+  id                String                 @id @default(cuid())
+  businessId        String
+  customerId        String
+  rewardTemplateId  String
+
+  pointsSpent       Int
+  status            RewardRedemptionStatus @default(PENDING)
+
+  // Fulfilment linkage — a reward materialises as a coupon or wallet credit
+  couponId          String?
+  walletLedgerId    String?
+
+  redeemedAt        DateTime               @default(now())
+  fulfilledAt       DateTime?
+  fulfilledByUserId String?
+
+  reward            RewardTemplate         @relation(fields: [rewardTemplateId], references: [id])
+
+  @@index([businessId, customerId])
+  @@index([businessId, rewardTemplateId])
+  @@index([businessId, status])
+  @@map("reward_redemptions")
+}
+
+// ================================================================
+// GIFT CARDS — prepaid stored value (credits WalletLedger on redeem)
+// ================================================================
+
+model GiftCard {
+  id                String         @id @default(cuid())
+  businessId        String
+
+  code              String         @unique // Human-shareable code
+  initialBalance    Decimal        @db.Decimal(12, 2)
+  currentBalance    Decimal        @db.Decimal(12, 2)
+  status            GiftCardStatus @default(ACTIVE)
+
+  purchaserName     String?
+  recipientName     String?
+  recipientPhone    String?
+  message           String?
+
+  // Once redeemed into a customer's wallet, we link them
+  redeemedByCustomerId String?
+  expiresAt         DateTime?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  business          Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status])
+  @@index([businessId, code])
+  @@map("gift_cards")
+}
+
+// ================================================================
+// GAMIFICATION — challenges, progress & achievement badges
+// ================================================================
+
+model Challenge {
+  id              String        @id @default(cuid())
+  businessId      String
+
+  name            String
+  description     String?
+  type            ChallengeType
+  goal            Int           // Target count / £ amount depending on type
+
+  // Reward on completion
+  rewardPoints    Int           @default(0)
+  badgeName       String?
+  badgeIcon       String?       // emoji or icon key
+
+  // Limited-time window (NULL = always-on)
+  startsAt        DateTime?
+  endsAt          DateTime?
+
+  isActive        Boolean       @default(true)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  progress        ChallengeProgress[]
+
+  @@index([businessId, isActive])
+  @@map("challenges")
+}
+
+model ChallengeProgress {
+  id            String     @id @default(cuid())
+  businessId    String
+  customerId    String
+  challengeId   String
+
+  progress      Int        @default(0)  // Current count / £ toward goal
+  completed     Boolean    @default(false)
+  completedAt   DateTime?
+  rewardedAt    DateTime?  // When points/badge were granted (idempotency guard)
+
+  updatedAt     DateTime   @updatedAt
+
+  challenge     Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, challengeId])
+  @@index([businessId, customerId])
+  @@index([businessId, challengeId])
+  @@map("challenge_progress")
+}
+
+// Earned achievement badges (denormalised name/icon so badge survives challenge edits)
+model CustomerBadge {
+  id           String   @id @default(cuid())
+  businessId   String
+  customerId   String
+  challengeId  String?
+  name         String
+  icon         String?
+  earnedAt     DateTime @default(now())
+
+  @@unique([customerId, name])
+  @@index([businessId, customerId])
+  @@map("customer_badges")
 }
 
 // ================================================================

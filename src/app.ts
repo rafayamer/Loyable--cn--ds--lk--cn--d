@@ -114,6 +114,76 @@ async function ensureSchemaPatches() {
       )` },
     { label: 'saved_views idx user',
       sql: 'CREATE INDEX IF NOT EXISTS "saved_views_businessId_userId_idx" ON "saved_views" ("businessId","userId")' },
+    // ── Loyalty Engine: rewards, gift cards & gamification ──
+    { label: 'reward_templates table',
+      sql: `CREATE TABLE IF NOT EXISTS "reward_templates" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL,
+        "name" TEXT NOT NULL, "description" TEXT, "type" TEXT NOT NULL, "imageUrl" TEXT,
+        "pointsCost" INTEGER NOT NULL, "value" DECIMAL(12,2), "freeItemName" TEXT,
+        "minTierRank" INTEGER, "stock" INTEGER, "perCustomerLimit" INTEGER,
+        "isActive" BOOLEAN NOT NULL DEFAULT true, "sortOrder" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'reward_templates idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "reward_templates_businessId_isActive_idx" ON "reward_templates" ("businessId","isActive")' },
+    { label: 'reward_redemptions table',
+      sql: `CREATE TABLE IF NOT EXISTS "reward_redemptions" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL, "customerId" TEXT NOT NULL,
+        "rewardTemplateId" TEXT NOT NULL, "pointsSpent" INTEGER NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PENDING', "couponId" TEXT, "walletLedgerId" TEXT,
+        "redeemedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "fulfilledAt" TIMESTAMP(3), "fulfilledByUserId" TEXT
+      )` },
+    { label: 'reward_redemptions idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "reward_redemptions_businessId_customerId_idx" ON "reward_redemptions" ("businessId","customerId")' },
+    { label: 'reward_redemptions idx status',
+      sql: 'CREATE INDEX IF NOT EXISTS "reward_redemptions_businessId_status_idx" ON "reward_redemptions" ("businessId","status")' },
+    { label: 'gift_cards table',
+      sql: `CREATE TABLE IF NOT EXISTS "gift_cards" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL,
+        "code" TEXT NOT NULL, "initialBalance" DECIMAL(12,2) NOT NULL, "currentBalance" DECIMAL(12,2) NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'ACTIVE', "purchaserName" TEXT, "recipientName" TEXT,
+        "recipientPhone" TEXT, "message" TEXT, "redeemedByCustomerId" TEXT, "expiresAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'gift_cards uniq code',
+      sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "gift_cards_code_key" ON "gift_cards" ("code")' },
+    { label: 'gift_cards idx status',
+      sql: 'CREATE INDEX IF NOT EXISTS "gift_cards_businessId_status_idx" ON "gift_cards" ("businessId","status")' },
+    { label: 'challenges table',
+      sql: `CREATE TABLE IF NOT EXISTS "challenges" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL,
+        "name" TEXT NOT NULL, "description" TEXT, "type" TEXT NOT NULL, "goal" INTEGER NOT NULL,
+        "rewardPoints" INTEGER NOT NULL DEFAULT 0, "badgeName" TEXT, "badgeIcon" TEXT,
+        "startsAt" TIMESTAMP(3), "endsAt" TIMESTAMP(3), "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'challenges idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "challenges_businessId_isActive_idx" ON "challenges" ("businessId","isActive")' },
+    { label: 'challenge_progress table',
+      sql: `CREATE TABLE IF NOT EXISTS "challenge_progress" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL, "customerId" TEXT NOT NULL,
+        "challengeId" TEXT NOT NULL, "progress" INTEGER NOT NULL DEFAULT 0,
+        "completed" BOOLEAN NOT NULL DEFAULT false, "completedAt" TIMESTAMP(3), "rewardedAt" TIMESTAMP(3),
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'challenge_progress uniq',
+      sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "challenge_progress_customerId_challengeId_key" ON "challenge_progress" ("customerId","challengeId")' },
+    { label: 'challenge_progress idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "challenge_progress_businessId_customerId_idx" ON "challenge_progress" ("businessId","customerId")' },
+    { label: 'customer_badges table',
+      sql: `CREATE TABLE IF NOT EXISTS "customer_badges" (
+        "id" TEXT NOT NULL PRIMARY KEY, "businessId" TEXT NOT NULL, "customerId" TEXT NOT NULL,
+        "challengeId" TEXT, "name" TEXT NOT NULL, "icon" TEXT,
+        "earnedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'customer_badges uniq',
+      sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "customer_badges_customerId_name_key" ON "customer_badges" ("customerId","name")' },
+    { label: 'customer_badges idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "customer_badges_businessId_customerId_idx" ON "customer_badges" ("businessId","customerId")' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]
@@ -272,6 +342,7 @@ async function bootstrap() {
   await loadRouter('./controllers/ai-bi-controller',      'aiBiRouter',        '/api/ai');
   await loadRouter('./controllers/dashboard-controller',  'dashboardRouter',   '/api/dashboard');
   await loadRouter('./controllers/customers-controller',  'customersRouter',   '/api/customers');
+  await loadRouter('./controllers/loyalty-engine-controller','loyaltyEngineRouter','/api/loyalty-engine');
   await loadRouter('./controllers/pos-controller',        'posRouter',         '/api/pos');
   await loadRouter('./routes/super-admin',                'adminRouter',       '/api/admin');
   await loadRouter('./controllers/whatsapp-controller',  'whatsappRouter',    '/api/whatsapp');

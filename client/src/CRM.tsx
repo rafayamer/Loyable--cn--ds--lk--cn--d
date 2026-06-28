@@ -2730,6 +2730,7 @@ const AutomationBuilderPage=({onBack}:any)=>{
 // ════════════════════════════════════════════════════════════════
 const LoyaltyPage=()=>{
   const ct=useCard();
+  const [sub,setSub]=useState<"config"|"rewards"|"giftcards"|"challenges"|"qr">("config");
   const [tiers,setTiers]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -2778,6 +2779,17 @@ const LoyaltyPage=()=>{
         <KPI icon={Send} label="Messages (Month)" value={dashKpis?.messagesThisMonth?.toLocaleString()??"-"} color={C.blue}/>
         <KPI icon={Award} label="Tiers Configured" value={loading?"-":tiers.length} color={C.amber}/>
       </div>
+      {/* Loyalty engine sub-tabs */}
+      <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+        {([["config","Tiers & Points",Sliders],["rewards","Rewards",Gift],["giftcards","Gift Cards",CreditCard],["challenges","Challenges",Target],["qr","QR Check-ins",QrCode]] as [string,string,any][]).map(([id,label,Icon])=>(
+          <button key={id} onClick={()=>setSub(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${sub===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={sub===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>
+        ))}
+      </div>
+      {sub==="rewards"&&<RewardsManager/>}
+      {sub==="giftcards"&&<GiftCardsManager/>}
+      {sub==="challenges"&&<ChallengesManager/>}
+      {sub==="qr"&&<QrGenerator/>}
+      {sub==="config"&&<>
       <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white">Tier Configuration — Adjust sliders to set thresholds</h3>
@@ -2845,8 +2857,149 @@ const LoyaltyPage=()=>{
           ))}
         </div>
       </div>
+      </>}
     </div>
   );
+};
+
+// ════════════════════════════════════════════════════════════════
+// LOYALTY ENGINE — Rewards · Gift Cards · Challenges · QR
+// ════════════════════════════════════════════════════════════════
+const REWARD_TYPES=[["FREE_ITEM","Free item"],["DISCOUNT","% discount"],["VOUCHER","£ voucher"],["CASHBACK","Cashback"],["EXPERIENCE","Experience"]];
+const RewardsManager=()=>{
+  const [rewards,setRewards]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  const [form,setForm]=useState<any>(null);
+  const blank={name:"",type:"FREE_ITEM",pointsCost:100,value:undefined,freeItemName:"",minTierRank:null,stock:null,perCustomerLimit:null,isActive:true};
+  const load=()=>{setLoading(true);api.loyaltyEngine.rewards().then(d=>setRewards(d.rewards||[])).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(load,[]);
+  const save=async()=>{try{const body={...form,pointsCost:Number(form.pointsCost),value:form.value!=null&&form.value!==""?Number(form.value):undefined,minTierRank:form.minTierRank!=null&&form.minTierRank!==""?Number(form.minTierRank):null,stock:form.stock!=null&&form.stock!==""?Number(form.stock):null,perCustomerLimit:form.perCustomerLimit!=null&&form.perCustomerLimit!==""?Number(form.perCustomerLimit):null};if(form.id)await api.loyaltyEngine.updateReward(form.id,body);else await api.loyaltyEngine.createReward(body);setForm(null);load();}catch(e:any){alert(e?.message||"Save failed");}};
+  const del=async(id:string)=>{if(!confirm("Delete this reward?"))return;await api.loyaltyEngine.deleteReward(id);load();};
+  return(<div className="space-y-4">
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Rewards Catalogue</h3><p className="text-[11px] text-slate-500">Point-priced rewards your customers can redeem.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New reward</button></div>
+    {loading?<Skeleton h="h-24"/>:rewards.length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No rewards yet. Create your first to give customers a reason to keep coming back.</div>:
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{rewards.map(r=>(
+      <div key={r.id} className="gc rounded-xl p-4" style={{...CARD,opacity:r.isActive?1:0.55}}>
+        <div className="flex items-start justify-between"><div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:C.amber+"22"}}><Gift size={16} style={{color:C.amber}}/></div><div><div className="text-sm font-semibold text-white">{r.name}</div><div className="text-[10px] text-slate-500">{REWARD_TYPES.find(t=>t[0]===r.type)?.[1]||r.type}</div></div></div><div className="flex gap-1"><button onClick={()=>setForm({...r})} className="text-slate-500 hover:text-white"><Edit size={13}/></button><button onClick={()=>del(r.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={13}/></button></div></div>
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]"><span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#c4b5fd"}}>{r.pointsCost} pts</span>{r.value!=null&&<span className="text-slate-400">£{Number(r.value)} value</span>}{r.stock!=null&&<span className="text-slate-500">{r.stock} left</span>}{r.minTierRank!=null&&<span className="text-amber-400">Tier {r.minTierRank}+</span>}{!r.isActive&&<span className="text-red-400">Inactive</span>}</div>
+      </div>
+    ))}</div>}
+    {form&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setForm(null)}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">{form.id?"Edit":"New"} reward</h3><button onClick={()=>setForm(null)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Reward name" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>{REWARD_TYPES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+          <input type="number" value={form.pointsCost} onChange={e=>setForm({...form,pointsCost:e.target.value})} placeholder="Points cost" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        </div>
+        {(form.type==="DISCOUNT"||form.type==="VOUCHER"||form.type==="CASHBACK")&&<input type="number" value={form.value??""} onChange={e=>setForm({...form,value:e.target.value})} placeholder={form.type==="DISCOUNT"?"Discount %":"£ value"} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>}
+        {form.type==="FREE_ITEM"&&<input value={form.freeItemName??""} onChange={e=>setForm({...form,freeItemName:e.target.value})} placeholder="Free item name (e.g. Coffee)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>}
+        <div className="grid grid-cols-3 gap-2">
+          <input type="number" value={form.minTierRank??""} onChange={e=>setForm({...form,minTierRank:e.target.value})} placeholder="Min tier" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <input type="number" value={form.stock??""} onChange={e=>setForm({...form,stock:e.target.value})} placeholder="Stock" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <input type="number" value={form.perCustomerLimit??""} onChange={e=>setForm({...form,perCustomerLimit:e.target.value})} placeholder="Per-cust" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Active</label>
+        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{form.id?"Save changes":"Create reward"}</button>
+      </div>
+    </div>}
+  </div>);
+};
+
+const GiftCardsManager=()=>{
+  const [data,setData]=useState<any>(null);const [loading,setLoading]=useState(true);
+  const [show,setShow]=useState(false);const [f,setF]=useState<any>({initialBalance:25,recipientName:"",purchaserName:"",message:""});
+  const [issued,setIssued]=useState<any>(null);
+  const load=()=>{setLoading(true);api.loyaltyEngine.giftCards().then(setData).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(load,[]);
+  const issue=async()=>{try{const card=await api.loyaltyEngine.issueGiftCard({...f,initialBalance:Number(f.initialBalance)});setIssued(card);setShow(false);setF({initialBalance:25,recipientName:"",purchaserName:"",message:""});load();}catch(e:any){alert(e?.message||"Failed");}};
+  return(<div className="space-y-4">
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Gift Cards</h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>Issue gift card</button></div>
+    {data&&<div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><KPI icon={CreditCard} label="Active cards" value={data.activeCount??0} color={C.primary}/><KPI icon={DollarSign} label="Outstanding balance" value={`£${(data.outstandingBalance??0).toLocaleString()}`} color={C.green} sub="liability you've been pre-paid for"/></div>}
+    {loading?<Skeleton h="h-24"/>:(data?.cards||[]).length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No gift cards issued yet.</div>:
+    <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={c.status==="ACTIVE"?C.green:c.status==="REDEEMED"?C.blue:"#6b7280"}>{c.status}</Badge></td></tr>))}</tbody></table></div></div>}
+    {show&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setShow(false)}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">Issue gift card</h3><button onClick={()=>setShow(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <div><label className="text-[11px] text-slate-400">Amount (£)</label><input type="number" value={f.initialBalance} onChange={e=>setF({...f,initialBalance:e.target.value})} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
+        <input value={f.recipientName} onChange={e=>setF({...f,recipientName:e.target.value})} placeholder="Recipient name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <input value={f.purchaserName} onChange={e=>setF({...f,purchaserName:e.target.value})} placeholder="Purchaser name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <input value={f.message} onChange={e=>setF({...f,message:e.target.value})} placeholder="Gift message (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Issue card</button>
+      </div>
+    </div>}
+    {issued&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setIssued(null)}>
+      <div className="w-full max-w-sm rounded-2xl p-6 text-center space-y-3" style={{background:"linear-gradient(135deg,#1a1340,#2d1f5e)",border:"1px solid rgba(139,92,246,0.4)"}} onClick={e=>e.stopPropagation()}>
+        <CreditCard size={32} className="mx-auto text-violet-300"/><div className="text-xs text-slate-400">Gift card issued</div>
+        <div className="text-2xl font-bold text-white">£{Number(issued.initialBalance)}</div>
+        <div className="font-mono text-lg text-violet-200 tracking-wider">{issued.code}</div>
+        <div className="text-[11px] text-slate-400">Share this code with the recipient. They redeem it to top up their wallet.</div>
+        <button onClick={()=>setIssued(null)} className="w-full py-2 rounded-xl text-sm font-semibold text-white" style={{background:"rgba(255,255,255,0.1)"}}>Done</button>
+      </div>
+    </div>}
+  </div>);
+};
+
+const CHALLENGE_TYPES=[["VISIT_COUNT","Visit count"],["SPEND_TOTAL","Total spend (£)"],["VISIT_STREAK","Daily streak"],["REFERRAL_COUNT","Referrals"],["PRODUCT_TRY","Try a product"]];
+const ChallengesManager=()=>{
+  const [items,setItems]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  const [form,setForm]=useState<any>(null);
+  const blank={name:"",type:"VISIT_COUNT",goal:5,rewardPoints:100,badgeName:"",badgeIcon:"🏆",isActive:true};
+  const load=()=>{setLoading(true);api.loyaltyEngine.challenges().then(d=>setItems(d.challenges||[])).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(load,[]);
+  const save=async()=>{try{const body={...form,goal:Number(form.goal),rewardPoints:Number(form.rewardPoints)};if(form.id)await api.loyaltyEngine.updateChallenge(form.id,body);else await api.loyaltyEngine.createChallenge(body);setForm(null);load();}catch(e:any){alert(e?.message||"Save failed");}};
+  const del=async(id:string)=>{if(!confirm("Delete this challenge?"))return;await api.loyaltyEngine.deleteChallenge(id);load();};
+  return(<div className="space-y-4">
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Challenges & Badges</h3><p className="text-[11px] text-slate-500">Limited-time missions that turn habits into a game customers want to win.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New challenge</button></div>
+    {loading?<Skeleton h="h-24"/>:items.length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No challenges yet. Try “Visit 5 times this month → 100 bonus points”.</div>:
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{items.map(ch=>(
+      <div key={ch.id} className="gc rounded-xl p-4" style={{...CARD,opacity:ch.isActive?1:0.55}}>
+        <div className="flex items-start justify-between"><div className="flex items-center gap-2"><span className="text-xl">{ch.badgeIcon||"🏆"}</span><div><div className="text-sm font-semibold text-white">{ch.name}</div><div className="text-[10px] text-slate-500">{CHALLENGE_TYPES.find(t=>t[0]===ch.type)?.[1]||ch.type} · goal {ch.goal}</div></div></div><div className="flex gap-1"><button onClick={()=>setForm({...ch})} className="text-slate-500 hover:text-white"><Edit size={13}/></button><button onClick={()=>del(ch.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={13}/></button></div></div>
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]">{ch.rewardPoints>0&&<span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#c4b5fd"}}>+{ch.rewardPoints} pts</span>}{ch.badgeName&&<span className="text-amber-400">🏅 {ch.badgeName}</span>}<span className="text-slate-500 ml-auto">{ch.participants??0} joined · {ch.completions??0} done</span></div>
+      </div>
+    ))}</div>}
+    {form&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setForm(null)}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">{form.id?"Edit":"New"} challenge</h3><button onClick={()=>setForm(null)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Challenge name" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>{CHALLENGE_TYPES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+          <input type="number" value={form.goal} onChange={e=>setForm({...form,goal:e.target.value})} placeholder="Goal" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <input type="number" value={form.rewardPoints} onChange={e=>setForm({...form,rewardPoints:e.target.value})} placeholder="Bonus pts" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <input value={form.badgeName} onChange={e=>setForm({...form,badgeName:e.target.value})} placeholder="Badge name" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+          <input value={form.badgeIcon} onChange={e=>setForm({...form,badgeIcon:e.target.value})} placeholder="🏆" maxLength={2} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}/>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Active</label>
+        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{form.id?"Save changes":"Create challenge"}</button>
+      </div>
+    </div>}
+  </div>);
+};
+
+const QrGenerator=()=>{
+  const [scope,setScope]=useState("BRANCH");const [tableId,setTableId]=useState("");const [eventId,setEventId]=useState("");
+  const [ttl,setTtl]=useState("");const [geo,setGeo]=useState(false);const [lat,setLat]=useState("");const [lng,setLng]=useState("");const [radius,setRadius]=useState("150");
+  const [result,setResult]=useState<any>(null);const [busy,setBusy]=useState(false);
+  const gen=async()=>{setBusy(true);try{const body:any={scope};if(scope==="TABLE"&&tableId)body.tableId=tableId;if(scope==="EVENT"&&eventId)body.eventId=eventId;if(ttl)body.ttlSeconds=Number(ttl);if(geo&&lat&&lng)body.geo={lat:Number(lat),lng:Number(lng),radiusM:Number(radius)};const d=await api.loyaltyEngine.generateQr(body);setResult(d);}catch(e:any){alert(e?.message||"Failed");}finally{setBusy(false);}};
+  const useMyLocation=()=>navigator.geolocation?.getCurrentPosition(p=>{setLat(String(p.coords.latitude));setLng(String(p.coords.longitude));});
+  const qrSrc=result?`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(result.checkinUrl)}`:"";
+  return(<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="gc rounded-xl p-4 space-y-3" style={CARD}>
+      <h3 className="text-sm font-bold text-white flex items-center gap-2"><QrCode size={15} style={{color:C.primary}}/>Generate check-in QR</h3>
+      <p className="text-[11px] text-slate-500">Signed, scoped QR codes for low-friction customer capture. Dynamic and event codes expire automatically.</p>
+      <div><label className="text-[11px] text-slate-400">Scope</label><select value={scope} onChange={e=>setScope(e.target.value)} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}>{[["BRANCH","Branch QR (printable)"],["TABLE","Table QR"],["EVENT","Event QR"],["DYNAMIC","Dynamic (rotating)"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
+      {scope==="TABLE"&&<input value={tableId} onChange={e=>setTableId(e.target.value)} placeholder="Table number/ID" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>}
+      {scope==="EVENT"&&<input value={eventId} onChange={e=>setEventId(e.target.value)} placeholder="Event name/ID" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>}
+      <div><label className="text-[11px] text-slate-400">Expiry (seconds, blank = no expiry for static)</label><input type="number" value={ttl} onChange={e=>setTtl(e.target.value)} placeholder="e.g. 60 for dynamic" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
+      <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={geo} onChange={e=>setGeo(e.target.checked)}/>Geolocation fraud check</label>
+      {geo&&<div className="space-y-2"><div className="grid grid-cols-3 gap-2"><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="Lat" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="Lng" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={radius} onChange={e=>setRadius(e.target.value)} placeholder="Radius m" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div><button onClick={useMyLocation} className="text-[11px] text-violet-300 flex items-center gap-1">📍 Use my current location</button></div>}
+      <button onClick={gen} disabled={busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{busy?<RefreshCw size={14} className="animate-spin"/>:<QrCode size={14}/>}Generate QR</button>
+    </div>
+    <div className="gc rounded-xl p-4 flex flex-col items-center justify-center text-center" style={CARD}>
+      {result?<><div className="bg-white p-3 rounded-xl"><img src={qrSrc} alt="QR code" width={200} height={200}/></div><div className="text-[11px] text-slate-400 mt-3 break-all max-w-xs">{result.checkinUrl}</div>{result.exp&&<div className="text-[10px] text-amber-400 mt-1">Expires {new Date(result.exp).toLocaleString()}</div>}<button onClick={()=>navigator.clipboard?.writeText(result.checkinUrl)} className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white" style={{background:"rgba(255,255,255,0.1)"}}><Copy size={12}/>Copy link</button></>:<div className="text-xs text-slate-500"><QrCode size={40} className="mx-auto mb-2 opacity-40"/>Your QR code will appear here.</div>}
+    </div>
+  </div>);
 };
 
 // ════════════════════════════════════════════════════════════════

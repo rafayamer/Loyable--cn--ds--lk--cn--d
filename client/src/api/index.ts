@@ -167,6 +167,30 @@ export const api = {
     remove: (userId: string) => del<any>(`/auth/staff/${userId}`),
   },
 
+  // ── Loyalty Engine (rewards · gift cards · gamification · QR) ──
+  loyaltyEngine: {
+    rewards:        (activeOnly?: boolean) => get<{ rewards: any[] }>(`/loyalty-engine/rewards${activeOnly ? '?activeOnly=true' : ''}`),
+    createReward:   (body: any) => post<any>('/loyalty-engine/rewards', body),
+    updateReward:   (id: string, body: any) => patch<any>(`/loyalty-engine/rewards/${id}`, body),
+    deleteReward:   (id: string) => del<any>(`/loyalty-engine/rewards/${id}`),
+    redeemReward:   (id: string, customerId?: string) => post<any>(`/loyalty-engine/rewards/${id}/redeem${customerId ? `?customerId=${customerId}` : ''}`, {}),
+    redemptions:    (status?: string) => get<{ redemptions: any[] }>(`/loyalty-engine/rewards/redemptions${status ? `?status=${status}` : ''}`),
+    fulfill:        (id: string) => post<any>(`/loyalty-engine/rewards/redemptions/${id}/fulfill`, {}),
+
+    giftCards:      () => get<{ cards: any[]; outstandingBalance: number; activeCount: number }>('/loyalty-engine/gift-cards'),
+    issueGiftCard:  (body: any) => post<any>('/loyalty-engine/gift-cards', body),
+    lookupGiftCard: (code: string) => get<any>(`/loyalty-engine/gift-cards/${encodeURIComponent(code)}`),
+    redeemGiftCard: (code: string, customerId: string) => post<any>('/loyalty-engine/gift-cards/redeem', { code, customerId }),
+
+    challenges:     (customerId?: string) => get<{ challenges: any[] }>(`/loyalty-engine/challenges${customerId ? `?customerId=${customerId}` : ''}`),
+    createChallenge:(body: any) => post<any>('/loyalty-engine/challenges', body),
+    updateChallenge:(id: string, body: any) => patch<any>(`/loyalty-engine/challenges/${id}`, body),
+    deleteChallenge:(id: string) => del<any>(`/loyalty-engine/challenges/${id}`),
+    badges:         (customerId: string) => get<{ badges: any[] }>(`/loyalty-engine/badges?customerId=${customerId}`),
+
+    generateQr:     (body: any) => post<{ token: string; exp: number | null; checkinUrl: string }>('/loyalty-engine/qr/generate', body),
+  },
+
   // ── Analytics ─────────────────────────────────────────────────
   analytics: {
     snapshot: (days?: number) => get<any[]>(`/loyalty/analytics/snapshot?days=${days ?? 30}`),
