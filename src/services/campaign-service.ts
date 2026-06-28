@@ -23,6 +23,7 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { useBaileys } from '../config/whatsapp-provider';
 import {
   enqueueBulkCampaign,
   enqueueScheduledMessage,
@@ -233,7 +234,7 @@ export const launchCampaign = async (
 
   const layout   = campaign.layoutJson as unknown as CampaignLayout;
   // Provider: global env var wins; otherwise fall back to DB config
-  const globalBaileys = process.env.WHATSAPP_PROVIDER === 'baileys';
+  const globalBaileys = useBaileys();
   const hasWaha  = !globalBaileys && !!(business?.wahaBaseUrl && business?.wahaSessionId);
   const provider = (globalBaileys ? 'WAHA' : (hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA'))) as any;
   const channel  = (globalBaileys ? 'WHATSAPP_WAHA' : (campaign.channel && campaign.channel !== 'WHATSAPP_META'

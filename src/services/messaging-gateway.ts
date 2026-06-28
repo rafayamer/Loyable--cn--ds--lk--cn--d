@@ -14,9 +14,10 @@ import { getRedisConnection, getRedisClient } from '../config/redis';
 import { processFeedbackReply } from './feedback-service';
 import { BaileysGateway, getBaileysStatus, getBaileysQrCode, startBaileysSession, stopBaileysSession } from './baileys-service';
 
-// When WHATSAPP_PROVIDER=baileys, route ALL tenants through the in-process Baileys service.
-// Per-business override is supported via the wahaProvider DB field when it exists.
-const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
+// Route ALL tenants through the in-process Baileys service unless an external
+// WAHA endpoint is configured. Centralised in config/whatsapp-provider.
+import { useBaileys } from '../config/whatsapp-provider';
+const GLOBAL_BAILEYS = useBaileys();
 
 
 

@@ -4026,7 +4026,7 @@ const WhatsAppSettingsTab=()=>{
       await api.whatsapp.startSession(body);
       setTimeout(fetchStatus,2000);
       setTimeout(fetchQr,3500);
-    }catch(e:any){setErrMsg(e?.message||"Could not connect. Is WAHA running?");}
+    }catch(e:any){setErrMsg(e?.message||"Could not start WhatsApp. Please try again.");}
     finally{setStarting(false);}
   };
 

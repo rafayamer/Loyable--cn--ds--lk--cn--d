@@ -226,11 +226,16 @@ async function bootstrap() {
   }
 
   // Reconnect any Baileys sessions that have stored credentials in Redis.
-  // Only runs when WHATSAPP_PROVIDER=baileys or individual businesses have wahaProvider=BAILEYS.
-  if (process.env.WHATSAPP_PROVIDER === 'baileys') {
+  // Runs whenever the in-process Baileys provider is active (the default
+  // unless an external WAHA endpoint is configured).
+  const { useBaileys } = await import('./config/whatsapp-provider');
+  if (useBaileys()) {
+    console.log('[app] WhatsApp provider: Baileys (in-process)');
     bootBaileySessions().catch(e =>
       console.warn('[app] Baileys boot error (non-fatal):', (e as Error).message)
     );
+  } else {
+    console.log('[app] WhatsApp provider: WAHA (external)');
   }
 
   // Behind a load balancer (Neon/Render/etc) the real client IP arrives via

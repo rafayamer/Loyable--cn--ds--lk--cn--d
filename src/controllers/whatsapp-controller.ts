@@ -19,7 +19,8 @@ import {
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 
-const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
+import { useBaileys } from '../config/whatsapp-provider';
+const GLOBAL_BAILEYS = useBaileys();
 
 function getProviderForBiz(_bizId: string): 'BAILEYS' | 'WAHA' {
   return GLOBAL_BAILEYS ? 'BAILEYS' : 'WAHA';

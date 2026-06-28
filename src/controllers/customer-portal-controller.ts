@@ -21,8 +21,9 @@ import { getRedisClient }            from '../config/redis';
 import { WahaGateway, toChatId }     from '../services/messaging-gateway';
 import { getWahaConfig }             from '../config/waha';
 import { sendBaileysText }           from '../services/baileys-service';
+import { useBaileys }                from '../config/whatsapp-provider';
 
-const GLOBAL_BAILEYS = process.env.WHATSAPP_PROVIDER === 'baileys';
+const GLOBAL_BAILEYS = useBaileys();
 
 
 // ── Portal JWT helpers ────────────────────────────────────────────

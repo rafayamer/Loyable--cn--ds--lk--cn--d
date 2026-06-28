@@ -20,6 +20,7 @@
 import { Worker, Job, UnrecoverableError } from 'bullmq';
 import { MessageStatus }     from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { useBaileys } from '../config/whatsapp-provider';
 import {
   OutboundMessageJobData,
   QUEUE_NAMES,
@@ -646,7 +647,7 @@ const dispatchAutomationMessage = async (
   });
 
   // Mirror provider logic from campaign-service
-  const globalBaileys = process.env.WHATSAPP_PROVIDER === 'baileys';
+  const globalBaileys = useBaileys();
   const hasWaha    = !globalBaileys && !!(business?.wahaBaseUrl && business?.wahaSessionId);
   const provider   = (hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA')) as any;
   const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1_000);
