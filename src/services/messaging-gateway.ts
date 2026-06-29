@@ -13,6 +13,8 @@ import type { MessagePayload, TemplatePayload, TextPayload } from '../services/m
 import { getRedisConnection, getRedisClient } from '../config/redis';
 import { processFeedbackReply } from './feedback-service';
 import { BaileysGateway, getBaileysStatus, getBaileysQrCode, startBaileysSession, stopBaileysSession } from './baileys-service';
+import { broadcast } from './realtime-service';
+import { isOpen as cbIsOpen, recordSuccess as cbSuccess, recordFailure as cbFail } from './circuit-breaker';
 
 // Route ALL tenants through the in-process Baileys service unless an external
 // WAHA endpoint is configured. Centralised in config/whatsapp-provider.
@@ -46,9 +48,16 @@ export const routeMessage = async (opts: {
 }): Promise<GatewayResult> => {
   const { businessId, recipientPhone, payload } = opts;
 
+  // ── Circuit breaker check ────────────────────────────────────────
+  if (await cbIsOpen(businessId)) {
+    return { success: false, error: 'CIRCUIT_BREAKER_OPEN' };
+  }
+
   // ── Baileys fast-path ────────────────────────────────────────────
   if (GLOBAL_BAILEYS) {
-    return BaileysGateway.send(recipientPhone, payload, businessId);
+    const result = await BaileysGateway.send(recipientPhone, payload, businessId);
+    if (result.success) await cbSuccess(businessId); else await cbFail(businessId);
+    return result;
   }
 
   // ── WAHA path (with optional per-business Baileys override) ──────
@@ -92,13 +101,15 @@ export const routeMessage = async (opts: {
       ? business.wahaBackupSessionId
       : business.wahaSessionId;
 
-  return WahaGateway.send(
+  const result = await WahaGateway.send(
     recipientPhone,
     payload,
     business.wahaBaseUrl,
     effectiveSession,
     business.wahaApiKey ?? ''
   );
+  if (result.success) await cbSuccess(businessId); else await cbFail(businessId);
+  return result;
 };
 
 // Redis key prefix for the per-business WAHA config cache. Shared with the
@@ -388,6 +399,8 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
     if (event.event === 'message' && event.payload?.from && event.payload?.body) {
       const phone    = normalizePhone(event.payload.from as string);
       const rawBody  = (event.payload.body as string).trim();
+      // Broadcast new inbound to live dashboard
+      broadcast(businessId, { type: 'NEW_INBOUND', phone, body: rawBody.substring(0, 100) });
       const upperBody = rawBody.toUpperCase();
 
       // Priority 1: pending opt-out reason reply (single digit 1-4)
@@ -431,6 +444,8 @@ const handleWahaAck = async (event: any, businessId: string): Promise<void> => {
       updatedAt:   new Date(),
     },
   });
+  // Push real-time status update to any connected dashboard tabs
+  broadcast(businessId, { type: 'MESSAGE_STATUS', messageId: id, status });
 };
 
 // ================================================================

@@ -211,6 +211,9 @@ async function ensureSchemaPatches() {
     // ── Opt-out reason stored in ConsentChangeLog (keyword field already exists) ──
     { label: 'consent_change_log.optOutReason',
       sql: 'ALTER TABLE "consent_change_log" ADD COLUMN IF NOT EXISTS "optOutReason" TEXT' },
+    // ── Per-tenant timezone support ──
+    { label: 'businesses.timezone',
+      sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]
@@ -383,6 +386,7 @@ async function bootstrap() {
   await loadRouter('./controllers/website-cms-controller',    'websiteCmsRouter',      '/api/website');
   await loadRouter('./controllers/customer-portal-controller','customerPortalRouter',  '/api/portal');
   await loadRouter('./controllers/upload-controller',          'uploadRouter',          '/api/upload');
+  await loadRouter('./services/realtime-service',             'realtimeRouter',        '/api/realtime');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');

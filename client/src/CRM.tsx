@@ -170,6 +170,22 @@ const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-al
 const ROLES={OWNER:"TENANT_OWNER",MANAGER:"BRANCH_MANAGER",STAFF:"MARKETING_STAFF",KITCHEN:"KITCHEN"};
 const getRole=():string=>localStorage.getItem("userRole")||ROLES.OWNER;
 const useRole=()=>{const[role,setRole]=useState(getRole);useEffect(()=>{const fn=()=>setRole(getRole());window.addEventListener("storage",fn);return()=>window.removeEventListener("storage",fn);},[]);return role;};
+
+// Real-time SSE hook — connects to /api/realtime/stream, calls onEvent per message
+const useRealtime=(onEvent:(e:any)=>void,enabled=true)=>{
+  const cbRef=useRef(onEvent);
+  cbRef.current=onEvent;
+  useEffect(()=>{
+    if(!enabled)return;
+    const token=localStorage.getItem("token");
+    if(!token)return;
+    const API=import.meta.env.VITE_API_URL||"";
+    const es=new EventSource(`${API}/api/realtime/stream?token=${token}`);
+    es.onmessage=(ev)=>{try{const d=JSON.parse(ev.data);if(d.type!=="PING")cbRef.current(d);}catch{}};
+    es.onerror=()=>{/* auto-reconnects */};
+    return()=>es.close();
+  },[enabled]);
+};
 const can=(role:string,action:"viewAnalytics"|"viewRevenue"|"viewOrders"|"editMenu"|"editOrders"|"changeSettings"|"viewKitchen"|"newSale")=>{
   if(role===ROLES.OWNER)return true;
   if(role===ROLES.MANAGER)return!["viewAnalytics","viewRevenue","changeSettings"].includes(action);
@@ -277,6 +293,7 @@ const hydrateFromApi=async()=>{
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
     if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
     if(biz?.country)localStorage.setItem("biz_country",biz.country);
+    if(biz?.timezone)localStorage.setItem("biz_timezone",biz.timezone);
     if(biz?.ntn)localStorage.setItem("biz_ntn",biz.ntn);
     if(biz?.taxNumber)localStorage.setItem("biz_taxNumber",biz.taxNumber);
     if(biz?.gstRate!=null)localStorage.setItem("biz_gstRate",String(biz.gstRate));
@@ -1502,6 +1519,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   },[preset]);
 
   useEffect(()=>{load();},[load]);
+  const [quotaWarn,setQuotaWarn]=useState<{used:number;total:number;pct:number}|null>(null);
+  useRealtime((event:any)=>{
+    if(event.type==="QUOTA_WARNING")setQuotaWarn({used:event.used,total:event.total,pct:event.pct});
+    if(event.type==="QUOTA_EXHAUSTED")setQuotaWarn({used:0,total:0,pct:100});
+    if(event.type==="CAMPAIGN_COMPLETE")load();
+  });
   const k=dash?.kpis;
   const visitTrend=(dash?.visitTrend??[]).map((d:any)=>({day:d.day?.slice(5),v:d.visits,r:d.revenue}));
   const segData=(dash?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#8b5cf6"}));
@@ -1527,6 +1550,15 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
 
   return(
     <div className="space-y-5" style={{color:ct.tx}}>
+      {/* Real-time quota warning banner */}
+      {quotaWarn&&quotaWarn.pct>=80&&(
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:quotaWarn.pct>=100?"rgba(239,68,68,0.15)":"rgba(245,158,11,0.12)",border:`1px solid ${quotaWarn.pct>=100?"rgba(239,68,68,0.4)":"rgba(245,158,11,0.3)"}`}}>
+          <AlertTriangle size={16} className={quotaWarn.pct>=100?"text-red-400":"text-amber-400"}/>
+          <span className={`text-sm font-semibold ${quotaWarn.pct>=100?"text-red-400":"text-amber-400"}`}>{quotaWarn.pct>=100?"Quota exhausted — campaigns paused":`Quota at ${quotaWarn.pct}% — ${quotaWarn.total-quotaWarn.used} messages remaining`}</span>
+          <button onClick={()=>setPage("settings")} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Upgrade</button>
+          <button onClick={()=>setQuotaWarn(null)} className="text-slate-500 hover:text-slate-300 text-lg leading-none">×</button>
+        </div>
+      )}
       {/* Header + date picker */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -2227,6 +2259,13 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
     load();
     api.whatsapp.status().then(d=>setWaStatus(d?.waha?.status??d?.meta?.configured?"META_OK":"NOT_CONFIGURED")).catch(()=>setWaStatus("NOT_CONFIGURED"));
   },[load]);
+  useRealtime((event:any)=>{
+    if(event.type==="MESSAGE_STATUS"){
+      setMessages(prev=>prev.map((m:any)=>m.providerId===event.messageId?{...m,status:event.status}:m));
+    } else if(event.type==="NEW_INBOUND"){
+      load();
+    }
+  });
   const connected=waStatus==="WORKING"||waStatus==="META_OK";
   const byStatus=Object.entries(STATUS_COLORS).map(([s,c])=>({s,c,n:messages.filter(m=>m.status===s).length})).filter(x=>x.n>0);
   return(
@@ -4657,6 +4696,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
   const [countryVal,setCountryVal]=useState(()=>localStorage.getItem("biz_country")||"GB");
   const [currencyVal,setCurrencyVal]=useState(()=>localStorage.getItem("biz_currency")||"GBP");
+  const [timezoneVal,setTimezoneVal]=useState(()=>localStorage.getItem("biz_timezone")||"Europe/London");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
   const [bizSaved,setBizSaved]=useState(false);
   const [inviteEmail,setInviteEmail]=useState("");
@@ -4677,10 +4717,11 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const saveBizSettings=async()=>{
     try{
-      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry});
+      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry,timezone:timezoneVal});
       localStorage.setItem("biz_name",bizNameVal);
       localStorage.setItem("biz_currency",currencyVal);
       localStorage.setItem("biz_country",countryVal);
+      localStorage.setItem("biz_timezone",timezoneVal);
       if(logoUrlVal)localStorage.setItem("biz_logo",logoUrlVal);
       setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
     }catch{}
@@ -4709,6 +4750,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
             <div><label className="text-xs text-slate-400 mb-1 block">Logo URL (for receipts & portal)</label><input value={logoUrlVal} onChange={e=>setLogoUrlVal(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Country</label><select value={countryVal} onChange={e=>setCountryVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">{countryVal==="PK"?"🇵🇰 FBR tax integration is available — see the FBR / Tax tab after saving.":""}</div></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Currency</label><select value={currencyVal} onChange={e=>setCurrencyVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Timezone</label><select value={timezoneVal} onChange={e=>setTimezoneVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:"#1a1030"}}>{t.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Birthday messages and automations fire in your local time</div></div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
               <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
