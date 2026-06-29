@@ -366,5 +366,6 @@ export const api = {
     receipt:      (id: string)   => `/api/pos/receipt/${id}`,
     walletLookup: (phone: string) => get<any>(`/pos/wallet-lookup?phone=${encodeURIComponent(phone)}`),
     walletRedeem: (body: { customerId: string; pointsToRedeem: number; amountDeducted: number }) => post<any>('/pos/wallet-redeem', body),
+    giftCreditRedeem: (body: { customerId: string; amount: number }) => post<any>('/pos/giftcredit-redeem', body),
   },
 };

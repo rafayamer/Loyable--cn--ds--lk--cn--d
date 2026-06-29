@@ -5459,6 +5459,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [walletCustomer,setWalletCustomer]=useState<any>(null);
   const [walletLooking,setWalletLooking]=useState(false);
   const [walletPoints,setWalletPoints]=useState(0); // pts to redeem
+  const [useGift,setUseGift]=useState(false); // apply gift/shop credit
   const walletLookupTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const [barcodeFlash,setBarcodeFlash]=useState<string|null>(null);
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
@@ -5535,7 +5536,12 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const walletDiscount=walletCustomer&&mode==="WALLET"&&walletPoints>0
     ? Math.min(parseFloat((walletPoints/(walletCustomer.redeemRate??100)).toFixed(2)), orderRaw-discountValue)
     : 0;
-  const subtotal=orderRaw-discountValue-walletDiscount;
+  // Gift / shop credit (money wallet) applied after points
+  const giftAvailable=mode==="WALLET"&&walletCustomer?.found?Number(walletCustomer.walletBalance??0):0;
+  const giftDiscount=useGift&&giftAvailable>0
+    ? Math.min(giftAvailable, Math.max(0, orderRaw-discountValue-walletDiscount))
+    : 0;
+  const subtotal=orderRaw-discountValue-walletDiscount-giftDiscount;
   const total=Math.max(0,subtotal);
 
   const placeOrder=async()=>{
@@ -5550,8 +5556,17 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
         return;
       }
     }
-    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount:discountValue+walletDiscount,phone,cname,payMode:mode,status:"UNPAID",notes});
-    setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");setWalletCustomer(null);setWalletPoints(0);
+    // Spend gift / shop credit (money wallet) if applied
+    if(mode==="WALLET"&&walletCustomer?.found&&giftDiscount>0){
+      try{
+        await api.pos.giftCreditRedeem({customerId:walletCustomer.customerId,amount:giftDiscount});
+      }catch(e){
+        setPlacing(false);
+        return;
+      }
+    }
+    addOrder({type:bizType,table:table||undefined,items:order.map(i=>({...i,ready:false})),discount:discountValue+walletDiscount+giftDiscount,phone,cname,payMode:mode,status:"UNPAID",notes});
+    setOrder([]);setPhone("");setCname("");setDiscount(0);setTable("");setNotes("");setWalletCustomer(null);setWalletPoints(0);setUseGift(false);
     setPlaced(true);setTimeout(()=>setPlaced(false),3000);
     setPlacing(false);
   };
@@ -5701,6 +5716,18 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                       <div className="flex justify-between text-[10px] text-slate-500"><span>0 pts</span><span>{Math.min(walletCustomer.pointsBalance,Math.ceil((orderRaw-discountValue)*(walletCustomer.redeemRate??100)))} pts</span></div>
                     </div>
                   )}
+                  {/* Gift / shop credit (money wallet from gift cards) */}
+                  {giftAvailable>0&&(
+                    <label className="flex items-center justify-between gap-2 pt-2 mt-1 cursor-pointer" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+                      <div>
+                        <div className="text-xs font-semibold text-white flex items-center gap-1.5">💳 Gift / shop credit</div>
+                        <div className="text-[11px] text-emerald-300 mt-0.5">{currency} {giftAvailable.toFixed(2)} available{useGift&&giftDiscount>0?` · ${currency} ${giftDiscount.toFixed(2)} applied`:""}</div>
+                      </div>
+                      <button onClick={()=>setUseGift(v=>!v)} type="button" className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative" style={{background:useGift?"#22c55e":"rgba(255,255,255,0.12)"}}>
+                        <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow" style={{left:useGift?"calc(100% - 22px)":"2px"}}/>
+                      </button>
+                    </label>
+                  )}
                 </>
               )}
               {!walletLooking&&!walletCustomer&&(
@@ -5728,6 +5755,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
             {!order.length&&<div className="text-slate-500 text-center py-3">Tap items from the menu</div>}
             {discountValue>0&&<div className="flex justify-between text-amber-400"><span>Discount {discount>0?`(${discount}${discountMode==='percent'?'%':''})`:''}  </span><span>-{currency} {discountValue.toFixed(2)}</span></div>}
             {walletDiscount>0&&<div className="flex justify-between text-violet-400"><span>⭐ Wallet ({walletPoints} pts)</span><span>-{currency} {walletDiscount.toFixed(2)}</span></div>}
+            {giftDiscount>0&&<div className="flex justify-between text-emerald-400"><span>💳 Gift credit</span><span>-{currency} {giftDiscount.toFixed(2)}</span></div>}
           </div>
           <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
           <button onClick={placeOrder} disabled={placing||!order.length} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#f59e0b,#d97706)"}}>

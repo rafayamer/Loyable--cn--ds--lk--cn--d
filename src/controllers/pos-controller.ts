@@ -500,7 +500,7 @@ posRouter.get('/wallet-lookup', async (req: Request, res: Response) => {
     const [customer, biz] = await Promise.all([
       prisma.customer.findFirst({
         where:  { businessId, whatsappNumber: phone },
-        select: { id: true, fullName: true, currentPointsBalance: true, isSuppressed: true },
+        select: { id: true, fullName: true, currentPointsBalance: true, currentWalletBalance: true, isSuppressed: true },
       }),
       prisma.business.findUnique({
         where:  { id: businessId },
@@ -528,6 +528,7 @@ posRouter.get('/wallet-lookup', async (req: Request, res: Response) => {
       fullName:         customer.fullName,
       phone,
       pointsBalance:    balance,
+      walletBalance:    Number(customer.currentWalletBalance ?? 0), // gift / shop credit (money)
       redeemRate,
       minRedeemPoints,
       maxDiscount,
@@ -592,6 +593,43 @@ posRouter.post('/wallet-redeem', async (req: Request, res: Response) => {
     res.json({ ok: true, pointsDebited: pointsToRedeem, newBalance, amountDeducted });
   } catch (err) {
     console.error('[pos] wallet-redeem error', err);
+    res.status(500).json({ error: 'Redemption failed' });
+  }
+});
+
+// ── POST /api/pos/giftcredit-redeem ───────────────────────────────
+// Spend a customer's gift / shop-credit (money wallet) at checkout.
+posRouter.post('/giftcredit-redeem', async (req: Request, res: Response) => {
+  try {
+    const businessId = getBizId(req);
+    const { customerId, amount } = req.body as { customerId: string; amount: number };
+    const spend = Number(amount);
+    if (!customerId || !(spend > 0)) { res.status(400).json({ error: 'customerId and positive amount required' }); return; }
+
+    const customer = await prisma.customer.findFirst({
+      where:  { id: customerId, businessId },
+      select: { currentWalletBalance: true },
+    });
+    if (!customer) { res.status(404).json({ error: 'Customer not found' }); return; }
+
+    const balance = Number(customer.currentWalletBalance ?? 0);
+    if (balance < spend) { res.status(400).json({ error: 'Insufficient gift balance', balance }); return; }
+
+    const newBalance = Math.round((balance - spend) * 100) / 100;
+    await prisma.$transaction([
+      prisma.walletLedger.create({
+        data: {
+          businessId, customerId,
+          type: 'DEBIT', amount: spend, balanceAfter: newBalance,
+          reason: 'PURCHASE_DEDUCTION', referenceType: 'POS_GIFT_CREDIT',
+        },
+      }),
+      prisma.customer.update({ where: { id: customerId }, data: { currentWalletBalance: newBalance }, select: { id: true } }),
+    ]);
+
+    res.json({ ok: true, amountDeducted: spend, newBalance });
+  } catch (err) {
+    console.error('[pos] giftcredit-redeem error', err);
     res.status(500).json({ error: 'Redemption failed' });
   }
 });
