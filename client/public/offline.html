@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>The Loyaly — Offline</title>
+  <style>
+    html,body{margin:0;height:100%;background:#06040f;color:#fff;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+    .card{max-width:340px}
+    .dot{width:54px;height:54px;border-radius:16px;background:rgba(232,116,59,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+    h1{font-size:20px;margin:0 0 8px}
+    p{font-size:14px;color:rgba(255,255,255,.6);line-height:1.5;margin:0 0 20px}
+    button{background:linear-gradient(135deg,#E8743B,#f59e0b);color:#fff;border:0;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="wrap"><div class="card">
+    <div class="dot">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8743B" stroke-width="2" stroke-linecap="round"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+    </div>
+    <h1>You're offline</h1>
+    <p>The Loyaly needs a connection for live data. Your last loaded screens may still work — reconnect to sync.</p>
+    <button onclick="location.reload()">Try again</button>
+  </div></div>
+</body>
+</html>

@@ -7426,16 +7426,18 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
-  // Bottom nav — role-filtered, capped at 5 most relevant items
-  const BOT_NAV_ALL=[
+  // Mobile bottom nav — recommended pattern: 4 modules + More sheet.
+  const BOT_MODULES=[
     {id:"dashboard",icon:LayoutDashboard,label:"Home",roles:[ROLES.OWNER]},
-    {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
     {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-    {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+    {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
     {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-    {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER]},
+    {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.KITCHEN]},
   ];
-  const BOT_NAV=BOT_NAV_ALL.filter(it=>it.roles.includes(role)).slice(0,5);
+  const BOT_NAV=BOT_MODULES.filter(it=>it.roles.includes(role)).slice(0,4);
+  const botIds=new Set(BOT_NAV.map(b=>b.id));
+  // "More" sheet = modules the role can see that aren't already a bottom tab.
+  const MORE_ITEMS=MODULES.filter((m:any)=>m.roles.includes(role)&&!botIds.has(m.id));
   const pt=pdTokens(portalDark);
   return(
   <PortalThemeCtx.Provider value={{pd:portalDark,setPd:(v)=>{setPortalDark(v);localStorage.setItem("portal_dark",String(v));localStorage.setItem("portal_dark",String(v));}}}>
@@ -7465,7 +7467,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       {/* Desktop sidebar */}
       <div className="hidden md:block"><Sidebar page={page} setPage={nav} col={col} setCol={setCol} onLogout={doLogout} wa={wa} role={role} portalDark={portalDark} setPortalDark={setPortalDark}/></div>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${pt.bdr}`}}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${pt.bdr}`,paddingTop:"calc(0.75rem + env(safe-area-inset-top))"}}>
         <div className="flex items-center">
           <ThemeLogo dark={portalDark} className="h-6 w-auto object-contain"/>
         </div>
@@ -7475,21 +7477,42 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         </div>
       </div>
       {/* Main content */}
-      <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-24 md:pb-0`}>
+      <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 md:pb-0`} style={{paddingBottom:"calc(6rem + env(safe-area-inset-bottom))"}}>
         <div className="p-3 md:p-6 max-w-6xl"><TrialBanner/><ModuleTabs page={page} setPage={nav}/>{render()}</div>
       </main>
+      {/* Mobile "More" bottom sheet */}
+      {mobileMenu&&<div className="md:hidden fixed inset-0 z-[60]" onClick={()=>setMobileMenu(false)} style={{background:"rgba(0,0,0,0.5)"}}>
+        <div onClick={e=>e.stopPropagation()} className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-4" style={{background:pt.bg2,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`,paddingBottom:"calc(1rem + env(safe-area-inset-bottom))"}}>
+          <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{background:pt.bdr}}/>
+          <div className="grid grid-cols-3 gap-2">
+            {MORE_ITEMS.map((m:any)=>{const active=moduleForPage(page)?.id===m.id;return(
+              <button key={m.id} onClick={()=>{nav(firstPageOf(m));setMobileMenu(false);}} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl" style={active?{background:"linear-gradient(135deg,rgba(232,116,59,0.18),rgba(245,158,11,0.06))",boxShadow:"inset 0 0 0 1px rgba(232,116,59,0.25)"}:{background:pt.card,border:`1px solid ${pt.bdr}`}}>
+                <m.icon size={20} style={{color:active?"#E8743B":pt.tx2}}/>
+                <span className="text-[11px] font-medium" style={{color:pt.tx2}}>{m.label}</span>
+              </button>
+            );})}
+            <button onClick={()=>{setMobileMenu(false);doLogout();}} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl" style={{background:pt.card,border:`1px solid ${pt.bdr}`}}>
+              <LogOut size={20} style={{color:"#ef4444"}}/><span className="text-[11px] font-medium" style={{color:pt.tx2}}>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>}
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:portalDark?"rgba(8,6,18,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`}}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center" style={{background:portalDark?"rgba(8,6,18,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`,paddingBottom:"env(safe-area-inset-bottom)"}}>
         {BOT_NAV.map(it=>{
-          const active=page===it.id||(it.id==="customers"&&page==="profile");
+          const active=moduleForPage(page)?.id===it.id||(it.id==="customers"&&page==="profile");
           return(
-            <button key={it.id} onClick={()=>nav(it.id)} className="relative flex-1 min-w-[60px] flex flex-col items-center gap-1 py-3 transition-all" style={{color:active?"#8b5cf6":"#64748b"}}>
-              {active&&<div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-b-full" style={{background:"#8b5cf6"}}/>}
+            <button key={it.id} onClick={()=>nav(firstPageOf(moduleForPage(it.id)||{id:it.id}))} className="relative flex-1 min-w-[56px] flex flex-col items-center gap-1 py-3 transition-all" style={{color:active?"#E8743B":"#94a3b8"}}>
+              {active&&<div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-b-full" style={{background:"#E8743B"}}/>}
               <it.icon size={20} strokeWidth={active?2.5:1.8}/>
               <span className="text-[10px] font-medium">{it.label}</span>
             </button>
           );
         })}
+        {/* More */}
+        <button onClick={()=>setMobileMenu(true)} className="relative flex-1 min-w-[56px] flex flex-col items-center gap-1 py-3" style={{color:mobileMenu?"#E8743B":"#94a3b8"}}>
+          <Menu size={20} strokeWidth={1.8}/><span className="text-[10px] font-medium">More</span>
+        </button>
       </nav>
     </div>
   </PortalThemeCtx.Provider>
