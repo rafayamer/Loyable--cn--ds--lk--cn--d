@@ -262,10 +262,22 @@ const pauseHandler = async (req: Request, res: Response): Promise<void> => {
 const cloneHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { businessId } = req.tenantContext;
-    const src = await getCampaignById(req.params.id, businessId);
-    const { id: _id, createdAt: _c, updatedAt: _u, status: _s, launchedAt: _l, scheduledAt: _sc, completedAt: _cp, ...rest } = src as any;
-    const cloned = await (prisma as any).campaign.create({
-      data: { ...rest, businessId, name: `Copy of ${src.name}`, status: 'DRAFT' },
+    const src = await getCampaignById(req.params.id, businessId) as any;
+    // Whitelist only the content fields. Everything else (stats counters,
+    // approval state, A/B winner, schedule) MUST reset to defaults on a clone.
+    const cloned = await prisma.campaign.create({
+      data: {
+        businessId,
+        name:          `Copy of ${src.name}`,
+        description:   src.description ?? null,
+        targetSegment: src.targetSegment ?? null,
+        layoutJson:    src.layoutJson ?? undefined,
+        channel:       src.channel,
+        abVariants:    src.abVariants ?? undefined,
+        status:        'DRAFT',
+        // scheduledFor, *Count, approvedAt, rejectionReason, abWinnerId,
+        // abTestStartedAt all fall back to schema defaults (null / 0).
+      },
     });
     res.status(201).json({ campaign: cloned });
   } catch (err: any) {

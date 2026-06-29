@@ -248,29 +248,42 @@ const QUERY_LIBRARY: Record<
 
   getCampaignRoi: async (businessId, { days = 30 }) => {
     const since = new Date(Date.now() - Number(days) * 86_400_000);
-    const campaigns = await (prisma as any).campaign.findMany({
-      where:  { businessId, status: 'COMPLETED', updatedAt: { gte: since } },
-      select: { id: true, name: true, audienceSize: true, discountValue: true, totalRevenue: true, deliveredCount: true, readCount: true },
+    // Only fields that actually exist on Campaign. Revenue is attributed from
+    // Visit.attributedCampaignId (set by the POS webhook within the attribution window).
+    const campaigns = await prisma.campaign.findMany({
+      where:  { businessId, updatedAt: { gte: since } },
+      select: { id: true, name: true, sentCount: true, deliveredCount: true, readCount: true },
+      orderBy: { updatedAt: 'desc' },
       take:   20,
-    }) as Array<{ id: string; name: string; audienceSize: number; discountValue: number | null; totalRevenue: number | null; deliveredCount: number | null; readCount: number | null }>;
-    const rows = campaigns.map(c => ({
-      name:           c.name,
-      audienceSize:   c.audienceSize ?? 0,
-      discountCost:   Number(c.discountValue ?? 0) * (c.audienceSize ?? 0),
-      revenueLifted:  Number(c.totalRevenue ?? 0),
-      roi:            c.totalRevenue && c.discountValue && c.audienceSize
-        ? Number(c.totalRevenue) / (Number(c.discountValue) * c.audienceSize) - 1
-        : null,
-      readRate:       c.deliveredCount ? ((c.readCount ?? 0) / c.deliveredCount * 100).toFixed(1) : null,
+    });
+
+    const rows = await Promise.all(campaigns.map(async (c) => {
+      const attribution = await prisma.visit.aggregate({
+        where:  { businessId, attributedCampaignId: c.id, visitedAt: { gte: since } },
+        _sum:   { amountSpent: true },
+        _count: { id: true },
+      });
+      const revenueAttributed = Number(attribution._sum.amountSpent ?? 0);
+      const attributedVisits  = attribution._count.id;
+      const delivered         = c.deliveredCount ?? 0;
+      return {
+        name:              c.name,
+        sent:              c.sentCount ?? 0,
+        delivered,
+        readRate:          delivered ? Number(((c.readCount ?? 0) / delivered * 100).toFixed(1)) : null,
+        attributedVisits,
+        revenueAttributed: Number(revenueAttributed.toFixed(2)),
+        revenuePerMessage: delivered ? Number((revenueAttributed / delivered).toFixed(2)) : null,
+      };
     }));
-    const totalRev  = rows.reduce((s, r) => s + r.revenueLifted, 0);
-    const totalCost = rows.reduce((s, r) => s + r.discountCost, 0);
+
+    const totalRev = rows.reduce((s, r) => s + r.revenueAttributed, 0);
     return {
       queryName:  'getCampaignRoi',
       data:       rows,
       count:      rows.length,
       chartType:  'table',
-      summary:    `Campaign ROI for last ${days} days: £${totalRev.toFixed(0)} revenue from £${totalCost.toFixed(0)} in discounts across ${rows.length} campaigns.`,
+      summary:    `Campaign ROI (last ${days} days): £${totalRev.toFixed(0)} in attributed revenue across ${rows.length} campaigns. Revenue is linked to campaigns via post-message visits within the attribution window.`,
     };
   },
 

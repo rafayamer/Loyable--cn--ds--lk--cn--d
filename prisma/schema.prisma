@@ -206,6 +206,9 @@ model Business {
   redeemRate           Int               @default(100)  // Points needed to redeem 1 currency unit (e.g. 100 pts = £1)
   minRedeemPoints      Int               @default(100)  // Minimum points required to use wallet payment
 
+  // Campaign governance — when true, MARKETING_STAFF campaigns need owner approval
+  requiresCampaignApproval Boolean       @default(false)
+
   isActive             Boolean           @default(true)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
@@ -292,6 +295,8 @@ model User {
   refreshTokenHash String?         // kept for migration compat — no longer used for multi-device
   isActive         Boolean         @default(true)
   lastLoginAt      DateTime?
+  totpSecret       String?         // base32 TOTP secret; null until 2FA enabled
+  totpEnabled      Boolean         @default(false)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -912,6 +917,10 @@ model Campaign {
   failedCount      Int              @default(0)
   droppedCount     Int              @default(0)
 
+  // Approval workflow (when Business.requiresCampaignApproval is on)
+  approvedAt       DateTime?
+  rejectionReason  String?
+
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -1463,6 +1472,50 @@ model FeedbackResponse {
   @@index([customerId])
   @@index([businessId, score])
   @@map("feedback_responses")
+}
+
+// Per-tenant third-party integration credentials (Square, Shopify, etc.)
+model IntegrationConfig {
+  id         String    @id @default(cuid())
+  businessId String
+  provider   String    // SQUARE | SHOPIFY | WOOCOMMERCE | GOOGLE_SHEETS | ZAPIER
+  isEnabled  Boolean   @default(false)
+  configJson Json      @default("{}")
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([businessId, provider])
+  @@index([businessId, provider])
+  @@map("integration_configs")
+}
+
+// No-code saved segments built from JSON rule trees (AND/OR conditions)
+model CustomSegment {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  rulesJson   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([businessId, updatedAt])
+  @@map("custom_segments")
+}
+
+// Pre-computed cohort retention matrix (signup month → % returning per offset)
+model CohortRetentionSnapshot {
+  id                String   @id @default(cuid())
+  businessId        String
+  cohortMonth       String   // "YYYY-MM"
+  cohortSize        Int      @default(0)
+  retentionByOffset Json     @default("{}")
+  updatedAt         DateTime @default(now())
+
+  @@unique([businessId, cohortMonth])
+  @@index([businessId, cohortMonth])
+  @@map("cohort_retention_snapshots")
 }
 
 model WhatsAppMessage {
