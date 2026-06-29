@@ -4044,6 +4044,50 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
 // ════════════════════════════════════════════════════════════════
 // ANALYTICS
 // ════════════════════════════════════════════════════════════════
+const CohortHeatmap=()=>{
+  const [cohorts,setCohorts]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{api.ai.cohortRetention(6).then(d=>setCohorts(d?.cohorts??[])).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const cell=(val:number)=>{
+    if(val<0)return{bg:"rgba(255,255,255,0.04)",text:"—",col:"#475569"};
+    const bg=val>=70?"rgba(34,197,94,0.25)":val>=40?"rgba(245,158,11,0.2)":"rgba(239,68,68,0.15)";
+    const col=val>=70?"#4ade80":val>=40?"#fbbf24":"#f87171";
+    return{bg,text:`${val}%`,col};
+  };
+  if(loading)return<Skeleton h="h-48"/>;
+  if(cohorts.length===0)return<div className="text-xs text-slate-500 text-center py-8">No cohort data yet — requires at least 1 month of customer history</div>;
+  return(
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead><tr className="text-slate-400 text-[11px]">
+          <th className="text-left pb-2 pr-3">Cohort</th>
+          <th className="pb-2 px-2">Size</th>
+          <th className="pb-2 px-2">M+1</th>
+          <th className="pb-2 px-2">M+3</th>
+          <th className="pb-2 px-2">M+6</th>
+        </tr></thead>
+        <tbody>{cohorts.map((c:any)=>(
+          <tr key={c.cohort} className="border-t border-white/5">
+            <td className="py-1.5 pr-3 font-mono text-slate-300">{c.cohort}</td>
+            <td className="py-1.5 px-2 text-center text-slate-400">{c.size}</td>
+            {[c.m1,c.m3,c.m6].map((v:number,i:number)=>{const s=cell(v);return(
+              <td key={i} className="py-1.5 px-2 text-center">
+                <span className="px-2 py-0.5 rounded font-semibold" style={{background:s.bg,color:s.col}}>{s.text}</span>
+              </td>
+            );})}
+          </tr>
+        ))}</tbody>
+      </table>
+      <div className="flex items-center gap-3 mt-3 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(34,197,94,0.25)"}}/>≥70% retained</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(245,158,11,0.2)"}}/>40-69%</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(239,68,68,0.15)"}}/>&lt;40%</span>
+        <span className="ml-1">— = data not yet available</span>
+      </div>
+    </div>
+  );
+};
+
 const AnalyticsPage=()=>{
   const ct=useCard();
   const [snapshot,setSnapshot]=useState<any[]>([]);
@@ -4088,6 +4132,13 @@ const AnalyticsPage=()=>{
       <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
       <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#8b5cf6" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
+    </div>
+    <div className="gc rounded-xl p-4" style={CARD}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Activity size={14} style={{color:C.accent}}/>Cohort Retention Heatmap</h3>
+        <span className="text-[10px] text-slate-500">% of signup cohort who returned each month</span>
+      </div>
+      <CohortHeatmap/>
     </div>
   </div>
   );

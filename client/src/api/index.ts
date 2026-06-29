@@ -257,8 +257,9 @@ export const api = {
 
   // ── AI ────────────────────────────────────────────────────────
   ai: {
-    query:           (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
-    generateMessage: (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
+    query:            (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
+    generateMessage:  (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
+    cohortRetention:  (months?: number) => get<any>(`/ai/cohort-retention${months ? `?months=${months}` : ''}`),
   },
 
   // ── Settings (business) ───────────────────────────────────────

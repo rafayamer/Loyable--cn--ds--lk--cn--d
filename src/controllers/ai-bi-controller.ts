@@ -631,6 +631,81 @@ aiBiRouter.post(
 );
 
 // ================================================================
+// COHORT RETENTION ANALYSIS  GET /ai/cohort-retention
+// ================================================================
+
+aiBiRouter.get(
+  '/cohort-retention',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { businessId } = req.tenantContext;
+      const months = Math.min(12, Math.max(3, parseInt(req.query.months as string || '6', 10)));
+      const cohorts = await computeCohortRetention(businessId, months);
+      res.json({ cohorts, months });
+    } catch (err) {
+      console.error('[ai:cohort-retention]', err);
+      res.status(500).json({ error: 'COHORT_ERROR' });
+    }
+  }
+);
+
+/**
+ * Groups customers by signup month (up to `months` cohorts), then for each
+ * cohort counts what % returned in Month+1, Month+3, Month+6.
+ * Returns rows: [{ cohort: "2024-11", size: 42, m1: 71, m3: 52, m6: 38 }, ...]
+ */
+const computeCohortRetention = async (businessId: string, numMonths: number) => {
+  const now   = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - numMonths, 1));
+
+  // All customers in window grouped by signup month
+  const customers = await prisma.customer.findMany({
+    where:   { businessId, isActive: true, createdAt: { gte: start } },
+    select:  { id: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (customers.length === 0) return [];
+
+  // Group by YYYY-MM
+  const cohortMap = new Map<string, string[]>();
+  for (const c of customers) {
+    const key = `${c.createdAt.getUTCFullYear()}-${String(c.createdAt.getUTCMonth() + 1).padStart(2, '0')}`;
+    if (!cohortMap.has(key)) cohortMap.set(key, []);
+    cohortMap.get(key)!.push(c.id);
+  }
+
+  const results = [];
+  for (const [cohort, ids] of cohortMap) {
+    const [year, month] = cohort.split('-').map(Number);
+    const cohortStart = new Date(Date.UTC(year, month - 1, 1));
+
+    const retentionForWindow = async (offsetMonths: number): Promise<number> => {
+      const winStart = new Date(Date.UTC(year, month - 1 + offsetMonths, 1));
+      const winEnd   = new Date(Date.UTC(year, month - 1 + offsetMonths + 1, 1));
+      if (winEnd > now) return -1; // data not yet available
+      const returned = await prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId, customerId: { in: ids }, visitedAt: { gte: winStart, lt: winEnd } },
+        _count: { customerId: true },
+      });
+      return Math.round(returned.length / ids.length * 100);
+    };
+
+    const [m1, m3, m6] = await Promise.all([
+      retentionForWindow(1),
+      retentionForWindow(3),
+      retentionForWindow(6),
+    ]);
+
+    results.push({ cohort, size: ids.length, m1, m3, m6 });
+  }
+
+  return results.sort((a, b) => a.cohort.localeCompare(b.cohort));
+};
+
+// ================================================================
 // MOUNT IN app.ts:
 //   import { aiBiRouter }       from './controllers/ai.bi';
 //   import { posWebhookRouter } from './controllers/webhook.pos';
