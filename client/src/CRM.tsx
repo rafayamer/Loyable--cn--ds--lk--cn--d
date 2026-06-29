@@ -4396,6 +4396,89 @@ const PLANS=[
   {tier:"ENTERPRISE", label:"Enterprise",  price:"Custom", msgs:"Unlimited",      features:["Everything in Professional","SLA","Dedicated support","Custom integrations"]},
 ];
 
+const INTEGRATION_META:{[k:string]:{label:string;desc:string;icon:string;fields:{k:string;l:string;type:"text"|"password";ph:string}[]}}={
+  SQUARE:    {label:"Square POS",desc:"Sync Square orders → visits and customers → loyalty profiles",icon:"🟦",fields:[{k:"accessToken",l:"Access Token",type:"password",ph:"EAAAxxxxxx…"}]},
+  SHOPIFY:   {label:"Shopify",desc:"Sync Shopify orders → visits. Customers auto-enrolled in loyalty",icon:"🟢",fields:[{k:"storeUrl",l:"Store URL",type:"text",ph:"yourstore.myshopify.com"},{k:"apiKey",l:"Admin API Access Token",type:"password",ph:"shpat_xxxxxx"}]},
+  WOOCOMMERCE:{label:"WooCommerce",desc:"Order webhook → visit record. Use the webhook URL below in WooCommerce",icon:"🛒",fields:[{k:"consumerKey",l:"Consumer Key",type:"text",ph:"ck_xxxxxx"},{k:"consumerSecret",l:"Consumer Secret",type:"password",ph:"cs_xxxxxx"}]},
+  GOOGLE_SHEETS:{label:"Google Sheets",desc:"2-way customer sync with a Google Sheet (coming soon)",icon:"📊",fields:[{k:"sheetId",l:"Sheet ID",type:"text",ph:"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"}]},
+  ZAPIER:    {label:"Zapier",desc:"Send loyalty events to any Zapier workflow",icon:"⚡",fields:[{k:"webhookUrl",l:"Webhook URL",type:"text",ph:"https://hooks.zapier.com/hooks/catch/…"}]},
+};
+
+const IntegrationsTab=()=>{
+  const [integrations,setIntegrations]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState<string|null>(null);
+  const [cfg,setCfg]=useState<Record<string,string>>({});
+  const [testing,setTesting]=useState<string|null>(null);
+  const [testResult,setTestResult]=useState<Record<string,{ok:boolean;msg?:string}>>({});
+  const [saving,setSaving]=useState(false);
+
+  const load=()=>api.integrations.list().then(d=>setIntegrations(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
+  useEffect(()=>{load();},[]);
+
+  const startEdit=(p:string,current:any)=>{setEditing(p);setCfg(current?.configJson||{});setTestResult({});};
+  const toggle=async(p:string,enabled:boolean)=>{
+    await api.integrations.update(p,{isEnabled:enabled}).catch(()=>{});
+    setIntegrations(prev=>prev.map((i:any)=>i.provider===p?{...i,isEnabled:enabled}:i));
+  };
+  const save=async(p:string)=>{
+    setSaving(true);
+    try{const r=await api.integrations.update(p,{config:cfg,isEnabled:true});setIntegrations(prev=>prev.map((i:any)=>i.provider===p?r:i));setEditing(null);}catch{}finally{setSaving(false);}
+  };
+  const runTest=async(p:string)=>{
+    setTesting(p);
+    const r=await api.integrations.test(p).catch(()=>({ok:false,error:"Network error"}));
+    setTestResult(prev=>({...prev,[p]:{ok:r.ok,msg:r.ok?"Connection successful!":r.error||"Connection failed"}}));
+    setTesting(null);
+  };
+
+  if(loading)return<div className="space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-16"/>)}</div>;
+
+  return(
+    <div className="space-y-3">
+      <p className="text-xs text-slate-400">Connect your POS, e-commerce store, or automation tools. Credentials are stored encrypted.</p>
+      {Object.entries(INTEGRATION_META).map(([provider,meta])=>{
+        const current=integrations.find((i:any)=>i.provider===provider);
+        const isEnabled=current?.isEnabled??false;
+        const isEditing=editing===provider;
+        return(
+          <div key={provider} className="rounded-xl p-4 space-y-3" style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${isEnabled?"rgba(34,197,94,0.2)":"rgba(255,255,255,0.06)"}`}}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{meta.icon}</span>
+                <div>
+                  <div className="text-sm font-medium text-white flex items-center gap-2">{meta.label}{isEnabled&&<span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">Connected</span>}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{meta.desc}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {testResult[provider]&&<span className={`text-[11px] ${testResult[provider].ok?"text-green-400":"text-red-400"}`}>{testResult[provider].msg}</span>}
+                {isEnabled&&<button onClick={()=>runTest(provider)} disabled={testing===provider} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(6,182,212,0.1)",color:"#67e8f9"}}>{testing===provider?<RefreshCw size={11} className="animate-spin inline"/>:"Test"}</button>}
+                <button onClick={()=>isEditing?setEditing(null):startEdit(provider,current)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.06)",color:"#94a3b8"}}>{isEditing?"Cancel":"Configure"}</button>
+                <button onClick={()=>toggle(provider,!isEnabled)} className="w-9 h-5 rounded-full relative transition-colors" style={{background:isEnabled?"#22c55e":"rgba(255,255,255,0.1)"}}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:isEnabled?"calc(100% - 18px)":"2px"}}/>
+                </button>
+              </div>
+            </div>
+            {isEditing&&(
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                {meta.fields.map(f=>(
+                  <div key={f.k}><label className="text-[11px] text-slate-400 mb-1 block">{f.l}</label>
+                  <input type={f.type} value={cfg[f.k]||""} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+                ))}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={()=>save(provider)} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={11} className="animate-spin"/>:<Check size={11}/>}Save & Connect</button>
+                  <button onClick={()=>runTest(provider)} disabled={testing===provider} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.1)",color:"#67e8f9"}}>{testing===provider?<RefreshCw size={11} className="animate-spin"/>:<Wifi size={11}/>}Test Connection</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const BillingTab=()=>{
   const [sub,setSub]=useState<any>(null);
   useEffect(()=>{api.auth.me().then((d:any)=>setSub(d?.user?.business?.subscription)).catch(()=>{});},[]);
@@ -4763,7 +4846,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
     }catch{}
   };
   const isPK=countryVal==="PK";
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
@@ -4847,6 +4930,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
             </div>
           </div>
         </div>}
+        {tab==="integrations"&&<IntegrationsTab/>}
         {tab==="stripe"&&<BillingTab/>}
         {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}

@@ -257,6 +257,15 @@ export const api = {
     testFire: (id: string, customerId: string) => post<any>(`/automations/${id}/trigger/${customerId}`),
   },
 
+  // ── Integrations ─────────────────────────────────────────────
+  integrations: {
+    list:    ()                                    => get<any[]>('/integrations'),
+    get:     (provider: string)                    => get<any>(`/integrations/${provider}`),
+    update:  (provider: string, body: any)         => put<any>(`/integrations/${provider}`, body),
+    remove:  (provider: string)                    => del<any>(`/integrations/${provider}`),
+    test:    (provider: string)                    => post<any>(`/integrations/${provider}/test`),
+  },
+
   // ── Custom Segments ───────────────────────────────────────────
   segments: {
     list:     ()                          => get<any[]>('/segments'),

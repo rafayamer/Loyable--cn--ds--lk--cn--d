@@ -214,6 +214,21 @@ async function ensureSchemaPatches() {
     // ── Per-tenant timezone support ──
     { label: 'businesses.timezone',
       sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
+    // ── Integration Marketplace ──
+    { label: 'integration_configs table',
+      sql: `CREATE TABLE IF NOT EXISTS "integration_configs" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "provider" TEXT NOT NULL,
+        "isEnabled" BOOLEAN NOT NULL DEFAULT false,
+        "configJson" JSONB NOT NULL DEFAULT '{}',
+        "lastSyncAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "integration_configs_businessId_provider_key" UNIQUE ("businessId","provider")
+      )` },
+    { label: 'integration_configs idx biz',
+      sql: 'CREATE INDEX IF NOT EXISTS "ic_biz_provider" ON "integration_configs" ("businessId","provider")' },
     // ── Custom Segment Builder ──
     { label: 'custom_segments table',
       sql: `CREATE TABLE IF NOT EXISTS "custom_segments" (
@@ -427,6 +442,7 @@ async function bootstrap() {
   await loadRouter('./controllers/upload-controller',          'uploadRouter',          '/api/upload');
   await loadRouter('./services/realtime-service',             'realtimeRouter',        '/api/realtime');
   await loadRouter('./controllers/segments-controller',       'segmentsRouter',        '/api/segments');
+  await loadRouter('./controllers/integrations-controller',  'integrationsRouter',    '/api/integrations');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');
