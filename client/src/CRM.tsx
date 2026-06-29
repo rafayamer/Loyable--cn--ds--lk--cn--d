@@ -5465,7 +5465,7 @@ const BillingTab=()=>{
               <div className="text-xs text-slate-400 mb-3">{p.msgs}</div>
               <ul className="space-y-1 mb-4">{p.features.map(f=><li key={f} className="text-xs text-slate-300 flex items-center gap-1.5"><CheckCircle size={10} className="text-green-400 flex-shrink-0"/>{f}</li>)}</ul>
               <button onClick={()=>handleUpgrade(p.tier)} disabled={isCurrent||upgrading} className="w-full py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all" style={{background:isCurrent?"rgba(255,255,255,0.05)":p.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(139,92,246,0.2)"}}>
-                {isCurrent?"Current Plan":p.tier==="ENTERPRISE"?"Contact Sales":`Upgrade to ${p.label}`}
+                {isCurrent?"Current Plan":`Upgrade to ${p.label}`}
               </button>
             </div>
           );
