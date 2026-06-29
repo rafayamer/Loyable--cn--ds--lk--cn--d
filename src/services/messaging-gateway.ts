@@ -386,6 +386,16 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
     return;
   }
 
+  // Replay attack guard: reject requests older than 5 minutes
+  const tsHeader = req.headers['x-timestamp'] as string | undefined;
+  if (tsHeader) {
+    const ts = parseInt(tsHeader, 10);
+    if (!isNaN(ts) && Math.abs(Date.now() / 1000 - ts) > 300) {
+      res.status(400).json({ error: 'WEBHOOK_TIMESTAMP_EXPIRED' });
+      return;
+    }
+  }
+
   res.status(200).json({ received: true });
 
   const businessId = business.id;

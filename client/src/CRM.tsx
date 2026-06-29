@@ -4901,6 +4901,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [timezoneVal,setTimezoneVal]=useState(()=>localStorage.getItem("biz_timezone")||"Europe/London");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
   const [bizSaved,setBizSaved]=useState(false);
+  const [requiresApproval,setRequiresApproval]=useState(false);
   const [inviteEmail,setInviteEmail]=useState("");
   const [inviteRole,setInviteRole]=useState("MARKETING_STAFF");
   const [inviting,setInviting]=useState(false);
@@ -4919,7 +4920,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const saveBizSettings=async()=>{
     try{
-      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry,timezone:timezoneVal});
+      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry,timezone:timezoneVal,requiresCampaignApproval:requiresApproval});
       localStorage.setItem("biz_name",bizNameVal);
       localStorage.setItem("biz_currency",currencyVal);
       localStorage.setItem("biz_country",countryVal);
@@ -4962,6 +4963,15 @@ const SettingsPage=({wa,onConnect}:any)=>{
                 POS type: <span className="text-violet-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
               </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div>
+              <div className="text-xs font-medium text-white">Campaign Approval Workflow</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">When on, campaigns created by Marketing Staff go to PENDING_APPROVAL — you must approve before launch</div>
+            </div>
+            <button onClick={()=>setRequiresApproval(p=>!p)} className="w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-4" style={{background:requiresApproval?"#8b5cf6":"rgba(255,255,255,0.1)"}}>
+              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:requiresApproval?"calc(100% - 18px)":"2px"}}/>
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
