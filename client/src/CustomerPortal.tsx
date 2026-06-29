@@ -424,7 +424,10 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
   const [msg, setMsg] = useState('');
   const [giftFor, setGiftFor] = useState<string | null>(null);
   const [giftPhone, setGiftPhone] = useState('');
+  const [giftEmail, setGiftEmail] = useState('');
+  const [giftName, setGiftName] = useState('');
   const [codeEntry, setCodeEntry] = useState('');
+  const [showRules, setShowRules] = useState(false);
 
   const ERR_TEXT: Record<string, string> = {
     GIFT_CARD_NOT_FOUND: "We couldn't find that code.",
@@ -442,10 +445,11 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
     finally { setBusy(null); }
   };
   const doGift = async (id: string) => {
-    if (!giftPhone.trim()) return;
+    const phone = giftPhone.replace(/[\s-]/g, '');
+    if (!/^\+\d{8,15}$/.test(phone)) { setErr('Enter the number in international format, e.g. +447911123456'); return; }
     setBusy(id); setErr(''); setMsg('');
-    try { await onGift(id, giftPhone.trim()); setMsg('🎁 Gift card sent!'); setGiftFor(null); setGiftPhone(''); }
-    catch (e: any) { setErr(e.message === 'RECIPIENT_NOT_FOUND' ? 'No customer found with that number.' : (e.message ?? 'Could not send')); }
+    try { await onGift(id, phone, giftEmail.trim(), giftName.trim()); setMsg(giftEmail.trim() ? '🎁 Gift sent — we\'ve emailed them too!' : '🎁 Gift card sent!'); setGiftFor(null); setGiftPhone(''); setGiftEmail(''); setGiftName(''); }
+    catch (e: any) { setErr(e.message === 'INVALID_PHONE_FORMAT' ? 'Enter the number in international format, e.g. +447911123456' : (e.message ?? 'Could not send')); }
     finally { setBusy(null); }
   };
   const doDeletion = async (id: string, accept: boolean) => {
@@ -457,12 +461,25 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
 
   const CodeBox = (
     <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(139,92,246,0.2)' }}>
-      <p className="font-bold text-slate-800 text-sm mb-1">Have a gift code?</p>
-      <p className="text-xs text-slate-500 mb-3">Enter the code you were given to add its value to your balance.</p>
-      <div className="flex gap-2">
-        <input value={codeEntry} onChange={e => setCodeEntry(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 px-3 py-2 rounded-xl text-sm text-slate-800 font-mono outline-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
-        <button disabled={!codeEntry.trim() || !!busy} onClick={() => doRedeem(codeEntry.trim())} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy === codeEntry.trim() ? '...' : 'Redeem'}</button>
+      <div className="flex items-center justify-between mb-1">
+        <p className="font-bold text-slate-800 text-sm">Have a gift code?</p>
+        <button onClick={() => setShowRules(v => !v)} aria-label="How gift cards work" className="text-slate-400 hover:text-violet-500 text-base leading-none">ⓘ</button>
       </div>
+      <p className="text-xs text-slate-500 mb-3">Enter the code you were given to add it to your balance.</p>
+      <div className="flex gap-2">
+        <input value={codeEntry} onChange={e => setCodeEntry(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm text-slate-800 font-mono outline-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
+        <button disabled={!codeEntry.trim() || !!busy} onClick={() => doRedeem(codeEntry.trim())} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy === codeEntry.trim() ? '...' : 'Redeem'}</button>
+      </div>
+      {showRules && (
+        <ul className="mt-3 pt-3 space-y-1.5 text-xs text-slate-600" style={{ borderTop: '1px solid #eee' }}>
+          <li>💳 A gift card is store credit — spend it on anything when you pay.</li>
+          <li>➕ Tap <b>Add to my balance</b> (or enter a code) to load its value.</li>
+          <li>🛍️ Use your balance in store — just give your number at the till.</li>
+          <li>🎁 Pass a card to a friend with <b>Gift</b> (international number + email).</li>
+          <li>🔒 Each code can only be used once.</li>
+          <li>✋ If the business needs to cancel a card, we'll message you to accept or decline.</li>
+        </ul>
+      )}
     </div>
   );
 
@@ -477,19 +494,6 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
           <p className="text-slate-500 text-sm">No gift cards yet — any sent to you will appear here.</p>
         </div>
       )}
-
-      {/* Customer-facing rules */}
-      <div className="rounded-2xl p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-        <p className="font-bold text-slate-700 text-sm mb-2">How gift cards work</p>
-        <ul className="space-y-1.5 text-xs text-slate-600">
-          <li>💳 A gift card is store credit — spend it on anything when you pay.</li>
-          <li>➕ Tap <b>Add to my balance</b> (or enter a code above) to load its value into your balance.</li>
-          <li>🛍️ Use your balance in store — just give your number at the till.</li>
-          <li>🎁 You can pass a card to a friend with <b>Gift</b> — enter their WhatsApp number.</li>
-          <li>🔒 Each code can only be used once.</li>
-          <li>✋ If the business needs to cancel a card, we'll message you and you can accept or decline it here.</li>
-        </ul>
-      </div>
       {(cards ?? []).map((c: any) => (
         <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6d28d9,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
@@ -520,9 +524,12 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
                 <button disabled={!!busy} onClick={() => setGiftFor(giftFor === c.id ? null : c.id)} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.15)' }}>Gift</button>
               </div>
               {giftFor === c.id && (
-                <div className="mt-2 flex gap-2">
-                  <input value={giftPhone} onChange={e => setGiftPhone(e.target.value)} placeholder="Friend's WhatsApp number" className="flex-1 px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
-                  <button disabled={!!busy} onClick={() => doGift(c.id)} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>Send</button>
+                <div className="mt-2 space-y-2 rounded-2xl p-3" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                  <p className="text-[11px] opacity-90">Send this card to a friend. Use their number in <b>international format</b> (with country code) and add an email so we can send them a lovely note too.</p>
+                  <input value={giftName} onChange={e => setGiftName(e.target.value)} placeholder="Their name (optional)" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
+                  <input value={giftPhone} onChange={e => setGiftPhone(e.target.value)} placeholder="+44 7911 123456" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
+                  <input value={giftEmail} onChange={e => setGiftEmail(e.target.value)} type="email" placeholder="their@email.com (recommended)" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
+                  <button disabled={!!busy} onClick={() => doGift(c.id)} className="w-full py-2 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>{busy === c.id ? 'Sending…' : 'Send gift'}</button>
                 </div>
               )}
             </div>
@@ -729,6 +736,8 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
         load();
       } catch (e: any) {
         if (e.message === 'TOO_FAR') setCheckInMsg({ ok: false, text: `You're too far from this location to check in` });
+        else if (e.message === 'MAX_CHECKINS_TODAY') setCheckInMsg({ ok: false, text: "You've reached today's check-in limit (3). See you tomorrow!" });
+        else if (e.message === 'TOO_SOON') setCheckInMsg({ ok: false, text: "Too soon — you can check in again 6 hours after your last one." });
         else if (e.message === 'ALREADY_CHECKED_IN_TODAY') setCheckInMsg({ ok: false, text: "You've already checked in today" });
         else setCheckInMsg({ ok: false, text: e.message ?? 'Check-in failed' });
       } finally { setCheckingIn(false); }
@@ -773,8 +782,8 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
     loadGiftCards(); load();
     return d;
   };
-  const giftToFriend = async (id: string, toPhone: string) => {
-    await portalFetch('/portal/gift-cards/gift', { method: 'POST', body: JSON.stringify({ id, toPhone }) });
+  const giftToFriend = async (id: string, toPhone: string, toEmail?: string, toName?: string) => {
+    await portalFetch('/portal/gift-cards/gift', { method: 'POST', body: JSON.stringify({ id, toPhone, toEmail, toName }) });
     loadGiftCards();
   };
   const respondDeletion = async (id: string, accept: boolean) => {
@@ -910,14 +919,14 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tabs — horizontally scrollable so they always fit the screen */}
         {TABS.length > 0 && (
-          <div className="flex gap-1 p-1 rounded-2xl" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
+          <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}`, WebkitOverflowScrolling: 'touch' }}>
             {TABS.map(t => (
               <button
                 key={t.id}
                 onClick={() => switchTab(t.id)}
-                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
+                className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap"
                 style={activeTab === t.id
                   ? { background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }
                   : { color: '#64748b' }}

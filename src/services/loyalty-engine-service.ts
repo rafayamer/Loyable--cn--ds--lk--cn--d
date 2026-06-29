@@ -198,7 +198,7 @@ export async function issueGiftCard(businessId: string, data: { initialBalance: 
     const code = generateGiftCode();
     const exists = await prisma.giftCard.findUnique({ where: { code }, select: { id: true } });
     if (exists) continue;
-    return prisma.giftCard.create({
+    const card = await prisma.giftCard.create({
       data: {
         businessId, code,
         initialBalance: data.initialBalance, currentBalance: data.initialBalance,
@@ -208,6 +208,12 @@ export async function issueGiftCard(businessId: string, data: { initialBalance: 
         allowedItems: data.allowedItems ?? [],
       },
     });
+    // If issued directly to a customer, let them know it's waiting in their portal.
+    if (data.issuedToCustomerId) {
+      const from = data.purchaserName ? ` from ${data.purchaserName}` : '';
+      await notifyCustomer(businessId, data.issuedToCustomerId, `🎁 You've been given a gift card worth £${data.initialBalance}${from}!${data.message ? ` "${data.message}"` : ''} It's waiting in your rewards portal.`);
+    }
+    return card;
   }
   throw new Error('GIFT_CODE_GENERATION_FAILED');
 }
@@ -292,17 +298,101 @@ export async function respondToGiftCardDeletion(businessId: string, id: string, 
   return { ok: true };
 }
 
-/** Re-gift an issued card to another customer (by phone), if still ACTIVE. */
-export async function transferGiftCard(businessId: string, id: string, fromCustomerId: string, toPhone: string): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Re-gift an issued card to anyone by international phone (+ optional email).
+ * The recipient need not exist yet — we find or create their customer record,
+ * assign the card, WhatsApp them, and send a warm email on the store's and the
+ * gifter's behalf so they know how to claim it.
+ */
+export async function transferGiftCard(
+  businessId: string,
+  id: string,
+  fromCustomerId: string,
+  toPhone: string,
+  toEmail?: string,
+  recipientName?: string,
+): Promise<{ ok: boolean; error?: string }> {
   const card = await prisma.giftCard.findFirst({ where: { id, businessId, issuedToCustomerId: fromCustomerId } });
   if (!card) return { ok: false, error: 'GIFT_CARD_NOT_FOUND' };
   if (card.status !== 'ACTIVE') return { ok: false, error: 'GIFT_CARD_NOT_TRANSFERABLE' };
-  const recipient = await prisma.customer.findFirst({ where: { businessId, whatsappNumber: toPhone.trim() }, select: { id: true, fullName: true } });
+
+  // Require a sane international-format number (E.164-ish): leading + and 8–15 digits.
+  const normPhone = toPhone.replace(/[\s-]/g, '');
+  if (!/^\+\d{8,15}$/.test(normPhone)) return { ok: false, error: 'INVALID_PHONE_FORMAT' };
+
+  const [sender, gifter] = await Promise.all([
+    prisma.business.findUnique({ where: { id: businessId }, select: { name: true } }),
+    prisma.customer.findFirst({ where: { id: fromCustomerId, businessId }, select: { fullName: true } }),
+  ]);
+
+  // Find or create the recipient customer.
+  let recipient = await prisma.customer.findFirst({ where: { businessId, whatsappNumber: normPhone }, select: { id: true, fullName: true } });
+  if (recipient && recipient.id === fromCustomerId) return { ok: false, error: 'CANNOT_GIFT_TO_SELF' };
+  if (!recipient) {
+    recipient = await prisma.customer.create({
+      data: {
+        businessId,
+        fullName: recipientName?.trim() || (toEmail ? toEmail.split('@')[0] : 'Gift recipient'),
+        whatsappNumber: normPhone,
+        ...(toEmail ? { email: toEmail.trim() } : {}),
+        segment: 'NEW',
+      },
+      select: { id: true, fullName: true },
+    }).catch(async () => prisma.customer.findFirst({ where: { businessId, whatsappNumber: normPhone }, select: { id: true, fullName: true } }));
+  }
   if (!recipient) return { ok: false, error: 'RECIPIENT_NOT_FOUND' };
-  if (recipient.id === fromCustomerId) return { ok: false, error: 'CANNOT_GIFT_TO_SELF' };
-  await prisma.giftCard.update({ where: { id }, data: { issuedToCustomerId: recipient.id, recipientName: recipient.fullName } });
-  await notifyCustomer(businessId, recipient.id, `🎁 You've received a gift card worth £${Number(card.currentBalance)}! View and redeem it in your rewards portal.`);
+
+  await prisma.giftCard.update({ where: { id }, data: { issuedToCustomerId: recipient.id, recipientName: recipient.fullName, recipientPhone: normPhone } });
+
+  const amount = Number(card.currentBalance);
+  const bizName = sender?.name ?? 'us';
+  const fromName = gifter?.fullName ?? 'A friend';
+  await notifyCustomer(businessId, recipient.id, `🎁 ${fromName} sent you a gift card worth £${amount} for ${bizName}!`);
+
+  // Warm email on the store's + gifter's behalf.
+  if (toEmail?.trim()) {
+    const portal = await portalUrl(businessId);
+    await sendGiftEmail(toEmail.trim(), { bizName, fromName, amount, code: card.code, message: card.message, portal }).catch(() => {});
+  }
   return { ok: true };
+}
+
+/** A warm, on-brand gift-card email. */
+async function sendGiftEmail(to: string, p: { bizName: string; fromName: string; amount: number; code: string; message?: string | null; portal?: string | null }): Promise<void> {
+  try {
+    const { sendEmail } = await import('../utils/email.util');
+    const cta = p.portal ? `<a href="${p.portal}" style="display:inline-block;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;text-decoration:none;padding:14px 28px;border-radius:14px;font-weight:700;font-size:15px">Open your rewards portal &rarr;</a>` : '';
+    const html = `
+    <div style="margin:0;padding:24px;background:#f5f3ff;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+      <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 10px 40px rgba(124,58,237,.15)">
+        <div style="background:linear-gradient(135deg,#6d28d9,#9333ea 55%,#c026d3);padding:36px 28px;text-align:center;color:#fff">
+          <div style="font-size:44px;line-height:1">🎁</div>
+          <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.85;margin-top:8px">A gift for you</div>
+          <div style="font-size:40px;font-weight:800;margin-top:6px">£${p.amount}</div>
+          <div style="font-size:14px;opacity:.9;margin-top:2px">to spend at ${p.bizName}</div>
+        </div>
+        <div style="padding:28px;text-align:center;color:#1f2937">
+          <p style="font-size:16px;margin:0 0 8px">Hi there 👋</p>
+          <p style="font-size:15px;line-height:1.6;color:#475569;margin:0 0 16px">
+            <strong>${p.fromName}</strong> thought of you and sent you a gift card for <strong>${p.bizName}</strong>.
+            ${p.message ? `<br/><em style="color:#6d28d9">"${p.message}"</em>` : ''}
+          </p>
+          <div style="background:#f8fafc;border:1px dashed #c4b5fd;border-radius:14px;padding:16px;margin:0 0 20px">
+            <div style="font-size:12px;color:#64748b">Your gift code</div>
+            <div style="font-family:monospace;font-size:20px;font-weight:700;letter-spacing:2px;color:#6d28d9;margin-top:4px">${p.code}</div>
+          </div>
+          ${cta}
+          <p style="font-size:12px;color:#94a3b8;margin:20px 0 0;line-height:1.6">
+            Log in to your rewards portal with this number, open <strong>Gift Cards</strong>, and tap &ldquo;Have a gift code?&rdquo; to add it to your balance &mdash; then spend it in store. Enjoy! 💜
+          </p>
+        </div>
+        <div style="background:#faf5ff;padding:16px;text-align:center;font-size:11px;color:#a78bfa">Sent with love on behalf of ${p.fromName} &amp; ${p.bizName}</div>
+      </div>
+    </div>`;
+    await sendEmail({ to, subject: `🎁 ${p.fromName} sent you a £${p.amount} gift card for ${p.bizName}`, templateId: 'gift-card', variables: {}, html });
+  } catch (e) {
+    console.warn('[gift-card] gift email failed: %s', (e as Error)?.message);
+  }
 }
 
 export type GiftRedeemError = 'GIFT_CARD_NOT_FOUND' | 'GIFT_CARD_INACTIVE' | 'GIFT_CARD_EXPIRED' | 'GIFT_CARD_EMPTY';

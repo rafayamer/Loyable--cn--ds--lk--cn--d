@@ -597,25 +597,40 @@ const checkInPortalHandler = async (req: Request, res: Response): Promise<void> 
     select: { latitude: true, longitude: true, checkInRadiusMeters: true },
   }) as { latitude: number | null; longitude: number | null; checkInRadiusMeters: number } | null;
   if (!biz) { res.status(404).json({ error: 'Business not found' }); return; }
-  if (!biz.latitude || !biz.longitude) {
-    res.status(400).json({ error: 'Check-in location not configured by this business' }); return;
+
+  // Geofence is only enforced when the business has actually set a location.
+  // Otherwise check-in still works (just without the distance gate) so it's
+  // never silently broken for businesses that haven't configured coordinates.
+  let dist = 0;
+  if (biz.latitude && biz.longitude) {
+    dist = distanceMetres(custLat, custLon, biz.latitude, biz.longitude);
+    const radius = (biz as any).checkInRadiusMeters ?? 30;
+    if (dist > radius) {
+      res.status(403).json({ error: 'TOO_FAR', distanceMetres: Math.round(dist), radiusMetres: radius }); return;
+    }
   }
 
-  const dist = distanceMetres(custLat, custLon, biz.latitude, biz.longitude);
-  const radius = (biz as any).checkInRadiusMeters ?? 30;
-  if (dist > radius) {
-    res.status(403).json({ error: 'TOO_FAR', distanceMetres: Math.round(dist), radiusMetres: radius }); return;
-  }
-
-  // Idempotency: one check-in per customer per day
+  // Check-in policy: up to 3 per day, and at least 6 hours between each.
+  // Attempts inside the 6h window are not counted (rejected as TOO_SOON).
+  const MAX_PER_DAY = 3;
+  const GAP_MS = 6 * 60 * 60 * 1000;
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
-  const existing = await prisma.visit.findFirst({
-    where: { businessId, customerId, source: 'QR_CHECKIN', visitedAt: { gte: dayStart } },
-    select: { id: true },
+  const todays = await prisma.visit.findMany({
+    where:   { businessId, customerId, source: 'QR_CHECKIN', visitedAt: { gte: dayStart } },
+    orderBy: { visitedAt: 'desc' },
+    select:  { id: true, visitedAt: true },
   });
-  if (existing) {
-    res.status(409).json({ error: 'ALREADY_CHECKED_IN_TODAY' }); return;
+  if (todays.length >= MAX_PER_DAY) {
+    res.status(409).json({ error: 'MAX_CHECKINS_TODAY', max: MAX_PER_DAY }); return;
+  }
+  if (todays[0]) {
+    const sinceMs = Date.now() - new Date(todays[0].visitedAt).getTime();
+    if (sinceMs < GAP_MS) {
+      const mins = Math.ceil((GAP_MS - sinceMs) / 60000);
+      res.status(409).json({ error: 'TOO_SOON', waitMinutes: mins, nextAllowedAt: new Date(new Date(todays[0].visitedAt).getTime() + GAP_MS).toISOString() });
+      return;
+    }
   }
 
   // Create visit then accrue points
@@ -693,14 +708,16 @@ const portalGiftRedeemHandler = async (req: Request, res: Response): Promise<voi
   res.json(outcome);
 };
 
-/** POST /api/portal/gift-cards/gift — re-gift a held card to another customer. */
+/** POST /api/portal/gift-cards/gift — re-gift a held card to anyone (intl phone + email). */
 const portalGiftTransferHandler = async (req: Request, res: Response): Promise<void> => {
   const { customerId, businessId } = (req as any).portalCtx;
   const id = String(req.body?.id ?? '');
   const toPhone = String(req.body?.toPhone ?? '').trim();
+  const toEmail = String(req.body?.toEmail ?? '').trim();
+  const toName  = String(req.body?.toName ?? '').trim();
   if (!id || !toPhone) { res.status(400).json({ error: 'ID_AND_PHONE_REQUIRED' }); return; }
   const { transferGiftCard } = await import('../services/loyalty-engine-service');
-  const outcome = await transferGiftCard(businessId, id, customerId, toPhone);
+  const outcome = await transferGiftCard(businessId, id, customerId, toPhone, toEmail || undefined, toName || undefined);
   if (!outcome.ok) { res.status(outcome.error === 'RECIPIENT_NOT_FOUND' ? 404 : 409).json({ error: outcome.error }); return; }
   res.json({ ok: true });
 };
