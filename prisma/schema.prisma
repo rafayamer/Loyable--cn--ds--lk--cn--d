@@ -1518,6 +1518,182 @@ model CohortRetentionSnapshot {
   @@map("cohort_retention_snapshots")
 }
 
+// ================================================================
+// OPERATIONS · HR & STAFF MANAGEMENT
+// ================================================================
+
+// Employee directory record. Optionally linked to a User (login account).
+model Employee {
+  id                    String    @id @default(cuid())
+  businessId            String
+  branchLocationId      String?
+  userId                String?   // linked login account (created during onboarding)
+  fullName              String
+  email                 String?
+  phone                 String?
+  jobTitle              String?
+  hrRole                String    @default("CASHIER") // OWNER|MANAGER|MARKETING|CASHIER|SUPPORT|CUSTOM
+  customRoleId          String?   // when hrRole = CUSTOM
+  employmentType        String    @default("FULL_TIME") // FULL_TIME|PART_TIME|CONTRACT|TEMP
+  status                String    @default("ONBOARDING") // ONBOARDING|ACTIVE|SUSPENDED|TERMINATED
+  hireDate              DateTime?
+  dateOfBirth           DateTime?
+  address               String?
+  avatarUrl             String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  // Onboarding checklist: [{ key, label, done, completedAt }]
+  onboardingJson        Json      @default("[]")
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([businessId, status])
+  @@index([businessId, branchLocationId])
+  @@map("employees")
+}
+
+// Documents & certifications attached to an employee.
+model EmployeeDocument {
+  id         String    @id @default(cuid())
+  businessId String
+  employeeId String
+  type       String    @default("OTHER") // CONTRACT|ID|CERTIFICATE|POLICY|TRAINING|OTHER
+  name       String
+  issuer     String?   // for certificates
+  fileUrl    String?
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId, employeeId])
+  @@map("employee_documents")
+}
+
+// Custom role with a permission matrix (JSON of feature → allowed bool).
+model CustomRole {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String
+  description     String?
+  permissionsJson Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId])
+  @@map("custom_roles")
+}
+
+// Training module (video / pdf / quiz) + per-employee progress.
+model TrainingModule {
+  id           String   @id @default(cuid())
+  businessId   String
+  title        String
+  description  String?
+  type         String   @default("VIDEO") // VIDEO|PDF|QUIZ
+  contentUrl   String?  // video/pdf URL
+  quizJson     Json?    // [{ q, options[], answerIndex }]
+  passingScore Int      @default(70)
+  isRequired   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([businessId, isActive])
+  @@map("training_modules")
+}
+
+model TrainingProgress {
+  id          String    @id @default(cuid())
+  businessId  String
+  employeeId  String
+  moduleId    String
+  status      String    @default("NOT_STARTED") // NOT_STARTED|IN_PROGRESS|COMPLETED|FAILED
+  score       Int?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, moduleId])
+  @@index([businessId, employeeId])
+  @@map("training_progress")
+}
+
+// Clock in/out attendance with optional branch / GPS validation.
+model AttendanceRecord {
+  id         String    @id @default(cuid())
+  businessId String
+  employeeId String
+  branchLocationId String?
+  clockIn    DateTime
+  clockOut   DateTime?
+  breakMinutes Int     @default(0)
+  method     String    @default("WEB") // WEB|QR|GPS
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId, employeeId, clockIn])
+  @@map("attendance_records")
+}
+
+// Scheduled shift (rota).
+model Shift {
+  id         String   @id @default(cuid())
+  businessId String
+  employeeId String
+  branchLocationId String?
+  startsAt   DateTime
+  endsAt     DateTime
+  role       String?
+  status     String   @default("SCHEDULED") // SCHEDULED|CONFIRMED|SWAPPED|COMPLETED|MISSED
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([businessId, startsAt])
+  @@index([businessId, employeeId])
+  @@map("shifts")
+}
+
+// Leave request with approval workflow.
+model LeaveRequest {
+  id          String    @id @default(cuid())
+  businessId  String
+  employeeId  String
+  type        String    @default("ANNUAL") // ANNUAL|SICK|EMERGENCY|UNPAID
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  status      String    @default("PENDING") // PENDING|APPROVED|REJECTED|CANCELLED
+  approverId  String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([businessId, status])
+  @@index([businessId, employeeId])
+  @@map("leave_requests")
+}
+
+// Internal employee reward / recognition (gamification).
+model EmployeeReward {
+  id         String    @id @default(cuid())
+  businessId String
+  employeeId String
+  type       String    @default("POINTS") // POINTS|BONUS|RECOGNITION
+  points     Int       @default(0)
+  amount     Decimal?  @db.Decimal(12, 2)
+  note       String?
+  status     String    @default("APPROVED") // PENDING|APPROVED|REJECTED
+  grantedBy  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId, employeeId])
+  @@map("employee_rewards")
+}
+
 model WhatsAppMessage {
   id         String   @id @default(cuid())
   businessId String

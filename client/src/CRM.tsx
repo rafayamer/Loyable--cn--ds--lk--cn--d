@@ -235,7 +235,6 @@ const MODULES=[
   {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN],tabs:[
     {id:"pos",label:"POS"},
     {id:"ops-hr",label:"HR & Staff"},
-    {id:"ops-onboarding",label:"Onboarding"},
     {id:"ops-branches",label:"Branches"},
     {id:"ops-inventory",label:"Inventory"},
     {id:"ops-devices",label:"Devices"},
@@ -366,6 +365,449 @@ const OperationsComingSoon=({title,desc,icon:Icon}:{title:string;desc:string;ico
         <span className="mt-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>In development</span>
       </div>
     </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// OPERATIONS · HR & STAFF MANAGEMENT
+// ════════════════════════════════════════════════════════════════
+const HR_TABS=[
+  {id:"directory",label:"Directory"},
+  {id:"roles",label:"Roles & Permissions"},
+  {id:"onboarding",label:"Onboarding"},
+  {id:"training",label:"Training"},
+  {id:"attendance",label:"Attendance"},
+  {id:"shifts",label:"Shifts & Leave"},
+  {id:"performance",label:"Performance"},
+  {id:"rewards",label:"Rewards"},
+];
+const HR_ROLES=["OWNER","MANAGER","MARKETING","CASHIER","SUPPORT","CUSTOM"];
+const EMP_STATUS=["ONBOARDING","ACTIVE","SUSPENDED","TERMINATED"];
+const EMP_TYPES=["FULL_TIME","PART_TIME","CONTRACT","TEMP"];
+const STATUS_COLOR:Record<string,string>={ONBOARDING:"#f59e0b",ACTIVE:"#22c55e",SUSPENDED:"#ef4444",TERMINATED:"#6b7280",PENDING:"#f59e0b",APPROVED:"#22c55e",REJECTED:"#ef4444",COMPLETED:"#22c55e",IN_PROGRESS:"#3b82f6",NOT_STARTED:"#6b7280",FAILED:"#ef4444"};
+
+// Small UI helpers (scoped to HR) ----------------------------------
+const HInput=({value,onChange,placeholder,type="text",ct}:any)=>(
+  <input value={value??""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} type={type}
+    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+);
+const HSelect=({value,onChange,options,ct}:any)=>(
+  <select value={value} onChange={e=>onChange(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}>
+    {options.map((o:any)=>{const v=typeof o==="string"?o:o.value;const l=typeof o==="string"?o.replace(/_/g," "):o.label;return<option key={v} value={v} style={{background:"#1a1030",color:"#fff"}}>{l}</option>;})}
+  </select>
+);
+const Pill=({text,color}:{text:string;color:string})=>(
+  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md" style={{background:`${color}22`,color}}>{text.replace(/_/g," ")}</span>
+);
+const HBtn=({children,onClick,variant="primary",ct,disabled}:any)=>(
+  <button onClick={onClick} disabled={disabled} className="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+    style={variant==="primary"?{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)",color:"#fff"}:{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{children}</button>
+);
+const Modal=({title,onClose,children,ct}:any)=>(
+  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} className="w-full max-w-lg rounded-2xl p-5 max-h-[88vh] overflow-y-auto" style={{background:ct.card,border:`1px solid ${ct.bdr}`,boxShadow:ct.shadow}}>
+      <div className="flex items-center justify-between mb-4"><h3 className="text-base font-bold" style={{color:ct.tx}}>{title}</h3><button onClick={onClose} style={{color:ct.tx3}}><X size={18}/></button></div>
+      {children}
+    </div>
+  </div>
+);
+
+// ── HR root page with internal sub-tabs ───────────────────────────
+const HRStaffPage=()=>{
+  const ct=useCard();
+  const [tab,setTab]=useState("directory");
+  const [summary,setSummary]=useState<any>(null);
+  useEffect(()=>{api.hr.summary().then(setSummary).catch(()=>{});},[tab]);
+  return(
+    <div>
+      <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{color:ct.tx}}>HR & Staff</h1>
+          <p className="text-sm mt-1" style={{color:ct.tx3}}>The operational backbone for your team — directory, onboarding, training, attendance, shifts, performance and rewards.</p>
+        </div>
+        {summary&&<div className="flex gap-2 flex-wrap">
+          {[["Team",summary.total],["Active",summary.active],["Onboarding",summary.onboarding],["Pending leave",summary.pendingLeave],["Shifts today",summary.shiftsToday]].map(([l,v]:any)=>(
+            <div key={l} className="px-3 py-2 rounded-xl text-center" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+              <div className="text-lg font-bold" style={{color:ct.tx}}>{v??0}</div><div className="text-[10px]" style={{color:ct.tx3}}>{l}</div>
+            </div>
+          ))}
+        </div>}
+      </div>
+      <div className="flex items-center gap-1 mb-5 overflow-x-auto scrollbar-hide">
+        {HR_TABS.map(t=>{const active=tab===t.id;return(
+          <button key={t.id} onClick={()=>setTab(t.id)} className="px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all"
+            style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.28)"}:{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>{t.label}</button>
+        );})}
+      </div>
+      {tab==="directory"&&<HRDirectory ct={ct}/>}
+      {tab==="roles"&&<HRRoles ct={ct}/>}
+      {tab==="onboarding"&&<HROnboarding ct={ct}/>}
+      {tab==="training"&&<HRTraining ct={ct}/>}
+      {tab==="attendance"&&<HRAttendance ct={ct}/>}
+      {tab==="shifts"&&<HRShifts ct={ct}/>}
+      {tab==="performance"&&<HRPerformance ct={ct}/>}
+      {tab==="rewards"&&<HRRewards ct={ct}/>}
+    </div>
+  );
+};
+
+// ── Employee Directory ────────────────────────────────────────────
+const HRDirectory=({ct}:any)=>{
+  const [rows,setRows]=useState<any[]>([]);const [q,setQ]=useState("");const [status,setStatus]=useState("");
+  const [loading,setLoading]=useState(true);const [edit,setEdit]=useState<any>(null);const [detail,setDetail]=useState<any>(null);
+  const load=()=>{setLoading(true);const p:any={};if(q)p.q=q;if(status)p.status=status;api.hr.employees(p).then(d=>setRows(d.employees??[])).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(()=>{const t=setTimeout(load,250);return()=>clearTimeout(t);},[q,status]);
+  return(
+    <div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="flex-1 min-w-[180px]"><HInput value={q} onChange={setQ} placeholder="Search name, email, role…" ct={ct}/></div>
+        <div className="w-40"><HSelect value={status} onChange={setStatus} options={[{value:"",label:"All statuses"},...EMP_STATUS]} ct={ct}/></div>
+        <HBtn ct={ct} onClick={()=>setEdit({})}><Plus size={13} className="inline mr-1"/>Add Employee</HBtn>
+      </div>
+      {loading?<div className="text-center py-10 text-xs" style={{color:ct.tx3}}>Loading…</div>:
+       rows.length===0?<div className="rounded-2xl p-10 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No employees yet. Add your first team member.</div>:
+       <div className="grid gap-2">{rows.map(e=>(
+         <div key={e.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{background:"rgba(139,92,246,0.18)",color:"#a78bfa"}}>{(e.fullName||"?").slice(0,2).toUpperCase()}</div>
+           <div className="flex-1 min-w-0">
+             <div className="text-sm font-semibold truncate" style={{color:ct.tx}}>{e.fullName}</div>
+             <div className="text-xs truncate" style={{color:ct.tx3}}>{[e.jobTitle,e.email].filter(Boolean).join(" · ")||"—"}</div>
+           </div>
+           <Pill text={e.hrRole} color="#8b5cf6"/>
+           <Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/>
+           <button onClick={()=>api.hr.employee(e.id).then(setDetail)} className="text-xs px-2 py-1 rounded-lg" style={{color:ct.tx3,background:ct.bg2}}>View</button>
+           <button onClick={()=>setEdit(e)} style={{color:ct.tx3}}><Edit size={15}/></button>
+         </div>
+       ))}</div>}
+      {edit&&<EmployeeModal emp={edit} ct={ct} onClose={()=>setEdit(null)} onSaved={()=>{setEdit(null);load();}}/>}
+      {detail&&<EmployeeDetailModal data={detail} ct={ct} onClose={()=>setDetail(null)} onChanged={()=>{api.hr.employee(detail.employee.id).then(setDetail);load();}}/>}
+    </div>
+  );
+};
+
+const EmployeeModal=({emp,ct,onClose,onSaved}:any)=>{
+  const [f,setF]=useState<any>({hrRole:"CASHIER",employmentType:"FULL_TIME",status:"ONBOARDING",...emp});
+  const [saving,setSaving]=useState(false);
+  const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+  const save=async()=>{if(!f.fullName?.trim())return;setSaving(true);try{if(emp.id)await api.hr.updateEmployee(emp.id,f);else await api.hr.createEmployee(f);onSaved();}catch{}finally{setSaving(false);}};
+  return(
+    <Modal title={emp.id?"Edit Employee":"Add Employee"} onClose={onClose} ct={ct}>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2"><label className="text-xs" style={{color:ct.tx3}}>Full name *</label><HInput value={f.fullName} onChange={(v:any)=>set("fullName",v)} placeholder="Jane Doe" ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Email</label><HInput value={f.email} onChange={(v:any)=>set("email",v)} placeholder="jane@…" ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Phone</label><HInput value={f.phone} onChange={(v:any)=>set("phone",v)} placeholder="+44…" ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Job title</label><HInput value={f.jobTitle} onChange={(v:any)=>set("jobTitle",v)} placeholder="Barista" ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Role</label><HSelect value={f.hrRole} onChange={(v:any)=>set("hrRole",v)} options={HR_ROLES} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Employment</label><HSelect value={f.employmentType} onChange={(v:any)=>set("employmentType",v)} options={EMP_TYPES} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Status</label><HSelect value={f.status} onChange={(v:any)=>set("status",v)} options={EMP_STATUS} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Hire date</label><HInput type="date" value={f.hireDate?String(f.hireDate).slice(0,10):""} onChange={(v:any)=>set("hireDate",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Date of birth</label><HInput type="date" value={f.dateOfBirth?String(f.dateOfBirth).slice(0,10):""} onChange={(v:any)=>set("dateOfBirth",v)} ct={ct}/></div>
+        <div className="col-span-2"><label className="text-xs" style={{color:ct.tx3}}>Address</label><HInput value={f.address} onChange={(v:any)=>set("address",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Emergency contact</label><HInput value={f.emergencyContactName} onChange={(v:any)=>set("emergencyContactName",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Emergency phone</label><HInput value={f.emergencyContactPhone} onChange={(v:any)=>set("emergencyContactPhone",v)} ct={ct}/></div>
+      </div>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save} disabled={saving}>{saving?"Saving…":"Save"}</HBtn></div>
+    </Modal>
+  );
+};
+
+const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
+  const e=data.employee;const checklist=Array.isArray(e.onboardingJson)?e.onboardingJson:[];
+  const pct=checklist.length?Math.round(checklist.filter((i:any)=>i.done).length/checklist.length*100):0;
+  const [docName,setDocName]=useState("");const [docType,setDocType]=useState("CONTRACT");
+  const addDoc=async()=>{if(!docName.trim())return;await api.hr.addDocument(e.id,{name:docName,type:docType});setDocName("");onChanged();};
+  return(
+    <Modal title={e.fullName} onClose={onClose} ct={ct}>
+      <div className="flex items-center gap-2 mb-3"><Pill text={e.hrRole} color="#8b5cf6"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
+      <div className="text-xs space-y-1 mb-4" style={{color:ct.tx2}}>
+        {e.jobTitle&&<div>💼 {e.jobTitle}</div>}{e.email&&<div>✉️ {e.email}</div>}{e.phone&&<div>📞 {e.phone}</div>}
+        {e.emergencyContactName&&<div>🚨 {e.emergencyContactName} · {e.emergencyContactPhone||"—"}</div>}
+      </div>
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1"><span className="text-xs font-semibold" style={{color:ct.tx}}>Onboarding</span><span className="text-xs" style={{color:ct.tx3}}>{pct}%</span></div>
+        <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+        <div className="space-y-1">{checklist.map((i:any)=>(
+          <label key={i.key} className="flex items-center gap-2 text-xs cursor-pointer" style={{color:ct.tx2}}>
+            <input type="checkbox" checked={!!i.done} onChange={()=>api.hr.setOnboarding(e.id,i.key,!i.done).then(onChanged)}/>{i.label}
+          </label>
+        ))}</div>
+      </div>
+      <div className="mb-2">
+        <div className="text-xs font-semibold mb-1" style={{color:ct.tx}}>Documents & Certifications</div>
+        <div className="space-y-1 mb-2">{(data.documents||[]).map((d:any)=>(
+          <div key={d.id} className="flex items-center gap-2 text-xs" style={{color:ct.tx2}}>
+            <FileText size={12}/><span className="flex-1">{d.name} <span style={{color:ct.tx3}}>({d.type})</span></span>
+            <button onClick={()=>api.hr.deleteDocument(d.id).then(onChanged)} style={{color:"#ef4444"}}><Trash2 size={12}/></button>
+          </div>
+        ))}{(data.documents||[]).length===0&&<div className="text-xs" style={{color:ct.tx3}}>No documents yet.</div>}</div>
+        <div className="flex gap-2"><div className="flex-1"><HInput value={docName} onChange={setDocName} placeholder="Document name" ct={ct}/></div>
+          <div className="w-32"><HSelect value={docType} onChange={setDocType} options={["CONTRACT","ID","CERTIFICATE","POLICY","TRAINING","OTHER"]} ct={ct}/></div>
+          <HBtn ct={ct} onClick={addDoc}>Add</HBtn></div>
+      </div>
+    </Modal>
+  );
+};
+
+// ── Roles & Permissions ───────────────────────────────────────────
+const PERMISSIONS=["dashboard","customers","loyalty","campaigns","analytics","pos","hr","billing","settings","integrations"];
+const HRRoles=({ct}:any)=>{
+  const [roles,setRoles]=useState<any[]>([]);const [edit,setEdit]=useState<any>(null);
+  const load=()=>api.hr.roles().then(d=>setRoles(d.roles??[])).catch(()=>{});
+  useEffect(()=>{load();},[]);
+  return(
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs" style={{color:ct.tx3}}>Built-in roles: Owner, Manager, Marketing, Cashier, Support. Create custom roles with a permission matrix below.</p>
+        <HBtn ct={ct} onClick={()=>setEdit({permissions:{}})}><Plus size={13} className="inline mr-1"/>Custom Role</HBtn>
+      </div>
+      <div className="grid gap-2">{roles.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No custom roles. The built-in roles cover most teams.</div>:
+        roles.map(r=>(
+        <div key={r.id} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="flex items-center justify-between">
+            <div><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.name}</div><div className="text-xs" style={{color:ct.tx3}}>{r.description||"—"}</div></div>
+            <div className="flex gap-2"><button onClick={()=>setEdit(r)} style={{color:ct.tx3}}><Edit size={15}/></button><button onClick={()=>api.hr.deleteRole(r.id).then(load)} style={{color:"#ef4444"}}><Trash2 size={15}/></button></div>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-2">{Object.entries(r.permissionsJson||{}).filter(([,v])=>v).map(([k])=><Pill key={k} text={k} color="#06b6d4"/>)}</div>
+        </div>
+      ))}</div>
+      {edit&&<RoleModal role={edit} ct={ct} onClose={()=>setEdit(null)} onSaved={()=>{setEdit(null);load();}}/>}
+    </div>
+  );
+};
+const RoleModal=({role,ct,onClose,onSaved}:any)=>{
+  const [name,setName]=useState(role.name||"");const [desc,setDesc]=useState(role.description||"");
+  const [perms,setPerms]=useState<any>(role.permissionsJson||role.permissions||{});
+  const save=async()=>{if(!name.trim())return;const body={name,description:desc,permissions:perms};if(role.id)await api.hr.updateRole(role.id,body);else await api.hr.createRole(body);onSaved();};
+  return(
+    <Modal title={role.id?"Edit Role":"New Custom Role"} onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Name *</label><HInput value={name} onChange={setName} placeholder="Shift Supervisor" ct={ct}/>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Description</label><HInput value={desc} onChange={setDesc} ct={ct}/>
+      <div className="text-xs font-semibold mt-3 mb-1" style={{color:ct.tx}}>Permissions</div>
+      <div className="grid grid-cols-2 gap-1.5">{PERMISSIONS.map(p=>(
+        <label key={p} className="flex items-center gap-2 text-xs cursor-pointer capitalize" style={{color:ct.tx2}}>
+          <input type="checkbox" checked={!!perms[p]} onChange={()=>setPerms((s:any)=>({...s,[p]:!s[p]}))}/>{p}
+        </label>
+      ))}</div>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Save</HBtn></div>
+    </Modal>
+  );
+};
+
+// ── Onboarding overview (all employees in onboarding) ─────────────
+const HROnboarding=({ct}:any)=>{
+  const [rows,setRows]=useState<any[]>([]);
+  const load=()=>api.hr.employees({status:"ONBOARDING"}).then(d=>setRows(d.employees??[])).catch(()=>{});
+  useEffect(()=>{load();},[]);
+  const toggle=(empId:string,key:string,done:boolean)=>api.hr.setOnboarding(empId,key,done).then(load);
+  return(
+    <div>
+      <p className="text-xs mb-4" style={{color:ct.tx3}}>Track onboarding completion for every new hire. Completing all steps moves them to Active automatically.</p>
+      {rows.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No one is onboarding right now. 🎉</div>:
+       <div className="grid gap-3">{rows.map(e=>{const cl=Array.isArray(e.onboardingJson)?e.onboardingJson:[];const pct=cl.length?Math.round(cl.filter((i:any)=>i.done).length/cl.length*100):0;return(
+        <div key={e.id} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold" style={{color:ct.tx}}>{e.fullName}</div><span className="text-xs" style={{color:ct.tx3}}>{pct}%</span></div>
+          <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+          <div className="grid sm:grid-cols-2 gap-1">{cl.map((i:any)=>(
+            <label key={i.key} className="flex items-center gap-2 text-xs cursor-pointer" style={{color:ct.tx2}}><input type="checkbox" checked={!!i.done} onChange={()=>toggle(e.id,i.key,!i.done)}/>{i.label}</label>
+          ))}</div>
+        </div>
+       );})}</div>}
+    </div>
+  );
+};
+
+// ── Training ───────────────────────────────────────────────────────
+const HRTraining=({ct}:any)=>{
+  const [mods,setMods]=useState<any[]>([]);const [edit,setEdit]=useState<any>(null);
+  const load=()=>api.hr.training().then(d=>setMods(d.modules??[])).catch(()=>{});
+  useEffect(()=>{load();},[]);
+  return(
+    <div>
+      <div className="flex items-center justify-between mb-4"><p className="text-xs" style={{color:ct.tx3}}>Videos, PDFs and quizzes to keep service consistent.</p><HBtn ct={ct} onClick={()=>setEdit({type:"VIDEO",passingScore:70})}><Plus size={13} className="inline mr-1"/>Module</HBtn></div>
+      <div className="grid gap-2">{mods.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No training modules yet.</div>:
+        mods.map(m=>(
+        <div key={m.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(6,182,212,0.15)",color:"#06b6d4"}}>{m.type==="QUIZ"?<FileText size={16}/>:m.type==="PDF"?<FileText size={16}/>:<Play size={16}/>}</div>
+          <div className="flex-1 min-w-0"><div className="text-sm font-semibold truncate" style={{color:ct.tx}}>{m.title}</div><div className="text-xs truncate" style={{color:ct.tx3}}>{m.type} · pass {m.passingScore}% {m.isRequired?"· required":""}</div></div>
+          <button onClick={()=>setEdit(m)} style={{color:ct.tx3}}><Edit size={15}/></button>
+          <button onClick={()=>api.hr.deleteTraining(m.id).then(load)} style={{color:"#ef4444"}}><Trash2 size={15}/></button>
+        </div>
+      ))}</div>
+      {edit&&<TrainingModal mod={edit} ct={ct} onClose={()=>setEdit(null)} onSaved={()=>{setEdit(null);load();}}/>}
+    </div>
+  );
+};
+const TrainingModal=({mod,ct,onClose,onSaved}:any)=>{
+  const [f,setF]=useState<any>({type:"VIDEO",passingScore:70,...mod});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+  const save=async()=>{if(!f.title?.trim())return;if(mod.id)await api.hr.updateTraining(mod.id,f);else await api.hr.createTraining(f);onSaved();};
+  return(
+    <Modal title={mod.id?"Edit Module":"New Training Module"} onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Title *</label><HInput value={f.title} onChange={(v:any)=>set("title",v)} ct={ct}/>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Description</label><HInput value={f.description} onChange={(v:any)=>set("description",v)} ct={ct}/>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div><label className="text-xs" style={{color:ct.tx3}}>Type</label><HSelect value={f.type} onChange={(v:any)=>set("type",v)} options={["VIDEO","PDF","QUIZ"]} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Passing score %</label><HInput type="number" value={f.passingScore} onChange={(v:any)=>set("passingScore",Number(v))} ct={ct}/></div>
+      </div>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Content URL (video/PDF)</label><HInput value={f.contentUrl} onChange={(v:any)=>set("contentUrl",v)} placeholder="https://…" ct={ct}/>
+      <label className="flex items-center gap-2 text-xs mt-3 cursor-pointer" style={{color:ct.tx2}}><input type="checkbox" checked={!!f.isRequired} onChange={()=>set("isRequired",!f.isRequired)}/>Required for all staff</label>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Save</HBtn></div>
+    </Modal>
+  );
+};
+
+// ── Attendance ─────────────────────────────────────────────────────
+const HRAttendance=({ct}:any)=>{
+  const [recs,setRecs]=useState<any[]>([]);const [emps,setEmps]=useState<any[]>([]);const [sel,setSel]=useState("");
+  const load=()=>api.hr.attendance(sel?{employeeId:sel}:undefined).then(d=>setRecs(d.records??[])).catch(()=>{});
+  useEffect(()=>{api.hr.employees({status:"ACTIVE"}).then(d=>setEmps(d.employees??[])).catch(()=>{});},[]);
+  useEffect(()=>{load();},[sel]);
+  const empName=(id:string)=>emps.find(e=>e.id===id)?.fullName||id.slice(0,6);
+  const clockIn=async()=>{if(!sel)return;try{await api.hr.clockIn({employeeId:sel,method:"WEB"});load();}catch(e:any){alert("Already clocked in");}};
+  return(
+    <div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="w-56"><HSelect value={sel} onChange={setSel} options={[{value:"",label:"All employees"},...emps.map(e=>({value:e.id,label:e.fullName}))]} ct={ct}/></div>
+        <HBtn ct={ct} onClick={clockIn} disabled={!sel}><Clock size={13} className="inline mr-1"/>Clock In</HBtn>
+      </div>
+      <div className="grid gap-2">{recs.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No attendance records.</div>:
+        recs.map(r=>(
+        <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="flex-1"><div className="text-sm font-semibold" style={{color:ct.tx}}>{empName(r.employeeId)}</div>
+            <div className="text-xs" style={{color:ct.tx3}}>In {new Date(r.clockIn).toLocaleString()} {r.clockOut?`· Out ${new Date(r.clockOut).toLocaleTimeString()}`:""} · {r.method}</div></div>
+          {!r.clockOut?<HBtn ct={ct} onClick={()=>api.hr.clockOut(r.id).then(load)}>Clock Out</HBtn>:<Pill text="DONE" color="#22c55e"/>}
+        </div>
+      ))}</div>
+    </div>
+  );
+};
+
+// ── Shifts & Leave ─────────────────────────────────────────────────
+const HRShifts=({ct}:any)=>{
+  const [shifts,setShifts]=useState<any[]>([]);const [leave,setLeave]=useState<any[]>([]);const [emps,setEmps]=useState<any[]>([]);
+  const [shiftModal,setShiftModal]=useState<any>(null);const [leaveModal,setLeaveModal]=useState<any>(null);
+  const load=()=>{api.hr.shifts().then(d=>setShifts(d.shifts??[])).catch(()=>{});api.hr.leave().then(d=>setLeave(d.requests??[])).catch(()=>{});};
+  useEffect(()=>{api.hr.employees().then(d=>setEmps(d.employees??[])).catch(()=>{});load();},[]);
+  const empName=(id:string)=>emps.find(e=>e.id===id)?.fullName||id.slice(0,6);
+  return(
+    <div className="grid md:grid-cols-2 gap-4">
+      <div>
+        <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold" style={{color:ct.tx}}>Rota / Shifts</h3><HBtn ct={ct} onClick={()=>setShiftModal({})}><Plus size={12} className="inline mr-1"/>Shift</HBtn></div>
+        <div className="grid gap-2">{shifts.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No shifts scheduled.</div>:
+          shifts.map(s=>(
+          <div key={s.id} className="rounded-xl p-2.5 flex items-center gap-2" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <div className="flex-1"><div className="text-xs font-semibold" style={{color:ct.tx}}>{empName(s.employeeId)} {s.role?`· ${s.role}`:""}</div>
+              <div className="text-[11px]" style={{color:ct.tx3}}>{new Date(s.startsAt).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})} → {new Date(s.endsAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div></div>
+            <Pill text={s.status} color={STATUS_COLOR[s.status]||"#6b7280"}/>
+            <button onClick={()=>api.hr.deleteShift(s.id).then(load)} style={{color:"#ef4444"}}><Trash2 size={13}/></button>
+          </div>
+        ))}</div>
+      </div>
+      <div>
+        <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold" style={{color:ct.tx}}>Leave Requests</h3><HBtn ct={ct} onClick={()=>setLeaveModal({})}><Plus size={12} className="inline mr-1"/>Leave</HBtn></div>
+        <div className="grid gap-2">{leave.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No leave requests.</div>:
+          leave.map(l=>(
+          <div key={l.id} className="rounded-xl p-2.5" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <div className="flex items-center justify-between"><div className="text-xs font-semibold" style={{color:ct.tx}}>{empName(l.employeeId)}</div><Pill text={l.status} color={STATUS_COLOR[l.status]||"#6b7280"}/></div>
+            <div className="text-[11px] mt-0.5" style={{color:ct.tx3}}>{l.type} · {new Date(l.startDate).toLocaleDateString()} → {new Date(l.endDate).toLocaleDateString()}</div>
+            {l.status==="PENDING"&&<div className="flex gap-2 mt-2"><HBtn ct={ct} onClick={()=>api.hr.decideLeave(l.id,"APPROVED").then(load)}>Approve</HBtn><HBtn variant="ghost" ct={ct} onClick={()=>api.hr.decideLeave(l.id,"REJECTED").then(load)}>Reject</HBtn></div>}
+          </div>
+        ))}</div>
+      </div>
+      {shiftModal&&<ShiftModal emps={emps} ct={ct} onClose={()=>setShiftModal(null)} onSaved={()=>{setShiftModal(null);load();}}/>}
+      {leaveModal&&<LeaveModal emps={emps} ct={ct} onClose={()=>setLeaveModal(null)} onSaved={()=>{setLeaveModal(null);load();}}/>}
+    </div>
+  );
+};
+const ShiftModal=({emps,ct,onClose,onSaved}:any)=>{
+  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",status:"SCHEDULED"});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+  const save=async()=>{if(!f.employeeId||!f.startsAt||!f.endsAt)return;await api.hr.createShift(f);onSaved();};
+  return(
+    <Modal title="New Shift" onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Employee</label><HSelect value={f.employeeId} onChange={(v:any)=>set("employeeId",v)} options={emps.map((e:any)=>({value:e.id,label:e.fullName}))} ct={ct}/>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div><label className="text-xs" style={{color:ct.tx3}}>Start</label><HInput type="datetime-local" value={f.startsAt} onChange={(v:any)=>set("startsAt",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>End</label><HInput type="datetime-local" value={f.endsAt} onChange={(v:any)=>set("endsAt",v)} ct={ct}/></div>
+      </div>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Role / note</label><HInput value={f.role} onChange={(v:any)=>set("role",v)} placeholder="Front counter" ct={ct}/>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Save</HBtn></div>
+    </Modal>
+  );
+};
+const LeaveModal=({emps,ct,onClose,onSaved}:any)=>{
+  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",type:"ANNUAL"});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+  const save=async()=>{if(!f.employeeId||!f.startDate||!f.endDate)return;await api.hr.createLeave(f);onSaved();};
+  return(
+    <Modal title="New Leave Request" onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Employee</label><HSelect value={f.employeeId} onChange={(v:any)=>set("employeeId",v)} options={emps.map((e:any)=>({value:e.id,label:e.fullName}))} ct={ct}/>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Type</label><HSelect value={f.type} onChange={(v:any)=>set("type",v)} options={["ANNUAL","SICK","EMERGENCY","UNPAID"]} ct={ct}/>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div><label className="text-xs" style={{color:ct.tx3}}>From</label><HInput type="date" value={f.startDate} onChange={(v:any)=>set("startDate",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>To</label><HInput type="date" value={f.endDate} onChange={(v:any)=>set("endDate",v)} ct={ct}/></div>
+      </div>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Reason</label><HInput value={f.reason} onChange={(v:any)=>set("reason",v)} ct={ct}/>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Submit</HBtn></div>
+    </Modal>
+  );
+};
+
+// ── Performance ────────────────────────────────────────────────────
+const HRPerformance=({ct}:any)=>{
+  const [rows,setRows]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  useEffect(()=>{api.hr.performance().then(d=>setRows(d.rows??[])).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const cur=localStorage.getItem("biz_currency")||"£";const sym=cur==="GBP"?"£":cur==="USD"?"$":cur==="PKR"?"₨":"£";
+  const max=Math.max(1,...rows.map(r=>r.revenue));
+  return(
+    <div>
+      <p className="text-xs mb-4" style={{color:ct.tx3}}>Revenue and visits attributed to each staff member (last 30 days), plus internal reward points earned.</p>
+      {loading?<div className="text-center py-10 text-xs" style={{color:ct.tx3}}>Loading…</div>:
+       rows.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No performance data yet. Link employees to staff accounts and record visits at POS.</div>:
+       <div className="grid gap-2">{rows.map(r=>(
+        <div key={r.employeeId} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="flex items-center justify-between mb-1.5"><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.fullName}<span className="text-xs font-normal ml-2" style={{color:ct.tx3}}>{r.jobTitle||""}</span></div>
+            <div className="text-sm font-bold" style={{color:ct.tx}}>{sym}{r.revenue.toLocaleString()}</div></div>
+          <div className="h-1.5 rounded-full mb-1.5" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${r.revenue/max*100}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+          <div className="flex gap-3 text-[11px]" style={{color:ct.tx3}}><span>{r.visits} visits</span><span>·</span><span>{r.rewardPoints} reward pts</span></div>
+        </div>
+      ))}</div>}
+    </div>
+  );
+};
+
+// ── Employee Rewards ───────────────────────────────────────────────
+const HRRewards=({ct}:any)=>{
+  const [rewards,setRewards]=useState<any[]>([]);const [emps,setEmps]=useState<any[]>([]);const [modal,setModal]=useState(false);
+  const load=()=>api.hr.rewards().then(d=>setRewards(d.rewards??[])).catch(()=>{});
+  useEffect(()=>{api.hr.employees().then(d=>setEmps(d.employees??[])).catch(()=>{});load();},[]);
+  const empName=(id:string)=>emps.find(e=>e.id===id)?.fullName||id.slice(0,6);
+  return(
+    <div>
+      <div className="flex items-center justify-between mb-4"><p className="text-xs" style={{color:ct.tx3}}>Points, bonuses and recognition to motivate your team.</p><HBtn ct={ct} onClick={()=>setModal(true)}><Plus size={13} className="inline mr-1"/>Grant Reward</HBtn></div>
+      <div className="grid gap-2">{rewards.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No rewards granted yet.</div>:
+        rewards.map(r=>(
+        <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(245,158,11,0.15)",color:"#f59e0b"}}><Award size={16}/></div>
+          <div className="flex-1 min-w-0"><div className="text-sm font-semibold" style={{color:ct.tx}}>{empName(r.employeeId)}</div><div className="text-xs truncate" style={{color:ct.tx3}}>{r.type}{r.points?` · ${r.points} pts`:""}{r.amount?` · ${r.amount}`:""} {r.note?`· ${r.note}`:""}</div></div>
+          <Pill text={r.status} color={STATUS_COLOR[r.status]||"#6b7280"}/>
+          {r.status==="PENDING"&&<button onClick={()=>api.hr.decideReward(r.id,"APPROVED").then(load)} className="text-xs px-2 py-1 rounded-lg text-white" style={{background:"#22c55e"}}>Approve</button>}
+        </div>
+      ))}</div>
+      {modal&&<RewardModal emps={emps} ct={ct} onClose={()=>setModal(false)} onSaved={()=>{setModal(false);load();}}/>}
+    </div>
+  );
+};
+const RewardModal=({emps,ct,onClose,onSaved}:any)=>{
+  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",type:"POINTS",points:50});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+  const save=async()=>{if(!f.employeeId)return;await api.hr.createReward(f);onSaved();};
+  return(
+    <Modal title="Grant Reward" onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Employee</label><HSelect value={f.employeeId} onChange={(v:any)=>set("employeeId",v)} options={emps.map((e:any)=>({value:e.id,label:e.fullName}))} ct={ct}/>
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div><label className="text-xs" style={{color:ct.tx3}}>Type</label><HSelect value={f.type} onChange={(v:any)=>set("type",v)} options={["POINTS","BONUS","RECOGNITION"]} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Points</label><HInput type="number" value={f.points} onChange={(v:any)=>set("points",Number(v))} ct={ct}/></div>
+      </div>
+      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Note</label><HInput value={f.note} onChange={(v:any)=>set("note",v)} placeholder="Employee of the month 🎉" ct={ct}/>
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Grant</HBtn></div>
+    </Modal>
   );
 };
 
@@ -6800,8 +7242,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"analytics":return<DashboardPage setPage={nav}/>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"integrations":return<IntegrationsPage/>;
-    case"ops-hr":return<OperationsComingSoon title="HR & Staff" desc="Employee directory, roles & permissions, performance and employee rewards — the operational backbone for your team." icon={UserCheck}/>;
-    case"ops-onboarding":return<OperationsComingSoon title="Staff Onboarding" desc="Invite staff via email/WhatsApp, issue temporary credentials, and track onboarding checklists, documents, policies and training." icon={UserPlus}/>;
+    case"ops-hr":return<HRStaffPage/>;
     case"ops-branches":return<OperationsComingSoon title="Branches" desc="Manage all your locations, their settings, geofencing and per-branch staff from one place." icon={Building}/>;
     case"ops-inventory":return<OperationsComingSoon title="Inventory" desc="Track stock levels, products and supplies across branches." icon={Layers}/>;
     case"ops-devices":return<OperationsComingSoon title="Devices" desc="Register and manage POS terminals, printers and check-in devices per branch." icon={Smartphone}/>;

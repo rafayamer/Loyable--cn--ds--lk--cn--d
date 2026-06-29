@@ -276,6 +276,51 @@ export const api = {
     evaluateById: (id: string)            => post<any>(`/segments/${id}/evaluate`),
   },
 
+  // ── Operations · HR & Staff ───────────────────────────────────
+  hr: {
+    summary:        ()                       => get<any>('/hr/summary'),
+    // Employees
+    employees:      (p?: any)                => get<any>(`/hr/employees${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    employee:       (id: string)             => get<any>(`/hr/employees/${id}`),
+    createEmployee: (b: any)                 => post<any>('/hr/employees', b),
+    updateEmployee: (id: string, b: any)     => put<any>(`/hr/employees/${id}`, b),
+    deleteEmployee: (id: string)             => del<any>(`/hr/employees/${id}`),
+    setOnboarding:  (id: string, key: string, done: boolean) => patch<any>(`/hr/employees/${id}/onboarding`, { key, done }),
+    addDocument:    (id: string, b: any)     => post<any>(`/hr/employees/${id}/documents`, b),
+    deleteDocument: (docId: string)          => del<any>(`/hr/documents/${docId}`),
+    // Roles & permissions
+    roles:          ()                       => get<any>('/hr/roles'),
+    createRole:     (b: any)                 => post<any>('/hr/roles', b),
+    updateRole:     (id: string, b: any)     => put<any>(`/hr/roles/${id}`, b),
+    deleteRole:     (id: string)             => del<any>(`/hr/roles/${id}`),
+    // Training
+    training:       ()                       => get<any>('/hr/training'),
+    createTraining: (b: any)                 => post<any>('/hr/training', b),
+    updateTraining: (id: string, b: any)     => put<any>(`/hr/training/${id}`, b),
+    deleteTraining: (id: string)             => del<any>(`/hr/training/${id}`),
+    setProgress:    (moduleId: string, b: any) => post<any>(`/hr/training/${moduleId}/progress`, b),
+    // Attendance
+    attendance:     (p?: any)                => get<any>(`/hr/attendance${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    clockIn:        (b: any)                 => post<any>('/hr/attendance/clock-in', b),
+    clockOut:       (id: string, b?: any)    => post<any>(`/hr/attendance/${id}/clock-out`, b ?? {}),
+    // Shifts
+    shifts:         (p?: any)                => get<any>(`/hr/shifts${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    createShift:    (b: any)                 => post<any>('/hr/shifts', b),
+    updateShift:    (id: string, b: any)     => put<any>(`/hr/shifts/${id}`, b),
+    deleteShift:    (id: string)             => del<any>(`/hr/shifts/${id}`),
+    // Leave
+    leave:          (p?: any)                => get<any>(`/hr/leave${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    createLeave:    (b: any)                 => post<any>('/hr/leave', b),
+    decideLeave:    (id: string, decision: string) => post<any>(`/hr/leave/${id}/decision`, { decision }),
+    deleteLeave:    (id: string)             => del<any>(`/hr/leave/${id}`),
+    // Performance
+    performance:    (p?: any)                => get<any>(`/hr/performance${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    // Rewards
+    rewards:        (p?: any)                => get<any>(`/hr/rewards${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
+    createReward:   (b: any)                 => post<any>('/hr/rewards', b),
+    decideReward:   (id: string, decision: string) => post<any>(`/hr/rewards/${id}/decision`, { decision }),
+  },
+
   // ── AI ────────────────────────────────────────────────────────
   ai: {
     query:            (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
