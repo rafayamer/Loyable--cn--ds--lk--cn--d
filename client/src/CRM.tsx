@@ -2924,6 +2924,7 @@ const GiftCardsManager=()=>{
   const [issued,setIssued]=useState<any>(null);
   // optional: assign the card directly to an existing customer
   const [custQuery,setCustQuery]=useState("");const [custResults,setCustResults]=useState<any[]>([]);const [assignTo,setAssignTo]=useState<any>(null);
+  const [showInfo,setShowInfo]=useState(false);
   const load=()=>{setLoading(true);api.loyaltyEngine.giftCards().then(setData).catch(()=>{}).finally(()=>setLoading(false));};
   useEffect(load,[]);
   useEffect(()=>{if(!custQuery.trim()||assignTo){setCustResults([]);return;}const t=setTimeout(()=>{api.customers.search({q:custQuery,limit:5}).then(d=>setCustResults(d.customers||[])).catch(()=>{});},300);return()=>clearTimeout(t);},[custQuery,assignTo]);
@@ -2941,7 +2942,31 @@ const GiftCardsManager=()=>{
   };
   const GC_STATUS:Record<string,string>={ACTIVE:C.green,REDEEMED:C.blue,PENDING_DELETE:C.amber,VOIDED:"#6b7280",EXPIRED:"#6b7280"};
   return(<div className="space-y-4">
-    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Gift Cards</h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>Issue gift card</button></div>
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white flex items-center gap-1.5">Gift Cards<button onClick={()=>setShowInfo(true)} title="How gift cards work" className="text-slate-500 hover:text-violet-300"><Info size={14}/></button></h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>Issue gift card</button></div>
+    {showInfo&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setShowInfo(false)}>
+      <div className="w-full max-w-lg rounded-2xl p-5 max-h-[85vh] overflow-y-auto" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-white flex items-center gap-2"><CreditCard size={16} className="text-violet-300"/>How gift cards work</h3><button onClick={()=>setShowInfo(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <div className="space-y-4 text-xs">
+          {[
+            {icon:DollarSign,col:C.green,title:"They're real money",body:"A gift card is prepaid stored value. It can be spent on anything — there are no item restrictions. Think of it like cash credit, not a coupon."},
+            {icon:Plus,col:C.primary,title:"Two ways to issue",body:"Send to a customer — search and assign it; the card appears instantly in their rewards portal. Or create a code — leave the customer blank and share the GC-XXXX code however you like (print, text, physical card)."},
+            {icon:Gift,col:C.accent,title:"How customers redeem",body:"Assigned cards show up automatically in the portal → 'Add to my balance'. A shared code is redeemed via the 'Have a gift code?' box. Either way the value lands in the customer's wallet (shop credit)."},
+            {icon:ShoppingCart,col:C.amber,title:"Spending at the till",body:"In POS → Wallet payment mode, look up the customer and toggle 'Gift / shop credit' to apply their balance to the bill. It's deducted from the total and logged."},
+            {icon:Send,col:C.blue,title:"Customers can re-gift",body:"A card holder can pass their card to another customer from their portal (Gift → enter their WhatsApp number). It moves to the new person and notifies them."},
+            {icon:Trash2,col:C.red,title:"Deleting cards",body:"Not yet issued to anyone → you can delete it outright. Already held by a customer → you must request deletion; they get a message and the card is only removed once THEY accept (consent-gated). Declined cards stay active."},
+            {icon:Database,col:"#94a3b8",title:"History is kept",body:"Once redeemed or voided, a card disappears from the customer's portal but stays here marked REDEEMED / VOIDED so you always have the record."},
+            {icon:Shield,col:C.green,title:"Single-use & safe",body:"Each code is unique and can only be redeemed once."},
+            {icon:AlertTriangle,col:C.amber,title:"It's your liability",body:"Money on an unredeemed gift card is cash you've already taken but still owe — it's a liability on your books, not profit, until it's spent. The 'Outstanding balance' figure above is your total live exposure. Plan for the fact customers can redeem it at any time."},
+          ].map((r,i)=>(
+            <div key={i} className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:r.col+"22"}}><r.icon size={15} style={{color:r.col}}/></div>
+              <div><div className="text-white font-semibold mb-0.5">{r.title}</div><div className="text-slate-400 leading-relaxed">{r.body}</div></div>
+            </div>
+          ))}
+        </div>
+        <button onClick={()=>setShowInfo(false)} className="w-full mt-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Got it</button>
+      </div>
+    </div>}
     {data&&<div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><KPI icon={CreditCard} label="Active cards" value={data.activeCount??0} color={C.primary}/><KPI icon={DollarSign} label="Outstanding balance" value={`£${(data.outstandingBalance??0).toLocaleString()}`} color={C.green} sub="liability you've been pre-paid for"/></div>}
     {loading?<Skeleton h="h-24"/>:(data?.cards||[]).length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No gift cards issued yet.</div>:
     <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th><th className="text-right py-2.5 px-4"></th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}{c.issuedToCustomerId&&<span className="ml-1.5 text-[9px] px-1 py-0.5 rounded" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>held</span>}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={GC_STATUS[c.status]||"#6b7280"}>{c.status==="PENDING_DELETE"?"AWAITING CONSENT":c.status}</Badge></td><td className="py-2.5 px-4 text-right">{(c.status==="REDEEMED"||c.status==="VOIDED")?<span className="text-[10px] text-slate-600">archived</span>:<button onClick={()=>removeCard(c)} title={c.issuedToCustomerId?"Request deletion (needs customer consent)":"Delete"} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>}</td></tr>))}</tbody></table></div></div>}
