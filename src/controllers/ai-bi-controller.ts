@@ -299,6 +299,35 @@ const QUERY_LIBRARY: Record<
     };
   },
 
+  getCohortRetention: async (businessId, _) => {
+    const rows = await (prisma as any).$queryRawUnsafe(`
+      SELECT "cohortMonth", "cohortSize", "retentionByOffset"
+      FROM cohort_retention_snapshots
+      WHERE "businessId" = $1
+      ORDER BY "cohortMonth" DESC
+      LIMIT 12
+    `, businessId) as Array<{ cohortMonth: string; cohortSize: number; retentionByOffset: Record<string, number> }>;
+
+    const heatmap = rows.map(r => ({
+      cohortMonth: r.cohortMonth,
+      cohortSize:  r.cohortSize,
+      retention:   Object.fromEntries(
+        Object.entries(r.retentionByOffset).map(([k, v]) => [
+          `M${k}`,
+          r.cohortSize > 0 ? Math.round((v / r.cohortSize) * 100) : 0,
+        ])
+      ),
+    }));
+
+    return {
+      queryName: 'getCohortRetention',
+      chartType: 'table',
+      data:      heatmap,
+      count:     heatmap.length,
+      summary:   `Cohort retention across ${heatmap.length} monthly cohorts. ${heatmap[0] ? `Most recent cohort (${heatmap[0].cohortMonth}): ${heatmap[0].cohortSize} customers, M1 retention: ${heatmap[0].retention['M1'] ?? 'N/A'}%.` : 'No cohort data yet — run nightly cron or add visit data.'}`,
+    };
+  },
+
   getPointsLiability: async (businessId, _) => {
     const biz = await prisma.business.findUnique({
       where:  { id: businessId },
@@ -340,6 +369,7 @@ const QUERY_MANIFEST = [
   { name: 'getCampaignRoi',         description: 'Campaign ROI: revenue attributed vs discount cost', params: ['days: number (default 30)'] },
   { name: 'getWinBackRate',         description: 'What percentage of AT_RISK/LOST customers were retained in the last 30 days', params: [] },
   { name: 'getPointsLiability',     description: 'Total outstanding loyalty points and estimated cash exposure', params: [] },
+  { name: 'getCohortRetention',     description: 'Cohort retention heatmap: % of each monthly cohort still active over time', params: [] },
 ];
 
 // ================================================================

@@ -273,6 +273,18 @@ async function ensureSchemaPatches() {
       sql: 'CREATE INDEX IF NOT EXISTS "fr_customer" ON "feedback_responses" ("customerId")' },
     { label: 'feedback_responses idx score',
       sql: 'CREATE INDEX IF NOT EXISTS "fr_biz_score" ON "feedback_responses" ("businessId","score")' },
+    { label: 'cohort_retention_snapshots table',
+      sql: `CREATE TABLE IF NOT EXISTS "cohort_retention_snapshots" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "cohortMonth" TEXT NOT NULL,
+        "cohortSize" INTEGER NOT NULL DEFAULT 0,
+        "retentionByOffset" JSONB NOT NULL DEFAULT '{}',
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE ("businessId", "cohortMonth")
+      )` },
+    { label: 'cohort_retention_snapshots idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "crs_biz_month" ON "cohort_retention_snapshots" ("businessId","cohortMonth")' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]

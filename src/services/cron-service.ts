@@ -63,7 +63,10 @@ export const startAllCronJobs = (): void => {
   // Every 5 minutes — WhatsApp session health check + auto-failover to backup
   cron.schedule('*/5 * * * *', jobRunner('whatsappHealth', whatsappHealthJob), { timezone: 'UTC' });
 
-  console.log('[cron] 9 jobs registered (7 nightly + 1 hourly + 1 every-5-min).');
+  // 03:30 UTC — cohort retention analysis (monthly snapshot)
+  cron.schedule('30 3 * * *', jobRunner('cohortRetention', cohortRetentionJob), { timezone: 'UTC' });
+
+  console.log('[cron] 10 jobs registered (8 nightly + 1 hourly + 1 every-5-min).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -814,4 +817,89 @@ const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
  */
 const whatsappHealthJob = async (): Promise<Record<string, unknown>> => {
   return runWhatsAppHealthChecks() as unknown as Record<string, unknown>;
+};
+
+// ================================================================
+// JOB 10 — COHORT RETENTION ANALYSIS (nightly, monthly granularity)
+// ================================================================
+
+/**
+ * For each business, compute a cohort retention matrix:
+ *   cohortMonth (YYYY-MM) → for each subsequent month offset (0,1,2,...,11)
+ *   how many customers from that cohort made at least one visit.
+ *
+ * Stored as JSON blobs in the cohort_retention_snapshots table (upsert by
+ * businessId + cohortMonth). The AI BI layer queries this for heatmap rendering.
+ */
+const cohortRetentionJob = async (): Promise<Record<string, unknown>> => {
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true },
+  });
+
+  let processed = 0;
+  let errors    = 0;
+
+  for (const biz of businesses) {
+    try {
+      await computeCohortRetention(biz.id);
+      processed++;
+    } catch (err) {
+      errors++;
+      console.error(`[cron:cohortRetention] Error for business ${biz.id}:`, err);
+    }
+  }
+
+  return { processed, errors };
+};
+
+export const computeCohortRetention = async (businessId: string): Promise<void> => {
+  // Find all customers and their first-visit month (cohort month)
+  const customers = await prisma.customer.findMany({
+    where:   { businessId, isActive: true },
+    select:  { id: true, createdAt: true },
+  });
+
+  if (customers.length === 0) return;
+
+  // Group customers by cohort month (YYYY-MM of their createdAt)
+  const cohortMap = new Map<string, string[]>(); // cohortMonth → [customerId]
+  for (const c of customers) {
+    const key = c.createdAt.toISOString().substring(0, 7); // "2024-03"
+    if (!cohortMap.has(key)) cohortMap.set(key, []);
+    cohortMap.get(key)!.push(c.id);
+  }
+
+  // For each cohort, count returning visitors per month offset
+  for (const [cohortMonth, customerIds] of cohortMap.entries()) {
+    const cohortStart = new Date(`${cohortMonth}-01T00:00:00Z`);
+    const retentionByOffset: Record<number, number> = {};
+
+    // Check up to 12 months of retention
+    for (let offset = 0; offset <= 11; offset++) {
+      const from = new Date(cohortStart);
+      from.setUTCMonth(from.getUTCMonth() + offset);
+      const to = new Date(from);
+      to.setUTCMonth(to.getUTCMonth() + 1);
+
+      if (from > new Date()) break; // don't compute future months
+
+      const returning = await prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId, customerId: { in: customerIds }, visitedAt: { gte: from, lt: to } },
+      });
+      retentionByOffset[offset] = returning.length;
+    }
+
+    // Upsert into cohort_retention_snapshots
+    await (prisma as any).$executeRawUnsafe(`
+      INSERT INTO cohort_retention_snapshots (id, "businessId", "cohortMonth", "cohortSize", "retentionByOffset", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, $4::jsonb, NOW())
+      ON CONFLICT ("businessId", "cohortMonth")
+      DO UPDATE SET
+        "cohortSize"          = EXCLUDED."cohortSize",
+        "retentionByOffset"   = EXCLUDED."retentionByOffset",
+        "updatedAt"           = NOW()
+    `, businessId, cohortMonth, customerIds.length, JSON.stringify(retentionByOffset));
+  }
 };
