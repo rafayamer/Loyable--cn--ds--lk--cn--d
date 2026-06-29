@@ -24,6 +24,12 @@ import { processBirthdayAutomations, creditBirthdayBonuses, evaluateAndDowngrade
 import { enqueueAutomationTrigger, getAutomationQueue } from '../services/messaging-queue';
 import { dispatchFeedbackRequests }   from './feedback-service';
 import { runWhatsAppHealthChecks }    from './whatsapp-reliability';
+import { runReportsForAllTenants }    from './ai/ai-report-runner';
+
+// Platform default timezone for report dispatch. Per-tenant exact-local
+// delivery would require per-tenant scheduling; reports themselves are
+// always computed from each tenant's own data.
+const REPORT_TZ = process.env.REPORT_TIMEZONE || process.env.DEFAULT_TIMEZONE || 'UTC';
 
 
 // ================================================================
@@ -66,7 +72,13 @@ export const startAllCronJobs = (): void => {
   // 03:30 UTC — cohort retention analysis (monthly snapshot)
   cron.schedule('30 3 * * *', jobRunner('cohortRetention', cohortRetentionJob), { timezone: 'UTC' });
 
-  console.log('[cron] 10 jobs registered (8 nightly + 1 hourly + 1 every-5-min).');
+  // Mon 21:00 — weekly AI business report (last 7 days vs previous 7)
+  cron.schedule('0 21 * * 1', jobRunner('weeklyReport', weeklyReportJob), { timezone: REPORT_TZ });
+
+  // 1st of month 21:00 — monthly AI business report
+  cron.schedule('0 21 1 * *', jobRunner('monthlyReport', monthlyReportJob), { timezone: REPORT_TZ });
+
+  console.log('[cron] 12 jobs registered (8 nightly + 2 reports + 1 hourly + 1 every-5-min).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -807,6 +819,16 @@ const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
   const result = await dispatchFeedbackRequests();
   return result;
 };
+
+// ================================================================
+// AI BUSINESS REPORTS (weekly Mon 21:00, monthly 1st 21:00)
+// ================================================================
+
+const weeklyReportJob = async (): Promise<Record<string, unknown>> =>
+  runReportsForAllTenants('WEEKLY', { email: true }) as unknown as Record<string, unknown>;
+
+const monthlyReportJob = async (): Promise<Record<string, unknown>> =>
+  runReportsForAllTenants('MONTHLY', { email: true }) as unknown as Record<string, unknown>;
 
 // ================================================================
 // JOB 8 — WHATSAPP SESSION HEALTH CHECK (every 5 min)

@@ -229,6 +229,8 @@ const MODULES=[
   ]},
   {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER],tabs:[
     {id:"analytics",label:"Overview"},
+    {id:"advisor",label:"AI Advisor"},
+    {id:"reports",label:"Reports"},
     {id:"ai",label:"AI Insights"},
     {id:"datahub",label:"Data Hub"},
   ]},
@@ -808,6 +810,126 @@ const RewardModal=({emps,ct,onClose,onSaved}:any)=>{
       <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Note</label><HInput value={f.note} onChange={(v:any)=>set("note",v)} placeholder="Employee of the month 🎉" ct={ct}/>
       <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Grant</HBtn></div>
     </Modal>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
+// AI BUSINESS ADVISOR + REPORTS
+// ════════════════════════════════════════════════════════════════
+const ADVISOR_SUGGESTIONS=[
+  "Which customers should I message today?",
+  "Why did revenue change this week?",
+  "How many customers are at risk?",
+  "How much store credit is outstanding?",
+  "What feature should I use next?",
+  "How can I bring back lost customers?",
+];
+const renderAdvisorAnswer=(text:string,ct:any)=>{
+  const SECTIONS=["Short Answer","Data Used","What It Means","What To Do","Why It Matters","How To Do It In The Loyaly","What To Check Next","Note"];
+  // Split the structured answer into labelled sections.
+  const lines=String(text).split("\n").filter(l=>l.trim());
+  return lines.map((line,i)=>{
+    const m=SECTIONS.find(s=>line.trim().startsWith(s));
+    if(m){const rest=line.slice(line.indexOf(m)+m.length).replace(/^:\s*/,"");return(
+      <div key={i} className="mb-2.5"><div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{color:"#E8743B"}}>{m}</div><div className="text-sm" style={{color:ct.tx2}}>{rest}</div></div>
+    );}
+    return <div key={i} className="text-sm mb-1" style={{color:ct.tx2}}>{line}</div>;
+  });
+};
+
+const AIAdvisorPage=()=>{
+  const ct=useCard();
+  const [q,setQ]=useState("");const [ans,setAns]=useState<any>(null);const [loading,setLoading]=useState(false);const [err,setErr]=useState("");
+  const ask=async(question?:string)=>{const text=(question??q).trim();if(text.length<3)return;setLoading(true);setErr("");setAns(null);setQ(text);
+    try{const r=await api.aiAdvisor.ask(text);setAns(r);}catch(e:any){setErr(e?.message||"Something went wrong. Try again.");}finally{setLoading(false);}};
+  return(
+    <div>
+      <div className="mb-4"><h1 className="text-2xl font-bold" style={{color:ct.tx}}>AI Business Advisor</h1>
+        <p className="text-sm mt-1" style={{color:ct.tx3}}>Ask a practical question. Answers are grounded only in your own business data — never invented.</p></div>
+      <div className="rounded-2xl p-4 mb-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <textarea value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))ask();}}
+          placeholder="e.g. Which customers should I message today?" rows={2}
+          className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+        <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">{ADVISOR_SUGGESTIONS.slice(0,3).map(s=>(
+            <button key={s} onClick={()=>ask(s)} className="text-[11px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:ct.tx3,border:`1px solid ${ct.bdr}`}}>{s}</button>
+          ))}</div>
+          <button onClick={()=>ask()} disabled={loading||q.trim().length<3} className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{loading?"Thinking…":"Ask"}</button>
+        </div>
+      </div>
+      {err&&<div className="rounded-xl p-3 mb-3 text-sm" style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",color:"#ef4444"}}>{err}</div>}
+      {loading&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:ct.card,border:`1px solid ${ct.bdr}`,color:ct.tx3}}>Reading your business data…</div>}
+      {ans&&<div className="rounded-2xl p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        {renderAdvisorAnswer(ans.answer,ct)}
+        <div className="mt-3 pt-2 text-[10px]" style={{borderTop:`1px solid ${ct.bdr}`,color:ct.tx3}}>{ans.llmUsed?"Grounded in your data · written by AI from verified numbers":"Grounded in your data · template mode (no AI key configured)"}</div>
+      </div>}
+    </div>
+  );
+};
+
+const BusinessReportsPage=()=>{
+  const ct=useCard();
+  const [type,setType]=useState<"WEEKLY"|"MONTHLY">("WEEKLY");
+  const [preview,setPreview]=useState<any>(null);const [loading,setLoading]=useState(false);
+  const [reports,setReports]=useState<any[]>([]);const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const isOwner=(localStorage.getItem("userRole")||"")==="TENANT_OWNER";
+  const loadReports=()=>api.aiAdvisor.reports().then(d=>setReports(d.reports??[])).catch(()=>{});
+  useEffect(()=>{loadReports();},[]);
+  const doPreview=async()=>{setLoading(true);setPreview(null);try{const r=await api.aiAdvisor.previewReport(type);setPreview(r.content);}catch{}finally{setLoading(false);}};
+  useEffect(()=>{doPreview();},[type]);
+  const generate=async(email:boolean)=>{setBusy(true);setMsg("");try{const r=await api.aiAdvisor.generateReport(type,email);setMsg(email?`Report generated · email ${r.emailStatus.toLowerCase()}`:"Report saved");loadReports();}catch(e:any){setMsg(e?.message||"Failed");}finally{setBusy(false);}};
+  const Blk=({title,items,color}:{title:string;items:string[];color:string})=>items?.length?(
+    <div className="mb-3"><div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{color}}>{title}</div>
+      {items.map((i,k)=><div key={k} className="text-sm py-0.5" style={{color:ct.tx2}}>• {i}</div>)}</div>
+  ):null;
+  return(
+    <div>
+      <div className="mb-4 flex items-start justify-between flex-wrap gap-3">
+        <div><h1 className="text-2xl font-bold" style={{color:ct.tx}}>Business Reports</h1>
+          <p className="text-sm mt-1" style={{color:ct.tx3}}>Weekly and monthly summaries of what happened and what to do next — built from your own data.</p></div>
+        <div className="flex items-center gap-1">{(["WEEKLY","MONTHLY"] as const).map(t=>(
+          <button key={t} onClick={()=>setType(t)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={type===t?{background:"linear-gradient(135deg,#E8743B,#f59e0b)",color:"#fff"}:{background:ct.bg2,color:ct.tx3,border:`1px solid ${ct.bdr}`}}>{t==="WEEKLY"?"Weekly":"Monthly"}</button>
+        ))}</div>
+      </div>
+      {loading?<div className="rounded-2xl p-6 text-center text-xs" style={{background:ct.card,border:`1px solid ${ct.bdr}`,color:ct.tx3}}>Building preview…</div>:
+       preview&&<div className="rounded-2xl p-4 mb-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{color:"#E8743B"}}>Business Feedback Summary</div>
+        <div className="text-sm mb-4" style={{color:ct.tx,lineHeight:1.6}}>{preview.summary}</div>
+        <Blk title="What's going well" items={preview.pros} color="#2f9e5e"/>
+        <Blk title="What underperformed" items={preview.cons} color="#c2502f"/>
+        <Blk title="Pain points" items={preview.painPoints} color="#b9892f"/>
+        <Blk title="Power points" items={preview.powerPoints} color="#E8743B"/>
+        <div className="text-[11px] font-bold uppercase tracking-wide mb-1 mt-2" style={{color:ct.tx}}>Recommended actions</div>
+        {(preview.recommendations||[]).map((r:any,i:number)=>(
+          <div key={i} className="rounded-xl p-3 mb-2" style={{background:ct.bg2,border:`1px solid ${ct.bdr}`}}>
+            <div className="text-sm font-semibold" style={{color:ct.tx}}>{i+1}. {r.what}</div>
+            <div className="text-xs mt-1" style={{color:ct.tx3}}><b>Why:</b> {r.why}</div>
+            <div className="text-xs" style={{color:ct.tx3}}><b>How:</b> {r.how}</div>
+          </div>
+        ))}
+        {preview.feature&&<div className="rounded-xl p-3 mb-2" style={{background:ct.bg2,border:`1px dashed #E8743B`}}>
+          <div className="text-[11px] font-bold uppercase" style={{color:"#E8743B"}}>{type==="WEEKLY"?"Feature to use this week":"Feature to use this month"}</div>
+          <div className="text-sm font-semibold mt-0.5" style={{color:ct.tx}}>{preview.feature.title}</div>
+          <div className="text-xs" style={{color:ct.tx3}}>{preview.feature.reason} <b>How:</b> {preview.feature.how}</div>
+        </div>}
+        {preview.projection&&<div className="text-xs mb-2" style={{color:ct.tx3}}><b>Growth projection (estimate):</b> {preview.projection.text} <span style={{opacity:0.8}}>{preview.projection.assumption}</span></div>}
+        {isOwner&&<div className="flex items-center gap-2 mt-3 pt-3" style={{borderTop:`1px solid ${ct.bdr}`}}>
+          <button onClick={()=>generate(false)} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>Save report</button>
+          <button onClick={()=>generate(true)} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{busy?"Working…":"Generate & email me"}</button>
+          {msg&&<span className="text-xs" style={{color:ct.tx3}}>{msg}</span>}
+        </div>}
+      </div>}
+      {reports.length>0&&<div>
+        <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{color:ct.tx3}}>Past reports</div>
+        <div className="grid gap-2">{reports.map(r=>(
+          <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <div className="flex-1 min-w-0"><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.type==="WEEKLY"?"Weekly":"Monthly"} · {new Date(r.periodStart).toLocaleDateString()}</div>
+              <div className="text-xs truncate" style={{color:ct.tx3}}>{r.summary?.slice(0,90)||r.subject}</div></div>
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" style={{background:r.emailStatus==="SENT"?"rgba(34,197,94,0.15)":"rgba(148,163,184,0.15)",color:r.emailStatus==="SENT"?"#22c55e":ct.tx3}}>{r.emailStatus==="SENT"?"emailed":r.status?.toLowerCase()}</span>
+          </div>
+        ))}</div>
+      </div>}
+    </div>
   );
 };
 
@@ -7179,7 +7301,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
     if(r===ROLES.KITCHEN)return"pos";
     const saved=localStorage.getItem("crm_page");
-    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering"];
+    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering","advisor","reports"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
@@ -7240,6 +7362,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
     case"analytics":return<DashboardPage setPage={nav}/>;
+    case"advisor":return<AIAdvisorPage/>;
+    case"reports":return<BusinessReportsPage/>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"integrations":return<IntegrationsPage/>;
     case"ops-hr":return<HRStaffPage/>;

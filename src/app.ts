@@ -288,6 +288,48 @@ async function ensureSchemaPatches() {
       )` },
     { label: 'cohort_retention_snapshots idx',
       sql: 'CREATE INDEX IF NOT EXISTS "crs_biz_month" ON "cohort_retention_snapshots" ("businessId","cohortMonth")' },
+    // ── AI · Business reports & run logs ──
+    { label: 'business_reports table',
+      sql: `CREATE TABLE IF NOT EXISTS "business_reports" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "type" TEXT NOT NULL,
+        "periodStart" TIMESTAMP(3) NOT NULL,
+        "periodEnd" TIMESTAMP(3) NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PENDING',
+        "subject" TEXT,
+        "previewText" TEXT,
+        "summary" TEXT,
+        "keyMetricsJson" JSONB NOT NULL DEFAULT '{}',
+        "recommendationsJson" JSONB NOT NULL DEFAULT '[]',
+        "llmUsed" BOOLEAN NOT NULL DEFAULT false,
+        "emailStatus" TEXT NOT NULL DEFAULT 'NOT_SENT',
+        "emailError" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentAt" TIMESTAMP(3),
+        CONSTRAINT "business_reports_businessId_type_periodStart_key" UNIQUE ("businessId","type","periodStart")
+      )` },
+    { label: 'business_reports idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "br_biz_type_period" ON "business_reports" ("businessId","type","periodStart")' },
+    { label: 'ai_run_logs table',
+      sql: `CREATE TABLE IF NOT EXISTS "ai_run_logs" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "taskType" TEXT NOT NULL,
+        "inputSummary" TEXT,
+        "outputSummary" TEXT,
+        "model" TEXT,
+        "promptTokens" INTEGER NOT NULL DEFAULT 0,
+        "completionTokens" INTEGER NOT NULL DEFAULT 0,
+        "costEstimate" DECIMAL(12,6) NOT NULL DEFAULT 0,
+        "status" TEXT NOT NULL DEFAULT 'OK',
+        "error" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'ai_run_logs idx created',
+      sql: 'CREATE INDEX IF NOT EXISTS "airun_biz_created" ON "ai_run_logs" ("businessId","createdAt")' },
+    { label: 'ai_run_logs idx task',
+      sql: 'CREATE INDEX IF NOT EXISTS "airun_biz_task" ON "ai_run_logs" ("businessId","taskType")' },
     // ── Operations · HR & Staff ──
     { label: 'employees table',
       sql: `CREATE TABLE IF NOT EXISTS "employees" (
@@ -657,6 +699,7 @@ async function bootstrap() {
   await loadRouter('./controllers/integrations-controller',  'integrationsRouter',    '/api/integrations');
   await loadRouter('./controllers/totp-controller',          'totpRouter',            '/api/totp');
   await loadRouter('./controllers/hr-controller',            'hrRouter',              '/api/hr');
+  await loadRouter('./controllers/ai-advisor-controller',    'aiAdvisorRouter',       '/api/ai-advisor');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');

@@ -321,6 +321,14 @@ export const api = {
     decideReward:   (id: string, decision: string) => post<any>(`/hr/rewards/${id}/decision`, { decision }),
   },
 
+  // ── AI Business Advisor + Reports ─────────────────────────────
+  aiAdvisor: {
+    ask:            (question: string)        => post<any>('/ai-advisor/ask', { question }),
+    reports:        ()                        => get<any>('/ai-advisor/reports'),
+    previewReport:  (type: 'WEEKLY'|'MONTHLY')=> post<any>('/ai-advisor/reports/preview', { type }),
+    generateReport: (type: 'WEEKLY'|'MONTHLY', email?: boolean) => post<any>('/ai-advisor/reports/generate', { type, email: !!email }),
+  },
+
   // ── AI ────────────────────────────────────────────────────────
   ai: {
     query:            (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),

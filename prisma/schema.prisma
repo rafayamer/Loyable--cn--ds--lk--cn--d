@@ -1519,6 +1519,56 @@ model CohortRetentionSnapshot {
 }
 
 // ================================================================
+// AI · BUSINESS REPORTS & RUN LOGS
+// ================================================================
+
+// One generated weekly/monthly business report per tenant per period.
+// The (businessId, type, periodStart) unique key makes report generation
+// idempotent — a re-run of the job never double-creates or double-sends.
+model BusinessReport {
+  id                 String    @id @default(cuid())
+  businessId         String
+  type               String    // WEEKLY | MONTHLY
+  periodStart        DateTime
+  periodEnd          DateTime
+  status             String    @default("PENDING") // PENDING | GENERATED | SENT | FAILED
+  subject            String?
+  previewText        String?
+  summary            String?   // ~100-word Business Feedback Summary
+  keyMetricsJson     Json      @default("{}")
+  recommendationsJson Json     @default("[]")
+  llmUsed            Boolean   @default(false)
+  emailStatus        String    @default("NOT_SENT") // NOT_SENT | SENT | FAILED | SKIPPED
+  emailError         String?
+  createdAt          DateTime  @default(now())
+  sentAt             DateTime?
+
+  @@unique([businessId, type, periodStart])
+  @@index([businessId, type, periodStart])
+  @@map("business_reports")
+}
+
+// AI usage / cost log. Never stores raw customer PII — only short summaries.
+model AIRunLog {
+  id               String   @id @default(cuid())
+  businessId       String
+  taskType         String   // ADVISOR | WEEKLY_REPORT | MONTHLY_REPORT | PROJECTION
+  inputSummary     String?
+  outputSummary    String?
+  model            String?
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  costEstimate     Decimal  @default(0) @db.Decimal(12, 6)
+  status           String   @default("OK") // OK | ERROR | LLM_DISABLED
+  error            String?
+  createdAt        DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([businessId, taskType])
+  @@map("ai_run_logs")
+}
+
+// ================================================================
 // OPERATIONS · HR & STAFF MANAGEMENT
 // ================================================================
 
