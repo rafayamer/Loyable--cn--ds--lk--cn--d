@@ -17,5 +17,9 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Lemon Squeezy affiliate tracking (commission attribution only; never
+         decides tenant/account activation). Loaded once, globally, defer. -->
+    <script>window.lemonSqueezyAffiliateConfig = { store: "theloyaly" };</script>
+    <script src="https://lmsqueezy.com/affiliate.js" defer></script>
   </body>
 </html>

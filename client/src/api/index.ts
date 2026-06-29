@@ -223,6 +223,8 @@ export const api = {
       quotaRemaining: number | null;
       tierLimits: { quota: number } | null;
     }>('/billing'),
+    checkout:     (plan: string) => post<{ url: string; metadataAttached: boolean }>('/billing/checkout', { plan }),
+    subscription: () => get<any>('/billing/subscription'),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────

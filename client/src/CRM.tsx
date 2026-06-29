@@ -854,7 +854,7 @@ const LockedOverlay=({requiredPlan,benefit,ct}:{requiredPlan:string;benefit:stri
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{background:"rgba(232,116,59,0.15)"}}><Lock size={22} style={{color:"#E8743B"}}/></div>
       <div className="text-base font-bold mb-1" style={{color:ct.tx}}>Available on {requiredPlan}</div>
       <div className="text-sm mb-4" style={{color:ct.tx3}}>{benefit}</div>
-      <button onClick={()=>{localStorage.setItem("crm_page","settings");window.location.reload();}} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Upgrade to {requiredPlan}</button>
+      <button onClick={()=>{localStorage.setItem("crm_page","billing");window.location.reload();}} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Upgrade to {requiredPlan}</button>
     </div>
   </div>
 );
@@ -888,6 +888,85 @@ const RedeemCodeCard=()=>{
   );
 };
 
+// Founding-offer promo bar (20% off Growth, ends September). Dismissible.
+const PROMO_END=new Date("2026-09-30T23:59:59Z");
+const PromoBanner=({onChoose}:{onChoose:()=>void})=>{
+  const [dismissed,setDismissed]=useState(()=>localStorage.getItem("promo_loyal20_dismissed")==="1");
+  if(dismissed||Date.now()>PROMO_END.getTime())return null;
+  return(
+    <div className="px-4 py-2 flex items-center justify-center gap-3 text-center flex-wrap" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)",color:"#fff"}}>
+      <span className="text-xs md:text-sm font-medium">🎉 <b>Founding offer:</b> 20% off Growth for your first 2 months — lock in the plan that brings customers back before prices rise. Code <b>LOYAL20</b> · ends September.</span>
+      <button onClick={onChoose} className="text-[11px] md:text-xs font-bold px-3 py-1 rounded-lg" style={{background:"rgba(255,255,255,0.2)"}}>Choose Growth</button>
+      <button onClick={()=>{setDismissed(true);localStorage.setItem("promo_loyal20_dismissed","1");}} className="opacity-80"><X size={14}/></button>
+    </div>
+  );
+};
+
+// In-app billing: current plan, trial state, and plan cards that open the
+// backend-created Lemon Squeezy checkout (metadata-linked to this business).
+const PLAN_SLUG:Record<string,string>={STARTER:"starter_39_99",GROWTH:"growth_99_99",PROFESSIONAL:"pro_199_99"};
+const BillingPlansPage=()=>{
+  const ct=useCard();const ent=useEntitlements();
+  const [plans,setPlans]=useState<any[]>([]);const [busy,setBusy]=useState("");const [err,setErr]=useState("");
+  useEffect(()=>{api.entitlements.publicPlans().then(d=>setPlans((d.plans||[]).filter((p:any)=>p.tier!=="FREE"))).catch(()=>{});},[]);
+  const subscribe=async(tier:string)=>{const slug=PLAN_SLUG[tier];if(!slug)return;setBusy(tier);setErr("");
+    try{const r=await api.billing.checkout(slug);window.location.href=r.url;}
+    catch(e:any){setErr(e?.message||"Could not start checkout. The store may still be activating.");setBusy("");}};
+  return(
+    <div>
+      <div className="mb-4"><h1 className="text-2xl font-bold" style={{color:ct.tx}}>Plans & Billing</h1>
+        <p className="text-sm mt-1" style={{color:ct.tx3}}>Choose the plan that fits. You can change any time — your data is always kept.</p></div>
+      {ent&&<div className="rounded-xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <div className="text-sm" style={{color:ct.tx}}>Current plan: <b>{ent.planName}</b> <span style={{color:ct.tx3}}>({ent.status})</span>{ent.trial?.active?` · ${ent.trial.daysRemaining} days left in Growth trial`:""}</div>
+        <div className="text-xs" style={{color:ct.tx3}}>Customers {ent.usage?.customers}/{ent.limits?.customers<0?"∞":ent.limits?.customers} · Branches {ent.usage?.branches}/{ent.limits?.branches<0?"∞":ent.limits?.branches}</div>
+      </div>}
+      {ent?.storeActivationPending&&<div className="rounded-xl p-3 mb-4 text-xs" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",color:ct.tx2}}>Lemon Squeezy store activation is pending. Public checkout may not work until approval is complete (usually 2–3 business days).</div>}
+      {err&&<div className="rounded-xl p-3 mb-4 text-sm" style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",color:"#ef4444"}}>{err}</div>}
+      <div className="grid md:grid-cols-3 gap-3">{plans.map((p:any)=>{const rec=p.recommended;return(
+        <div key={p.tier} className="rounded-2xl p-4 relative" style={{background:ct.card,border:rec?`2px solid #E8743B`:`1px solid ${ct.bdr}`}}>
+          {rec&&<div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-md text-white" style={{background:"#E8743B"}}>MOST POPULAR</div>}
+          <div className="text-lg font-bold" style={{color:ct.tx}}>{p.name}</div>
+          <div className="text-2xl font-extrabold mt-1" style={{color:ct.tx}}>£{p.priceMonthlyGBP}<span className="text-sm font-normal" style={{color:ct.tx3}}>/mo</span></div>
+          <div className="text-xs mt-1 mb-3" style={{color:ct.tx3}}>{p.tagline}</div>
+          <div className="space-y-1 mb-4">{(p.highlights||[]).map((h:string,i:number)=>(<div key={i} className="text-xs flex gap-1.5" style={{color:ct.tx2}}><Check size={13} style={{color:"#22c55e",flexShrink:0,marginTop:1}}/>{h}</div>))}</div>
+          {rec&&<div className="text-[11px] mb-2" style={{color:"#E8743B"}}>Use <b>LOYAL20</b> for 20% off your first 2 months.</div>}
+          <button onClick={()=>subscribe(p.tier)} disabled={!!busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{background:rec?"linear-gradient(135deg,#E8743B,#f59e0b)":ct.tx,color:rec?"#fff":ct.bg}}>{busy===p.tier?"Opening checkout…":`Choose ${p.name}`}</button>
+        </div>
+      );})}</div>
+      <div className="text-[11px] mt-4" style={{color:ct.tx3}}>No refunds. Prices in GBP. Your customers, campaigns and loyalty data are always preserved, even if you downgrade.</div>
+    </div>
+  );
+};
+
+// /billing/success — polls backend until the webhook activates the plan.
+const BillingSuccessPage=()=>{
+  const [sub,setSub]=useState<any>(null);const [tries,setTries]=useState(0);
+  useEffect(()=>{let stop=false;
+    const poll=async()=>{try{const s=await api.billing.subscription();if(stop)return;setSub(s);
+      if(s.active&&s.tier&&s.tier!=="FREE"){setTimeout(()=>{window.location.href="/";},1200);return;}}catch{}
+      if(!stop){setTries(t=>t+1);setTimeout(poll,3000);}};
+    poll();return()=>{stop=true;};},[]);
+  const activated=sub?.active&&sub?.tier&&sub.tier!=="FREE";
+  return(
+    <div style={{minHeight:"100vh",background:"#06040f",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"-apple-system,Segoe UI,Roboto,sans-serif"}}>
+      <div style={{maxWidth:420,textAlign:"center"}}>
+        <div style={{width:56,height:56,borderRadius:16,background:"rgba(232,116,59,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}}>
+          <div style={{width:24,height:24,border:"3px solid #E8743B",borderTopColor:"transparent",borderRadius:"50%",animation:activated?"none":"spin 0.8s linear infinite"}}/>
+        </div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <h1 style={{fontSize:22,margin:"0 0 8px"}}>{activated?"You're all set 🎉":"Activating your subscription…"}</h1>
+        <p style={{fontSize:14,color:"rgba(255,255,255,0.6)",lineHeight:1.5,margin:"0 0 20px"}}>
+          {activated?`Your ${sub.planName} plan is active. Taking you to your dashboard…`
+            :tries<4?"We received your payment and are connecting your plan to your account. This usually takes a few seconds."
+            :"Payment received. Your subscription is still being activated. Please wait a moment or refresh."}
+        </p>
+        {!activated&&tries>=4&&<button onClick={()=>window.location.reload()} style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)",color:"#fff",border:0,borderRadius:10,padding:"12px 22px",fontSize:14,fontWeight:700}}>Refresh</button>}
+        {activated&&<button onClick={()=>{window.location.href="/";}} style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)",color:"#fff",border:0,borderRadius:10,padding:"12px 22px",fontSize:14,fontWeight:700}}>Continue to The Loyaly</button>}
+      </div>
+    </div>
+  );
+};
+
 // Slim banner shown while the 14-day Growth trial is active.
 const TrialBanner=()=>{
   const ct=useCard();const ent=useEntitlements();
@@ -895,7 +974,7 @@ const TrialBanner=()=>{
   return(
     <div className="rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between flex-wrap gap-2" style={{background:"rgba(232,116,59,0.1)",border:"1px solid rgba(232,116,59,0.3)"}}>
       <span className="text-sm" style={{color:ct.tx}}><b>14-day Growth trial active</b> · {ent.trial.daysRemaining} day{ent.trial.daysRemaining===1?"":"s"} left. You have full Growth access.</span>
-      <button onClick={()=>{localStorage.setItem("crm_page","settings");window.location.reload();}} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Choose a plan</button>
+      <button onClick={()=>{localStorage.setItem("crm_page","billing");window.location.reload();}} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Choose a plan</button>
     </div>
   );
 };
@@ -1564,9 +1643,9 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   // Four-plan structure. Live, included features only — no roadmap promises.
   const PRICING=[
     {name:"Free",monthly:0,yearly:0,desc:"Start with a 14-day Growth trial",features:["14-day Growth trial","1 location","Up to 100 customers","100 messages / month","Basic QR check-in & dashboard"],cta:"Get Started",highlight:false},
-    {name:"Starter",monthly:39,yearly:33,desc:"For very small single-location businesses",features:["1 branch","Up to 2,000 customers","3,000 messages / month","Loyalty points, coupons & referrals","Basic campaigns & analytics"],cta:"Start Free Trial",highlight:false},
-    {name:"Growth",monthly:99,yearly:83,desc:"Bring customers back automatically",features:["Up to 16,000 customers","24,000 messages / month","Full CRM, loyalty wallet & store credit","Campaign builder & comeback campaigns","AI advisor + weekly & monthly reports","Retention, loyalty & campaign analytics"],cta:"Start Free Trial",highlight:true},
-    {name:"Pro",monthly:199,yearly:166,desc:"For stronger operators with up to 3 branches",features:["Up to 3 branches","Unlimited customers (fair use)","High-volume messaging (fair-use)","Branch comparison & advanced analytics","Staff permissions & advanced controls","Priority support"],cta:"Start Free Trial",highlight:false},
+    {name:"Starter",monthly:39.99,yearly:33,desc:"For very small single-location businesses",features:["1 branch","Up to 2,000 customers","3,000 messages / month","Loyalty points, coupons & referrals","Basic campaigns & analytics"],cta:"Start Free Trial",highlight:false},
+    {name:"Growth",monthly:99.99,yearly:83,desc:"Bring customers back automatically",features:["Up to 16,000 customers","24,000 messages / month","Full CRM, loyalty wallet & store credit","Campaign builder & comeback campaigns","AI advisor + weekly & monthly reports","Retention, loyalty & campaign analytics"],cta:"Start Free Trial",highlight:true},
+    {name:"Pro",monthly:199.99,yearly:166,desc:"For stronger operators with up to 3 branches",features:["Up to 3 branches","Unlimited customers (fair use)","High-volume messaging (fair-use)","Branch comparison & advanced analytics","Staff permissions & advanced controls","Priority support"],cta:"Start Free Trial",highlight:false},
   ];
 
   const BRANDS=["Casa Bistro","The Coffee House","Urban Cuts","FitLife Gym","Blossom Salon","Sweet Treats","AutoShine"];
@@ -7389,7 +7468,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
     if(r===ROLES.KITCHEN)return"pos";
     const saved=localStorage.getItem("crm_page");
-    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering","advisor","reports"];
+    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering","advisor","reports","billing"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
@@ -7419,6 +7498,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       }}/>
     </ThemeCtx.Provider>
   );
+  // Lemon Squeezy checkout redirect lands here; polls until the webhook activates.
+  if(window.location.pathname==="/billing/success")return <BillingSuccessPage/>;
   if(!loggedIn)return <LoginPage onLogin={(u:any)=>{
     if(u?.role)localStorage.setItem("userRole",u.role);
     onRoleChange?.(u?.role??'');
@@ -7459,6 +7540,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"ops-inventory":return<OperationsComingSoon title="Inventory" desc="Track stock levels, products and supplies across branches." icon={Layers}/>;
     case"ops-devices":return<OperationsComingSoon title="Devices" desc="Register and manage POS terminals, printers and check-in devices per branch." icon={Smartphone}/>;
     case"ops-ordering":return<OperationsComingSoon title="Ordering" desc="Digital menus and order capture that feed directly into visits and loyalty." icon={ShoppingBag}/>;
+    case"billing":return<BillingPlansPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
@@ -7514,6 +7596,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       </div>
       {/* Main content */}
       <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 md:pb-0`} style={{paddingBottom:"calc(6rem + env(safe-area-inset-bottom))"}}>
+        <PromoBanner onChoose={()=>nav("billing")}/>
         <div className="p-3 md:p-6 max-w-6xl"><TrialBanner/><RedeemCodeCard/><ModuleTabs page={page} setPage={nav}/>{render()}</div>
       </main>
       {/* Mobile "More" bottom sheet */}
