@@ -5416,68 +5416,7 @@ const IntegrationsTab=()=>{
   );
 };
 
-const BillingTab=()=>{
-  const [sub,setSub]=useState<any>(null);
-  useEffect(()=>{api.auth.me().then((d:any)=>setSub(d?.user?.business?.subscription)).catch(()=>{});},[]);
-  const currentTier=sub?.tier??"FREE";
-  const quota=sub?.monthlyMessageQuota??200;
-  const [upgrading,setUpgrading]=useState(false);
-  const [msg,setMsg]=useState("");
-
-  const handleUpgrade=async(tier:string)=>{
-    if(tier===currentTier)return;
-    setUpgrading(true);setMsg("");
-    try{
-      const r=await fetch("/api/billing/checkout",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem("accessToken")??""}`},body:JSON.stringify({priceId:tier,returnUrl:window.location.href})});
-      if(!r.ok)throw new Error((await r.json()).error??"Failed");
-      const d=await r.json();
-      if(d.url)window.location.href=d.url;
-      else setMsg("Contact hello@theloyaly.com to upgrade to this plan.");
-    }catch(e:any){setMsg(e.message??"Contact hello@theloyaly.com to upgrade.");}
-    finally{setUpgrading(false);}
-  };
-
-  return(
-    <div className="space-y-5">
-      <div className="p-4 rounded-xl" style={{background:"linear-gradient(135deg,rgba(139,92,246,0.15),rgba(6,182,212,0.1))",border:"1px solid rgba(139,92,246,0.25)"}}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <Badge color={TIER_COLORS[currentTier]||"#6b7280"}>{currentTier}</Badge>
-            <div className="text-xl font-bold text-white mt-2">{PLANS.find(p=>p.tier===currentTier)?.price??"—"}<span className="text-xs text-slate-400 font-normal">/month</span></div>
-            <div className="text-xs text-slate-400 mt-1">{quota.toLocaleString()} messages per month · Status: {sub?.status??"—"}</div>
-          </div>
-          <a href="mailto:hello@theloyaly.com?subject=Billing+Query" className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Contact Support</a>
-        </div>
-      </div>
-
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Available Plans</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {PLANS.map(p=>{
-          const isCurrent=p.tier===currentTier;
-          return(
-            <div key={p.tier} className="rounded-xl p-4" style={{background:p.highlight?"linear-gradient(135deg,rgba(139,92,246,0.12),rgba(6,182,212,0.08))":"rgba(255,255,255,0.03)",border:isCurrent?"1px solid rgba(139,92,246,0.5)":p.highlight?"1px solid rgba(139,92,246,0.25)":"1px solid rgba(255,255,255,0.06)"}}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-bold text-white">{p.label}</div>
-                {isCurrent&&<Badge color={TIER_COLORS[p.tier]}>Current</Badge>}
-                {p.highlight&&!isCurrent&&<Badge color="#8b5cf6">Popular</Badge>}
-              </div>
-              <div className="text-lg font-black text-white mb-0.5">{p.price}<span className="text-xs text-slate-400 font-normal">/mo</span></div>
-              <div className="text-xs text-slate-400 mb-3">{p.msgs}</div>
-              <ul className="space-y-1 mb-4">{p.features.map(f=><li key={f} className="text-xs text-slate-300 flex items-center gap-1.5"><CheckCircle size={10} className="text-green-400 flex-shrink-0"/>{f}</li>)}</ul>
-              <button onClick={()=>handleUpgrade(p.tier)} disabled={isCurrent||upgrading} className="w-full py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all" style={{background:isCurrent?"rgba(255,255,255,0.05)":p.highlight?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(139,92,246,0.2)"}}>
-                {isCurrent?"Current Plan":`Upgrade to ${p.label}`}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      {msg&&<div className="p-3 rounded-xl text-xs text-amber-300" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)"}}>{msg}</div>}
-      <div className="p-3 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.02)"}}>
-        Payments are processed securely via Stripe. To cancel or change your subscription, contact <a href="mailto:hello@theloyaly.com" className="text-violet-400 underline">hello@theloyaly.com</a>. Plan changes take effect immediately.
-      </div>
-    </div>
-  );
-};
+const BillingTab=()=><BillingPlansPage/>;
 
 const INDUSTRY_OPTIONS=["Café & Restaurant","Coffee Shop","Bar","Hair Salon","Beauty Salon","Barbershop","Nail Studio","Spa","Gym","Fitness Studio","CrossFit","Yoga Studio","Sports Club","Retail","Boutique","Pharmacy","Supermarket","Other"];
 
