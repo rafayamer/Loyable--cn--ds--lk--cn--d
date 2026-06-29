@@ -212,13 +212,29 @@ export async function issueGiftCard(businessId: string, data: { initialBalance: 
   throw new Error('GIFT_CODE_GENERATION_FAILED');
 }
 
-/** Fire-and-forget plain-text WhatsApp to a customer (best-effort). */
+/** Builds the customer's rewards-portal URL for this business, if resolvable. */
+async function portalUrl(businessId: string): Promise<string | null> {
+  try {
+    const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
+    const base = process.env.API_BASE_URL?.replace(/\/$/, '');
+    if (!biz?.slug || !base) return null;
+    return `${base}/portal/${biz.slug}`;
+  } catch { return null; }
+}
+
+/**
+ * Fire-and-forget plain-text WhatsApp to a customer (best-effort).
+ * Every change notification ends with a clear call to log in to the portal
+ * (with the link when we can build it) so the customer knows where to act.
+ */
 async function notifyCustomer(businessId: string, customerId: string, body: string): Promise<void> {
   try {
     const customer = await prisma.customer.findFirst({ where: { id: customerId, businessId }, select: { whatsappNumber: true } });
     if (!customer?.whatsappNumber) return;
+    const url = await portalUrl(businessId);
+    const fullBody = `${body}\n\n👉 Log in to your rewards portal${url ? `: ${url}` : ' to see this.'}`;
     const { routeMessage } = await import('./messaging-gateway');
-    await routeMessage({ businessId, provider: 'AUTO', recipientPhone: customer.whatsappNumber, payload: { type: 'TEXT', body } as any });
+    await routeMessage({ businessId, provider: 'AUTO', recipientPhone: customer.whatsappNumber, payload: { type: 'TEXT', body: fullBody } as any });
   } catch (e) {
     console.warn('[gift-card] notifyCustomer failed: %s', (e as Error)?.message);
   }
@@ -254,8 +270,8 @@ export async function requestGiftCardDeletion(businessId: string, id: string, re
   await prisma.giftCard.update({ where: { id }, data: { status: 'PENDING_DELETE', deletionReason: reason ?? null, deletionRequestedAt: new Date() } });
 
   const msg = reason?.trim()
-    ? `Hi — about your gift card ${card.code} (£${Number(card.currentBalance)}): ${reason.trim()} We're sorry for the inconvenience. Please open your rewards portal to accept or decline this change.`
-    : `Hi — your gift card ${card.code} (£${Number(card.currentBalance)}) was issued in error and we'd like to cancel it. We're sorry for the mix-up. Please open your rewards portal to accept or decline this change.`;
+    ? `Hi — about your gift card ${card.code} (£${Number(card.currentBalance)}): ${reason.trim()} We're sorry for the inconvenience. You can accept or decline this change.`
+    : `Hi — your gift card ${card.code} (£${Number(card.currentBalance)}) was issued in error and we'd like to cancel it. We're sorry for the mix-up. You can accept or decline this change.`;
   await notifyCustomer(businessId, card.issuedToCustomerId, msg);
   return { ok: true };
 }
@@ -285,7 +301,7 @@ export async function transferGiftCard(businessId: string, id: string, fromCusto
   if (!recipient) return { ok: false, error: 'RECIPIENT_NOT_FOUND' };
   if (recipient.id === fromCustomerId) return { ok: false, error: 'CANNOT_GIFT_TO_SELF' };
   await prisma.giftCard.update({ where: { id }, data: { issuedToCustomerId: recipient.id, recipientName: recipient.fullName } });
-  await notifyCustomer(businessId, recipient.id, `🎁 You've received a gift card worth £${Number(card.currentBalance)}! Open your rewards portal to view and redeem it.`);
+  await notifyCustomer(businessId, recipient.id, `🎁 You've received a gift card worth £${Number(card.currentBalance)}! View and redeem it in your rewards portal.`);
   return { ok: true };
 }
 

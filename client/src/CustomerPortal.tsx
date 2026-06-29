@@ -477,6 +477,19 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
           <p className="text-slate-500 text-sm">No gift cards yet — any sent to you will appear here.</p>
         </div>
       )}
+
+      {/* Customer-facing rules */}
+      <div className="rounded-2xl p-4" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+        <p className="font-bold text-slate-700 text-sm mb-2">How gift cards work</p>
+        <ul className="space-y-1.5 text-xs text-slate-600">
+          <li>💳 A gift card is store credit — spend it on anything when you pay.</li>
+          <li>➕ Tap <b>Add to my balance</b> (or enter a code above) to load its value into your balance.</li>
+          <li>🛍️ Use your balance in store — just give your number at the till.</li>
+          <li>🎁 You can pass a card to a friend with <b>Gift</b> — enter their WhatsApp number.</li>
+          <li>🔒 Each code can only be used once.</li>
+          <li>✋ If the business needs to cancel a card, we'll message you and you can accept or decline it here.</li>
+        </ul>
+      </div>
       {(cards ?? []).map((c: any) => (
         <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6d28d9,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
