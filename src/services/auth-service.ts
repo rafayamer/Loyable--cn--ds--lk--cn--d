@@ -35,8 +35,8 @@ import { generateBusinessSlug } from '../utils/slug.util';
 // CONSTANTS
 // ================================================================
 
-const RESET_TOKEN_EXPIRY_SECONDS = 30 * 60;       // 30 minutes
-const INVITE_TOKEN_EXPIRY_SECONDS = 48 * 60 * 60; // 48 hours
+const RESET_TOKEN_EXPIRY_SECONDS  = 30 * 60;       // 30 minutes
+const INVITE_TOKEN_EXPIRY_SECONDS = (parseInt(process.env.AUTH_INVITE_EXPIRY_HOURS ?? '48', 10)) * 60 * 60;
 
 // Message quota per subscription tier — mirrors Redis key on Subscription create
 const TIER_QUOTAS: Record<SubscriptionTier, number> = {

@@ -85,7 +85,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? '';
 
 // Cache TTL constants
 const BUSINESS_ACTIVE_CACHE_TTL_SECONDS = 300; // 5 minutes
-const REVOKED_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 24 hours max (matches refresh token lifespan)
+const REVOKED_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days — matches refresh token lifespan
 
 // ================================================================
 // CORE TENANT SCOPE MIDDLEWARE
