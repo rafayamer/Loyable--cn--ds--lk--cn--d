@@ -54,13 +54,19 @@ export const startAllCronJobs = (): void => {
   // 02:30 UTC — points expiry
   cron.schedule('30 2 * * *', jobRunner('pointsExpiry', pointsExpiryJob), { timezone: 'UTC' });
 
+  // 03:00 UTC — churn risk score (ML-lite per-customer scoring)
+  cron.schedule('0 3 * * *', jobRunner('churnRiskScore', churnRiskScoreJob), { timezone: 'UTC' });
+
   // Every hour — post-visit feedback requests (sent ~4h after each visit)
   cron.schedule('0 * * * *', jobRunner('feedbackDispatch', feedbackDispatchJob), { timezone: 'UTC' });
 
   // Every 5 minutes — WhatsApp session health check + auto-failover to backup
   cron.schedule('*/5 * * * *', jobRunner('whatsappHealth', whatsappHealthJob), { timezone: 'UTC' });
 
-  console.log('[cron] 8 jobs registered (6 nightly + 1 hourly + 1 every-5-min).');
+  // 03:30 UTC — cohort retention analysis (monthly snapshot)
+  cron.schedule('30 3 * * *', jobRunner('cohortRetention', cohortRetentionJob), { timezone: 'UTC' });
+
+  console.log('[cron] 10 jobs registered (8 nightly + 1 hourly + 1 every-5-min).');
 };
 
 /** Wraps a job function with error boundary + execution timing */
@@ -109,12 +115,13 @@ const segmentRefreshJob = async (): Promise<Record<string, unknown>> => {
   const businesses = await prisma.business.findMany({
     where:  { isActive: true },
     select: {
-      id:                true,
-      loyalDaysWindow:   true,
-      irregularGapDays:  true,
-      lostDaysThreshold: true,
-    },
-  });
+      id:                  true,
+      loyalDaysWindow:     true,
+      irregularGapDays:    true,
+      lostDaysThreshold:   true,
+      bigSpenderThreshold: true,
+    } as any,
+  }) as unknown as Array<{ id: string; loyalDaysWindow: number; irregularGapDays: number; lostDaysThreshold: number; bigSpenderThreshold?: number | null }>;
 
   let totalProcessed = 0;
   let totalChanged   = 0;
@@ -132,15 +139,16 @@ const segmentRefreshJob = async (): Promise<Record<string, unknown>> => {
   return { businesses: businesses.length, totalProcessed, totalChanged };
 };
 
-const BIG_SPENDER_THRESHOLD = 500; // £ — configurable per business in future
-const CHUNK_SIZE             = 500;
+const CHUNK_SIZE = 500;
 
 const refreshSegmentsForBusiness = async (biz: {
-  id:                string;
-  loyalDaysWindow:   number;
-  irregularGapDays:  number;
-  lostDaysThreshold: number;
+  id:                  string;
+  loyalDaysWindow:     number;
+  irregularGapDays:    number;
+  lostDaysThreshold:   number;
+  bigSpenderThreshold?: number | null;
 }): Promise<{ processed: number; changed: number }> => {
+  const BIG_SPENDER_THRESHOLD = biz.bigSpenderThreshold ?? 500;
   const now            = Date.now();
   const loyalCutoff    = new Date(now - biz.loyalDaysWindow   * 86_400_000);
   const atRiskCutoff   = new Date(now - biz.irregularGapDays  * 86_400_000);
@@ -616,6 +624,182 @@ const pointsExpiryJob = async (): Promise<Record<string, unknown>> => {
 };
 
 // ================================================================
+// CHURN RISK SCORE JOB (03:00 UTC)
+// ================================================================
+
+/**
+ * Computes a 0-100 churn risk score per customer each night using
+ * weighted signals:
+ *   40% — Days since last visit (vs. business's irregular gap threshold)
+ *   30% — Visit frequency trend (last 30 vs prev 30 days)
+ *   20% — Points engagement rate (any redemption in last 90 days)
+ *   10% — Average spend trend (last 30 vs prev 30 days)
+ *
+ * Score > 70 → triggers CHURN_RISK automation if one exists.
+ */
+const churnRiskScoreJob = async (): Promise<Record<string, unknown>> => {
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true, irregularGapDays: true },
+  });
+
+  let totalScored    = 0;
+  let totalHighRisk  = 0;
+
+  for (const biz of businesses) {
+    try {
+      const { scored, highRisk } = await computeChurnScoresForBusiness(biz);
+      totalScored   += scored;
+      totalHighRisk += highRisk;
+    } catch (err) {
+      console.error(`[cron:churnRiskScore] Business ${biz.id} failed:`, err);
+    }
+  }
+
+  return { businesses: businesses.length, totalScored, totalHighRisk };
+};
+
+const computeChurnScoresForBusiness = async (biz: {
+  id: string;
+  irregularGapDays: number;
+}): Promise<{ scored: number; highRisk: number }> => {
+  const now         = Date.now();
+  const day30ago    = new Date(now - 30 * 86_400_000);
+  const day60ago    = new Date(now - 60 * 86_400_000);
+  const day90ago    = new Date(now - 90 * 86_400_000);
+  const gapMs       = biz.irregularGapDays * 86_400_000;
+
+  let scored   = 0;
+  let highRisk = 0;
+  let cursor: string | undefined;
+
+  // Find CHURN_RISK automation once per business
+  const wf = await prisma.automationWorkflow.findFirst({
+    where:  { businessId: biz.id, triggerType: 'CHURN_RISK' as any, status: 'ACTIVE' },
+    select: { id: true },
+  }).catch(() => null);
+
+  while (true) {
+    const customers = await prisma.customer.findMany({
+      where:   { businessId: biz.id, isActive: true, isStaff: false },
+      select:  { id: true, lastVisitAt: true, currentPointsBalance: true },
+      orderBy: { id: 'asc' },
+      take:    CHUNK_SIZE,
+      cursor:  cursor ? { id: cursor } : undefined,
+      skip:    cursor ? 1 : 0,
+    });
+
+    if (customers.length === 0) break;
+    cursor = customers[customers.length - 1].id;
+
+    const customerIds = customers.map(c => c.id);
+
+    // Batch fetch visit counts (last 30 days, prev 30 days)
+    const [visitsLast30, visitsPrev30, recentRedemptions] = await Promise.all([
+      prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId: biz.id, customerId: { in: customerIds }, visitedAt: { gte: day30ago } },
+        _count: { id: true },
+        _sum:   { amountSpent: true },
+      }),
+      prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId: biz.id, customerId: { in: customerIds }, visitedAt: { gte: day60ago, lt: day30ago } },
+        _count: { id: true },
+        _sum:   { amountSpent: true },
+      }),
+      prisma.rewardPointsLedger.groupBy({
+        by:    ['customerId'],
+        where: { businessId: biz.id, customerId: { in: customerIds }, type: 'DEBIT', createdAt: { gte: day90ago } },
+        _count: { id: true },
+      }),
+    ]);
+
+    const last30Map       = new Map(visitsLast30.map(v    => [v.customerId, { count: v._count.id, spend: Number(v._sum.amountSpent ?? 0) }]));
+    const prev30Map       = new Map(visitsPrev30.map(v    => [v.customerId, { count: v._count.id, spend: Number(v._sum.amountSpent ?? 0) }]));
+    const redemptionSet   = new Set(recentRedemptions.map(r => r.customerId));
+
+    const updates: { id: string; score: number }[] = [];
+
+    for (const c of customers) {
+      const last30 = last30Map.get(c.id) ?? { count: 0, spend: 0 };
+      const prev30 = prev30Map.get(c.id) ?? { count: 0, spend: 0 };
+      const hasRedemption = redemptionSet.has(c.id);
+
+      // Factor 1 (40%): Days since last visit
+      let recencyScore = 0;
+      if (!c.lastVisitAt) {
+        recencyScore = 100;
+      } else {
+        const daysSinceLast = (now - c.lastVisitAt.getTime()) / 86_400_000;
+        recencyScore = Math.min(100, Math.round((daysSinceLast / biz.irregularGapDays) * 100));
+      }
+
+      // Factor 2 (30%): Visit frequency trend — drop from prev period
+      let frequencyScore = 0;
+      if (prev30.count > 0) {
+        const drop = (prev30.count - last30.count) / prev30.count;
+        frequencyScore = Math.max(0, Math.min(100, Math.round(drop * 100)));
+      } else if (last30.count === 0) {
+        frequencyScore = 50;
+      }
+
+      // Factor 3 (20%): No points redemption in last 90 days = disengaged
+      const engagementScore = hasRedemption ? 0 : 60;
+
+      // Factor 4 (10%): Spend trend drop
+      let spendScore = 0;
+      if (prev30.spend > 0) {
+        const spendDrop = (prev30.spend - last30.spend) / prev30.spend;
+        spendScore = Math.max(0, Math.min(100, Math.round(spendDrop * 100)));
+      }
+
+      const composite = Math.round(
+        recencyScore   * 0.40 +
+        frequencyScore * 0.30 +
+        engagementScore * 0.20 +
+        spendScore     * 0.10
+      );
+
+      updates.push({ id: c.id, score: Math.min(100, composite) });
+      scored++;
+      if (composite > 70) highRisk++;
+    }
+
+    // Batch write scores
+    if (updates.length > 0) {
+      await prisma.$transaction(
+        updates.map(u =>
+          prisma.customer.update({
+            where:  { id: u.id },
+            data:   { churnRiskScore: u.score, churnRiskScoredAt: new Date(), updatedAt: new Date() } as any,
+            select: { id: true },
+          })
+        )
+      );
+
+      // Trigger CHURN_RISK automation for newly high-risk customers
+      if (wf) {
+        const highRiskIds = updates.filter(u => u.score > 70).map(u => u.id);
+        for (const customerId of highRiskIds) {
+          await enqueueAutomationTrigger({
+            workflowId:     wf.id,
+            businessId:     biz.id,
+            customerId,
+            triggerType:    'CHURN_RISK' as any,
+            triggerPayload: { score: updates.find(u => u.id === customerId)?.score ?? 71 },
+          }).catch(() => {});
+        }
+      }
+    }
+
+    if (customers.length < CHUNK_SIZE) break;
+  }
+
+  return { scored, highRisk };
+};
+
+// ================================================================
 // FEEDBACK DISPATCH JOB
 // ================================================================
 
@@ -635,4 +819,89 @@ const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
  */
 const whatsappHealthJob = async (): Promise<Record<string, unknown>> => {
   return runWhatsAppHealthChecks() as unknown as Record<string, unknown>;
+};
+
+// ================================================================
+// JOB 10 — COHORT RETENTION ANALYSIS (nightly, monthly granularity)
+// ================================================================
+
+/**
+ * For each business, compute a cohort retention matrix:
+ *   cohortMonth (YYYY-MM) → for each subsequent month offset (0,1,2,...,11)
+ *   how many customers from that cohort made at least one visit.
+ *
+ * Stored as JSON blobs in the cohort_retention_snapshots table (upsert by
+ * businessId + cohortMonth). The AI BI layer queries this for heatmap rendering.
+ */
+const cohortRetentionJob = async (): Promise<Record<string, unknown>> => {
+  const businesses = await prisma.business.findMany({
+    where:  { isActive: true },
+    select: { id: true },
+  });
+
+  let processed = 0;
+  let errors    = 0;
+
+  for (const biz of businesses) {
+    try {
+      await computeCohortRetention(biz.id);
+      processed++;
+    } catch (err) {
+      errors++;
+      console.error(`[cron:cohortRetention] Error for business ${biz.id}:`, err);
+    }
+  }
+
+  return { processed, errors };
+};
+
+export const computeCohortRetention = async (businessId: string): Promise<void> => {
+  // Find all customers and their first-visit month (cohort month)
+  const customers = await prisma.customer.findMany({
+    where:   { businessId, isActive: true },
+    select:  { id: true, createdAt: true },
+  });
+
+  if (customers.length === 0) return;
+
+  // Group customers by cohort month (YYYY-MM of their createdAt)
+  const cohortMap = new Map<string, string[]>(); // cohortMonth → [customerId]
+  for (const c of customers) {
+    const key = c.createdAt.toISOString().substring(0, 7); // "2024-03"
+    if (!cohortMap.has(key)) cohortMap.set(key, []);
+    cohortMap.get(key)!.push(c.id);
+  }
+
+  // For each cohort, count returning visitors per month offset
+  for (const [cohortMonth, customerIds] of cohortMap.entries()) {
+    const cohortStart = new Date(`${cohortMonth}-01T00:00:00Z`);
+    const retentionByOffset: Record<number, number> = {};
+
+    // Check up to 12 months of retention
+    for (let offset = 0; offset <= 11; offset++) {
+      const from = new Date(cohortStart);
+      from.setUTCMonth(from.getUTCMonth() + offset);
+      const to = new Date(from);
+      to.setUTCMonth(to.getUTCMonth() + 1);
+
+      if (from > new Date()) break; // don't compute future months
+
+      const returning = await prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId, customerId: { in: customerIds }, visitedAt: { gte: from, lt: to } },
+      });
+      retentionByOffset[offset] = returning.length;
+    }
+
+    // Upsert into cohort_retention_snapshots
+    await (prisma as any).$executeRawUnsafe(`
+      INSERT INTO cohort_retention_snapshots (id, "businessId", "cohortMonth", "cohortSize", "retentionByOffset", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, $4::jsonb, NOW())
+      ON CONFLICT ("businessId", "cohortMonth")
+      DO UPDATE SET
+        "cohortSize"          = EXCLUDED."cohortSize",
+        "retentionByOffset"   = EXCLUDED."retentionByOffset",
+        "updatedAt"           = NOW()
+    `, businessId, cohortMonth, customerIds.length, JSON.stringify(retentionByOffset));
+  }
 };

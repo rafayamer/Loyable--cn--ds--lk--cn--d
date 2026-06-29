@@ -13,6 +13,8 @@ import type { MessagePayload, TemplatePayload, TextPayload } from '../services/m
 import { getRedisConnection, getRedisClient } from '../config/redis';
 import { processFeedbackReply } from './feedback-service';
 import { BaileysGateway, getBaileysStatus, getBaileysQrCode, startBaileysSession, stopBaileysSession } from './baileys-service';
+import { broadcast } from './realtime-service';
+import { isOpen as cbIsOpen, recordSuccess as cbSuccess, recordFailure as cbFail } from './circuit-breaker';
 
 // Route ALL tenants through the in-process Baileys service unless an external
 // WAHA endpoint is configured. Centralised in config/whatsapp-provider.
@@ -46,9 +48,16 @@ export const routeMessage = async (opts: {
 }): Promise<GatewayResult> => {
   const { businessId, recipientPhone, payload } = opts;
 
+  // ── Circuit breaker check ────────────────────────────────────────
+  if (await cbIsOpen(businessId)) {
+    return { success: false, error: 'CIRCUIT_BREAKER_OPEN' };
+  }
+
   // ── Baileys fast-path ────────────────────────────────────────────
   if (GLOBAL_BAILEYS) {
-    return BaileysGateway.send(recipientPhone, payload, businessId);
+    const result = await BaileysGateway.send(recipientPhone, payload, businessId);
+    if (result.success) await cbSuccess(businessId); else await cbFail(businessId);
+    return result;
   }
 
   // ── WAHA path (with optional per-business Baileys override) ──────
@@ -92,13 +101,15 @@ export const routeMessage = async (opts: {
       ? business.wahaBackupSessionId
       : business.wahaSessionId;
 
-  return WahaGateway.send(
+  const result = await WahaGateway.send(
     recipientPhone,
     payload,
     business.wahaBaseUrl,
     effectiveSession,
     business.wahaApiKey ?? ''
   );
+  if (result.success) await cbSuccess(businessId); else await cbFail(businessId);
+  return result;
 };
 
 // Redis key prefix for the per-business WAHA config cache. Shared with the
@@ -375,6 +386,16 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
     return;
   }
 
+  // Replay attack guard: reject requests older than 5 minutes
+  const tsHeader = req.headers['x-timestamp'] as string | undefined;
+  if (tsHeader) {
+    const ts = parseInt(tsHeader, 10);
+    if (!isNaN(ts) && Math.abs(Date.now() / 1000 - ts) > 300) {
+      res.status(400).json({ error: 'WEBHOOK_TIMESTAMP_EXPIRED' });
+      return;
+    }
+  }
+
   res.status(200).json({ received: true });
 
   const businessId = business.id;
@@ -386,18 +407,30 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
       return;
     }
     if (event.event === 'message' && event.payload?.from && event.payload?.body) {
-      const phone = normalizePhone(event.payload.from as string);
-      const body  = (event.payload.body as string).trim().toUpperCase();
-      if (isOptOutMessage(body)) {
-        await processOptOut(phone, businessId, event.payload.body);
+      const phone    = normalizePhone(event.payload.from as string);
+      const rawBody  = (event.payload.body as string).trim();
+      // Broadcast new inbound to live dashboard
+      broadcast(businessId, { type: 'NEW_INBOUND', phone, body: rawBody.substring(0, 100) });
+      const upperBody = rawBody.toUpperCase();
+
+      // Priority 1: pending opt-out reason reply (single digit 1-4)
+      const reasonKey        = `optout:reason:${phone}:${businessId}`;
+      const pendingCustomerId = await getRedisClient().get(reasonKey).catch(() => null);
+      if (pendingCustomerId && /^[1-4]$/.test(rawBody)) {
+        await processOptOutReason(phone, businessId, pendingCustomerId, rawBody);
+        return;
+      }
+
+      if (isOptOutMessage(upperBody)) {
+        await processOptOut(phone, businessId, rawBody);
       } else {
         // Check if this is a feedback rating reply (digit 1–5)
         const isFeedback = await processFeedbackReply(businessId,
           (await prisma.customer.findFirst({ where: { whatsappNumber: phone, businessId }, select: { id: true } }))?.id ?? '',
-          event.payload.body
+          rawBody
         ).catch(() => false);
         if (!isFeedback) {
-          await processInboundSentiment(phone, businessId, event.payload.body);
+          await processInboundSentiment(phone, businessId, rawBody);
         }
       }
     }
@@ -421,6 +454,8 @@ const handleWahaAck = async (event: any, businessId: string): Promise<void> => {
       updatedAt:   new Date(),
     },
   });
+  // Push real-time status update to any connected dashboard tabs
+  broadcast(businessId, { type: 'MESSAGE_STATUS', messageId: id, status });
 };
 
 // ================================================================
@@ -445,10 +480,17 @@ const isOptOutMessage = (upperBody: string): boolean => {
   return phrases.some(p => upperBody.includes(p));
 };
 
+const OPT_OUT_REASON_LABELS: Record<string, string> = {
+  '1': 'TOO_MANY_MESSAGES',
+  '2': 'NOT_RELEVANT',
+  '3': 'WRONG_NUMBER',
+  '4': 'OTHER',
+};
+
 const processOptOut = async (phone: string, businessId: string, rawKeyword: string): Promise<void> => {
   const customer = await prisma.customer.findFirst({
     where:  { whatsappNumber: phone, businessId },
-    select: { id: true, marketingConsentWhatsapp: true },
+    select: { id: true, marketingConsentWhatsapp: true, fullName: true },
   });
   if (!customer) return;
 
@@ -473,6 +515,42 @@ const processOptOut = async (phone: string, businessId: string, rawKeyword: stri
 
   const redis = getRedisConnection() as any;
   await redis.del(`customer:consent:${customer.id}`);
+
+  // Store pending reason-capture key (24h TTL) before sending the follow-up
+  const reasonKey = `optout:reason:${phone}:${businessId}`;
+  await getRedisClient().set(reasonKey, customer.id, { EX: 86_400 });
+
+  // Send a single non-promotional follow-up asking WHY they opted out
+  const firstName = (customer.fullName ?? 'there').split(' ')[0];
+  const reasonMsg =
+    `Hi ${firstName}, you've been removed from our messages. ✅\n\n` +
+    `Optional: reply with a number to tell us why — it helps us improve:\n` +
+    `1️⃣  Too many messages\n` +
+    `2️⃣  Not relevant to me\n` +
+    `3️⃣  Wrong number\n` +
+    `4️⃣  Other\n\n` +
+    `(You won't receive any more marketing from us.)`;
+
+  routeMessage({
+    businessId,
+    provider: 'WAHA',
+    recipientPhone: phone,
+    payload: { type: 'TEXT', body: reasonMsg },
+  }).catch(err => console.warn('[optout:reason] follow-up send failed:', err));
+};
+
+const processOptOutReason = async (phone: string, businessId: string, customerId: string, choice: string): Promise<void> => {
+  const reasonCode = OPT_OUT_REASON_LABELS[choice];
+  if (!reasonCode) return;
+
+  // Store the reason in the most recent opt-out consent log entry for this customer
+  await prisma.consentChangeLog.updateMany({
+    where:  { customerId, businessId, triggerType: 'OPT_OUT_KEYWORD' },
+    data:   { keyword: reasonCode },
+  }).catch(() => {});
+
+  const redis = getRedisClient();
+  await redis.del(`optout:reason:${phone}:${businessId}`);
 };
 
 const VERY_NEGATIVE_SIGNALS = [

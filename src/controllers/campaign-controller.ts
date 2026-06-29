@@ -22,6 +22,7 @@ import {
   listCampaigns,
   getCampaignById,
   getCampaignStats,
+  getCampaignAbStats,
   launchCampaign,
   scheduleCampaign,
   pauseCampaign,
@@ -178,7 +179,10 @@ const createHandler = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const campaign = await createCampaign(businessId, req.body);
+    const { role } = req.tenantContext;
+    const biz = await (prisma as any).business.findUnique({ where: { id: businessId }, select: { requiresCampaignApproval: true } });
+    const needsApproval = biz?.requiresCampaignApproval && role === 'MARKETING_STAFF';
+    const campaign = await createCampaign(businessId, { ...req.body, _forceStatus: needsApproval ? 'PENDING_APPROVAL' : undefined });
     res.status(201).json(campaign);
   } catch (err) { handleCampaignError(err, res); }
 };
@@ -196,6 +200,14 @@ const statsHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const stats = await getCampaignStats(req.params.id, req.tenantContext.businessId);
     res.status(200).json(stats);
+  } catch (err) { handleCampaignError(err, res); }
+};
+
+/** GET /api/campaigns/:id/ab-stats */
+const abStatsHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await getCampaignAbStats(req.params.id, req.tenantContext.businessId);
+    res.status(200).json(result);
   } catch (err) { handleCampaignError(err, res); }
 };
 
@@ -318,6 +330,12 @@ campaignRouter.get(
   statsHandler
 );
 
+campaignRouter.get(
+  '/:id/ab-stats',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  abStatsHandler
+);
+
 campaignRouter.put(
   '/:id',
   requireRoles(Role.TENANT_OWNER, Role.MARKETING_STAFF) as any,
@@ -355,6 +373,35 @@ campaignRouter.post(
   requireRoles(Role.TENANT_OWNER, Role.MARKETING_STAFF) as any,
   validate(PreviewPayloadSchema) as any,
   previewPayloadHandler
+);
+
+/** POST /api/campaigns/:id/approve — TENANT_OWNER only */
+campaignRouter.post(
+  '/:id/approve',
+  requireRoles(Role.TENANT_OWNER) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    const { businessId } = req.tenantContext;
+    const existing = await (prisma as any).campaign.findFirst({ where: { id: req.params.id, businessId }, select: { status: true } });
+    if (!existing) { res.status(404).json({ error: 'CAMPAIGN_NOT_FOUND' }); return; }
+    if (existing.status !== 'PENDING_APPROVAL') { res.status(400).json({ error: 'CAMPAIGN_NOT_PENDING_APPROVAL' }); return; }
+    const updated = await (prisma as any).campaign.update({ where: { id: req.params.id }, data: { status: 'DRAFT', approvedAt: new Date() } });
+    res.json(updated);
+  }
+);
+
+/** POST /api/campaigns/:id/reject — TENANT_OWNER only */
+campaignRouter.post(
+  '/:id/reject',
+  requireRoles(Role.TENANT_OWNER) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    const { businessId } = req.tenantContext;
+    const { reason } = req.body;
+    const existing = await (prisma as any).campaign.findFirst({ where: { id: req.params.id, businessId }, select: { status: true } });
+    if (!existing) { res.status(404).json({ error: 'CAMPAIGN_NOT_FOUND' }); return; }
+    if (existing.status !== 'PENDING_APPROVAL') { res.status(400).json({ error: 'CAMPAIGN_NOT_PENDING_APPROVAL' }); return; }
+    const updated = await (prisma as any).campaign.update({ where: { id: req.params.id }, data: { status: 'REJECTED', rejectionReason: reason ?? null } });
+    res.json(updated);
+  }
 );
 
 // ================================================================

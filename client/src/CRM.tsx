@@ -135,7 +135,7 @@ const mapCustomer = (c: any) => ({
   avg:          c.visitCount ? Math.round(Number(c.totalSpend ?? 0) / c.visitCount) : 0,
   segment:      c.segment ?? "NEW",
   status:       c.segment === "LOST" ? "Churned" : c.segment === "AT_RISK" ? "At Risk" : "Active",
-  churnRisk:    computeChurnRisk(c),
+  churnRisk:    c.churnRiskScore != null ? c.churnRiskScore : computeChurnRisk(c),
   clv:          Math.round(Number(c.totalSpend ?? 0) * 1.8),
   points:       c.pointsBalance ?? c.currentPointsBalance ?? 0,
   tier:         c.currentTier?.name ?? (c.currentTierId ? "Member" : "Bronze"),
@@ -170,6 +170,22 @@ const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-al
 const ROLES={OWNER:"TENANT_OWNER",MANAGER:"BRANCH_MANAGER",STAFF:"MARKETING_STAFF",KITCHEN:"KITCHEN"};
 const getRole=():string=>localStorage.getItem("userRole")||ROLES.OWNER;
 const useRole=()=>{const[role,setRole]=useState(getRole);useEffect(()=>{const fn=()=>setRole(getRole());window.addEventListener("storage",fn);return()=>window.removeEventListener("storage",fn);},[]);return role;};
+
+// Real-time SSE hook — connects to /api/realtime/stream, calls onEvent per message
+const useRealtime=(onEvent:(e:any)=>void,enabled=true)=>{
+  const cbRef=useRef(onEvent);
+  cbRef.current=onEvent;
+  useEffect(()=>{
+    if(!enabled)return;
+    const token=localStorage.getItem("token");
+    if(!token)return;
+    const API=import.meta.env.VITE_API_URL||"";
+    const es=new EventSource(`${API}/api/realtime/stream?token=${token}`);
+    es.onmessage=(ev)=>{try{const d=JSON.parse(ev.data);if(d.type!=="PING")cbRef.current(d);}catch{}};
+    es.onerror=()=>{/* auto-reconnects */};
+    return()=>es.close();
+  },[enabled]);
+};
 const can=(role:string,action:"viewAnalytics"|"viewRevenue"|"viewOrders"|"editMenu"|"editOrders"|"changeSettings"|"viewKitchen"|"newSale")=>{
   if(role===ROLES.OWNER)return true;
   if(role===ROLES.MANAGER)return!["viewAnalytics","viewRevenue","changeSettings"].includes(action);
@@ -201,6 +217,7 @@ const NAV_ALL=[
   {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
   {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+  {id:"segments",icon:Filter,label:"Segments",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
@@ -277,6 +294,7 @@ const hydrateFromApi=async()=>{
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
     if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
     if(biz?.country)localStorage.setItem("biz_country",biz.country);
+    if(biz?.timezone)localStorage.setItem("biz_timezone",biz.timezone);
     if(biz?.ntn)localStorage.setItem("biz_ntn",biz.ntn);
     if(biz?.taxNumber)localStorage.setItem("biz_taxNumber",biz.taxNumber);
     if(biz?.gstRate!=null)localStorage.setItem("biz_gstRate",String(biz.gstRate));
@@ -462,8 +480,10 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   const [loading,setLoading]=useState(false);
   const [socialLoading,setSocialLoading]=useState<"google"|null>(null);
   const [bizChoices,setBizChoices]=useState<{id:string;name:string;role:string}[]|null>(null);
-  const doLogin=async(email:string,password:string,businessId?:string)=>{
-    const d=await api.auth.login(email,password,businessId);
+  const [totpRequired,setTotpRequired]=useState(false);
+  const [totpCode,setTotpCode]=useState("");
+  const doLogin=async(email:string,password:string,businessId?:string,totpCodeArg?:string)=>{
+    const d=await api.auth.login(email,password,businessId,totpCodeArg);
     if((d as any).requiresBusinessSelection){
       setBizChoices((d as any).businesses);
       return;
@@ -479,11 +499,19 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     onLogin(d.user);
   };
   const submit=async()=>{
+    if(totpRequired){
+      if(!totpCode){setErr("Enter the 6-digit code from your authenticator app.");return;}
+      setErr("");setLoading(true);
+      try{await doLogin(e,p,undefined,totpCode);}
+      catch(ex){const m=(ex as Error).message;setErr(m==="TOTP_INVALID"?"Invalid 2FA code. Try again.":m);}finally{setLoading(false);}
+      return;
+    }
     if(!e||!p){setErr("Please enter your email and password.");return;}
     setErr("");setLoading(true);
     try{await doLogin(e,p);}
     catch(ex){
       const m=(ex as Error).message;
+      if(m==="TOTP_CODE_REQUIRED"){setTotpRequired(true);setErr("");setLoading(false);return;}
       setErr(m==="USER_NOT_FOUND"?"No account found with that email.":m==="WRONG_PASSWORD"||m==="INVALID_CREDENTIALS"?"Wrong password. Please try again.":m);
     }finally{setLoading(false);}
   };
@@ -513,16 +541,23 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
       <Divider/>
-      <div className="space-y-4 mb-5">
-        <div><label style={fldLbl}>Email Address</label><input value={e} onChange={ev=>setE(ev.target.value)} type="email" placeholder="you@business.com" style={fldInp}/></div>
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label style={fldLbl}>Password</label>
-            <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
-          </div>
-          <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
+      {totpRequired?(
+        <div className="space-y-4 mb-5">
+          <div className="p-3 rounded-xl flex items-center gap-2" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Lock size={14} className="text-violet-400 flex-shrink-0"/><span className="text-xs text-slate-300">Enter the 6-digit code from your authenticator app to continue</span></div>
+          <div><label style={fldLbl}>Authenticator Code</label><input autoFocus value={totpCode} onChange={ev=>setTotpCode(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} maxLength={6} placeholder="000000" className="text-center font-mono text-xl tracking-widest" style={{...fldInp,letterSpacing:"0.3em"}}/></div>
         </div>
-      </div>
+      ):(
+        <div className="space-y-4 mb-5">
+          <div><label style={fldLbl}>Email Address</label><input value={e} onChange={ev=>setE(ev.target.value)} type="email" placeholder="you@business.com" style={fldInp}/></div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label style={fldLbl}>Password</label>
+              <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
+            </div>
+            <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
+          </div>
+        </div>
+      )}
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Sign In</Btn>
       <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Don't have an account? <button onClick={()=>onView("signup")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign up free</button></p>
@@ -1502,6 +1537,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   },[preset]);
 
   useEffect(()=>{load();},[load]);
+  const [quotaWarn,setQuotaWarn]=useState<{used:number;total:number;pct:number}|null>(null);
+  useRealtime((event:any)=>{
+    if(event.type==="QUOTA_WARNING")setQuotaWarn({used:event.used,total:event.total,pct:event.pct});
+    if(event.type==="QUOTA_EXHAUSTED")setQuotaWarn({used:0,total:0,pct:100});
+    if(event.type==="CAMPAIGN_COMPLETE")load();
+  });
   const k=dash?.kpis;
   const visitTrend=(dash?.visitTrend??[]).map((d:any)=>({day:d.day?.slice(5),v:d.visits,r:d.revenue}));
   const segData=(dash?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#8b5cf6"}));
@@ -1527,6 +1568,15 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
 
   return(
     <div className="space-y-5" style={{color:ct.tx}}>
+      {/* Real-time quota warning banner */}
+      {quotaWarn&&quotaWarn.pct>=80&&(
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:quotaWarn.pct>=100?"rgba(239,68,68,0.15)":"rgba(245,158,11,0.12)",border:`1px solid ${quotaWarn.pct>=100?"rgba(239,68,68,0.4)":"rgba(245,158,11,0.3)"}`}}>
+          <AlertTriangle size={16} className={quotaWarn.pct>=100?"text-red-400":"text-amber-400"}/>
+          <span className={`text-sm font-semibold ${quotaWarn.pct>=100?"text-red-400":"text-amber-400"}`}>{quotaWarn.pct>=100?"Quota exhausted — campaigns paused":`Quota at ${quotaWarn.pct}% — ${quotaWarn.total-quotaWarn.used} messages remaining`}</span>
+          <button onClick={()=>setPage("settings")} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Upgrade</button>
+          <button onClick={()=>setQuotaWarn(null)} className="text-slate-500 hover:text-slate-300 text-lg leading-none">×</button>
+        </div>
+      )}
       {/* Header + date picker */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1859,7 +1909,14 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
       </div>
     </div>
     {/* Stat strip */}
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[{l:"Visits",v:p.visitCount??c.visits},{l:"Total Spent",v:`£${(p.totalSpend??c.spent).toLocaleString()}`},{l:"Points",v:(p.membership?.pointsBalance??c.points).toLocaleString()},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Avg Rating",v:p.reviews?.avgScore?`${p.reviews.avgScore}★`:"—"},{l:"Referrals",v:p.referral?.referredCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      {[{l:"Visits",v:p.visitCount??c.visits},{l:"Total Spent",v:`£${(p.totalSpend??c.spent).toLocaleString()}`},{l:"Points",v:(p.membership?.pointsBalance??c.points).toLocaleString()},{l:"Avg Rating",v:p.reviews?.avgScore?`${p.reviews.avgScore}★`:"—"},{l:"Referrals",v:p.referral?.referredCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold text-white">{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}
+      <div className="gc rounded-xl p-3 text-center" style={CARD}>
+        <div className="text-lg font-bold mb-1" style={{color:c.churnRisk>70?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}>{c.churnRisk}<span className="text-xs font-normal text-slate-500">%</span></div>
+        <div className="w-full h-1.5 rounded-full mb-1" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${c.churnRisk}%`,background:c.churnRisk>70?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div>
+        <div className="text-xs text-slate-400">Churn Risk</div>
+      </div>
+    </div>
     {/* Tabs */}
     <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
       {TABS.map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={tab===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>)}
@@ -2220,6 +2277,13 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
     load();
     api.whatsapp.status().then(d=>setWaStatus(d?.waha?.status??d?.meta?.configured?"META_OK":"NOT_CONFIGURED")).catch(()=>setWaStatus("NOT_CONFIGURED"));
   },[load]);
+  useRealtime((event:any)=>{
+    if(event.type==="MESSAGE_STATUS"){
+      setMessages(prev=>prev.map((m:any)=>m.providerId===event.messageId?{...m,status:event.status}:m));
+    } else if(event.type==="NEW_INBOUND"){
+      load();
+    }
+  });
   const connected=waStatus==="WORKING"||waStatus==="META_OK";
   const byStatus=Object.entries(STATUS_COLORS).map(([s,c])=>({s,c,n:messages.filter(m=>m.status===s).length})).filter(x=>x.n>0);
   return(
@@ -2297,6 +2361,8 @@ const CampaignBuilderPage=({onBack}:any)=>{
   const [aiPrompt,setAiPrompt]=useState("");
   const [aiLoading,setAiLoading]=useState(false);
   const [showExtras,setShowExtras]=useState(false);
+  const [abEnabled,setAbEnabled]=useState(false);
+  const [msgTextB,setMsgTextB]=useState(`Hey {name}! 🎉 Exclusive offer just for you at ${bizName}. Don't miss out!`);
 
   const previewText=msgText.replace(/\{name\}/g,"Sarah").replace(/\{biz\}/g,bizName);
   const charCount=msgText.length;
@@ -2316,12 +2382,18 @@ const CampaignBuilderPage=({onBack}:any)=>{
     return {blocks:blk};
   };
 
+  const buildAbVariants=()=>[
+    {id:"A",label:"Variant A",weight:50,layoutJson:buildLayout()},
+    {id:"B",label:"Variant B",weight:50,layoutJson:{blocks:[{id:"txt1",type:"TEXT",order:0,content:msgTextB||"Hello {name}!"}]}},
+  ];
+
   const save=async(launch:boolean)=>{
     if(!cName.trim()){setSaveMsg({ok:false,text:"Please give your campaign a name."});return;}
     if(!msgText.trim()){setSaveMsg({ok:false,text:"Please write your message."});return;}
     setSaving(launch?"launch":"draft");setSaveMsg(null);
     try{
       const body:any={name:cName.trim(),targetSegment:cSegment,channel:cChannel,layoutJson:buildLayout()};
+      if(abEnabled)body.abVariants=buildAbVariants();
       if(cSchedule)body.scheduledFor=new Date(cSchedule).toISOString();
       const created=await api.campaigns.create(body);
       const id=created?.id;
@@ -2399,6 +2471,25 @@ const CampaignBuilderPage=({onBack}:any)=>{
               <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAI()} placeholder='e.g. "20% off this weekend only"' className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
               <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Writing…":"Generate"}</button>
             </div>
+          </div>
+
+          {/* A/B Test toggle */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat size={13} className="text-violet-400"/>
+                <span className="text-xs font-semibold text-slate-300">A/B Test</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(139,92,246,0.1)",color:"#a78bfa"}}>Split 50/50</span>
+              </div>
+              <button onClick={()=>setAbEnabled(p=>!p)} className={`w-9 h-5 rounded-full transition-all relative ${abEnabled?"bg-violet-600":"bg-white/10"}`}>
+                <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${abEnabled?"left-5":"left-0.5"}`}/>
+              </button>
+            </div>
+            {abEnabled&&<div className="mt-3 space-y-2 pt-3 border-t border-white/5">
+              <p className="text-[11px] text-slate-400">Variant A uses the message above. Write Variant B below — we'll split your audience 50/50 and pick the winner after 24h.</p>
+              <label className="text-xs text-slate-400 block">Variant B Message</label>
+              <textarea value={msgTextB} onChange={e=>setMsgTextB(e.target.value)} rows={4} placeholder="Alternative message for Variant B…" className="w-full px-3 py-2 rounded-xl text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.25)"}}/>
+            </div>}
           </div>
 
           {/* Optional extras */}
@@ -4010,6 +4101,84 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
 // ════════════════════════════════════════════════════════════════
 // ANALYTICS
 // ════════════════════════════════════════════════════════════════
+const NpsPanel=()=>{
+  const ct=useCard();
+  const [data,setData]=useState<any>(null);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{api.ai.npsStats(30).then(setData).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const nps=data?.nps;
+  const npsColor=nps==null?"#6b7280":nps>=50?"#4ade80":nps>=0?"#fbbf24":"#f87171";
+  return(
+    <div className="gc rounded-xl p-4" style={CARD}>
+      <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3"><Star size={14} style={{color:"#fbbf24"}}/>NPS &amp; Feedback (30 days)</h3>
+      {loading?<Skeleton h="h-20"/>:(
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(255,255,255,0.04)"}}>
+            <div className="text-2xl font-bold" style={{color:npsColor}}>{nps!=null?nps:"—"}</div>
+            <div className="text-[10px] text-slate-400 mt-1">NPS Score</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(255,255,255,0.04)"}}>
+            <div className="text-2xl font-bold text-white">{data?.responseRate??0}%</div>
+            <div className="text-[10px] text-slate-400 mt-1">Response Rate</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(34,197,94,0.08)"}}>
+            <div className="text-2xl font-bold text-green-400">{data?.promoters??0}</div>
+            <div className="text-[10px] text-slate-400 mt-1">Promoters (4-5★)</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(239,68,68,0.08)"}}>
+            <div className="text-2xl font-bold text-red-400">{data?.detractors??0}</div>
+            <div className="text-[10px] text-slate-400 mt-1">Detractors (1-2★)</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CohortHeatmap=()=>{
+  const [cohorts,setCohorts]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{api.ai.cohortRetention(6).then(d=>setCohorts(d?.cohorts??[])).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const cell=(val:number)=>{
+    if(val<0)return{bg:"rgba(255,255,255,0.04)",text:"—",col:"#475569"};
+    const bg=val>=70?"rgba(34,197,94,0.25)":val>=40?"rgba(245,158,11,0.2)":"rgba(239,68,68,0.15)";
+    const col=val>=70?"#4ade80":val>=40?"#fbbf24":"#f87171";
+    return{bg,text:`${val}%`,col};
+  };
+  if(loading)return<Skeleton h="h-48"/>;
+  if(cohorts.length===0)return<div className="text-xs text-slate-500 text-center py-8">No cohort data yet — requires at least 1 month of customer history</div>;
+  return(
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead><tr className="text-slate-400 text-[11px]">
+          <th className="text-left pb-2 pr-3">Cohort</th>
+          <th className="pb-2 px-2">Size</th>
+          <th className="pb-2 px-2">M+1</th>
+          <th className="pb-2 px-2">M+3</th>
+          <th className="pb-2 px-2">M+6</th>
+        </tr></thead>
+        <tbody>{cohorts.map((c:any)=>(
+          <tr key={c.cohort} className="border-t border-white/5">
+            <td className="py-1.5 pr-3 font-mono text-slate-300">{c.cohort}</td>
+            <td className="py-1.5 px-2 text-center text-slate-400">{c.size}</td>
+            {[c.m1,c.m3,c.m6].map((v:number,i:number)=>{const s=cell(v);return(
+              <td key={i} className="py-1.5 px-2 text-center">
+                <span className="px-2 py-0.5 rounded font-semibold" style={{background:s.bg,color:s.col}}>{s.text}</span>
+              </td>
+            );})}
+          </tr>
+        ))}</tbody>
+      </table>
+      <div className="flex items-center gap-3 mt-3 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(34,197,94,0.25)"}}/>≥70% retained</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(245,158,11,0.2)"}}/>40-69%</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(239,68,68,0.15)"}}/>&lt;40%</span>
+        <span className="ml-1">— = data not yet available</span>
+      </div>
+    </div>
+  );
+};
+
 const AnalyticsPage=()=>{
   const ct=useCard();
   const [snapshot,setSnapshot]=useState<any[]>([]);
@@ -4054,6 +4223,14 @@ const AnalyticsPage=()=>{
       <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
       <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#8b5cf6" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
+    </div>
+    <NpsPanel/>
+    <div className="gc rounded-xl p-4" style={CARD}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Activity size={14} style={{color:C.accent}}/>Cohort Retention Heatmap</h3>
+        <span className="text-[10px] text-slate-500">% of signup cohort who returned each month</span>
+      </div>
+      <CohortHeatmap/>
     </div>
   </div>
   );
@@ -4235,6 +4412,155 @@ const PLANS=[
   {tier:"PROFESSIONAL",label:"Professional",price:"£99",   msgs:"50,000 msgs/mo",features:["Everything in Growth","White label","API access","Outbound webhooks"]},
   {tier:"ENTERPRISE", label:"Enterprise",  price:"Custom", msgs:"Unlimited",      features:["Everything in Professional","SLA","Dedicated support","Custom integrations"]},
 ];
+
+const INTEGRATION_META:{[k:string]:{label:string;desc:string;icon:string;fields:{k:string;l:string;type:"text"|"password";ph:string}[]}}={
+  SQUARE:    {label:"Square POS",desc:"Sync Square orders → visits and customers → loyalty profiles",icon:"🟦",fields:[{k:"accessToken",l:"Access Token",type:"password",ph:"EAAAxxxxxx…"}]},
+  SHOPIFY:   {label:"Shopify",desc:"Sync Shopify orders → visits. Customers auto-enrolled in loyalty",icon:"🟢",fields:[{k:"storeUrl",l:"Store URL",type:"text",ph:"yourstore.myshopify.com"},{k:"apiKey",l:"Admin API Access Token",type:"password",ph:"shpat_xxxxxx"}]},
+  WOOCOMMERCE:{label:"WooCommerce",desc:"Order webhook → visit record. Use the webhook URL below in WooCommerce",icon:"🛒",fields:[{k:"consumerKey",l:"Consumer Key",type:"text",ph:"ck_xxxxxx"},{k:"consumerSecret",l:"Consumer Secret",type:"password",ph:"cs_xxxxxx"}]},
+  GOOGLE_SHEETS:{label:"Google Sheets",desc:"2-way customer sync with a Google Sheet (coming soon)",icon:"📊",fields:[{k:"sheetId",l:"Sheet ID",type:"text",ph:"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"}]},
+  ZAPIER:    {label:"Zapier",desc:"Send loyalty events to any Zapier workflow",icon:"⚡",fields:[{k:"webhookUrl",l:"Webhook URL",type:"text",ph:"https://hooks.zapier.com/hooks/catch/…"}]},
+};
+
+const TwoFactorPanel=()=>{
+  const [status,setStatus]=useState<{enabled:boolean}|null>(null);
+  const [qr,setQr]=useState<string|null>(null);
+  const [step,setStep]=useState<"idle"|"setup"|"verify"|"disable">("idle");
+  const [token,setToken]=useState("");
+  const [msg,setMsg]=useState<{ok:boolean;text:string}|null>(null);
+  const [busy,setBusy]=useState(false);
+
+  const load=()=>fetch("/api/totp/status",{headers:{Authorization:`Bearer ${localStorage.getItem("token")}`}}).then(r=>r.json()).then(setStatus).catch(()=>{});
+  useEffect(()=>{load();},[]);
+
+  const startSetup=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/setup",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`}});const d=await r.json();setQr(d.qrDataUrl);setStep("setup");}catch{}finally{setBusy(false);}
+  };
+  const verify=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/verify",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`,"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json();
+      if(r.ok){setMsg({ok:true,text:"2FA enabled!"});setStep("idle");setQr(null);setToken("");load();}else{setMsg({ok:false,text:d.error||"Invalid code"});}
+    }catch{}finally{setBusy(false);}
+  };
+  const disable=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/disable",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`,"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json();
+      if(r.ok){setMsg({ok:true,text:"2FA disabled"});setStep("idle");setToken("");load();}else{setMsg({ok:false,text:d.error||"Invalid code"});}
+    }catch{}finally{setBusy(false);}
+  };
+
+  const enabled=status?.enabled??false;
+  return(
+    <div className="rounded-xl p-4 space-y-3" style={{background:enabled?"rgba(34,197,94,0.06)":"rgba(245,158,11,0.06)",border:`1px solid ${enabled?"rgba(34,197,94,0.2)":"rgba(245,158,11,0.15)"}`}}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold text-white flex items-center gap-2"><Lock size={14} className={enabled?"text-green-400":"text-amber-400"}/>{enabled?"Two-Factor Authentication: ON":"Two-Factor Authentication: OFF"}</div>
+          <div className="text-xs text-slate-400 mt-0.5">{enabled?"Your account is protected with TOTP 2FA (Google Authenticator / Authy)":"Add an extra layer of security — required every time you log in"}</div>
+        </div>
+        {status&&!enabled&&step==="idle"&&<button onClick={startSetup} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Enable</button>}
+        {status&&enabled&&step==="idle"&&<button onClick={()=>{setStep("disable");setMsg(null);}} className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>Disable</button>}
+      </div>
+      {step==="setup"&&qr&&(
+        <div className="space-y-3 pt-3 border-t border-white/5">
+          <p className="text-xs text-slate-400">1. Scan this QR code with Google Authenticator, Authy, or any TOTP app</p>
+          <img src={qr} alt="QR code" className="w-40 h-40 rounded-lg bg-white p-2"/>
+          <p className="text-xs text-slate-400">2. Enter the 6-digit code from your app to confirm</p>
+          <div className="flex items-center gap-2">
+            <input value={token} onChange={e=>setToken(e.target.value)} maxLength={6} placeholder="000000" className="w-28 px-3 py-2 rounded-lg text-sm text-white text-center font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",letterSpacing:"0.2em"}}/>
+            <button onClick={verify} disabled={busy||token.length!==6} className="px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Verify</button>
+            <button onClick={()=>{setStep("idle");setQr(null);setToken("");}} className="px-3 py-2 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.04)"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {step==="disable"&&(
+        <div className="space-y-3 pt-3 border-t border-white/5">
+          <p className="text-xs text-slate-400">Enter the current 6-digit code from your authenticator to disable 2FA</p>
+          <div className="flex items-center gap-2">
+            <input value={token} onChange={e=>setToken(e.target.value)} maxLength={6} placeholder="000000" className="w-28 px-3 py-2 rounded-lg text-sm text-white text-center font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",letterSpacing:"0.2em"}}/>
+            <button onClick={disable} disabled={busy||token.length!==6} className="px-3 py-2 rounded-lg text-xs font-medium text-red-400 disabled:opacity-50" style={{background:"rgba(239,68,68,0.12)"}}>Confirm Disable</button>
+            <button onClick={()=>{setStep("idle");setToken("");}} className="px-3 py-2 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.04)"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {msg&&<p className={`text-xs ${msg.ok?"text-green-400":"text-red-400"}`}>{msg.text}</p>}
+    </div>
+  );
+};
+
+const IntegrationsTab=()=>{
+  const [integrations,setIntegrations]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState<string|null>(null);
+  const [cfg,setCfg]=useState<Record<string,string>>({});
+  const [testing,setTesting]=useState<string|null>(null);
+  const [testResult,setTestResult]=useState<Record<string,{ok:boolean;msg?:string}>>({});
+  const [saving,setSaving]=useState(false);
+
+  const load=()=>api.integrations.list().then(d=>setIntegrations(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
+  useEffect(()=>{load();},[]);
+
+  const startEdit=(p:string,current:any)=>{setEditing(p);setCfg(current?.configJson||{});setTestResult({});};
+  const toggle=async(p:string,enabled:boolean)=>{
+    await api.integrations.update(p,{isEnabled:enabled}).catch(()=>{});
+    setIntegrations(prev=>prev.map((i:any)=>i.provider===p?{...i,isEnabled:enabled}:i));
+  };
+  const save=async(p:string)=>{
+    setSaving(true);
+    try{const r=await api.integrations.update(p,{config:cfg,isEnabled:true});setIntegrations(prev=>prev.map((i:any)=>i.provider===p?r:i));setEditing(null);}catch{}finally{setSaving(false);}
+  };
+  const runTest=async(p:string)=>{
+    setTesting(p);
+    const r=await api.integrations.test(p).catch(()=>({ok:false,error:"Network error"}));
+    setTestResult(prev=>({...prev,[p]:{ok:r.ok,msg:r.ok?"Connection successful!":r.error||"Connection failed"}}));
+    setTesting(null);
+  };
+
+  if(loading)return<div className="space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-16"/>)}</div>;
+
+  return(
+    <div className="space-y-3">
+      <p className="text-xs text-slate-400">Connect your POS, e-commerce store, or automation tools. Credentials are stored encrypted.</p>
+      {Object.entries(INTEGRATION_META).map(([provider,meta])=>{
+        const current=integrations.find((i:any)=>i.provider===provider);
+        const isEnabled=current?.isEnabled??false;
+        const isEditing=editing===provider;
+        return(
+          <div key={provider} className="rounded-xl p-4 space-y-3" style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${isEnabled?"rgba(34,197,94,0.2)":"rgba(255,255,255,0.06)"}`}}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{meta.icon}</span>
+                <div>
+                  <div className="text-sm font-medium text-white flex items-center gap-2">{meta.label}{isEnabled&&<span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">Connected</span>}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{meta.desc}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {testResult[provider]&&<span className={`text-[11px] ${testResult[provider].ok?"text-green-400":"text-red-400"}`}>{testResult[provider].msg}</span>}
+                {isEnabled&&<button onClick={()=>runTest(provider)} disabled={testing===provider} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(6,182,212,0.1)",color:"#67e8f9"}}>{testing===provider?<RefreshCw size={11} className="animate-spin inline"/>:"Test"}</button>}
+                <button onClick={()=>isEditing?setEditing(null):startEdit(provider,current)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.06)",color:"#94a3b8"}}>{isEditing?"Cancel":"Configure"}</button>
+                <button onClick={()=>toggle(provider,!isEnabled)} className="w-9 h-5 rounded-full relative transition-colors" style={{background:isEnabled?"#22c55e":"rgba(255,255,255,0.1)"}}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:isEnabled?"calc(100% - 18px)":"2px"}}/>
+                </button>
+              </div>
+            </div>
+            {isEditing&&(
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                {meta.fields.map(f=>(
+                  <div key={f.k}><label className="text-[11px] text-slate-400 mb-1 block">{f.l}</label>
+                  <input type={f.type} value={cfg[f.k]||""} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+                ))}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={()=>save(provider)} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={11} className="animate-spin"/>:<Check size={11}/>}Save & Connect</button>
+                  <button onClick={()=>runTest(provider)} disabled={testing===provider} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.1)",color:"#67e8f9"}}>{testing===provider?<RefreshCw size={11} className="animate-spin"/>:<Wifi size={11}/>}Test Connection</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const BillingTab=()=>{
   const [sub,setSub]=useState<any>(null);
@@ -4572,8 +4898,10 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [bizNameVal,setBizNameVal]=useState(()=>localStorage.getItem("biz_name")||"");
   const [countryVal,setCountryVal]=useState(()=>localStorage.getItem("biz_country")||"GB");
   const [currencyVal,setCurrencyVal]=useState(()=>localStorage.getItem("biz_currency")||"GBP");
+  const [timezoneVal,setTimezoneVal]=useState(()=>localStorage.getItem("biz_timezone")||"Europe/London");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
   const [bizSaved,setBizSaved]=useState(false);
+  const [requiresApproval,setRequiresApproval]=useState(false);
   const [inviteEmail,setInviteEmail]=useState("");
   const [inviteRole,setInviteRole]=useState("MARKETING_STAFF");
   const [inviting,setInviting]=useState(false);
@@ -4592,16 +4920,17 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const saveIndustry=(v:string)=>{setIndustry(v);localStorage.setItem("biz_industry",v);localStorage.removeItem("pos_biztype_override");api.settings.update({industry:v}).catch(()=>{});};
   const saveBizSettings=async()=>{
     try{
-      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry});
+      await api.settings.update({name:bizNameVal,currency:currencyVal,country:countryVal||undefined,logoUrl:logoUrlVal||undefined,industry,timezone:timezoneVal,requiresCampaignApproval:requiresApproval});
       localStorage.setItem("biz_name",bizNameVal);
       localStorage.setItem("biz_currency",currencyVal);
       localStorage.setItem("biz_country",countryVal);
+      localStorage.setItem("biz_timezone",timezoneVal);
       if(logoUrlVal)localStorage.setItem("biz_logo",logoUrlVal);
       setBizSaved(true);setTimeout(()=>setBizSaved(false),2500);
     }catch{}
   };
   const isPK=countryVal==="PK";
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
@@ -4624,6 +4953,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
             <div><label className="text-xs text-slate-400 mb-1 block">Logo URL (for receipts & portal)</label><input value={logoUrlVal} onChange={e=>setLogoUrlVal(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Country</label><select value={countryVal} onChange={e=>setCountryVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">{countryVal==="PK"?"🇵🇰 FBR tax integration is available — see the FBR / Tax tab after saving.":""}</div></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Currency</label><select value={currencyVal} onChange={e=>setCurrencyVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Timezone</label><select value={timezoneVal} onChange={e=>setTimezoneVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:"#1a1030"}}>{t.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Birthday messages and automations fire in your local time</div></div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Industry / Business Type</label>
               <select value={industry} onChange={e=>saveIndustry(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
@@ -4633,6 +4963,15 @@ const SettingsPage=({wa,onConnect}:any)=>{
                 POS type: <span className="text-violet-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
               </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div>
+              <div className="text-xs font-medium text-white">Campaign Approval Workflow</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">When on, campaigns created by Marketing Staff go to PENDING_APPROVAL — you must approve before launch</div>
+            </div>
+            <button onClick={()=>setRequiresApproval(p=>!p)} className="w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-4" style={{background:requiresApproval?"#8b5cf6":"rgba(255,255,255,0.1)"}}>
+              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:requiresApproval?"calc(100% - 18px)":"2px"}}/>
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
@@ -4684,8 +5023,9 @@ const SettingsPage=({wa,onConnect}:any)=>{
             </div>
           </div>
         </div>}
+        {tab==="integrations"&&<IntegrationsTab/>}
         {tab==="stripe"&&<BillingTab/>}
-        {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
+        {tab==="security"&&<div className="space-y-4"><TwoFactorPanel/>{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
         {tab==="fbr"&&<FBRPanel/>}
       </div>
@@ -4696,15 +5036,162 @@ const SettingsPage=({wa,onConnect}:any)=>{
 // ════════════════════════════════════════════════════════════════
 // CAMPAIGNS LIST
 // ════════════════════════════════════════════════════════════════
+const AbStatsBar=({campaignId,winnerId}:{campaignId:string;winnerId?:string|null})=>{
+  const [ab,setAb]=useState<any>(null);
+  useEffect(()=>{api.campaigns.abStats(campaignId).then(setAb).catch(()=>{});},[campaignId]);
+  if(!ab?.isAbTest||!ab.variants?.length)return null;
+  return(
+    <div className="rounded-xl p-3 space-y-2" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-300"><Repeat size={11}/>A/B Test Results{ab.winner&&<span className="ml-1 px-1.5 py-0.5 rounded text-[10px]" style={{background:"rgba(34,197,94,0.15)",color:"#4ade80"}}>Winner: Variant {ab.winner}</span>}</div>
+      {ab.variants.map((v:any)=>(
+        <div key={v.id} className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-slate-300 w-6">{v.id}</span>
+          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${v.stats?.readRate??0}%`,background:ab.winner===v.id?"#22c55e":"#8b5cf6"}}/></div>
+          <span className="text-[11px] text-slate-400 w-10 text-right">{v.stats?.readRate??0}% read</span>
+          <span className="text-[11px] text-slate-500 w-12 text-right">{v.stats?.sent??0} sent</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── Segment Builder UI ───────────────────────────────────────────
+const SEGMENT_FIELDS=[{v:"lastVisitAt",l:"Days since last visit"},{v:"totalSpend",l:"Total spend"},{v:"visitCount",l:"Visit count"},{v:"pointsBalance",l:"Points balance"},{v:"churnRiskScore",l:"Churn risk score (0-100)"},{v:"referralCount",l:"Referral count"},{v:"tier",l:"Tier name"}];
+const SEGMENT_OPS=[{v:"gt",l:">"},{v:"gte",l:">="},{v:"lt",l:"<"},{v:"lte",l:"<="},{v:"eq",l:"="},{v:"neq",l:"≠"}];
+const emptyRule=()=>({field:"visitCount",op:"gte",value:"3"});
+
+const SegmentsPage=()=>{
+  const ct=useCard();
+  const [segs,setSegs]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState<any|null>(null);  // null = list, object = editing
+  const [name,setName]=useState("");
+  const [desc,setDesc]=useState("");
+  const [logic,setLogic]=useState<"AND"|"OR">("AND");
+  const [conditions,setConditions]=useState<any[]>([emptyRule()]);
+  const [preview,setPreview]=useState<{count:number}|null>(null);
+  const [previewing,setPreviewing]=useState(false);
+  const [saving,setSaving]=useState(false);
+
+  const load=()=>{api.segments.list().then(d=>setSegs(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(()=>{load();},[]);
+
+  const startNew=()=>{setEditing({});setName("");setDesc("");setLogic("AND");setConditions([emptyRule()]);setPreview(null);};
+  const startEdit=(s:any)=>{setEditing(s);setName(s.name);setDesc(s.description||"");setLogic(s.rulesJson?.logic||"AND");setConditions(s.rulesJson?.conditions||[emptyRule()]);setPreview(null);};
+  const addCond=()=>setConditions(p=>[...p,emptyRule()]);
+  const removeCond=(i:number)=>setConditions(p=>p.filter((_:any,j:number)=>j!==i));
+  const updateCond=(i:number,k:string,v:string)=>setConditions(p=>p.map((c:any,j:number)=>j===i?{...c,[k]:v}:c));
+
+  const doPreview=async()=>{
+    setPreviewing(true);
+    try{const r=await api.segments.evaluate({logic,conditions});setPreview(r);}catch{}finally{setPreviewing(false);}
+  };
+  const doSave=async()=>{
+    if(!name.trim())return;
+    setSaving(true);
+    try{
+      const rules={logic,conditions};
+      if(editing?.id){await api.segments.update(editing.id,{name,description:desc||null,rules});}
+      else{await api.segments.create({name,description:desc||null,rules});}
+      setEditing(null);load();
+    }catch{}finally{setSaving(false);}
+  };
+  const doDelete=async(id:string)=>{
+    if(!confirm("Delete this segment?"))return;
+    await api.segments.delete(id).catch(()=>{});load();
+  };
+
+  if(editing!==null) return(
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <button onClick={()=>setEditing(null)} className="p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}}><ArrowLeft size={14} className="text-slate-400"/></button>
+        <h1 className="text-lg font-bold" style={{color:ct.tx}}>{editing?.id?"Edit Segment":"New Custom Segment"}</h1>
+      </div>
+      <div className="gc rounded-xl p-5 space-y-4" style={CARD}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="text-xs text-slate-400 mb-1 block">Segment Name *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="High-value dormant customers" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">Description</label><input value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Optional…" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs text-slate-400">Match</span>
+            <div className="flex gap-1">{(["AND","OR"] as const).map(l=><button key={l} onClick={()=>setLogic(l)} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${logic===l?"text-white":"text-slate-400"}`} style={{background:logic===l?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.04)"}}>{l}</button>)}</div>
+            <span className="text-xs text-slate-400">of the following rules:</span>
+          </div>
+          <div className="space-y-2">{conditions.map((c:any,i:number)=>(
+            <div key={i} className="flex items-center gap-2 flex-wrap">
+              <select value={c.field} onChange={e=>updateCond(i,"field",e.target.value)} className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {SEGMENT_FIELDS.map(f=><option key={f.v} value={f.v} style={{background:"#1a1030"}}>{f.l}</option>)}
+              </select>
+              <select value={c.op} onChange={e=>updateCond(i,"op",e.target.value)} className="px-2 py-1.5 rounded-lg text-xs text-white outline-none w-14" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {SEGMENT_OPS.map(o=><option key={o.v} value={o.v} style={{background:"#1a1030"}}>{o.l}</option>)}
+              </select>
+              <input value={c.value} onChange={e=>updateCond(i,"value",e.target.value)} placeholder="value" className="w-24 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              {conditions.length>1&&<button onClick={()=>removeCond(i)} className="text-slate-500 hover:text-red-400"><X size={14}/></button>}
+            </div>
+          ))}</div>
+          <button onClick={addCond} className="mt-2 flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"><Plus size={12}/>Add rule</button>
+        </div>
+        <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+          <button onClick={doPreview} disabled={previewing} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.12)",color:"#67e8f9"}}>{previewing?<RefreshCw size={12} className="animate-spin"/>:<Eye size={12}/>}Preview</button>
+          {preview&&<span className="text-xs text-slate-300"><span className="font-bold text-white">{preview.count}</span> customers match</span>}
+          <button onClick={doSave} disabled={saving||!name.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50 ml-auto" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:<Check size={12}/>}Save Segment</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Custom Segments</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Build no-code audience filters with AND/OR rule trees</p></div>
+        <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New Segment</button>
+      </div>
+      <div className="gc rounded-xl overflow-hidden" style={CARD}>
+        {loading?<div className="p-4 space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-12"/>)}</div>:segs.length===0?(
+          <div className="py-12 text-center space-y-3">
+            <Filter size={32} className="mx-auto text-slate-600"/>
+            <p className="text-sm text-slate-400">No custom segments yet</p>
+            <button onClick={startNew} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create your first segment</button>
+          </div>
+        ):(
+          <div className="divide-y divide-white/5">{segs.map((s:any)=>(
+            <div key={s.id} className="flex items-center justify-between p-4 hover:bg-white/2">
+              <div>
+                <div className="text-sm font-medium text-white">{s.name}</div>
+                {s.description&&<div className="text-xs text-slate-500 mt-0.5">{s.description}</div>}
+                <div className="text-[10px] text-slate-600 mt-0.5">{s.rulesJson?.logic} · {s.rulesJson?.conditions?.length} rule{s.rulesJson?.conditions?.length!==1?"s":""}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>startEdit(s)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.06)",color:"#94a3b8"}}><Edit size={12}/></button>
+                <button onClick={()=>doDelete(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(239,68,68,0.1)",color:"#f87171"}}><Trash2 size={12}/></button>
+              </div>
+            </div>
+          ))}</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const ct=useCard();
   const [campaigns,setCampaigns]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [launching,setLaunching]=useState<string|null>(null);
   const [cloning,setCloning]=useState<string|null>(null);
+  const userRole=localStorage.getItem("role")||"";
+  const isOwner=userRole==="TENANT_OWNER"||userRole==="PLATFORM_ADMINISTRATOR";
   useEffect(()=>{
     api.campaigns.list().then(d=>setCampaigns(d.campaigns??[])).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
+  const approveCampaign=async(id:string)=>{
+    try{await api.campaigns.approve(id);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"DRAFT"}:c));}catch{}
+  };
+  const rejectCampaign=async(id:string)=>{
+    const reason=prompt("Reason for rejection (optional):");
+    try{await api.campaigns.reject(id,reason??undefined);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"REJECTED"}:c));}catch{}
+  };
   const launch=async(id:string)=>{
     setLaunching(id);
     try{
@@ -4764,10 +5251,14 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
             <div className="flex items-center gap-2">
               <Badge color={statusColor(c.status)}>{c.status}</Badge>
               <button onClick={()=>clone(c.id)} disabled={cloning===c.id} title="Clone campaign" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50" style={{background:"rgba(255,255,255,0.07)",color:"#94a3b8"}}>{cloning===c.id?<RefreshCw size={11} className="animate-spin"/>:<Copy size={11}/>}Clone</button>
+              {c.status==="PENDING_APPROVAL"&&isOwner&&<><button onClick={()=>approveCampaign(c.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}><Check size={11}/>Approve</button><button onClick={()=>rejectCampaign(c.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400" style={{background:"rgba(239,68,68,0.12)"}}><X size={11}/>Reject</button></>}
               {(c.status==="DRAFT"||c.status==="APPROVED")&&<button onClick={()=>launch(c.id)} disabled={launching===c.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{launching===c.id?<RefreshCw size={11} className="animate-spin"/>:<Play size={11}/>}Launch</button>}
             </div>
           </div>
-          {(c.stats?.sent>0||c.stats?.delivered>0)&&<div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/5">{[{l:"Sent",v:c.stats?.sent??0,col:"#3b82f6"},{l:"Delivered",v:c.stats?.delivered??0,col:"#22c55e"},{l:"Read",v:c.stats?.read??0,col:"#06b6d4"},{l:"Failed",v:c.stats?.failed??0,col:"#ef4444"}].map((s,i)=><div key={i} className="text-center"><div className="text-sm font-bold" style={{color:s.col}}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}</div>}
+          {(c.stats?.sent>0||c.stats?.delivered>0)&&<div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+            <div className="grid grid-cols-4 gap-2">{[{l:"Sent",v:c.stats?.sent??0,col:"#3b82f6"},{l:"Delivered",v:c.stats?.delivered??0,col:"#22c55e"},{l:"Read",v:c.stats?.read??0,col:"#06b6d4"},{l:"Failed",v:c.stats?.failed??0,col:"#ef4444"}].map((s,i)=><div key={i} className="text-center"><div className="text-sm font-bold" style={{color:s.col}}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}</div>
+            {c.abVariants&&c.abVariants.length>1&&<AbStatsBar campaignId={c.id} winnerId={c.abWinnerId}/>}
+          </div>}
         </div>
       ))}</div>}
     </div>
@@ -6207,6 +6698,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"messages":return<MessagesPage onConnect={()=>setPage("settings")}/>;
     case"campaigns":return<CampaignsPage onBuilder={()=>setPage("campaign-builder")}/>;
     case"campaign-builder":return<CampaignBuilderPage onBack={()=>setPage("campaigns")}/>;
+    case"segments":return<SegmentsPage/>;
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
     case"automation-builder":return<AutomationBuilderPage onBack={()=>setPage("automations")}/>;
     case"loyalty":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;

@@ -65,7 +65,7 @@ const del  = <T>(path: string, body?: unknown) => req<T>(path, { method: 'DELETE
 // ── Auth ──────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    login:         (email: string, password: string, businessId?: string) => post<{ accessToken: string; sessionId?: string; user: any; requiresBusinessSelection?: boolean; businesses?: any[] }>('/auth/login', { email, password, ...(businessId ? { businessId } : {}) }),
+    login:         (email: string, password: string, businessId?: string, totpCode?: string) => post<{ accessToken: string; sessionId?: string; user: any; requiresBusinessSelection?: boolean; businesses?: any[] }>('/auth/login', { email, password, ...(businessId ? { businessId } : {}), ...(totpCode ? { totpCode } : {}) }),
     register:      (body: { businessName: string; ownerName: string; ownerEmail: string; ownerPassword: string; country: string; timezone: string; currency: string; industry?: string }) =>
                      post<{ accessToken: string; user: any }>('/auth/register', body),
     me:            () => get<any>('/auth/me'),
@@ -233,9 +233,12 @@ export const api = {
     create: (body: any)  => post<any>('/campaigns', body),
     update: (id: string, body: any) => put<any>(`/campaigns/${id}`, body),
     launch: (id: string) => post<any>(`/campaigns/${id}/launch`),
-    clone:  (id: string) => post<any>(`/campaigns/${id}/clone`),
-    pause:  (id: string) => post<any>(`/campaigns/${id}/pause`),
-    schedule:(id: string, body: any) => post<any>(`/campaigns/${id}/schedule`, body),
+    clone:   (id: string) => post<any>(`/campaigns/${id}/clone`),
+    abStats: (id: string) => get<any>(`/campaigns/${id}/ab-stats`),
+    pause:   (id: string) => post<any>(`/campaigns/${id}/pause`),
+    schedule: (id: string, body: any) => post<any>(`/campaigns/${id}/schedule`, body),
+    approve:  (id: string) => post<any>(`/campaigns/${id}/approve`),
+    reject:   (id: string, reason?: string) => post<any>(`/campaigns/${id}/reject`, { reason }),
   },
 
   // ── Automations ───────────────────────────────────────────────
@@ -254,10 +257,31 @@ export const api = {
     testFire: (id: string, customerId: string) => post<any>(`/automations/${id}/trigger/${customerId}`),
   },
 
+  // ── Integrations ─────────────────────────────────────────────
+  integrations: {
+    list:    ()                                    => get<any[]>('/integrations'),
+    get:     (provider: string)                    => get<any>(`/integrations/${provider}`),
+    update:  (provider: string, body: any)         => put<any>(`/integrations/${provider}`, body),
+    remove:  (provider: string)                    => del<any>(`/integrations/${provider}`),
+    test:    (provider: string)                    => post<any>(`/integrations/${provider}/test`),
+  },
+
+  // ── Custom Segments ───────────────────────────────────────────
+  segments: {
+    list:     ()                          => get<any[]>('/segments'),
+    create:   (body: any)                 => post<any>('/segments', body),
+    update:   (id: string, body: any)     => put<any>(`/segments/${id}`, body),
+    delete:   (id: string)                => del<any>(`/segments/${id}`),
+    evaluate: (rules: any)                => post<any>('/segments/evaluate', { rules }),
+    evaluateById: (id: string)            => post<any>(`/segments/${id}/evaluate`),
+  },
+
   // ── AI ────────────────────────────────────────────────────────
   ai: {
-    query:           (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
-    generateMessage: (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
+    query:            (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
+    generateMessage:  (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
+    cohortRetention:  (months?: number) => get<any>(`/ai/cohort-retention${months ? `?months=${months}` : ''}`),
+    npsStats:         (days?: number)   => get<any>(`/ai/nps-stats${days ? `?days=${days}` : ''}`),
   },
 
   // ── Settings (business) ───────────────────────────────────────

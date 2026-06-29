@@ -35,8 +35,8 @@ import { generateBusinessSlug } from '../utils/slug.util';
 // CONSTANTS
 // ================================================================
 
-const RESET_TOKEN_EXPIRY_SECONDS = 30 * 60;       // 30 minutes
-const INVITE_TOKEN_EXPIRY_SECONDS = 48 * 60 * 60; // 48 hours
+const RESET_TOKEN_EXPIRY_SECONDS  = 30 * 60;       // 30 minutes
+const INVITE_TOKEN_EXPIRY_SECONDS = (parseInt(process.env.AUTH_INVITE_EXPIRY_HOURS ?? '48', 10)) * 60 * 60;
 
 // Message quota per subscription tier — mirrors Redis key on Subscription create
 const TIER_QUOTAS: Record<SubscriptionTier, number> = {
@@ -291,6 +291,18 @@ export const login = async (
 
   const user = activeUsers[0];
   if (!user.business.isActive) throw new Error('TENANT_SUSPENDED');
+
+  // TOTP check — if 2FA is enabled, require a valid token in input.totpCode
+  const totpUser = await (prisma as any).user.findUnique({
+    where:  { id: user.id },
+    select: { totpEnabled: true, totpSecret: true },
+  });
+  if (totpUser?.totpEnabled) {
+    const { verifyToken } = await import('./totp-service');
+    const totpCode = (input as any).totpCode as string | undefined;
+    if (!totpCode) throw new Error('TOTP_CODE_REQUIRED');
+    if (!verifyToken(totpUser.totpSecret, totpCode)) throw new Error('TOTP_INVALID');
+  }
 
   // Non-critical side-effects — must not block or fail login
   prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});

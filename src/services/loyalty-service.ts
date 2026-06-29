@@ -547,15 +547,26 @@ export const processReferralConversion = async (
  * Birthday messages have isPromotional = false, so they bypass the
  * 72h cooldown interceptor in messaging.worker.ts.
  */
+/** Return {month,day} for "today" in an IANA timezone (falls back to UTC on invalid tz). */
+function localMonthDay(timezone: string): { month: number; day: number } {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const m = parts.find(p => p.type === 'month');
+    const d = parts.find(p => p.type === 'day');
+    return { month: parseInt(m?.value ?? '0'), day: parseInt(d?.value ?? '0') };
+  } catch {
+    const now = new Date();
+    return { month: now.getUTCMonth() + 1, day: now.getUTCDate() };
+  }
+}
+
 export const processBirthdayAutomations = async (): Promise<{
   processed: number;
   enqueued:  number;
   errors:    number;
 }> => {
-  const today = new Date();
-  const month = today.getUTCMonth() + 1;
-  const day   = today.getUTCDate();
-
   const workflows = await prisma.automationWorkflow.findMany({
     where: {
       triggerType:  'BIRTHDAY',
@@ -563,12 +574,15 @@ export const processBirthdayAutomations = async (): Promise<{
       compiledJson: { not: Prisma.JsonNull },
     },
     select: { id: true, businessId: true, compiledJson: true },
-  });
+    include: { business: { select: { timezone: true } } } as any,
+  } as any);
 
   let processed = 0, enqueued = 0, errors = 0;
 
   for (const wf of workflows) {
     type BirthdayRow = { id: string; whatsappNumber: string | null; fullName: string };
+    const tz = (wf as any).business?.timezone ?? 'UTC';
+    const { month, day } = localMonthDay(tz);
 
     // Efficient DOB match: only month + day, not year
     const todaysBirthdays = await prisma.$queryRaw<BirthdayRow[]>`

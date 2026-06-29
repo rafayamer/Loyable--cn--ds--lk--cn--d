@@ -194,6 +194,97 @@ async function ensureSchemaPatches() {
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "customer_badges_customerId_name_key" ON "customer_badges" ("customerId","name")' },
     { label: 'customer_badges idx customer',
       sql: 'CREATE INDEX IF NOT EXISTS "customer_badges_businessId_customerId_idx" ON "customer_badges" ("businessId","customerId")' },
+    // ── A/B Campaign Testing ──
+    { label: 'campaigns.abVariants',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abVariants" JSONB' },
+    { label: 'campaigns.abWinnerId',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abWinnerId" TEXT' },
+    { label: 'campaigns.abTestStartedAt',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abTestStartedAt" TIMESTAMP(3)' },
+    { label: 'message_queue.abVariantId',
+      sql: 'ALTER TABLE "message_queue" ADD COLUMN IF NOT EXISTS "abVariantId" TEXT' },
+    // ── Churn Risk Score (ML-lite nightly scoring) ──
+    { label: 'customers.churnRiskScore',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScore" INTEGER NOT NULL DEFAULT 0' },
+    { label: 'customers.churnRiskScoredAt',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScoredAt" TIMESTAMP(3)' },
+    // ── Opt-out reason stored in ConsentChangeLog (keyword field already exists) ──
+    { label: 'consent_change_log.optOutReason',
+      sql: 'ALTER TABLE "consent_change_log" ADD COLUMN IF NOT EXISTS "optOutReason" TEXT' },
+    // ── Per-tenant timezone support ──
+    { label: 'businesses.timezone',
+      sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
+    // ── TOTP 2FA ──
+    { label: 'users.totpSecret',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT' },
+    { label: 'users.totpEnabled',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpEnabled" BOOLEAN NOT NULL DEFAULT false' },
+    // ── Integration Marketplace ──
+    { label: 'integration_configs table',
+      sql: `CREATE TABLE IF NOT EXISTS "integration_configs" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "provider" TEXT NOT NULL,
+        "isEnabled" BOOLEAN NOT NULL DEFAULT false,
+        "configJson" JSONB NOT NULL DEFAULT '{}',
+        "lastSyncAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "integration_configs_businessId_provider_key" UNIQUE ("businessId","provider")
+      )` },
+    { label: 'integration_configs idx biz',
+      sql: 'CREATE INDEX IF NOT EXISTS "ic_biz_provider" ON "integration_configs" ("businessId","provider")' },
+    // ── Custom Segment Builder ──
+    { label: 'custom_segments table',
+      sql: `CREATE TABLE IF NOT EXISTS "custom_segments" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "description" TEXT,
+        "rulesJson" JSONB NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'custom_segments idx biz',
+      sql: 'CREATE INDEX IF NOT EXISTS "cs_biz_updated" ON "custom_segments" ("businessId","updatedAt")' },
+    // ── Campaign Approval Workflow ──
+    { label: 'businesses.requiresCampaignApproval',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "requiresCampaignApproval" BOOLEAN NOT NULL DEFAULT false' },
+    { label: 'campaigns.approvedAt',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMP(3)' },
+    { label: 'campaigns.rejectionReason',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT' },
+    // ── NPS / Feedback system ──
+    { label: 'feedback_responses table',
+      sql: `CREATE TABLE IF NOT EXISTS "feedback_responses" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "customerId" TEXT NOT NULL,
+        "visitId" TEXT,
+        "score" INTEGER NOT NULL,
+        "comment" TEXT,
+        "channel" TEXT NOT NULL DEFAULT 'WHATSAPP',
+        "sentAt" TIMESTAMP(3) NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'feedback_responses idx biz',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_biz_created" ON "feedback_responses" ("businessId","createdAt")' },
+    { label: 'feedback_responses idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_customer" ON "feedback_responses" ("customerId")' },
+    { label: 'feedback_responses idx score',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_biz_score" ON "feedback_responses" ("businessId","score")' },
+    { label: 'cohort_retention_snapshots table',
+      sql: `CREATE TABLE IF NOT EXISTS "cohort_retention_snapshots" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "cohortMonth" TEXT NOT NULL,
+        "cohortSize" INTEGER NOT NULL DEFAULT 0,
+        "retentionByOffset" JSONB NOT NULL DEFAULT '{}',
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE ("businessId", "cohortMonth")
+      )` },
+    { label: 'cohort_retention_snapshots idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "crs_biz_month" ON "cohort_retention_snapshots" ("businessId","cohortMonth")' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]
@@ -210,10 +301,15 @@ async function ensureSchemaPatches() {
 }
 
 async function bootstrap() {
-  // Log which critical secrets are present (values never logged) so the
-  // platform logs make missing-config obvious without crashing the boot.
+  // Fail fast on missing required secrets — an app running without these would
+  // silently accept any token (JWT_SECRET) or lose all data (DATABASE_URL).
   for (const k of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_URL']) {
-    console.log(`[app] env ${k}: ${process.env[k] ? 'set' : 'MISSING'}`);
+    if (!process.env[k]) throw new Error(`[app] FATAL: required env var ${k} is not set. Refusing to start.`);
+    console.log(`[app] env ${k}: set`);
+  }
+  // Warn (don't crash) for optional AI keys
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    console.warn('[app] WARNING: neither ANTHROPIC_API_KEY nor OPENAI_API_KEY is set — AI features will return 503.');
   }
 
   // Infrastructure init is best-effort. A Redis/DB hiccup must NOT prevent the
@@ -366,6 +462,10 @@ async function bootstrap() {
   await loadRouter('./controllers/website-cms-controller',    'websiteCmsRouter',      '/api/website');
   await loadRouter('./controllers/customer-portal-controller','customerPortalRouter',  '/api/portal');
   await loadRouter('./controllers/upload-controller',          'uploadRouter',          '/api/upload');
+  await loadRouter('./services/realtime-service',             'realtimeRouter',        '/api/realtime');
+  await loadRouter('./controllers/segments-controller',       'segmentsRouter',        '/api/segments');
+  await loadRouter('./controllers/integrations-controller',  'integrationsRouter',    '/api/integrations');
+  await loadRouter('./controllers/totp-controller',          'totpRouter',            '/api/totp');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');

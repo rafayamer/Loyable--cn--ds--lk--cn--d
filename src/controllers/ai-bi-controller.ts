@@ -36,10 +36,11 @@ import { Role }                      from '@prisma/client';
 // ================================================================
 
 interface QueryResult {
-  queryName: string;
-  data:      unknown;
-  count?:    number;
-  summary?:  string;
+  queryName:  string;
+  data:       unknown;
+  count?:     number;
+  summary?:   string;
+  chartType?: string;
 }
 
 const QUERY_LIBRARY: Record<
@@ -244,6 +245,110 @@ const QUERY_LIBRARY: Record<
       summary:   `Message queue breakdown for the last 7 days (${total} total messages).`,
     };
   },
+
+  getCampaignRoi: async (businessId, { days = 30 }) => {
+    const since = new Date(Date.now() - Number(days) * 86_400_000);
+    const campaigns = await (prisma as any).campaign.findMany({
+      where:  { businessId, status: 'COMPLETED', updatedAt: { gte: since } },
+      select: { id: true, name: true, audienceSize: true, discountValue: true, totalRevenue: true, deliveredCount: true, readCount: true },
+      take:   20,
+    }) as Array<{ id: string; name: string; audienceSize: number; discountValue: number | null; totalRevenue: number | null; deliveredCount: number | null; readCount: number | null }>;
+    const rows = campaigns.map(c => ({
+      name:           c.name,
+      audienceSize:   c.audienceSize ?? 0,
+      discountCost:   Number(c.discountValue ?? 0) * (c.audienceSize ?? 0),
+      revenueLifted:  Number(c.totalRevenue ?? 0),
+      roi:            c.totalRevenue && c.discountValue && c.audienceSize
+        ? Number(c.totalRevenue) / (Number(c.discountValue) * c.audienceSize) - 1
+        : null,
+      readRate:       c.deliveredCount ? ((c.readCount ?? 0) / c.deliveredCount * 100).toFixed(1) : null,
+    }));
+    const totalRev  = rows.reduce((s, r) => s + r.revenueLifted, 0);
+    const totalCost = rows.reduce((s, r) => s + r.discountCost, 0);
+    return {
+      queryName:  'getCampaignRoi',
+      data:       rows,
+      count:      rows.length,
+      chartType:  'table',
+      summary:    `Campaign ROI for last ${days} days: £${totalRev.toFixed(0)} revenue from £${totalCost.toFixed(0)} in discounts across ${rows.length} campaigns.`,
+    };
+  },
+
+  getWinBackRate: async (businessId, _) => {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+    const atRiskCustomers = await prisma.customer.findMany({
+      where:  { businessId, segment: { in: ['AT_RISK', 'LOST'] }, updatedAt: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } },
+      select: { id: true },
+    });
+    const atRiskIds = atRiskCustomers.map(c => c.id);
+    const retained  = atRiskIds.length > 0
+      ? await prisma.visit.groupBy({
+          by:    ['customerId'],
+          where: { businessId, customerId: { in: atRiskIds }, visitedAt: { gte: thirtyDaysAgo } },
+        })
+      : [];
+    const winBackRate = atRiskIds.length > 0
+      ? ((retained.length / atRiskIds.length) * 100).toFixed(1)
+      : null;
+    return {
+      queryName: 'getWinBackRate',
+      chartType: 'number',
+      data:      { atRiskCount: atRiskIds.length, retainedCount: retained.length, winBackRate },
+      summary:   `Win-back rate: ${winBackRate ?? 'N/A'}% — ${retained.length} of ${atRiskIds.length} AT_RISK/LOST customers returned in the last 30 days.`,
+    };
+  },
+
+  getCohortRetention: async (businessId, _) => {
+    const rows = await (prisma as any).$queryRawUnsafe(`
+      SELECT "cohortMonth", "cohortSize", "retentionByOffset"
+      FROM cohort_retention_snapshots
+      WHERE "businessId" = $1
+      ORDER BY "cohortMonth" DESC
+      LIMIT 12
+    `, businessId) as Array<{ cohortMonth: string; cohortSize: number; retentionByOffset: Record<string, number> }>;
+
+    const heatmap = rows.map(r => ({
+      cohortMonth: r.cohortMonth,
+      cohortSize:  r.cohortSize,
+      retention:   Object.fromEntries(
+        Object.entries(r.retentionByOffset).map(([k, v]) => [
+          `M${k}`,
+          r.cohortSize > 0 ? Math.round((v / r.cohortSize) * 100) : 0,
+        ])
+      ),
+    }));
+
+    return {
+      queryName: 'getCohortRetention',
+      chartType: 'table',
+      data:      heatmap,
+      count:     heatmap.length,
+      summary:   `Cohort retention across ${heatmap.length} monthly cohorts. ${heatmap[0] ? `Most recent cohort (${heatmap[0].cohortMonth}): ${heatmap[0].cohortSize} customers, M1 retention: ${heatmap[0].retention['M1'] ?? 'N/A'}%.` : 'No cohort data yet — run nightly cron or add visit data.'}`,
+    };
+  },
+
+  getPointsLiability: async (businessId, _) => {
+    const biz = await prisma.business.findUnique({
+      where:  { id: businessId },
+      select: { pointsPerPound: true },
+    });
+    const result = await prisma.customer.aggregate({
+      where:  { businessId, isActive: true },
+      _sum:   { currentPointsBalance: true },
+      _count: { id: true },
+    });
+    const totalPoints         = Number(result._sum.currentPointsBalance ?? 0);
+    const pointsPerPound      = Number(biz?.pointsPerPound ?? 1);
+    const redemptionRateGuess = 0.3; // 30% industry average
+    const cashExposure        = pointsPerPound > 0 ? (totalPoints / pointsPerPound) * redemptionRateGuess : 0;
+    return {
+      queryName: 'getPointsLiability',
+      chartType: 'number',
+      data:      { totalOutstandingPoints: totalPoints, estimatedCashExposure: cashExposure.toFixed(0), activeCustomers: result._count.id, pointsPerPound },
+      summary:   `Points liability: ${totalPoints.toLocaleString()} outstanding points across ${result._count.id} customers. Estimated cash exposure at 30% redemption: £${cashExposure.toFixed(0)}.`,
+    };
+  },
 };
 
 // ================================================================
@@ -261,6 +366,10 @@ const QUERY_MANIFEST = [
   { name: 'getChurnRiskCustomers',  description: 'Customers at risk of churning or already lost', params: [] },
   { name: 'getLoyaltyStats',        description: 'Loyalty tier distribution and top points earners', params: [] },
   { name: 'getMessageQueueHealth',  description: 'Message queue delivery rates and failure analysis', params: [] },
+  { name: 'getCampaignRoi',         description: 'Campaign ROI: revenue attributed vs discount cost', params: ['days: number (default 30)'] },
+  { name: 'getWinBackRate',         description: 'What percentage of AT_RISK/LOST customers were retained in the last 30 days', params: [] },
+  { name: 'getPointsLiability',     description: 'Total outstanding loyalty points and estimated cash exposure', params: [] },
+  { name: 'getCohortRetention',     description: 'Cohort retention heatmap: % of each monthly cohort still active over time', params: [] },
 ];
 
 // ================================================================
@@ -417,64 +526,73 @@ export const processNaturalLanguageQuery = async (
   question:   string,
   businessId: string
 ): Promise<AIQueryResult> => {
-  // Load full business context once — shared across both LLM passes
+  // Load full business context once
   const bizContext = await loadBusinessContext(businessId);
+  const bizName = bizContext.match(/\*\*Name\*\*: (.+)/)?.[1] ?? 'this business';
 
-  // ── PASS 1: Intent Classification ────────────────────────────
-  const classificationResponse = await callLLM([
-    {
-      role:    'system',
-      content: `You are a query classifier for Loyable, a WhatsApp-first customer retention CRM.
-Given a business owner's question, identify which query function to run.
-Return ONLY a valid JSON object: { "queryName": string, "parameters": object }
-Valid query names and their parameters:
-${QUERY_MANIFEST.map(q => `- ${q.name}(${q.params.join(', ')}): ${q.description}`).join('\n')}
-If no query fits, use "getSegmentBreakdown" with no parameters.
-ONLY return JSON. No explanation.`,
-    },
-    { role: 'user', content: question },
-  ], 200);
-
-  let queryName  = 'getSegmentBreakdown';
-  let parameters: Record<string, unknown> = {};
-
-  try {
-    const cleaned = classificationResponse.replace(/```json|```/g, '').trim();
-    const parsed  = JSON.parse(cleaned) as { queryName: string; parameters: Record<string, unknown> };
-    if (parsed.queryName && QUERY_LIBRARY[parsed.queryName]) {
-      queryName  = parsed.queryName;
-      parameters = parsed.parameters ?? {};
-    }
-  } catch {
-    console.warn('[ai.bi] Intent classification parse failed, using fallback.');
-  }
-
-  // ── Execute Query (businessId ALWAYS injected here, not by LLM) ─
-  const queryFn  = QUERY_LIBRARY[queryName];
-  const rawData  = await queryFn(businessId, parameters);
-
-  // ── PASS 2: Insight Generation ────────────────────────────────
-  const insightResponse = await callLLM([
+  // ── SINGLE-PASS: Classify intent + generate insight in one call ─
+  const singlePassResponse = await callLLM([
     {
       role:    'system',
       content: `${bizContext}
 
 ## YOUR ROLE
-You are the AI retention advisor for ${bizContext.match(/\*\*Name\*\*: (.+)/)?.[1] ?? 'this business'} inside Loyable.
-Your job: give the business owner a clear, personalised, actionable insight based on their real data.
+You are the AI retention advisor for ${bizName} inside Loyable, a WhatsApp-first customer retention CRM.
 
-Rules:
-- Write 3-4 sentences max. Be specific — use the actual numbers.
-- Always end with ONE concrete action they can take TODAY inside Loyable (e.g. "Launch a Win-Back campaign targeting your AT_RISK segment", "Set up a Birthday automation", "Create a VIP reward campaign").
-- Frame Loyable as their long-term retention partner, not a one-off tool.
-- Speak directly to the owner — warm, confident, data-driven. No jargon.
-- Never mention SQL, APIs, code, or technology internals.`,
+## TASK
+Given the owner's question, do TWO things in ONE response:
+1. Identify which query to run (queryName + parameters)
+2. After seeing the data summary placeholder, write the insight narrative
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "queryName": string,
+  "parameters": object,
+  "chartType": "bar" | "line" | "pie" | "table" | "number"
+}
+
+Valid query names:
+${QUERY_MANIFEST.map(q => `- ${q.name}(${q.params.join(', ')}): ${q.description}`).join('\n')}
+
+If no query fits, use "getSegmentBreakdown" with {}.`,
+    },
+    { role: 'user', content: question },
+  ], 300);
+
+  let queryName  = 'getSegmentBreakdown';
+  let parameters: Record<string, unknown> = {};
+  let suggestedChartType: string | undefined;
+
+  try {
+    const cleaned = singlePassResponse.replace(/```json|```/g, '').trim();
+    const parsed  = JSON.parse(cleaned) as { queryName: string; parameters: Record<string, unknown>; chartType?: string };
+    if (parsed.queryName && QUERY_LIBRARY[parsed.queryName]) {
+      queryName         = parsed.queryName;
+      parameters        = parsed.parameters ?? {};
+      suggestedChartType = parsed.chartType;
+    }
+  } catch {
+    console.warn('[ai.bi] Single-pass classification parse failed, using fallback.');
+  }
+
+  // ── Execute Query (businessId ALWAYS injected here, not by LLM) ─
+  const queryFn = QUERY_LIBRARY[queryName];
+  const rawData = await queryFn(businessId, parameters);
+
+  // ── Insight generation (second focused call on query results) ──
+  const insightResponse = await callLLM([
+    {
+      role:    'system',
+      content: `You are the AI retention advisor for ${bizName} inside Loyable.
+Write 3-4 sentences max. Be specific — use actual numbers.
+End with ONE action they can take TODAY inside Loyable.
+Speak directly to the owner — warm, confident, data-driven. No jargon. No mention of SQL/APIs/code.`,
     },
     {
       role:    'user',
       content: `Question: "${question}"\nData summary: ${rawData.summary}\nFull data: ${JSON.stringify(rawData.data).substring(0, 2000)}`,
     },
-  ], 500);
+  ], 400);
 
   // Determine if we can suggest a quick action
   const actionMap: Record<string, { label: string; path: string }> = {
@@ -491,7 +609,7 @@ Rules:
     question,
     queryExecuted: queryName,
     parameters,
-    rawData,
+    rawData:      { ...rawData, chartType: (rawData.chartType ?? suggestedChartType) as string | undefined },
     insight:      insightResponse,
     actionLabel:  action?.label,
     actionPath:   action?.path,
@@ -626,6 +744,127 @@ aiBiRouter.post(
     } catch (err) {
       console.error('[ai] generate-message error:', err);
       res.status(502).json({ error: 'AI_SERVICE_ERROR', message: (err as Error).message });
+    }
+  }
+);
+
+// ================================================================
+// COHORT RETENTION ANALYSIS  GET /ai/cohort-retention
+// ================================================================
+
+aiBiRouter.get(
+  '/cohort-retention',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { businessId } = req.tenantContext;
+      const months = Math.min(12, Math.max(3, parseInt(req.query.months as string || '6', 10)));
+      const cohorts = await computeCohortRetention(businessId, months);
+      res.json({ cohorts, months });
+    } catch (err) {
+      console.error('[ai:cohort-retention]', err);
+      res.status(500).json({ error: 'COHORT_ERROR' });
+    }
+  }
+);
+
+/**
+ * Groups customers by signup month (up to `months` cohorts), then for each
+ * cohort counts what % returned in Month+1, Month+3, Month+6.
+ * Returns rows: [{ cohort: "2024-11", size: 42, m1: 71, m3: 52, m6: 38 }, ...]
+ */
+const computeCohortRetention = async (businessId: string, numMonths: number) => {
+  const now   = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - numMonths, 1));
+
+  // All customers in window grouped by signup month
+  const customers = await prisma.customer.findMany({
+    where:   { businessId, isActive: true, createdAt: { gte: start } },
+    select:  { id: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (customers.length === 0) return [];
+
+  // Group by YYYY-MM
+  const cohortMap = new Map<string, string[]>();
+  for (const c of customers) {
+    const key = `${c.createdAt.getUTCFullYear()}-${String(c.createdAt.getUTCMonth() + 1).padStart(2, '0')}`;
+    if (!cohortMap.has(key)) cohortMap.set(key, []);
+    cohortMap.get(key)!.push(c.id);
+  }
+
+  const results = [];
+  for (const [cohort, ids] of cohortMap) {
+    const [year, month] = cohort.split('-').map(Number);
+    const cohortStart = new Date(Date.UTC(year, month - 1, 1));
+
+    const retentionForWindow = async (offsetMonths: number): Promise<number> => {
+      const winStart = new Date(Date.UTC(year, month - 1 + offsetMonths, 1));
+      const winEnd   = new Date(Date.UTC(year, month - 1 + offsetMonths + 1, 1));
+      if (winEnd > now) return -1; // data not yet available
+      const returned = await prisma.visit.groupBy({
+        by:    ['customerId'],
+        where: { businessId, customerId: { in: ids }, visitedAt: { gte: winStart, lt: winEnd } },
+        _count: { customerId: true },
+      });
+      return Math.round(returned.length / ids.length * 100);
+    };
+
+    const [m1, m3, m6] = await Promise.all([
+      retentionForWindow(1),
+      retentionForWindow(3),
+      retentionForWindow(6),
+    ]);
+
+    results.push({ cohort, size: ids.length, m1, m3, m6 });
+  }
+
+  return results.sort((a, b) => a.cohort.localeCompare(b.cohort));
+};
+
+/** GET /ai/nps-stats — NPS score trend + response rate for the business */
+aiBiRouter.get(
+  '/nps-stats',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { businessId } = req.tenantContext;
+      const days = Math.min(365, Math.max(7, parseInt(req.query.days as string || '30', 10)));
+      const since = new Date(Date.now() - days * 86_400_000);
+
+      const [all, responded] = await Promise.all([
+        (prisma as any).feedbackResponse.count({ where: { businessId, sentAt: { gte: since } } }),
+        (prisma as any).feedbackResponse.count({ where: { businessId, sentAt: { gte: since }, score: { gt: 0 } } }),
+      ]);
+
+      const responses: Array<{ score: number; createdAt: Date }> = await (prisma as any).feedbackResponse.findMany({
+        where:   { businessId, sentAt: { gte: since }, score: { gt: 0 } },
+        select:  { score: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const promoters  = responses.filter(r => r.score >= 4).length;
+      const detractors = responses.filter(r => r.score <= 2).length;
+      const nps = responded > 0 ? Math.round(((promoters - detractors) / responded) * 100) : null;
+
+      // Weekly buckets for trend chart
+      const weekBuckets: Record<string, { total: number; sum: number }> = {};
+      for (const r of responses) {
+        const wk = r.createdAt.toISOString().slice(0, 10).replace(/\d$/, '0').replace(/-\d$/, '-0');
+        const key = r.createdAt.toISOString().slice(0, 7);
+        if (!weekBuckets[key]) weekBuckets[key] = { total: 0, sum: 0 };
+        weekBuckets[key].total++;
+        weekBuckets[key].sum += r.score;
+      }
+      const trend = Object.entries(weekBuckets).map(([month, { total, sum }]) => ({
+        month, avg: total > 0 ? +(sum / total).toFixed(2) : 0, count: total,
+      })).sort((a, b) => a.month.localeCompare(b.month));
+
+      res.json({ nps, responseRate: all > 0 ? Math.round((responded / all) * 100) : 0, sent: all, responded, promoters, detractors, trend });
+    } catch (err) {
+      console.error('[ai:nps-stats]', err);
+      res.status(500).json({ error: 'NPS_ERROR' });
     }
   }
 );
