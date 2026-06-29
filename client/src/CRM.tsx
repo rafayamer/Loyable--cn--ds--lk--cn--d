@@ -2304,6 +2304,8 @@ const CampaignBuilderPage=({onBack}:any)=>{
   const [aiPrompt,setAiPrompt]=useState("");
   const [aiLoading,setAiLoading]=useState(false);
   const [showExtras,setShowExtras]=useState(false);
+  const [abEnabled,setAbEnabled]=useState(false);
+  const [msgTextB,setMsgTextB]=useState(`Hey {name}! 🎉 Exclusive offer just for you at ${bizName}. Don't miss out!`);
 
   const previewText=msgText.replace(/\{name\}/g,"Sarah").replace(/\{biz\}/g,bizName);
   const charCount=msgText.length;
@@ -2323,12 +2325,18 @@ const CampaignBuilderPage=({onBack}:any)=>{
     return {blocks:blk};
   };
 
+  const buildAbVariants=()=>[
+    {id:"A",label:"Variant A",weight:50,layoutJson:buildLayout()},
+    {id:"B",label:"Variant B",weight:50,layoutJson:{blocks:[{id:"txt1",type:"TEXT",order:0,content:msgTextB||"Hello {name}!"}]}},
+  ];
+
   const save=async(launch:boolean)=>{
     if(!cName.trim()){setSaveMsg({ok:false,text:"Please give your campaign a name."});return;}
     if(!msgText.trim()){setSaveMsg({ok:false,text:"Please write your message."});return;}
     setSaving(launch?"launch":"draft");setSaveMsg(null);
     try{
       const body:any={name:cName.trim(),targetSegment:cSegment,channel:cChannel,layoutJson:buildLayout()};
+      if(abEnabled)body.abVariants=buildAbVariants();
       if(cSchedule)body.scheduledFor=new Date(cSchedule).toISOString();
       const created=await api.campaigns.create(body);
       const id=created?.id;
@@ -2406,6 +2414,25 @@ const CampaignBuilderPage=({onBack}:any)=>{
               <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAI()} placeholder='e.g. "20% off this weekend only"' className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
               <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Writing…":"Generate"}</button>
             </div>
+          </div>
+
+          {/* A/B Test toggle */}
+          <div className="gc rounded-xl p-4" style={CARD}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat size={13} className="text-violet-400"/>
+                <span className="text-xs font-semibold text-slate-300">A/B Test</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(139,92,246,0.1)",color:"#a78bfa"}}>Split 50/50</span>
+              </div>
+              <button onClick={()=>setAbEnabled(p=>!p)} className={`w-9 h-5 rounded-full transition-all relative ${abEnabled?"bg-violet-600":"bg-white/10"}`}>
+                <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${abEnabled?"left-5":"left-0.5"}`}/>
+              </button>
+            </div>
+            {abEnabled&&<div className="mt-3 space-y-2 pt-3 border-t border-white/5">
+              <p className="text-[11px] text-slate-400">Variant A uses the message above. Write Variant B below — we'll split your audience 50/50 and pick the winner after 24h.</p>
+              <label className="text-xs text-slate-400 block">Variant B Message</label>
+              <textarea value={msgTextB} onChange={e=>setMsgTextB(e.target.value)} rows={4} placeholder="Alternative message for Variant B…" className="w-full px-3 py-2 rounded-xl text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.25)"}}/>
+            </div>}
           </div>
 
           {/* Optional extras */}
@@ -4703,6 +4730,25 @@ const SettingsPage=({wa,onConnect}:any)=>{
 // ════════════════════════════════════════════════════════════════
 // CAMPAIGNS LIST
 // ════════════════════════════════════════════════════════════════
+const AbStatsBar=({campaignId,winnerId}:{campaignId:string;winnerId?:string|null})=>{
+  const [ab,setAb]=useState<any>(null);
+  useEffect(()=>{api.campaigns.abStats(campaignId).then(setAb).catch(()=>{});},[campaignId]);
+  if(!ab?.isAbTest||!ab.variants?.length)return null;
+  return(
+    <div className="rounded-xl p-3 space-y-2" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-300"><Repeat size={11}/>A/B Test Results{ab.winner&&<span className="ml-1 px-1.5 py-0.5 rounded text-[10px]" style={{background:"rgba(34,197,94,0.15)",color:"#4ade80"}}>Winner: Variant {ab.winner}</span>}</div>
+      {ab.variants.map((v:any)=>(
+        <div key={v.id} className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-slate-300 w-6">{v.id}</span>
+          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${v.stats?.readRate??0}%`,background:ab.winner===v.id?"#22c55e":"#8b5cf6"}}/></div>
+          <span className="text-[11px] text-slate-400 w-10 text-right">{v.stats?.readRate??0}% read</span>
+          <span className="text-[11px] text-slate-500 w-12 text-right">{v.stats?.sent??0} sent</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const ct=useCard();
   const [campaigns,setCampaigns]=useState<any[]>([]);
@@ -4774,7 +4820,10 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
               {(c.status==="DRAFT"||c.status==="APPROVED")&&<button onClick={()=>launch(c.id)} disabled={launching===c.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{launching===c.id?<RefreshCw size={11} className="animate-spin"/>:<Play size={11}/>}Launch</button>}
             </div>
           </div>
-          {(c.stats?.sent>0||c.stats?.delivered>0)&&<div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/5">{[{l:"Sent",v:c.stats?.sent??0,col:"#3b82f6"},{l:"Delivered",v:c.stats?.delivered??0,col:"#22c55e"},{l:"Read",v:c.stats?.read??0,col:"#06b6d4"},{l:"Failed",v:c.stats?.failed??0,col:"#ef4444"}].map((s,i)=><div key={i} className="text-center"><div className="text-sm font-bold" style={{color:s.col}}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}</div>}
+          {(c.stats?.sent>0||c.stats?.delivered>0)&&<div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+            <div className="grid grid-cols-4 gap-2">{[{l:"Sent",v:c.stats?.sent??0,col:"#3b82f6"},{l:"Delivered",v:c.stats?.delivered??0,col:"#22c55e"},{l:"Read",v:c.stats?.read??0,col:"#06b6d4"},{l:"Failed",v:c.stats?.failed??0,col:"#ef4444"}].map((s,i)=><div key={i} className="text-center"><div className="text-sm font-bold" style={{color:s.col}}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}</div>
+            {c.abVariants&&c.abVariants.length>1&&<AbStatsBar campaignId={c.id} winnerId={c.abWinnerId}/>}
+          </div>}
         </div>
       ))}</div>}
     </div>

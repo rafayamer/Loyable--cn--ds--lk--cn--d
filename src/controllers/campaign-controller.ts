@@ -22,6 +22,7 @@ import {
   listCampaigns,
   getCampaignById,
   getCampaignStats,
+  getCampaignAbStats,
   launchCampaign,
   scheduleCampaign,
   pauseCampaign,
@@ -199,6 +200,14 @@ const statsHandler = async (req: Request, res: Response): Promise<void> => {
   } catch (err) { handleCampaignError(err, res); }
 };
 
+/** GET /api/campaigns/:id/ab-stats */
+const abStatsHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await getCampaignAbStats(req.params.id, req.tenantContext.businessId);
+    res.status(200).json(result);
+  } catch (err) { handleCampaignError(err, res); }
+};
+
 /** PUT /api/campaigns/:id */
 const updateHandler = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -316,6 +325,12 @@ campaignRouter.get(
   '/:id/stats',
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
   statsHandler
+);
+
+campaignRouter.get(
+  '/:id/ab-stats',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  abStatsHandler
 );
 
 campaignRouter.put(

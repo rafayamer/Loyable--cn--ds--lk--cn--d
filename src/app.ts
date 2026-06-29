@@ -194,6 +194,15 @@ async function ensureSchemaPatches() {
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "customer_badges_customerId_name_key" ON "customer_badges" ("customerId","name")' },
     { label: 'customer_badges idx customer',
       sql: 'CREATE INDEX IF NOT EXISTS "customer_badges_businessId_customerId_idx" ON "customer_badges" ("businessId","customerId")' },
+    // ── A/B Campaign Testing ──
+    { label: 'campaigns.abVariants',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abVariants" JSONB' },
+    { label: 'campaigns.abWinnerId',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abWinnerId" TEXT' },
+    { label: 'campaigns.abTestStartedAt',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "abTestStartedAt" TIMESTAMP(3)' },
+    { label: 'message_queue.abVariantId',
+      sql: 'ALTER TABLE "message_queue" ADD COLUMN IF NOT EXISTS "abVariantId" TEXT' },
     // ── Churn Risk Score (ML-lite nightly scoring) ──
     { label: 'customers.churnRiskScore',
       sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScore" INTEGER NOT NULL DEFAULT 0' },

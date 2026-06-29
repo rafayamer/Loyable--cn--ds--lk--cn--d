@@ -233,8 +233,9 @@ export const api = {
     create: (body: any)  => post<any>('/campaigns', body),
     update: (id: string, body: any) => put<any>(`/campaigns/${id}`, body),
     launch: (id: string) => post<any>(`/campaigns/${id}/launch`),
-    clone:  (id: string) => post<any>(`/campaigns/${id}/clone`),
-    pause:  (id: string) => post<any>(`/campaigns/${id}/pause`),
+    clone:   (id: string) => post<any>(`/campaigns/${id}/clone`),
+    abStats: (id: string) => get<any>(`/campaigns/${id}/ab-stats`),
+    pause:   (id: string) => post<any>(`/campaigns/${id}/pause`),
     schedule:(id: string, body: any) => post<any>(`/campaigns/${id}/schedule`, body),
   },
 

@@ -829,6 +829,7 @@ model MessageQueue {
   branchLocationId String?
   customerId       String
   campaignId       String?
+  abVariantId      String?           // "A" | "B" | etc. — which A/B variant was sent
   automationRunId  String?
 
   channel          MessageChannel
@@ -895,6 +896,14 @@ model Campaign {
   // DRAFT | SCHEDULED | ACTIVE | PAUSED | COMPLETED | FAILED
 
   scheduledFor     DateTime?
+
+  // A/B Testing: optional variant array stored as JSONB
+  // Shape: [{ id: "A", label: "Variant A", weight: 50, layoutJson: {...} }, ...]
+  // When null or empty, campaign runs as a single variant (existing behaviour).
+  abVariants       Json?
+  // Winner variant id once auto-selected after 24h; null until decided
+  abWinnerId       String?
+  abTestStartedAt  DateTime?
 
   // Analytics counters (denormalized from MessageQueue)
   sentCount        Int              @default(0)

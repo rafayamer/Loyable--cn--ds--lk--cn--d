@@ -21,6 +21,7 @@
 //  For WAHA: always freeform text/image.
 // ================================================================
 
+import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { useBaileys } from '../config/whatsapp-provider';
@@ -34,6 +35,29 @@ import {
   TemplatePayload,
   MessagePayload,
 } from '../services/messaging-queue';
+
+// ================================================================
+// A/B TESTING TYPES
+// ================================================================
+
+export interface AbVariant {
+  id:         string;           // "A" | "B" | "C" (short label)
+  label:      string;           // Display name
+  weight:     number;           // 0-100; all weights must sum to 100
+  layoutJson: CampaignLayout;
+}
+
+/** Deterministic variant assignment: hash(customerId + campaignId) mod 100 → bucket */
+const assignVariant = (customerId: string, campaignId: string, variants: AbVariant[]): AbVariant => {
+  const hash  = crypto.createHash('sha256').update(`${customerId}:${campaignId}`).digest('hex');
+  const bucket = parseInt(hash.substring(0, 8), 16) % 100;
+  let cumulative = 0;
+  for (const v of variants) {
+    cumulative += v.weight;
+    if (bucket < cumulative) return v;
+  }
+  return variants[variants.length - 1];
+};
 
 
 // ================================================================
@@ -76,6 +100,7 @@ export interface CreateCampaignInput {
   templateName?:   string;   // If set, Meta template is used instead of freeform
   channel?:        string;
   scheduledFor?:   Date;
+  abVariants?:     AbVariant[];  // Optional A/B test variants; overrides layoutJson when present
 }
 
 /** "ALL" / "Everyone" is not a CustomerSegment enum value — store as null (= all customers). */
@@ -90,6 +115,11 @@ export const createCampaign = async (
 ) => {
   validateLayout(input.layoutJson);
 
+  if (input.abVariants && input.abVariants.length > 1) {
+    const totalWeight = input.abVariants.reduce((s, v) => s + v.weight, 0);
+    if (Math.abs(totalWeight - 100) > 1) throw new Error('AB_VARIANT_WEIGHTS_MUST_SUM_TO_100');
+  }
+
   return prisma.campaign.create({
     data: {
       businessId,
@@ -97,10 +127,11 @@ export const createCampaign = async (
       description:    input.description,
       targetSegment:  normaliseSegment(input.targetSegment),
       layoutJson:     input.layoutJson as unknown as Prisma.InputJsonValue,
+      abVariants:     input.abVariants ? input.abVariants as unknown as Prisma.InputJsonValue : undefined,
       channel:        (input.channel as any) ?? 'WHATSAPP_WAHA',
       status:         'DRAFT',
       scheduledFor:   input.scheduledFor,
-    },
+    } as any,
   });
 };
 
@@ -150,6 +181,67 @@ export const getCampaignById = async (id: string, businessId: string) => {
   const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
   if (!campaign) throw new Error('CAMPAIGN_NOT_FOUND');
   return campaign;
+};
+
+/** Per-variant stats for A/B test campaigns */
+export const getCampaignAbStats = async (id: string, businessId: string) => {
+  const campaign = await (prisma as any).campaign.findFirst({
+    where:  { id, businessId },
+    select: { abVariants: true, abWinnerId: true, abTestStartedAt: true, status: true },
+  });
+  if (!campaign) throw new Error('CAMPAIGN_NOT_FOUND');
+
+  const abVariants = (campaign as any).abVariants as AbVariant[] | null;
+  if (!Array.isArray(abVariants) || abVariants.length < 2) {
+    return { isAbTest: false, variants: [], winner: null };
+  }
+
+  // Group message_queue rows by abVariantId
+  const rows = await (prisma as any).messageQueue.groupBy({
+    by:    ['abVariantId', 'status'],
+    where: { campaignId: id, businessId },
+    _count: { id: true },
+  });
+
+  const variantStats: Record<string, { sent: number; delivered: number; read: number; readRate: number }> = {};
+  for (const v of abVariants) {
+    variantStats[v.id] = { sent: 0, delivered: 0, read: 0, readRate: 0 };
+  }
+  for (const row of rows) {
+    const vId = row.abVariantId as string;
+    if (!variantStats[vId]) variantStats[vId] = { sent: 0, delivered: 0, read: 0, readRate: 0 };
+    const s = row.status as string;
+    const n = row._count.id as number;
+    if (['SENT','DELIVERED','READ'].includes(s)) variantStats[vId].sent += n;
+    if (s === 'DELIVERED') variantStats[vId].delivered += n;
+    if (s === 'READ')      variantStats[vId].read += n;
+  }
+
+  for (const v of Object.values(variantStats)) {
+    v.readRate = v.sent > 0 ? Math.round(v.read / v.sent * 100) : 0;
+  }
+
+  // Auto-pick winner after 24h by highest read rate
+  let winner = (campaign as any).abWinnerId as string | null;
+  if (!winner && campaign.abTestStartedAt) {
+    const ageHours = (Date.now() - new Date((campaign as any).abTestStartedAt).getTime()) / 3_600_000;
+    if (ageHours >= 24) {
+      const best = abVariants.reduce((a, b) =>
+        (variantStats[a.id]?.readRate ?? 0) >= (variantStats[b.id]?.readRate ?? 0) ? a : b
+      );
+      winner = best.id;
+      await (prisma as any).campaign.update({
+        where: { id },
+        data:  { abWinnerId: winner, updatedAt: new Date() },
+      });
+    }
+  }
+
+  return {
+    isAbTest: true,
+    winner,
+    variants: abVariants.map(v => ({ ...v, stats: variantStats[v.id] ?? { sent: 0, delivered: 0, read: 0, readRate: 0 } })),
+  };
 };
 
 export const getCampaignStats = async (id: string, businessId: string) => {
@@ -204,15 +296,18 @@ export const launchCampaign = async (
   id:         string,
   businessId: string
 ): Promise<{ queued: number; skipped: number }> => {
-  const campaign = await prisma.campaign.findFirst({
+  const campaign = await (prisma as any).campaign.findFirst({
     where:  { id, businessId },
-    select: { status: true, targetSegment: true, layoutJson: true, channel: true },
+    select: { status: true, targetSegment: true, layoutJson: true, channel: true, abVariants: true },
   });
 
   if (!campaign)                          throw new Error('CAMPAIGN_NOT_FOUND');
   if (campaign.status === 'ACTIVE')       throw new Error('CAMPAIGN_ALREADY_LAUNCHED');
   if (campaign.status === 'COMPLETED')    throw new Error('CAMPAIGN_ALREADY_COMPLETED');
-  if (!campaign.layoutJson)               throw new Error('CAMPAIGN_HAS_NO_LAYOUT');
+  if (!campaign.layoutJson && !(campaign as any).abVariants) throw new Error('CAMPAIGN_HAS_NO_LAYOUT');
+
+  const abVariants = (campaign as any).abVariants as AbVariant[] | null;
+  const isAbTest   = Array.isArray(abVariants) && abVariants.length > 1;
 
   const business = await prisma.business.findUnique({
     where:  { id: businessId },
@@ -234,6 +329,7 @@ export const launchCampaign = async (
 
   const layout   = campaign.layoutJson as unknown as CampaignLayout;
   // Provider: global env var wins; otherwise fall back to DB config
+  // (abVariants override layout per-customer below)
   const globalBaileys = useBaileys();
   const hasWaha  = !globalBaileys && !!(business?.wahaBaseUrl && business?.wahaSessionId);
   const provider = (globalBaileys ? 'WAHA' : (hasWaha ? 'WAHA' : (business?.messagingProvider ?? 'WAHA'))) as any;
@@ -248,19 +344,23 @@ export const launchCampaign = async (
   for (const customer of customers) {
     if (!customer.whatsappNumber) { skipped++; continue; }
 
-    const payload = buildMessagePayloadFromLayout(layout, customer, business?.name ?? '', provider);
+    // A/B: pick variant deterministically by customer+campaign hash
+    const variant    = isAbTest ? assignVariant(customer.id, id, abVariants!) : null;
+    const activeLayout = variant ? variant.layoutJson : layout;
+    const payload    = buildMessagePayloadFromLayout(activeLayout, customer, business?.name ?? '', provider);
 
     records.push({
       businessId,
       customerId:    customer.id,
       campaignId:    id,
+      abVariantId:   variant?.id ?? null,
       channel,
       provider,
       status:        'PENDING',
       payloadJson:   payload as unknown as Prisma.InputJsonValue,
       isPromotional: true,
       scheduledFor:  new Date(),
-    });
+    } as any);
   }
 
   if (records.length === 0) {
@@ -318,7 +418,12 @@ export const launchCampaign = async (
   // Mark campaign ACTIVE
   await prisma.campaign.update({
     where: { id },
-    data:  { status: 'ACTIVE', sentCount: jobs.length, updatedAt: new Date() },
+    data:  {
+      status:           'ACTIVE',
+      sentCount:        jobs.length,
+      abTestStartedAt:  isAbTest ? new Date() : undefined,
+      updatedAt:        new Date(),
+    } as any,
   });
 
   return { queued: jobs.length, skipped };
