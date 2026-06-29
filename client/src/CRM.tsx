@@ -4083,6 +4083,40 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
 // ════════════════════════════════════════════════════════════════
 // ANALYTICS
 // ════════════════════════════════════════════════════════════════
+const NpsPanel=()=>{
+  const ct=useCard();
+  const [data,setData]=useState<any>(null);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{api.ai.npsStats(30).then(setData).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const nps=data?.nps;
+  const npsColor=nps==null?"#6b7280":nps>=50?"#4ade80":nps>=0?"#fbbf24":"#f87171";
+  return(
+    <div className="gc rounded-xl p-4" style={CARD}>
+      <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3"><Star size={14} style={{color:"#fbbf24"}}/>NPS &amp; Feedback (30 days)</h3>
+      {loading?<Skeleton h="h-20"/>:(
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(255,255,255,0.04)"}}>
+            <div className="text-2xl font-bold" style={{color:npsColor}}>{nps!=null?nps:"—"}</div>
+            <div className="text-[10px] text-slate-400 mt-1">NPS Score</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(255,255,255,0.04)"}}>
+            <div className="text-2xl font-bold text-white">{data?.responseRate??0}%</div>
+            <div className="text-[10px] text-slate-400 mt-1">Response Rate</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(34,197,94,0.08)"}}>
+            <div className="text-2xl font-bold text-green-400">{data?.promoters??0}</div>
+            <div className="text-[10px] text-slate-400 mt-1">Promoters (4-5★)</div>
+          </div>
+          <div className="rounded-lg p-3 text-center" style={{background:"rgba(239,68,68,0.08)"}}>
+            <div className="text-2xl font-bold text-red-400">{data?.detractors??0}</div>
+            <div className="text-[10px] text-slate-400 mt-1">Detractors (1-2★)</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CohortHeatmap=()=>{
   const [cohorts,setCohorts]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
@@ -4172,6 +4206,7 @@ const AnalyticsPage=()=>{
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
       <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#8b5cf6" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
     </div>
+    <NpsPanel/>
     <div className="gc rounded-xl p-4" style={CARD}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Activity size={14} style={{color:C.accent}}/>Cohort Retention Heatmap</h3>

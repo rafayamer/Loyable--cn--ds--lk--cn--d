@@ -214,6 +214,25 @@ async function ensureSchemaPatches() {
     // ── Per-tenant timezone support ──
     { label: 'businesses.timezone',
       sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
+    // ── NPS / Feedback system ──
+    { label: 'feedback_responses table',
+      sql: `CREATE TABLE IF NOT EXISTS "feedback_responses" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "businessId" TEXT NOT NULL,
+        "customerId" TEXT NOT NULL,
+        "visitId" TEXT,
+        "score" INTEGER NOT NULL,
+        "comment" TEXT,
+        "channel" TEXT NOT NULL DEFAULT 'WHATSAPP',
+        "sentAt" TIMESTAMP(3) NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { label: 'feedback_responses idx biz',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_biz_created" ON "feedback_responses" ("businessId","createdAt")' },
+    { label: 'feedback_responses idx customer',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_customer" ON "feedback_responses" ("customerId")' },
+    { label: 'feedback_responses idx score',
+      sql: 'CREATE INDEX IF NOT EXISTS "fr_biz_score" ON "feedback_responses" ("businessId","score")' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]

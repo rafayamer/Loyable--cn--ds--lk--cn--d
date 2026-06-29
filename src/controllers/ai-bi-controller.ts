@@ -705,6 +705,52 @@ const computeCohortRetention = async (businessId: string, numMonths: number) => 
   return results.sort((a, b) => a.cohort.localeCompare(b.cohort));
 };
 
+/** GET /ai/nps-stats — NPS score trend + response rate for the business */
+aiBiRouter.get(
+  '/nps-stats',
+  requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF) as any,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { businessId } = req.tenantContext;
+      const days = Math.min(365, Math.max(7, parseInt(req.query.days as string || '30', 10)));
+      const since = new Date(Date.now() - days * 86_400_000);
+
+      const [all, responded] = await Promise.all([
+        (prisma as any).feedbackResponse.count({ where: { businessId, sentAt: { gte: since } } }),
+        (prisma as any).feedbackResponse.count({ where: { businessId, sentAt: { gte: since }, score: { gt: 0 } } }),
+      ]);
+
+      const responses: Array<{ score: number; createdAt: Date }> = await (prisma as any).feedbackResponse.findMany({
+        where:   { businessId, sentAt: { gte: since }, score: { gt: 0 } },
+        select:  { score: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const promoters  = responses.filter(r => r.score >= 4).length;
+      const detractors = responses.filter(r => r.score <= 2).length;
+      const nps = responded > 0 ? Math.round(((promoters - detractors) / responded) * 100) : null;
+
+      // Weekly buckets for trend chart
+      const weekBuckets: Record<string, { total: number; sum: number }> = {};
+      for (const r of responses) {
+        const wk = r.createdAt.toISOString().slice(0, 10).replace(/\d$/, '0').replace(/-\d$/, '-0');
+        const key = r.createdAt.toISOString().slice(0, 7);
+        if (!weekBuckets[key]) weekBuckets[key] = { total: 0, sum: 0 };
+        weekBuckets[key].total++;
+        weekBuckets[key].sum += r.score;
+      }
+      const trend = Object.entries(weekBuckets).map(([month, { total, sum }]) => ({
+        month, avg: total > 0 ? +(sum / total).toFixed(2) : 0, count: total,
+      })).sort((a, b) => a.month.localeCompare(b.month));
+
+      res.json({ nps, responseRate: all > 0 ? Math.round((responded / all) * 100) : 0, sent: all, responded, promoters, detractors, trend });
+    } catch (err) {
+      console.error('[ai:nps-stats]', err);
+      res.status(500).json({ error: 'NPS_ERROR' });
+    }
+  }
+);
+
 // ================================================================
 // MOUNT IN app.ts:
 //   import { aiBiRouter }       from './controllers/ai.bi';

@@ -260,6 +260,7 @@ export const api = {
     query:            (question: string) => post<{ answer: string; data?: any; chart?: any }>('/ai/query', { question }),
     generateMessage:  (prompt: string, bizName?: string) => post<{ message: string }>('/ai/generate-message', { prompt, bizName }),
     cohortRetention:  (months?: number) => get<any>(`/ai/cohort-retention${months ? `?months=${months}` : ''}`),
+    npsStats:         (days?: number)   => get<any>(`/ai/nps-stats${days ? `?days=${days}` : ''}`),
   },
 
   // ── Settings (business) ───────────────────────────────────────
