@@ -36,10 +36,11 @@ import { Role }                      from '@prisma/client';
 // ================================================================
 
 interface QueryResult {
-  queryName: string;
-  data:      unknown;
-  count?:    number;
-  summary?:  string;
+  queryName:  string;
+  data:       unknown;
+  count?:     number;
+  summary?:   string;
+  chartType?: string;
 }
 
 const QUERY_LIBRARY: Record<
@@ -244,6 +245,81 @@ const QUERY_LIBRARY: Record<
       summary:   `Message queue breakdown for the last 7 days (${total} total messages).`,
     };
   },
+
+  getCampaignRoi: async (businessId, { days = 30 }) => {
+    const since = new Date(Date.now() - Number(days) * 86_400_000);
+    const campaigns = await (prisma as any).campaign.findMany({
+      where:  { businessId, status: 'COMPLETED', updatedAt: { gte: since } },
+      select: { id: true, name: true, audienceSize: true, discountValue: true, totalRevenue: true, deliveredCount: true, readCount: true },
+      take:   20,
+    }) as Array<{ id: string; name: string; audienceSize: number; discountValue: number | null; totalRevenue: number | null; deliveredCount: number | null; readCount: number | null }>;
+    const rows = campaigns.map(c => ({
+      name:           c.name,
+      audienceSize:   c.audienceSize ?? 0,
+      discountCost:   Number(c.discountValue ?? 0) * (c.audienceSize ?? 0),
+      revenueLifted:  Number(c.totalRevenue ?? 0),
+      roi:            c.totalRevenue && c.discountValue && c.audienceSize
+        ? Number(c.totalRevenue) / (Number(c.discountValue) * c.audienceSize) - 1
+        : null,
+      readRate:       c.deliveredCount ? ((c.readCount ?? 0) / c.deliveredCount * 100).toFixed(1) : null,
+    }));
+    const totalRev  = rows.reduce((s, r) => s + r.revenueLifted, 0);
+    const totalCost = rows.reduce((s, r) => s + r.discountCost, 0);
+    return {
+      queryName:  'getCampaignRoi',
+      data:       rows,
+      count:      rows.length,
+      chartType:  'table',
+      summary:    `Campaign ROI for last ${days} days: £${totalRev.toFixed(0)} revenue from £${totalCost.toFixed(0)} in discounts across ${rows.length} campaigns.`,
+    };
+  },
+
+  getWinBackRate: async (businessId, _) => {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+    const atRiskCustomers = await prisma.customer.findMany({
+      where:  { businessId, segment: { in: ['AT_RISK', 'LOST'] }, updatedAt: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } },
+      select: { id: true },
+    });
+    const atRiskIds = atRiskCustomers.map(c => c.id);
+    const retained  = atRiskIds.length > 0
+      ? await prisma.visit.groupBy({
+          by:    ['customerId'],
+          where: { businessId, customerId: { in: atRiskIds }, visitedAt: { gte: thirtyDaysAgo } },
+        })
+      : [];
+    const winBackRate = atRiskIds.length > 0
+      ? ((retained.length / atRiskIds.length) * 100).toFixed(1)
+      : null;
+    return {
+      queryName: 'getWinBackRate',
+      chartType: 'number',
+      data:      { atRiskCount: atRiskIds.length, retainedCount: retained.length, winBackRate },
+      summary:   `Win-back rate: ${winBackRate ?? 'N/A'}% — ${retained.length} of ${atRiskIds.length} AT_RISK/LOST customers returned in the last 30 days.`,
+    };
+  },
+
+  getPointsLiability: async (businessId, _) => {
+    const biz = await prisma.business.findUnique({
+      where:  { id: businessId },
+      select: { pointsPerPound: true },
+    });
+    const result = await prisma.customer.aggregate({
+      where:  { businessId, isActive: true },
+      _sum:   { currentPointsBalance: true },
+      _count: { id: true },
+    });
+    const totalPoints         = Number(result._sum.currentPointsBalance ?? 0);
+    const pointsPerPound      = Number(biz?.pointsPerPound ?? 1);
+    const redemptionRateGuess = 0.3; // 30% industry average
+    const cashExposure        = pointsPerPound > 0 ? (totalPoints / pointsPerPound) * redemptionRateGuess : 0;
+    return {
+      queryName: 'getPointsLiability',
+      chartType: 'number',
+      data:      { totalOutstandingPoints: totalPoints, estimatedCashExposure: cashExposure.toFixed(0), activeCustomers: result._count.id, pointsPerPound },
+      summary:   `Points liability: ${totalPoints.toLocaleString()} outstanding points across ${result._count.id} customers. Estimated cash exposure at 30% redemption: £${cashExposure.toFixed(0)}.`,
+    };
+  },
 };
 
 // ================================================================
@@ -261,6 +337,9 @@ const QUERY_MANIFEST = [
   { name: 'getChurnRiskCustomers',  description: 'Customers at risk of churning or already lost', params: [] },
   { name: 'getLoyaltyStats',        description: 'Loyalty tier distribution and top points earners', params: [] },
   { name: 'getMessageQueueHealth',  description: 'Message queue delivery rates and failure analysis', params: [] },
+  { name: 'getCampaignRoi',         description: 'Campaign ROI: revenue attributed vs discount cost', params: ['days: number (default 30)'] },
+  { name: 'getWinBackRate',         description: 'What percentage of AT_RISK/LOST customers were retained in the last 30 days', params: [] },
+  { name: 'getPointsLiability',     description: 'Total outstanding loyalty points and estimated cash exposure', params: [] },
 ];
 
 // ================================================================
@@ -417,64 +496,73 @@ export const processNaturalLanguageQuery = async (
   question:   string,
   businessId: string
 ): Promise<AIQueryResult> => {
-  // Load full business context once — shared across both LLM passes
+  // Load full business context once
   const bizContext = await loadBusinessContext(businessId);
+  const bizName = bizContext.match(/\*\*Name\*\*: (.+)/)?.[1] ?? 'this business';
 
-  // ── PASS 1: Intent Classification ────────────────────────────
-  const classificationResponse = await callLLM([
-    {
-      role:    'system',
-      content: `You are a query classifier for Loyable, a WhatsApp-first customer retention CRM.
-Given a business owner's question, identify which query function to run.
-Return ONLY a valid JSON object: { "queryName": string, "parameters": object }
-Valid query names and their parameters:
-${QUERY_MANIFEST.map(q => `- ${q.name}(${q.params.join(', ')}): ${q.description}`).join('\n')}
-If no query fits, use "getSegmentBreakdown" with no parameters.
-ONLY return JSON. No explanation.`,
-    },
-    { role: 'user', content: question },
-  ], 200);
-
-  let queryName  = 'getSegmentBreakdown';
-  let parameters: Record<string, unknown> = {};
-
-  try {
-    const cleaned = classificationResponse.replace(/```json|```/g, '').trim();
-    const parsed  = JSON.parse(cleaned) as { queryName: string; parameters: Record<string, unknown> };
-    if (parsed.queryName && QUERY_LIBRARY[parsed.queryName]) {
-      queryName  = parsed.queryName;
-      parameters = parsed.parameters ?? {};
-    }
-  } catch {
-    console.warn('[ai.bi] Intent classification parse failed, using fallback.');
-  }
-
-  // ── Execute Query (businessId ALWAYS injected here, not by LLM) ─
-  const queryFn  = QUERY_LIBRARY[queryName];
-  const rawData  = await queryFn(businessId, parameters);
-
-  // ── PASS 2: Insight Generation ────────────────────────────────
-  const insightResponse = await callLLM([
+  // ── SINGLE-PASS: Classify intent + generate insight in one call ─
+  const singlePassResponse = await callLLM([
     {
       role:    'system',
       content: `${bizContext}
 
 ## YOUR ROLE
-You are the AI retention advisor for ${bizContext.match(/\*\*Name\*\*: (.+)/)?.[1] ?? 'this business'} inside Loyable.
-Your job: give the business owner a clear, personalised, actionable insight based on their real data.
+You are the AI retention advisor for ${bizName} inside Loyable, a WhatsApp-first customer retention CRM.
 
-Rules:
-- Write 3-4 sentences max. Be specific — use the actual numbers.
-- Always end with ONE concrete action they can take TODAY inside Loyable (e.g. "Launch a Win-Back campaign targeting your AT_RISK segment", "Set up a Birthday automation", "Create a VIP reward campaign").
-- Frame Loyable as their long-term retention partner, not a one-off tool.
-- Speak directly to the owner — warm, confident, data-driven. No jargon.
-- Never mention SQL, APIs, code, or technology internals.`,
+## TASK
+Given the owner's question, do TWO things in ONE response:
+1. Identify which query to run (queryName + parameters)
+2. After seeing the data summary placeholder, write the insight narrative
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "queryName": string,
+  "parameters": object,
+  "chartType": "bar" | "line" | "pie" | "table" | "number"
+}
+
+Valid query names:
+${QUERY_MANIFEST.map(q => `- ${q.name}(${q.params.join(', ')}): ${q.description}`).join('\n')}
+
+If no query fits, use "getSegmentBreakdown" with {}.`,
+    },
+    { role: 'user', content: question },
+  ], 300);
+
+  let queryName  = 'getSegmentBreakdown';
+  let parameters: Record<string, unknown> = {};
+  let suggestedChartType: string | undefined;
+
+  try {
+    const cleaned = singlePassResponse.replace(/```json|```/g, '').trim();
+    const parsed  = JSON.parse(cleaned) as { queryName: string; parameters: Record<string, unknown>; chartType?: string };
+    if (parsed.queryName && QUERY_LIBRARY[parsed.queryName]) {
+      queryName         = parsed.queryName;
+      parameters        = parsed.parameters ?? {};
+      suggestedChartType = parsed.chartType;
+    }
+  } catch {
+    console.warn('[ai.bi] Single-pass classification parse failed, using fallback.');
+  }
+
+  // ── Execute Query (businessId ALWAYS injected here, not by LLM) ─
+  const queryFn = QUERY_LIBRARY[queryName];
+  const rawData = await queryFn(businessId, parameters);
+
+  // ── Insight generation (second focused call on query results) ──
+  const insightResponse = await callLLM([
+    {
+      role:    'system',
+      content: `You are the AI retention advisor for ${bizName} inside Loyable.
+Write 3-4 sentences max. Be specific — use actual numbers.
+End with ONE action they can take TODAY inside Loyable.
+Speak directly to the owner — warm, confident, data-driven. No jargon. No mention of SQL/APIs/code.`,
     },
     {
       role:    'user',
       content: `Question: "${question}"\nData summary: ${rawData.summary}\nFull data: ${JSON.stringify(rawData.data).substring(0, 2000)}`,
     },
-  ], 500);
+  ], 400);
 
   // Determine if we can suggest a quick action
   const actionMap: Record<string, { label: string; path: string }> = {
@@ -491,7 +579,7 @@ Rules:
     question,
     queryExecuted: queryName,
     parameters,
-    rawData,
+    rawData:      { ...rawData, chartType: (rawData.chartType ?? suggestedChartType) as string | undefined },
     insight:      insightResponse,
     actionLabel:  action?.label,
     actionPath:   action?.path,
