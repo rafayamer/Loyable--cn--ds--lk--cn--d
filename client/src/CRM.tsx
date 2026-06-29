@@ -211,18 +211,51 @@ const getPosBizType=():string=>{
 // ════════════════════════════════════════════════════════════════
 // SIDEBAR
 // ════════════════════════════════════════════════════════════════
-const NAV_ALL=[
-  {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER]},
-  {id:"customers",icon:Users,label:"Customers & Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-  {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
-  {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-  {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-  {id:"segments",icon:Filter,label:"Segments",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
-  {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
-  {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
-  {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
-  {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER]},
+// ── 7-module information architecture ──────────────────────────────
+// Each top-level module groups related pages as sub-tabs. The `page`
+// router still uses the flat ids below (tab.id), so existing page
+// components keep working — the modules only reorganise navigation.
+const MODULES=[
+  {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER],tabs:[]},
+  {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[
+    {id:"customers",label:"CRM"},
+    {id:"segments",label:"Segments"},
+  ]},
+  {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[]},
+  {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[
+    {id:"campaigns",label:"Campaigns"},
+    {id:"messages",label:"Messages"},
+    {id:"automations",label:"Automations"},
+  ]},
+  {id:"analytics",icon:BarChart3,label:"Analytics",roles:[ROLES.OWNER],tabs:[
+    {id:"analytics",label:"Overview"},
+    {id:"ai",label:"AI Insights"},
+    {id:"datahub",label:"Data Hub"},
+  ]},
+  {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN],tabs:[
+    {id:"pos",label:"POS"},
+    {id:"ops-hr",label:"HR & Staff"},
+    {id:"ops-onboarding",label:"Onboarding"},
+    {id:"ops-branches",label:"Branches"},
+    {id:"ops-inventory",label:"Inventory"},
+    {id:"ops-devices",label:"Devices"},
+    {id:"integrations",label:"Integrations"},
+    {id:"ops-ordering",label:"Ordering"},
+  ]},
+  {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER],tabs:[]},
 ];
+// Sidebar renders modules
+const NAV_ALL=MODULES;
+// Map every page id (module id or tab id) → its owning module
+const PAGE_TO_MODULE:Record<string,any>={};
+MODULES.forEach(m=>{PAGE_TO_MODULE[m.id]=m;(m.tabs||[]).forEach((t:any)=>{PAGE_TO_MODULE[t.id]=m;});});
+const moduleForPage=(p:string)=>PAGE_TO_MODULE[p]||null;
+// Roles allowed to view a page; unknown/utility pages (profile, builders) are permissive
+const rolesForPage=(p:string)=>moduleForPage(p)?.roles||[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.KITCHEN];
+// First navigable page id for a module (its first tab, or the module id itself)
+const firstPageOf=(m:any)=>m?.tabs?.[0]?.id||m?.id;
+// Human label for the current page (used by mobile top bar)
+const labelForPage=(p:string)=>{const m=moduleForPage(p);if(!m)return"";const t=(m.tabs||[]).find((x:any)=>x.id===p);return t?`${m.label} · ${t.label}`:m.label;};
 const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDark}:any)=>{
   const {pd,setPd}=usePd();
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
@@ -249,15 +282,15 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
     {col&&<div className="mx-2 mb-3 h-px" style={{background:"linear-gradient(90deg,transparent,rgba(139,92,246,0.3),transparent)"}}/>}
     {/* Nav items */}
     <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto scrollbar-hide">{NAV.map(it=>{
-      const active=page===it.id;
+      const active=moduleForPage(page)?.id===it.id;
       return(
-        <button key={it.id} onClick={()=>setPage(it.id)} title={col?it.label:undefined}
+        <button key={it.id} onClick={()=>setPage(firstPageOf(it))} title={col?it.label:undefined}
           className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${col?"justify-center px-0":"px-3"} ${active?"text-white":"text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]"}`}
           style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.18),rgba(6,182,212,0.06))",boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.2)",paddingLeft:col?undefined:"10px"}:{}}>
           <it.icon size={16} className={`flex-shrink-0 ${active?"text-violet-400":""}`}/>
           {!col&&<span className="flex-1 text-left">{it.label}</span>}
-          {!col&&it.id==="messages"&&wa&&<div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>}
-          {!col&&it.id==="ai"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>AI</span>}
+          {!col&&it.id==="campaigns"&&wa&&<div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>}
+          {!col&&it.id==="analytics"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>AI</span>}
         </button>
       );
     })}</nav>
@@ -274,6 +307,65 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
       <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:text-red-400 hover:bg-red-400/5 transition-all duration-200 ${col?"justify-center":""}`}><LogOut size={15}/>{!col&&<span>Sign Out</span>}</button>
     </div>
   </div>
+  );
+};
+
+// ── Sub-tab bar shown under a module that has multiple pages ────────
+const ModuleTabs=({page,setPage}:{page:string;setPage:(p:string)=>void})=>{
+  const ct=useCard();
+  const mod=moduleForPage(page);
+  const tabs=(mod?.tabs||[]) as Array<{id:string;label:string}>;
+  if(tabs.length<2)return null;
+  return(
+    <div className="flex items-center gap-1 mb-5 overflow-x-auto scrollbar-hide">
+      {tabs.map(t=>{
+        const active=page===t.id;
+        return(
+          <button key={t.id} onClick={()=>setPage(t.id)}
+            className="px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all"
+            style={active
+              ?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.28)"}
+              :{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── Operations: standalone Integrations page (reuses Settings' tab) ─
+const IntegrationsPage=()=>{
+  const ct=useCard();
+  return(
+    <div>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold" style={{color:ct.tx}}>Integrations</h1>
+        <p className="text-sm mt-1" style={{color:ct.tx3}}>Connect Loyable to your POS, e-commerce and automation tools.</p>
+      </div>
+      <IntegrationsTab/>
+    </div>
+  );
+};
+
+// ── Operations: placeholder for modules being built next iteration ──
+const OperationsComingSoon=({title,desc,icon:Icon}:{title:string;desc:string;icon:any})=>{
+  const ct=useCard();
+  return(
+    <div>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold" style={{color:ct.tx}}>{title}</h1>
+        <p className="text-sm mt-1" style={{color:ct.tx3}}>{desc}</p>
+      </div>
+      <div className="rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-3" style={{background:ct.card,border:`1px dashed ${ct.bdr}`}}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.12)"}}>
+          <Icon size={26} className="text-violet-400"/>
+        </div>
+        <div className="text-base font-semibold" style={{color:ct.tx}}>Coming soon</div>
+        <div className="text-xs max-w-md" style={{color:ct.tx3}}>{desc}</div>
+        <span className="mt-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>In development</span>
+      </div>
+    </div>
   );
 };
 
@@ -6645,7 +6737,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
     if(r===ROLES.KITCHEN)return"pos";
     const saved=localStorage.getItem("crm_page");
-    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi"];
+    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
@@ -6682,9 +6774,10 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     setLoggedIn(true);
   }}/>;
   const nav=(p:any)=>{
-    // Enforce role restrictions — redirect to POS if not allowed
-    const allowed=NAV_ALL.find(n=>n.id===p)?.roles??[ROLES.OWNER];
-    if(!allowed.includes(role)){setPage(role===ROLES.KITCHEN?"pos":"pos");return;}
+    // Enforce role restrictions — redirect to POS if not allowed. Utility pages
+    // (profile, builders) aren't in a module → rolesForPage returns permissive.
+    const allowed=rolesForPage(p);
+    if(!allowed.includes(role)){setPage("pos");return;}
     setPage(p);localStorage.setItem("crm_page",p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);
   };
   const render=()=>{
@@ -6706,6 +6799,13 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"ai":return<AIPage/>;
     case"analytics":return<DashboardPage setPage={nav}/>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
+    case"integrations":return<IntegrationsPage/>;
+    case"ops-hr":return<OperationsComingSoon title="HR & Staff" desc="Employee directory, roles & permissions, performance and employee rewards — the operational backbone for your team." icon={UserCheck}/>;
+    case"ops-onboarding":return<OperationsComingSoon title="Staff Onboarding" desc="Invite staff via email/WhatsApp, issue temporary credentials, and track onboarding checklists, documents, policies and training." icon={UserPlus}/>;
+    case"ops-branches":return<OperationsComingSoon title="Branches" desc="Manage all your locations, their settings, geofencing and per-branch staff from one place." icon={Building}/>;
+    case"ops-inventory":return<OperationsComingSoon title="Inventory" desc="Track stock levels, products and supplies across branches." icon={Layers}/>;
+    case"ops-devices":return<OperationsComingSoon title="Devices" desc="Register and manage POS terminals, printers and check-in devices per branch." icon={Smartphone}/>;
+    case"ops-ordering":return<OperationsComingSoon title="Ordering" desc="Digital menus and order capture that feed directly into visits and loyalty." icon={ShoppingBag}/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
   }};
@@ -6753,13 +6853,13 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
           <ThemeLogo dark={portalDark} className="h-6 w-auto object-contain"/>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400 capitalize">{NAV_ALL.find(n=>n.id===page)?.label||""}</span>
+          <span className="text-xs text-slate-400 capitalize">{labelForPage(page)}</span>
           <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{background:wa?"#22c55e":"#6b7280"}}/><span className="text-[10px] text-slate-500">{wa?"WA":"—"}</span></div>
         </div>
       </div>
       {/* Main content */}
       <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-24 md:pb-0`}>
-        <div className="p-3 md:p-6 max-w-6xl">{render()}</div>
+        <div className="p-3 md:p-6 max-w-6xl"><ModuleTabs page={page} setPage={nav}/>{render()}</div>
       </main>
       {/* Mobile bottom navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:portalDark?"rgba(8,6,18,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`}}>
