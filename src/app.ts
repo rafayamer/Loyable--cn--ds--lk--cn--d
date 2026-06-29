@@ -209,8 +209,11 @@ async function ensureSchemaPatches() {
     { label: 'customers.churnRiskScoredAt',
       sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScoredAt" TIMESTAMP(3)' },
     // ── Opt-out reason stored in ConsentChangeLog (keyword field already exists) ──
-    { label: 'consent_change_log.optOutReason',
-      sql: 'ALTER TABLE "consent_change_log" ADD COLUMN IF NOT EXISTS "optOutReason" TEXT' },
+    // NOTE: the Prisma model ConsentChangeLog maps to "consent_change_logs" (plural);
+    // the previous singular "consent_change_log" caused
+    // `relation "consent_change_log" does not exist` on every boot.
+    { label: 'consent_change_logs.optOutReason',
+      sql: 'ALTER TABLE "consent_change_logs" ADD COLUMN IF NOT EXISTS "optOutReason" TEXT' },
     // ── Per-tenant timezone support ──
     { label: 'businesses.timezone',
       sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
