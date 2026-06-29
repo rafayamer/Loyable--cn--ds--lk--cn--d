@@ -505,6 +505,35 @@ async function bootstrap() {
     console.log('[app] WhatsApp provider: WAHA (external)');
   }
 
+  // ── Background processing ───────────────────────────────────────
+  // BullMQ workers (outbound messages, automations, webhooks) and the nightly
+  // cron jobs. Both were previously never started, so queued campaign/automation
+  // sends and all scheduled jobs silently never ran. Started here, best-effort:
+  // a failure must never stop the HTTP server from binding. Disable on extra
+  // instances with RUN_BACKGROUND_JOBS=false to avoid duplicate cron firing.
+  if (process.env.RUN_BACKGROUND_JOBS !== 'false') {
+    try {
+      const { startAllWorkers, gracefulShutdown } = await import('./services/messaging-worker');
+      const workers = startAllWorkers();
+      console.log('[app] BullMQ workers started (messages, automations, webhooks).');
+      for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+        process.once(sig, () => {
+          gracefulShutdown(workers).catch(() => {}).finally(() => process.exit(0));
+        });
+      }
+    } catch (e) {
+      console.error('[app] Worker start FAILED (continuing):', (e as Error).message);
+    }
+    try {
+      const { startAllCronJobs } = await import('./services/cron-service');
+      startAllCronJobs();
+    } catch (e) {
+      console.error('[app] Cron start FAILED (continuing):', (e as Error).message);
+    }
+  } else {
+    console.log('[app] RUN_BACKGROUND_JOBS=false — workers & cron not started on this instance.');
+  }
+
   // Behind a load balancer (Neon/Render/etc) the real client IP arrives via
   // X-Forwarded-For. Without this, express.ip is the proxy IP and rate limiting
   // collapses into a single shared bucket. Trust the first proxy hop only.
