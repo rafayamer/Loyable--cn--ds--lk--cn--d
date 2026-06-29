@@ -292,6 +292,18 @@ export const login = async (
   const user = activeUsers[0];
   if (!user.business.isActive) throw new Error('TENANT_SUSPENDED');
 
+  // TOTP check — if 2FA is enabled, require a valid token in input.totpCode
+  const totpUser = await (prisma as any).user.findUnique({
+    where:  { id: user.id },
+    select: { totpEnabled: true, totpSecret: true },
+  });
+  if (totpUser?.totpEnabled) {
+    const { verifyToken } = await import('./totp-service');
+    const totpCode = (input as any).totpCode as string | undefined;
+    if (!totpCode) throw new Error('TOTP_CODE_REQUIRED');
+    if (!verifyToken(totpUser.totpSecret, totpCode)) throw new Error('TOTP_INVALID');
+  }
+
   // Non-critical side-effects — must not block or fail login
   prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
   prisma.auditLog.create({

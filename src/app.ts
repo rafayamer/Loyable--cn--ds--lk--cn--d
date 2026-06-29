@@ -214,6 +214,11 @@ async function ensureSchemaPatches() {
     // ── Per-tenant timezone support ──
     { label: 'businesses.timezone',
       sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
+    // ── TOTP 2FA ──
+    { label: 'users.totpSecret',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT' },
+    { label: 'users.totpEnabled',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpEnabled" BOOLEAN NOT NULL DEFAULT false' },
     // ── Integration Marketplace ──
     { label: 'integration_configs table',
       sql: `CREATE TABLE IF NOT EXISTS "integration_configs" (
@@ -443,6 +448,7 @@ async function bootstrap() {
   await loadRouter('./services/realtime-service',             'realtimeRouter',        '/api/realtime');
   await loadRouter('./controllers/segments-controller',       'segmentsRouter',        '/api/segments');
   await loadRouter('./controllers/integrations-controller',  'integrationsRouter',    '/api/integrations');
+  await loadRouter('./controllers/totp-controller',          'totpRouter',            '/api/totp');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');

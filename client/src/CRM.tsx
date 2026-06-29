@@ -480,8 +480,10 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   const [loading,setLoading]=useState(false);
   const [socialLoading,setSocialLoading]=useState<"google"|null>(null);
   const [bizChoices,setBizChoices]=useState<{id:string;name:string;role:string}[]|null>(null);
-  const doLogin=async(email:string,password:string,businessId?:string)=>{
-    const d=await api.auth.login(email,password,businessId);
+  const [totpRequired,setTotpRequired]=useState(false);
+  const [totpCode,setTotpCode]=useState("");
+  const doLogin=async(email:string,password:string,businessId?:string,totpCodeArg?:string)=>{
+    const d=await api.auth.login(email,password,businessId,totpCodeArg);
     if((d as any).requiresBusinessSelection){
       setBizChoices((d as any).businesses);
       return;
@@ -497,11 +499,19 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     onLogin(d.user);
   };
   const submit=async()=>{
+    if(totpRequired){
+      if(!totpCode){setErr("Enter the 6-digit code from your authenticator app.");return;}
+      setErr("");setLoading(true);
+      try{await doLogin(e,p,undefined,totpCode);}
+      catch(ex){const m=(ex as Error).message;setErr(m==="TOTP_INVALID"?"Invalid 2FA code. Try again.":m);}finally{setLoading(false);}
+      return;
+    }
     if(!e||!p){setErr("Please enter your email and password.");return;}
     setErr("");setLoading(true);
     try{await doLogin(e,p);}
     catch(ex){
       const m=(ex as Error).message;
+      if(m==="TOTP_CODE_REQUIRED"){setTotpRequired(true);setErr("");setLoading(false);return;}
       setErr(m==="USER_NOT_FOUND"?"No account found with that email.":m==="WRONG_PASSWORD"||m==="INVALID_CREDENTIALS"?"Wrong password. Please try again.":m);
     }finally{setLoading(false);}
   };
@@ -531,16 +541,23 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
       <Divider/>
-      <div className="space-y-4 mb-5">
-        <div><label style={fldLbl}>Email Address</label><input value={e} onChange={ev=>setE(ev.target.value)} type="email" placeholder="you@business.com" style={fldInp}/></div>
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label style={fldLbl}>Password</label>
-            <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
-          </div>
-          <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
+      {totpRequired?(
+        <div className="space-y-4 mb-5">
+          <div className="p-3 rounded-xl flex items-center gap-2" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Lock size={14} className="text-violet-400 flex-shrink-0"/><span className="text-xs text-slate-300">Enter the 6-digit code from your authenticator app to continue</span></div>
+          <div><label style={fldLbl}>Authenticator Code</label><input autoFocus value={totpCode} onChange={ev=>setTotpCode(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} maxLength={6} placeholder="000000" className="text-center font-mono text-xl tracking-widest" style={{...fldInp,letterSpacing:"0.3em"}}/></div>
         </div>
-      </div>
+      ):(
+        <div className="space-y-4 mb-5">
+          <div><label style={fldLbl}>Email Address</label><input value={e} onChange={ev=>setE(ev.target.value)} type="email" placeholder="you@business.com" style={fldInp}/></div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label style={fldLbl}>Password</label>
+              <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
+            </div>
+            <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
+          </div>
+        </div>
+      )}
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Sign In</Btn>
       <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Don't have an account? <button onClick={()=>onView("signup")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign up free</button></p>
@@ -4404,6 +4421,72 @@ const INTEGRATION_META:{[k:string]:{label:string;desc:string;icon:string;fields:
   ZAPIER:    {label:"Zapier",desc:"Send loyalty events to any Zapier workflow",icon:"⚡",fields:[{k:"webhookUrl",l:"Webhook URL",type:"text",ph:"https://hooks.zapier.com/hooks/catch/…"}]},
 };
 
+const TwoFactorPanel=()=>{
+  const [status,setStatus]=useState<{enabled:boolean}|null>(null);
+  const [qr,setQr]=useState<string|null>(null);
+  const [step,setStep]=useState<"idle"|"setup"|"verify"|"disable">("idle");
+  const [token,setToken]=useState("");
+  const [msg,setMsg]=useState<{ok:boolean;text:string}|null>(null);
+  const [busy,setBusy]=useState(false);
+
+  const load=()=>fetch("/api/totp/status",{headers:{Authorization:`Bearer ${localStorage.getItem("token")}`}}).then(r=>r.json()).then(setStatus).catch(()=>{});
+  useEffect(()=>{load();},[]);
+
+  const startSetup=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/setup",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`}});const d=await r.json();setQr(d.qrDataUrl);setStep("setup");}catch{}finally{setBusy(false);}
+  };
+  const verify=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/verify",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`,"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json();
+      if(r.ok){setMsg({ok:true,text:"2FA enabled!"});setStep("idle");setQr(null);setToken("");load();}else{setMsg({ok:false,text:d.error||"Invalid code"});}
+    }catch{}finally{setBusy(false);}
+  };
+  const disable=async()=>{
+    setBusy(true);setMsg(null);
+    try{const r=await fetch("/api/totp/disable",{method:"POST",headers:{Authorization:`Bearer ${localStorage.getItem("token")}`,"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json();
+      if(r.ok){setMsg({ok:true,text:"2FA disabled"});setStep("idle");setToken("");load();}else{setMsg({ok:false,text:d.error||"Invalid code"});}
+    }catch{}finally{setBusy(false);}
+  };
+
+  const enabled=status?.enabled??false;
+  return(
+    <div className="rounded-xl p-4 space-y-3" style={{background:enabled?"rgba(34,197,94,0.06)":"rgba(245,158,11,0.06)",border:`1px solid ${enabled?"rgba(34,197,94,0.2)":"rgba(245,158,11,0.15)"}`}}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold text-white flex items-center gap-2"><Lock size={14} className={enabled?"text-green-400":"text-amber-400"}/>{enabled?"Two-Factor Authentication: ON":"Two-Factor Authentication: OFF"}</div>
+          <div className="text-xs text-slate-400 mt-0.5">{enabled?"Your account is protected with TOTP 2FA (Google Authenticator / Authy)":"Add an extra layer of security — required every time you log in"}</div>
+        </div>
+        {status&&!enabled&&step==="idle"&&<button onClick={startSetup} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Enable</button>}
+        {status&&enabled&&step==="idle"&&<button onClick={()=>{setStep("disable");setMsg(null);}} className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>Disable</button>}
+      </div>
+      {step==="setup"&&qr&&(
+        <div className="space-y-3 pt-3 border-t border-white/5">
+          <p className="text-xs text-slate-400">1. Scan this QR code with Google Authenticator, Authy, or any TOTP app</p>
+          <img src={qr} alt="QR code" className="w-40 h-40 rounded-lg bg-white p-2"/>
+          <p className="text-xs text-slate-400">2. Enter the 6-digit code from your app to confirm</p>
+          <div className="flex items-center gap-2">
+            <input value={token} onChange={e=>setToken(e.target.value)} maxLength={6} placeholder="000000" className="w-28 px-3 py-2 rounded-lg text-sm text-white text-center font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",letterSpacing:"0.2em"}}/>
+            <button onClick={verify} disabled={busy||token.length!==6} className="px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Verify</button>
+            <button onClick={()=>{setStep("idle");setQr(null);setToken("");}} className="px-3 py-2 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.04)"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {step==="disable"&&(
+        <div className="space-y-3 pt-3 border-t border-white/5">
+          <p className="text-xs text-slate-400">Enter the current 6-digit code from your authenticator to disable 2FA</p>
+          <div className="flex items-center gap-2">
+            <input value={token} onChange={e=>setToken(e.target.value)} maxLength={6} placeholder="000000" className="w-28 px-3 py-2 rounded-lg text-sm text-white text-center font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",letterSpacing:"0.2em"}}/>
+            <button onClick={disable} disabled={busy||token.length!==6} className="px-3 py-2 rounded-lg text-xs font-medium text-red-400 disabled:opacity-50" style={{background:"rgba(239,68,68,0.12)"}}>Confirm Disable</button>
+            <button onClick={()=>{setStep("idle");setToken("");}} className="px-3 py-2 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.04)"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {msg&&<p className={`text-xs ${msg.ok?"text-green-400":"text-red-400"}`}>{msg.text}</p>}
+    </div>
+  );
+};
+
 const IntegrationsTab=()=>{
   const [integrations,setIntegrations]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
@@ -4932,7 +5015,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         </div>}
         {tab==="integrations"&&<IntegrationsTab/>}
         {tab==="stripe"&&<BillingTab/>}
-        {tab==="security"&&<div className="space-y-2">{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Two-Factor Authentication",d:"Add an extra layer of security with a 6-digit code from your phone (coming soon)",on:false},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
+        {tab==="security"&&<div className="space-y-4"><TwoFactorPanel/>{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
         {tab==="fbr"&&<FBRPanel/>}
       </div>
