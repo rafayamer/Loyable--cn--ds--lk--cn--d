@@ -217,6 +217,7 @@ const NAV_ALL=[
   {id:"pos",icon:ShoppingCart,label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN]},
   {id:"messages",icon:MessageSquare,label:"Messages",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
+  {id:"segments",icon:Filter,label:"Segments",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF]},
   {id:"automations",icon:Zap,label:"Automations",roles:[ROLES.OWNER,ROLES.MANAGER]},
   {id:"datahub",icon:Database,label:"Data Hub",roles:[ROLES.OWNER]},
   {id:"ai",icon:Brain,label:"AI Insights",roles:[ROLES.OWNER]},
@@ -4877,6 +4878,125 @@ const AbStatsBar=({campaignId,winnerId}:{campaignId:string;winnerId?:string|null
   );
 };
 
+// ── Segment Builder UI ───────────────────────────────────────────
+const SEGMENT_FIELDS=[{v:"lastVisitAt",l:"Days since last visit"},{v:"totalSpend",l:"Total spend"},{v:"visitCount",l:"Visit count"},{v:"pointsBalance",l:"Points balance"},{v:"churnRiskScore",l:"Churn risk score (0-100)"},{v:"referralCount",l:"Referral count"},{v:"tier",l:"Tier name"}];
+const SEGMENT_OPS=[{v:"gt",l:">"},{v:"gte",l:">="},{v:"lt",l:"<"},{v:"lte",l:"<="},{v:"eq",l:"="},{v:"neq",l:"≠"}];
+const emptyRule=()=>({field:"visitCount",op:"gte",value:"3"});
+
+const SegmentsPage=()=>{
+  const ct=useCard();
+  const [segs,setSegs]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState<any|null>(null);  // null = list, object = editing
+  const [name,setName]=useState("");
+  const [desc,setDesc]=useState("");
+  const [logic,setLogic]=useState<"AND"|"OR">("AND");
+  const [conditions,setConditions]=useState<any[]>([emptyRule()]);
+  const [preview,setPreview]=useState<{count:number}|null>(null);
+  const [previewing,setPreviewing]=useState(false);
+  const [saving,setSaving]=useState(false);
+
+  const load=()=>{api.segments.list().then(d=>setSegs(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));};
+  useEffect(()=>{load();},[]);
+
+  const startNew=()=>{setEditing({});setName("");setDesc("");setLogic("AND");setConditions([emptyRule()]);setPreview(null);};
+  const startEdit=(s:any)=>{setEditing(s);setName(s.name);setDesc(s.description||"");setLogic(s.rulesJson?.logic||"AND");setConditions(s.rulesJson?.conditions||[emptyRule()]);setPreview(null);};
+  const addCond=()=>setConditions(p=>[...p,emptyRule()]);
+  const removeCond=(i:number)=>setConditions(p=>p.filter((_:any,j:number)=>j!==i));
+  const updateCond=(i:number,k:string,v:string)=>setConditions(p=>p.map((c:any,j:number)=>j===i?{...c,[k]:v}:c));
+
+  const doPreview=async()=>{
+    setPreviewing(true);
+    try{const r=await api.segments.evaluate({logic,conditions});setPreview(r);}catch{}finally{setPreviewing(false);}
+  };
+  const doSave=async()=>{
+    if(!name.trim())return;
+    setSaving(true);
+    try{
+      const rules={logic,conditions};
+      if(editing?.id){await api.segments.update(editing.id,{name,description:desc||null,rules});}
+      else{await api.segments.create({name,description:desc||null,rules});}
+      setEditing(null);load();
+    }catch{}finally{setSaving(false);}
+  };
+  const doDelete=async(id:string)=>{
+    if(!confirm("Delete this segment?"))return;
+    await api.segments.delete(id).catch(()=>{});load();
+  };
+
+  if(editing!==null) return(
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <button onClick={()=>setEditing(null)} className="p-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.06)"}}><ArrowLeft size={14} className="text-slate-400"/></button>
+        <h1 className="text-lg font-bold" style={{color:ct.tx}}>{editing?.id?"Edit Segment":"New Custom Segment"}</h1>
+      </div>
+      <div className="gc rounded-xl p-5 space-y-4" style={CARD}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label className="text-xs text-slate-400 mb-1 block">Segment Name *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="High-value dormant customers" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">Description</label><input value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Optional…" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs text-slate-400">Match</span>
+            <div className="flex gap-1">{(["AND","OR"] as const).map(l=><button key={l} onClick={()=>setLogic(l)} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${logic===l?"text-white":"text-slate-400"}`} style={{background:logic===l?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.04)"}}>{l}</button>)}</div>
+            <span className="text-xs text-slate-400">of the following rules:</span>
+          </div>
+          <div className="space-y-2">{conditions.map((c:any,i:number)=>(
+            <div key={i} className="flex items-center gap-2 flex-wrap">
+              <select value={c.field} onChange={e=>updateCond(i,"field",e.target.value)} className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {SEGMENT_FIELDS.map(f=><option key={f.v} value={f.v} style={{background:"#1a1030"}}>{f.l}</option>)}
+              </select>
+              <select value={c.op} onChange={e=>updateCond(i,"op",e.target.value)} className="px-2 py-1.5 rounded-lg text-xs text-white outline-none w-14" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}>
+                {SEGMENT_OPS.map(o=><option key={o.v} value={o.v} style={{background:"#1a1030"}}>{o.l}</option>)}
+              </select>
+              <input value={c.value} onChange={e=>updateCond(i,"value",e.target.value)} placeholder="value" className="w-24 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              {conditions.length>1&&<button onClick={()=>removeCond(i)} className="text-slate-500 hover:text-red-400"><X size={14}/></button>}
+            </div>
+          ))}</div>
+          <button onClick={addCond} className="mt-2 flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"><Plus size={12}/>Add rule</button>
+        </div>
+        <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+          <button onClick={doPreview} disabled={previewing} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.12)",color:"#67e8f9"}}>{previewing?<RefreshCw size={12} className="animate-spin"/>:<Eye size={12}/>}Preview</button>
+          {preview&&<span className="text-xs text-slate-300"><span className="font-bold text-white">{preview.count}</span> customers match</span>}
+          <button onClick={doSave} disabled={saving||!name.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50 ml-auto" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:<Check size={12}/>}Save Segment</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Custom Segments</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Build no-code audience filters with AND/OR rule trees</p></div>
+        <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New Segment</button>
+      </div>
+      <div className="gc rounded-xl overflow-hidden" style={CARD}>
+        {loading?<div className="p-4 space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-12"/>)}</div>:segs.length===0?(
+          <div className="py-12 text-center space-y-3">
+            <Filter size={32} className="mx-auto text-slate-600"/>
+            <p className="text-sm text-slate-400">No custom segments yet</p>
+            <button onClick={startNew} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create your first segment</button>
+          </div>
+        ):(
+          <div className="divide-y divide-white/5">{segs.map((s:any)=>(
+            <div key={s.id} className="flex items-center justify-between p-4 hover:bg-white/2">
+              <div>
+                <div className="text-sm font-medium text-white">{s.name}</div>
+                {s.description&&<div className="text-xs text-slate-500 mt-0.5">{s.description}</div>}
+                <div className="text-[10px] text-slate-600 mt-0.5">{s.rulesJson?.logic} · {s.rulesJson?.conditions?.length} rule{s.rulesJson?.conditions?.length!==1?"s":""}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>startEdit(s)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.06)",color:"#94a3b8"}}><Edit size={12}/></button>
+                <button onClick={()=>doDelete(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs" style={{background:"rgba(239,68,68,0.1)",color:"#f87171"}}><Trash2 size={12}/></button>
+              </div>
+            </div>
+          ))}</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const ct=useCard();
   const [campaigns,setCampaigns]=useState<any[]>([]);
@@ -6401,6 +6521,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"messages":return<MessagesPage onConnect={()=>setPage("settings")}/>;
     case"campaigns":return<CampaignsPage onBuilder={()=>setPage("campaign-builder")}/>;
     case"campaign-builder":return<CampaignBuilderPage onBack={()=>setPage("campaigns")}/>;
+    case"segments":return<SegmentsPage/>;
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
     case"automation-builder":return<AutomationBuilderPage onBack={()=>setPage("automations")}/>;
     case"loyalty":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
