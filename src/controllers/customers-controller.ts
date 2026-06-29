@@ -349,6 +349,43 @@ const deleteNoteHandler = async (req: Request, res: Response): Promise<void> => 
   } catch (err) { handleError(err, res); }
 };
 
+// ── Manual points adjustment ───────────────────────────────────
+
+const PointsSchema = z.object({
+  points: z.number().int().positive().max(1_000_000),
+  direction: z.enum(['CREDIT', 'DEBIT']).default('CREDIT'),
+  reason: z.string().max(120).optional(),
+});
+
+/** POST /customers/:id/points — owner manually grants or removes points. */
+const adjustPointsHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const { id } = req.params;
+    const { points, direction, reason } = PointsSchema.parse(req.body);
+
+    const customer = await prisma.customer.findFirst({ where: { id, businessId }, select: { id: true } });
+    if (!customer) { res.status(404).json({ error: 'CUSTOMER_NOT_FOUND' }); return; }
+
+    const { creditPoints, debitPoints } = await import('../services/loyalty-service');
+    const label = `MANUAL_ADJUSTMENT${reason ? `: ${reason}` : ''}`;
+    try {
+      const newBalance = await prisma.$transaction((tx) =>
+        direction === 'DEBIT'
+          ? debitPoints(tx, businessId, id, points, label, undefined, 'ManualAdjustment')
+          : creditPoints(tx, businessId, id, points, label, undefined, 'ManualAdjustment'),
+      );
+      res.status(200).json({ ok: true, direction, points, newBalance });
+    } catch (e) {
+      if ((e as Error).message === 'INSUFFICIENT_POINTS_BALANCE') {
+        res.status(409).json({ error: 'INSUFFICIENT_POINTS_BALANCE' });
+        return;
+      }
+      throw e;
+    }
+  } catch (err) { handleError(err, res); }
+};
+
 // ================================================================
 //  4. CUSTOMER FINANCIALS — spend, AOV, CLV, predicted CLV, share
 // ================================================================
@@ -548,3 +585,4 @@ customersRouter.patch('/:id/tags', requireRoles(...ROLES) as any, updateTagsHand
 customersRouter.patch('/:id/enrichment', requireRoles(...ROLES) as any, updateEnrichmentHandler);
 customersRouter.post('/:id/notes', requireRoles(...ROLES) as any, addNoteHandler);
 customersRouter.delete('/:id/notes/:noteId', requireRoles(...ROLES) as any, deleteNoteHandler);
+customersRouter.post('/:id/points', requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER) as any, adjustPointsHandler);

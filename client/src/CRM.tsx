@@ -1820,6 +1820,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
   const [newTag,setNewTag]=useState("");
   const [notes,setNotes]=useState<any[]>([]);
   const [noteBody,setNoteBody]=useState("");
+  const [ptOpen,setPtOpen]=useState(false);const [ptAmt,setPtAmt]=useState("");const [ptDir,setPtDir]=useState<"CREDIT"|"DEBIT">("CREDIT");const [ptReason,setPtReason]=useState("");const [ptBusy,setPtBusy]=useState(false);
 
   useEffect(()=>{
     setLoading(true);
@@ -1836,6 +1837,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
   const addTag=async()=>{const t=newTag.trim();if(!t||tags.includes(t))return;const next=[...tags,t];setTags(next);setNewTag("");try{await api.customers.setTags(c.id,next);}catch{setTags(tags);}};
   const removeTag=async(t:string)=>{const next=tags.filter(x=>x!==t);setTags(next);try{await api.customers.setTags(c.id,next);}catch{setTags(tags);}};
   const addNote=async()=>{const b=noteBody.trim();if(!b)return;setNoteBody("");try{const n=await api.customers.addNote(c.id,b);setNotes([n,...notes]);}catch{}};
+  const adjustPoints=async()=>{const n=Number(ptAmt);if(!n||n<=0)return;setPtBusy(true);try{await api.customers.adjustPoints(c.id,n,ptDir,ptReason||undefined);setPtOpen(false);setPtAmt("");setPtReason("");api.customers.profile(c.id).then(d=>setLedger(d.rewardPointsLedger??[])).catch(()=>{});api.customers.full(c.id).then(setProf).catch(()=>{});}catch(e:any){alert(e?.message||"Failed");}finally{setPtBusy(false);}};
   const delNote=async(id:string)=>{setNotes(notes.filter(n=>n.id!==id));try{await api.customers.deleteNote(c.id,id);}catch{}};
 
   const fav=p.favouriteProducts??[];const social=p.social??{};const prefs=p.preferences??{};
@@ -1875,7 +1877,18 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
         </div>}
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Points Ledger</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Points Ledger</h3>
+          <button onClick={()=>setPtOpen(o=>!o)} className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg" style={{background:C.primary+"22",color:"#c4b5fd"}}><Plus size={11}/>Adjust points</button>
+        </div>
+        {ptOpen&&<div className="mb-3 p-3 rounded-lg space-y-2" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.2)"}}>
+          <div className="flex gap-2">
+            <select value={ptDir} onChange={e=>setPtDir(e.target.value as any)} className="px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}><option value="CREDIT">Give</option><option value="DEBIT">Remove</option></select>
+            <input type="number" value={ptAmt} onChange={e=>setPtAmt(e.target.value)} placeholder="Points" className="w-24 px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
+            <input value={ptReason} onChange={e=>setPtReason(e.target.value)} placeholder="Reason (optional)" className="flex-1 px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
+          </div>
+          <button onClick={adjustPoints} disabled={ptBusy} className="w-full py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{ptBusy?"Saving…":ptDir==="CREDIT"?`Give ${ptAmt||0} points`:`Remove ${ptAmt||0} points`}</button>
+        </div>}
         {loading?<Skeleton h="h-32"/>:ledger.length===0?<p className="text-xs text-slate-500 text-center py-6">No points activity yet</p>:
         <div className="space-y-1 max-h-56 overflow-y-auto">{ledger.map((l:any,i:number)=><div key={l.id||i} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${l.type==="CREDIT"?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}</div><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{l.reason||"Transaction"}</div></div><div className="text-right flex-shrink-0"><div className={`text-xs font-bold ${l.type==="CREDIT"?"text-green-400":"text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}{l.points}pts</div><div className="text-xs text-slate-500">{(l.balanceAfter??0).toLocaleString()} bal</div></div></div>)}</div>}
       </div>
@@ -2911,12 +2924,23 @@ const GiftCardsManager=()=>{
   const [issued,setIssued]=useState<any>(null);
   const load=()=>{setLoading(true);api.loyaltyEngine.giftCards().then(setData).catch(()=>{}).finally(()=>setLoading(false));};
   useEffect(load,[]);
-  const issue=async()=>{try{const card=await api.loyaltyEngine.issueGiftCard({...f,initialBalance:Number(f.initialBalance)});setIssued(card);setShow(false);setF({initialBalance:25,recipientName:"",purchaserName:"",message:""});load();}catch(e:any){alert(e?.message||"Failed");}};
+  const issue=async()=>{try{const allowedItems=(f.allowedItemsRaw||"").split(",").map((s:string)=>s.trim()).filter(Boolean);const card=await api.loyaltyEngine.issueGiftCard({initialBalance:Number(f.initialBalance),recipientName:f.recipientName||undefined,purchaserName:f.purchaserName||undefined,message:f.message||undefined,...(allowedItems.length?{allowedItems}:{})});setIssued(card);setShow(false);setF({initialBalance:25,recipientName:"",purchaserName:"",message:""});load();}catch(e:any){alert(e?.message||"Failed");}};
+  const removeCard=async(c:any)=>{
+    if(c.issuedToCustomerId){
+      const reason=prompt("This card is held by a customer. We'll message them for consent before deleting.\n\nReason / note to send (optional):","This gift card was issued in error — apologies for the mix-up.");
+      if(reason===null)return;
+      try{await api.loyaltyEngine.requestGiftCardDeletion(c.id,reason||undefined);alert("Deletion request sent — the customer must accept it from their portal.");load();}catch(e:any){alert(e?.message||"Failed");}
+    }else{
+      if(!confirm(`Delete gift card ${c.code}? This cannot be undone.`))return;
+      try{await api.loyaltyEngine.deleteGiftCard(c.id);load();}catch(e:any){alert(e?.message||"Failed");}
+    }
+  };
+  const GC_STATUS:Record<string,string>={ACTIVE:C.green,REDEEMED:C.blue,PENDING_DELETE:C.amber,VOIDED:"#6b7280",EXPIRED:"#6b7280"};
   return(<div className="space-y-4">
     <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Gift Cards</h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>Issue gift card</button></div>
     {data&&<div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><KPI icon={CreditCard} label="Active cards" value={data.activeCount??0} color={C.primary}/><KPI icon={DollarSign} label="Outstanding balance" value={`£${(data.outstandingBalance??0).toLocaleString()}`} color={C.green} sub="liability you've been pre-paid for"/></div>}
     {loading?<Skeleton h="h-24"/>:(data?.cards||[]).length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No gift cards issued yet.</div>:
-    <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={c.status==="ACTIVE"?C.green:c.status==="REDEEMED"?C.blue:"#6b7280"}>{c.status}</Badge></td></tr>))}</tbody></table></div></div>}
+    <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th><th className="text-right py-2.5 px-4"></th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}{c.issuedToCustomerId&&<span className="ml-1.5 text-[9px] px-1 py-0.5 rounded" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>held</span>}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={GC_STATUS[c.status]||"#6b7280"}>{c.status==="PENDING_DELETE"?"AWAITING CONSENT":c.status}</Badge></td><td className="py-2.5 px-4 text-right">{(c.status==="REDEEMED"||c.status==="VOIDED")?<span className="text-[10px] text-slate-600">archived</span>:<button onClick={()=>removeCard(c)} title={c.issuedToCustomerId?"Request deletion (needs customer consent)":"Delete"} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>}</td></tr>))}</tbody></table></div></div>}
     {show&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setShow(false)}>
       <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">Issue gift card</h3><button onClick={()=>setShow(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
@@ -2924,6 +2948,7 @@ const GiftCardsManager=()=>{
         <input value={f.recipientName} onChange={e=>setF({...f,recipientName:e.target.value})} placeholder="Recipient name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
         <input value={f.purchaserName} onChange={e=>setF({...f,purchaserName:e.target.value})} placeholder="Purchaser name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
         <input value={f.message} onChange={e=>setF({...f,message:e.target.value})} placeholder="Gift message (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <div><label className="text-[11px] text-slate-400">Redeemable only for (optional, comma-separated menu items)</label><input value={f.allowedItemsRaw||""} onChange={e=>setF({...f,allowedItemsRaw:e.target.value})} placeholder="e.g. Coffee, Croissant — leave blank for anything" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
         <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Issue card</button>
       </div>
     </div>}
@@ -3771,6 +3796,22 @@ const CustomerPortalPage=()=>{
                   </button>
                 </div>
               ))}
+            </div>
+          </PortalCard>
+
+          {/* Feedback & Google reviews */}
+          <PortalCard>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Feedback & Reviews</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-white text-sm font-medium block mb-1">⭐ Google review link</label>
+                <p className="text-slate-500 text-xs mb-2">Shown to happy customers (4–5★) after they leave feedback, so they can review you on Google Maps.</p>
+                <input value={ps.googleReviewUrl||""} onChange={e=>setPs((p:any)=>({...p,googleReviewUrl:e.target.value}))} placeholder="https://g.page/r/...  or  https://search.google.com/local/writereview?placeid=..." className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              </div>
+              <div>
+                <label className="text-white text-sm font-medium block mb-1">🎁 Points for leaving feedback</label>
+                <input type="number" value={ps.feedbackBonusPoints??20} onChange={e=>setPs((p:any)=>({...p,feedbackBonusPoints:Number(e.target.value)}))} className="w-32 px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+              </div>
             </div>
           </PortalCard>
 

@@ -399,7 +399,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
       where: { id: customerId, businessId },
       select: {
         id: true, fullName: true, whatsappNumber: true, email: true,
-        currentPointsBalance: true, currentTierId: true, visitCount: true, totalSpend: true,
+        currentPointsBalance: true, currentWalletBalance: true, currentTierId: true, visitCount: true, totalSpend: true,
         referralCode: true, createdAt: true, birthday: true,
         coupons: {
           where:   { status: 'ACTIVE' },
@@ -480,14 +480,22 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
     where: { businessId, referredByCode: customer.referralCode ?? '' },
   }).catch(() => 0);
 
+  // Business-level portal config (Google review link for the feedback flow).
+  let googleReviewUrl: string | null = null;
+  try {
+    const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { portalSettings: true } });
+    googleReviewUrl = ((biz?.portalSettings as any)?.googleReviewUrl as string) ?? null;
+  } catch { /* ignore */ }
+
   res.json({
-    customer: { ...customer, name: customer.fullName, tier: tierName, pointsBalance: customer.currentPointsBalance, totalVisits: customer.visitCount },
+    customer: { ...customer, name: customer.fullName, tier: tierName, pointsBalance: customer.currentPointsBalance, walletBalance: Number(customer.currentWalletBalance ?? 0), totalVisits: customer.visitCount },
     tiers,
     perks,
     visits:       recentVisits,
     referralCount,
     nextTier,
     progressToNext,
+    googleReviewUrl,
   });
 };
 
@@ -651,6 +659,102 @@ const updateLocationHandler = async (req: Request, res: Response): Promise<void>
 };
 
 // ================================================================
+// GIFT CARDS (customer-facing)
+// ================================================================
+
+/** GET /api/portal/gift-cards — cards the logged-in customer currently holds. */
+const portalGiftCardsHandler = async (req: Request, res: Response): Promise<void> => {
+  const { customerId, businessId } = (req as any).portalCtx;
+  const cards = await prisma.giftCard.findMany({
+    where:   { businessId, issuedToCustomerId: customerId, status: { in: ['ACTIVE', 'PENDING_DELETE'] } },
+    orderBy: { createdAt: 'desc' },
+    select:  { id: true, code: true, currentBalance: true, initialBalance: true, status: true, message: true, allowedItems: true, expiresAt: true, deletionReason: true, purchaserName: true },
+  });
+  res.json({
+    cards: cards.map(c => ({ ...c, currentBalance: Number(c.currentBalance), initialBalance: Number(c.initialBalance) })),
+  });
+};
+
+/** POST /api/portal/gift-cards/redeem — cash a held card into wallet credit. */
+const portalGiftRedeemHandler = async (req: Request, res: Response): Promise<void> => {
+  const { customerId, businessId } = (req as any).portalCtx;
+  const code = String(req.body?.code ?? '').trim();
+  if (!code) { res.status(400).json({ error: 'CODE_REQUIRED' }); return; }
+  // Ensure the card is actually held by this customer before redeeming.
+  const card = await prisma.giftCard.findFirst({ where: { businessId, code: code.toUpperCase(), issuedToCustomerId: customerId } });
+  if (!card) { res.status(404).json({ error: 'GIFT_CARD_NOT_FOUND' }); return; }
+  if (card.status === 'PENDING_DELETE') { res.status(409).json({ error: 'PENDING_DELETE', message: 'This card has a pending cancellation — respond to it first.' }); return; }
+  const { redeemGiftCard } = await import('../services/loyalty-engine-service');
+  const outcome = await redeemGiftCard(businessId, code, customerId);
+  if (!outcome.ok) { res.status(409).json({ error: outcome.error }); return; }
+  res.json(outcome);
+};
+
+/** POST /api/portal/gift-cards/gift — re-gift a held card to another customer. */
+const portalGiftTransferHandler = async (req: Request, res: Response): Promise<void> => {
+  const { customerId, businessId } = (req as any).portalCtx;
+  const id = String(req.body?.id ?? '');
+  const toPhone = String(req.body?.toPhone ?? '').trim();
+  if (!id || !toPhone) { res.status(400).json({ error: 'ID_AND_PHONE_REQUIRED' }); return; }
+  const { transferGiftCard } = await import('../services/loyalty-engine-service');
+  const outcome = await transferGiftCard(businessId, id, customerId, toPhone);
+  if (!outcome.ok) { res.status(outcome.error === 'RECIPIENT_NOT_FOUND' ? 404 : 409).json({ error: outcome.error }); return; }
+  res.json({ ok: true });
+};
+
+/** POST /api/portal/gift-cards/deletion-response — accept/decline a deletion. */
+const portalGiftDeletionResponseHandler = async (req: Request, res: Response): Promise<void> => {
+  const { customerId, businessId } = (req as any).portalCtx;
+  const id = String(req.body?.id ?? '');
+  const accept = !!req.body?.accept;
+  if (!id) { res.status(400).json({ error: 'ID_REQUIRED' }); return; }
+  const { respondToGiftCardDeletion } = await import('../services/loyalty-engine-service');
+  const outcome = await respondToGiftCardDeletion(businessId, id, customerId, accept);
+  if (!outcome.ok) { res.status(404).json({ error: outcome.error }); return; }
+  res.json({ ok: true, accepted: accept });
+};
+
+// ================================================================
+// FEEDBACK (customer-facing)
+// ================================================================
+
+/** POST /api/portal/feedback — leave a rating + comment; awards points once/day. */
+const portalFeedbackHandler = async (req: Request, res: Response): Promise<void> => {
+  const { customerId, businessId } = (req as any).portalCtx;
+  const score = Number(req.body?.score);
+  const comment = String(req.body?.comment ?? '').trim().slice(0, 1000) || null;
+  if (!Number.isInteger(score) || score < 1 || score > 5) { res.status(400).json({ error: 'SCORE_1_TO_5_REQUIRED' }); return; }
+
+  await prisma.feedbackResponse.create({
+    data: { businessId, customerId, score, comment, channel: 'PORTAL', sentAt: new Date() },
+  });
+
+  // Reward feedback with points (configurable; default 20), capped to once/day.
+  let pointsAwarded = 0;
+  try {
+    const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { portalSettings: true } });
+    const cfg = (biz?.portalSettings as any) ?? {};
+    const reward = Number(cfg.feedbackBonusPoints ?? 20);
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const already = await prisma.rewardPointsLedger.findFirst({ where: { businessId, customerId, referenceType: 'FEEDBACK', createdAt: { gte: dayStart } }, select: { id: true } });
+    if (reward > 0 && !already) {
+      const { creditPoints } = await import('../services/loyalty-service');
+      await prisma.$transaction((tx) => creditPoints(tx, businessId, customerId, reward, 'FEEDBACK_REWARD', undefined, 'FEEDBACK'));
+      pointsAwarded = reward;
+    }
+  } catch { /* points are a bonus — never fail the feedback submission */ }
+
+  // Surface the Google review link so happy customers can amplify publicly.
+  let googleReviewUrl: string | null = null;
+  try {
+    const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { portalSettings: true } });
+    googleReviewUrl = ((biz?.portalSettings as any)?.googleReviewUrl as string) ?? null;
+  } catch { /* ignore */ }
+
+  res.json({ ok: true, pointsAwarded, googleReviewUrl: score >= 4 ? googleReviewUrl : null });
+};
+
+// ================================================================
 // ROUTER
 // ================================================================
 
@@ -665,3 +769,8 @@ customerPortalRouter.patch('/:slug/location',    tenantScope, updateLocationHand
 customerPortalRouter.get('/me',                  portalAuth, meHandler);
 customerPortalRouter.post('/redeem',             portalAuth, redeemHandler);
 customerPortalRouter.post('/checkin',            portalAuth, checkInPortalHandler);
+customerPortalRouter.get('/gift-cards',                      portalAuth, portalGiftCardsHandler);
+customerPortalRouter.post('/gift-cards/redeem',             portalAuth, portalGiftRedeemHandler);
+customerPortalRouter.post('/gift-cards/gift',              portalAuth, portalGiftTransferHandler);
+customerPortalRouter.post('/gift-cards/deletion-response', portalAuth, portalGiftDeletionResponseHandler);
+customerPortalRouter.post('/feedback',                     portalAuth, portalFeedbackHandler);

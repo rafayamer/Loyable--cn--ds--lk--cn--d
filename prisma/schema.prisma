@@ -711,12 +711,24 @@ model GiftCard {
   code              String         @unique // Human-shareable code
   initialBalance    Decimal        @db.Decimal(12, 2)
   currentBalance    Decimal        @db.Decimal(12, 2)
-  status            String         @default("ACTIVE") // ACTIVE | REDEEMED | EXPIRED | VOIDED
+  status            String         @default("ACTIVE") // ACTIVE | REDEEMED | EXPIRED | VOIDED | PENDING_DELETE
 
   purchaserName     String?
   recipientName     String?
   recipientPhone    String?
   message           String?
+
+  // Assigned recipient (the customer who currently holds the card and sees it
+  // in their portal). Distinct from redeemedByCustomerId (who cashed it in).
+  issuedToCustomerId String?
+  // Menu-restriction: product names this card may be redeemed against.
+  // Empty = redeemable for anything / as wallet credit.
+  allowedItems      String[]       @default([])
+
+  // Consent-gated deletion: a business can only delete an *issued* card after
+  // the customer accepts the deletion request.
+  deletionReason       String?
+  deletionRequestedAt  DateTime?
 
   // Once redeemed into a customer's wallet, we link them
   redeemedByCustomerId String?
@@ -729,6 +741,7 @@ model GiftCard {
 
   @@index([businessId, status])
   @@index([businessId, code])
+  @@index([businessId, issuedToCustomerId])
   @@map("gift_cards")
 }
 

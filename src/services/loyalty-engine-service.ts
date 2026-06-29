@@ -192,7 +192,7 @@ function generateGiftCode(): string {
   return `GC-${block()}-${block()}-${block()}`;
 }
 
-export async function issueGiftCard(businessId: string, data: { initialBalance: number; purchaserName?: string; recipientName?: string; recipientPhone?: string; message?: string; expiresAt?: Date | null }) {
+export async function issueGiftCard(businessId: string, data: { initialBalance: number; purchaserName?: string; recipientName?: string; recipientPhone?: string; message?: string; expiresAt?: Date | null; issuedToCustomerId?: string | null; allowedItems?: string[] }) {
   // Retry on the (astronomically unlikely) code collision
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateGiftCode();
@@ -204,10 +204,89 @@ export async function issueGiftCard(businessId: string, data: { initialBalance: 
         initialBalance: data.initialBalance, currentBalance: data.initialBalance,
         purchaserName: data.purchaserName, recipientName: data.recipientName,
         recipientPhone: data.recipientPhone, message: data.message, expiresAt: data.expiresAt ?? null,
+        issuedToCustomerId: data.issuedToCustomerId ?? null,
+        allowedItems: data.allowedItems ?? [],
       },
     });
   }
   throw new Error('GIFT_CODE_GENERATION_FAILED');
+}
+
+/** Fire-and-forget plain-text WhatsApp to a customer (best-effort). */
+async function notifyCustomer(businessId: string, customerId: string, body: string): Promise<void> {
+  try {
+    const customer = await prisma.customer.findFirst({ where: { id: customerId, businessId }, select: { whatsappNumber: true } });
+    if (!customer?.whatsappNumber) return;
+    const { routeMessage } = await import('./messaging-gateway');
+    await routeMessage({ businessId, provider: 'AUTO', recipientPhone: customer.whatsappNumber, payload: { type: 'TEXT', body } as any });
+  } catch (e) {
+    console.warn('[gift-card] notifyCustomer failed: %s', (e as Error)?.message);
+  }
+}
+
+export type GiftDeleteError = 'GIFT_CARD_NOT_FOUND' | 'GIFT_CARD_ISSUED' | 'GIFT_CARD_REDEEMED';
+
+/**
+ * Hard-delete a gift card. Permitted ONLY when the card has not been issued to
+ * a customer and has not been redeemed. Issued cards must go through the
+ * consent-gated requestGiftCardDeletion flow instead.
+ */
+export async function deleteGiftCard(businessId: string, id: string): Promise<{ ok: true } | { ok: false; error: GiftDeleteError }> {
+  const card = await prisma.giftCard.findFirst({ where: { id, businessId } });
+  if (!card) return { ok: false, error: 'GIFT_CARD_NOT_FOUND' };
+  if (card.status === 'REDEEMED' || card.redeemedByCustomerId) return { ok: false, error: 'GIFT_CARD_REDEEMED' };
+  if (card.issuedToCustomerId) return { ok: false, error: 'GIFT_CARD_ISSUED' };
+  await prisma.giftCard.delete({ where: { id } });
+  return { ok: true };
+}
+
+/**
+ * Begin consent-gated deletion of an *issued* card: mark it PENDING_DELETE and
+ * message the holder asking them to accept. Only the customer accepting (or the
+ * business after acceptance) finalises the removal.
+ */
+export async function requestGiftCardDeletion(businessId: string, id: string, reason?: string): Promise<{ ok: true } | { ok: false; error: GiftDeleteError }> {
+  const card = await prisma.giftCard.findFirst({ where: { id, businessId } });
+  if (!card) return { ok: false, error: 'GIFT_CARD_NOT_FOUND' };
+  if (!card.issuedToCustomerId) return { ok: false, error: 'GIFT_CARD_ISSUED' }; // not issued → use deleteGiftCard
+  if (card.status === 'REDEEMED') return { ok: false, error: 'GIFT_CARD_REDEEMED' };
+
+  await prisma.giftCard.update({ where: { id }, data: { status: 'PENDING_DELETE', deletionReason: reason ?? null, deletionRequestedAt: new Date() } });
+
+  const msg = reason?.trim()
+    ? `Hi — about your gift card ${card.code} (£${Number(card.currentBalance)}): ${reason.trim()} We're sorry for the inconvenience. Please open your rewards portal to accept or decline this change.`
+    : `Hi — your gift card ${card.code} (£${Number(card.currentBalance)}) was issued in error and we'd like to cancel it. We're sorry for the mix-up. Please open your rewards portal to accept or decline this change.`;
+  await notifyCustomer(businessId, card.issuedToCustomerId, msg);
+  return { ok: true };
+}
+
+/** Customer's response to a pending deletion request. */
+export async function respondToGiftCardDeletion(businessId: string, id: string, customerId: string, accept: boolean): Promise<{ ok: boolean; error?: string }> {
+  const card = await prisma.giftCard.findFirst({ where: { id, businessId, issuedToCustomerId: customerId } });
+  if (!card) return { ok: false, error: 'GIFT_CARD_NOT_FOUND' };
+  if (card.status !== 'PENDING_DELETE') return { ok: false, error: 'NO_PENDING_REQUEST' };
+  if (accept) {
+    // Voided (kept for the business history panel, marked accordingly).
+    await prisma.giftCard.update({ where: { id }, data: { status: 'VOIDED', currentBalance: 0 } });
+    await notifyCustomer(businessId, customerId, `Thanks — your gift card ${card.code} has been cancelled as requested.`);
+  } else {
+    // Customer declined — restore to active.
+    await prisma.giftCard.update({ where: { id }, data: { status: 'ACTIVE', deletionReason: null, deletionRequestedAt: null } });
+  }
+  return { ok: true };
+}
+
+/** Re-gift an issued card to another customer (by phone), if still ACTIVE. */
+export async function transferGiftCard(businessId: string, id: string, fromCustomerId: string, toPhone: string): Promise<{ ok: boolean; error?: string }> {
+  const card = await prisma.giftCard.findFirst({ where: { id, businessId, issuedToCustomerId: fromCustomerId } });
+  if (!card) return { ok: false, error: 'GIFT_CARD_NOT_FOUND' };
+  if (card.status !== 'ACTIVE') return { ok: false, error: 'GIFT_CARD_NOT_TRANSFERABLE' };
+  const recipient = await prisma.customer.findFirst({ where: { businessId, whatsappNumber: toPhone.trim() }, select: { id: true, fullName: true } });
+  if (!recipient) return { ok: false, error: 'RECIPIENT_NOT_FOUND' };
+  if (recipient.id === fromCustomerId) return { ok: false, error: 'CANNOT_GIFT_TO_SELF' };
+  await prisma.giftCard.update({ where: { id }, data: { issuedToCustomerId: recipient.id, recipientName: recipient.fullName } });
+  await notifyCustomer(businessId, recipient.id, `🎁 You've received a gift card worth £${Number(card.currentBalance)}! Open your rewards portal to view and redeem it.`);
+  return { ok: true };
 }
 
 export type GiftRedeemError = 'GIFT_CARD_NOT_FOUND' | 'GIFT_CARD_INACTIVE' | 'GIFT_CARD_EXPIRED' | 'GIFT_CARD_EMPTY';

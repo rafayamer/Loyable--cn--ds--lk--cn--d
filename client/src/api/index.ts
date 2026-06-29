@@ -140,6 +140,7 @@ export const api = {
     setEnrichment: (id: string, body: { preferences?: Record<string, any>; favouriteProducts?: string[]; social?: Record<string, string> }) => patch<any>(`/customers/${id}/enrichment`, body),
     addNote:    (id: string, body: string, pinned?: boolean) => post<any>(`/customers/${id}/notes`, { body, pinned }),
     deleteNote: (id: string, noteId: string) => del<any>(`/customers/${id}/notes/${noteId}`),
+    adjustPoints: (id: string, points: number, direction: 'CREDIT'|'DEBIT', reason?: string) => post<any>(`/customers/${id}/points`, { points, direction, reason }),
     segments:   () => get<{ total: number; segments: { segment: string; count: number; percentage: number; revenue: number }[] }>('/customers/segments'),
     savedViews: () => get<{ views: any[] }>('/customers/saved-views'),
     createSavedView: (name: string, filtersJson: Record<string, any>, isShared?: boolean) => post<any>('/customers/saved-views', { name, filtersJson, isShared }),
@@ -181,6 +182,8 @@ export const api = {
     issueGiftCard:  (body: any) => post<any>('/loyalty-engine/gift-cards', body),
     lookupGiftCard: (code: string) => get<any>(`/loyalty-engine/gift-cards/${encodeURIComponent(code)}`),
     redeemGiftCard: (code: string, customerId: string) => post<any>('/loyalty-engine/gift-cards/redeem', { code, customerId }),
+    deleteGiftCard: (id: string) => del<any>(`/loyalty-engine/gift-cards/${id}`),
+    requestGiftCardDeletion: (id: string, reason?: string) => post<any>(`/loyalty-engine/gift-cards/${id}/request-deletion`, { reason }),
 
     challenges:     (customerId?: string) => get<{ challenges: any[] }>(`/loyalty-engine/challenges${customerId ? `?customerId=${customerId}` : ''}`),
     createChallenge:(body: any) => post<any>('/loyalty-engine/challenges', body),

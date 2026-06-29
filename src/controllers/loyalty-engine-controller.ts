@@ -17,6 +17,7 @@ import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import {
   redeemReward, issueGiftCard, redeemGiftCard,
+  deleteGiftCard, requestGiftCardDeletion,
   evaluateChallenges, signQrPayload, verifyQrPayload,
   type RewardRedeemError, type GiftRedeemError,
 } from '../services/loyalty-engine-service';
@@ -147,6 +148,8 @@ const GiftIssueSchema = z.object({
   recipientPhone: z.string().max(30).optional(),
   message: z.string().max(300).optional(),
   expiresAt: z.string().datetime().optional(),
+  issuedToCustomerId: z.string().optional(),
+  allowedItems: z.array(z.string()).optional(),
 });
 
 loyaltyEngineRouter.get('/gift-cards', requireRoles(...STAFF) as any, async (req: Request, res: Response) => {
@@ -189,6 +192,40 @@ loyaltyEngineRouter.post('/gift-cards/redeem', requireRoles(...REDEEMERS) as any
     const outcome = await redeemGiftCard(businessId, b.code, customerId);
     if (!outcome.ok) { res.status(ERR_STATUS[outcome.error] ?? 400).json({ error: outcome.error }); return; }
     res.status(200).json(outcome);
+  } catch (err) { handle(err, res); }
+});
+
+// Delete an UNISSUED card outright; issued cards require the consent flow.
+loyaltyEngineRouter.delete('/gift-cards/:id', requireRoles(...OWNER) as any, async (req: Request, res: Response) => {
+  try {
+    const { businessId } = req.tenantContext;
+    const outcome = await deleteGiftCard(businessId, req.params.id);
+    if (!outcome.ok) {
+      const status = outcome.error === 'GIFT_CARD_NOT_FOUND' ? 404 : 409;
+      const message = outcome.error === 'GIFT_CARD_ISSUED'
+        ? 'This card is held by a customer — request their consent to delete it instead.'
+        : outcome.error === 'GIFT_CARD_REDEEMED'
+          ? 'This card has been redeemed and is kept for your records.'
+          : 'Gift card not found.';
+      res.status(status).json({ error: outcome.error, message });
+      return;
+    }
+    res.status(204).end();
+  } catch (err) { handle(err, res); }
+});
+
+// Begin consent-gated deletion of an issued card (messages the holder).
+const GiftDeleteReqSchema = z.object({ reason: z.string().max(300).optional() });
+loyaltyEngineRouter.post('/gift-cards/:id/request-deletion', requireRoles(...OWNER) as any, async (req: Request, res: Response) => {
+  try {
+    const { businessId } = req.tenantContext;
+    const { reason } = GiftDeleteReqSchema.parse(req.body);
+    const outcome = await requestGiftCardDeletion(businessId, req.params.id, reason);
+    if (!outcome.ok) {
+      res.status(outcome.error === 'GIFT_CARD_NOT_FOUND' ? 404 : 409).json({ error: outcome.error });
+      return;
+    }
+    res.status(200).json({ ok: true });
   } catch (err) { handle(err, res); }
 });
 

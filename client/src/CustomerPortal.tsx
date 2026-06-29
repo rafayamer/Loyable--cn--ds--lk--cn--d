@@ -416,6 +416,149 @@ function RewardsTab({ coupons, onRedeem, currency }: any) {
 }
 
 // ================================================================
+// TAB: GIFT CARDS
+// ================================================================
+function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }: any) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const [giftFor, setGiftFor] = useState<string | null>(null);
+  const [giftPhone, setGiftPhone] = useState('');
+
+  const doRedeem = async (code: string) => {
+    setBusy(code); setErr(''); setMsg('');
+    try { const d = await onRedeem(code); setMsg(`✓ ${fmtCurrency(d.credited ?? 0, currency)} added to your balance!`); }
+    catch (e: any) { setErr(e.message ?? 'Redemption failed'); }
+    finally { setBusy(null); }
+  };
+  const doGift = async (id: string) => {
+    if (!giftPhone.trim()) return;
+    setBusy(id); setErr(''); setMsg('');
+    try { await onGift(id, giftPhone.trim()); setMsg('🎁 Gift card sent!'); setGiftFor(null); setGiftPhone(''); }
+    catch (e: any) { setErr(e.message === 'RECIPIENT_NOT_FOUND' ? 'No customer found with that number.' : (e.message ?? 'Could not send')); }
+    finally { setBusy(null); }
+  };
+  const doDeletion = async (id: string, accept: boolean) => {
+    setBusy(id); setErr('');
+    try { await onDeletionResponse(id, accept); }
+    catch (e: any) { setErr(e.message ?? 'Failed'); }
+    finally { setBusy(null); }
+  };
+
+  if (!cards?.length) return (
+    <div className="text-center py-12">
+      <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}><span className="text-3xl">💳</span></div>
+      <p className="text-slate-500 font-medium">No gift cards</p>
+      <p className="text-slate-400 text-sm mt-1">Gift cards sent to you will appear here.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {err && <div className="px-4 py-3 rounded-2xl text-sm text-red-600" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>{err}</div>}
+      {msg && <div className="px-4 py-3 rounded-2xl text-sm text-green-700" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>{msg}</div>}
+      {cards.map((c: any) => (
+        <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6d28d9,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
+          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
+          <div className="absolute -right-2 bottom-2 w-20 h-20 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}/>
+          <div className="flex items-center justify-between mb-6 relative">
+            <span className="text-xs font-semibold tracking-widest uppercase opacity-80">Gift Card</span>
+            <span className="text-2xl">🎁</span>
+          </div>
+          <div className="text-4xl font-black mb-1 relative">{fmtCurrency(Number(c.currentBalance), currency)}</div>
+          <div className="text-xs opacity-75 relative mb-3">balance{c.purchaserName ? ` · from ${c.purchaserName}` : ''}</div>
+          {c.message && <div className="text-sm italic opacity-90 mb-3 relative">"{c.message}"</div>}
+          <div className="font-mono text-sm tracking-wider opacity-90 relative mb-4">{c.code}</div>
+          {Array.isArray(c.allowedItems) && c.allowedItems.length > 0 && (
+            <div className="text-[11px] opacity-80 relative mb-3">Redeemable for: {c.allowedItems.join(', ')}</div>
+          )}
+
+          {c.status === 'PENDING_DELETE' ? (
+            <div className="rounded-2xl p-3 relative" style={{ background: 'rgba(0,0,0,0.25)' }}>
+              <div className="text-xs mb-2">⚠️ The business asked to cancel this card{c.deletionReason ? `: "${c.deletionReason}"` : '.'}</div>
+              <div className="flex gap-2">
+                <button disabled={!!busy} onClick={() => doDeletion(c.id, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>Accept cancellation</button>
+                <button disabled={!!busy} onClick={() => doDeletion(c.id, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>Keep my card</button>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="flex gap-2">
+                <button disabled={!!busy} onClick={() => doRedeem(c.code)} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>
+                  {busy === c.code ? '...' : 'Add to my balance'}
+                </button>
+                <button disabled={!!busy} onClick={() => setGiftFor(giftFor === c.id ? null : c.id)} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.15)' }}>Gift</button>
+              </div>
+              {giftFor === c.id && (
+                <div className="mt-2 flex gap-2">
+                  <input value={giftPhone} onChange={e => setGiftPhone(e.target.value)} placeholder="Friend's WhatsApp number" className="flex-1 px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
+                  <button disabled={!!busy} onClick={() => doGift(c.id)} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>Send</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ================================================================
+// TAB: FEEDBACK
+// ================================================================
+function FeedbackTab({ onSubmit, googleReviewUrl }: any) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<{ pointsAwarded: number; googleReviewUrl: string | null } | null>(null);
+  const [err, setErr] = useState('');
+
+  const submit = async () => {
+    if (!score) { setErr('Please pick a rating'); return; }
+    setBusy(true); setErr('');
+    try { const d = await onSubmit(score, comment.trim()); setDone({ pointsAwarded: d.pointsAwarded ?? 0, googleReviewUrl: d.googleReviewUrl ?? null }); }
+    catch (e: any) { setErr(e.message ?? 'Could not submit'); }
+    finally { setBusy(false); }
+  };
+
+  if (done) {
+    const reviewLink = done.googleReviewUrl || googleReviewUrl;
+    return (
+      <div className="text-center py-10">
+        <div className="text-5xl mb-3">🙏</div>
+        <p className="text-slate-800 font-bold text-lg">Thank you for your feedback!</p>
+        {done.pointsAwarded > 0 && <p className="text-purple-600 font-semibold mt-1">+{done.pointsAwarded} points added</p>}
+        {score >= 4 && reviewLink && (
+          <a href={reviewLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-5 px-5 py-3 rounded-2xl text-white text-sm font-bold" style={{ background: 'linear-gradient(135deg,#4285F4,#34A853)' }}>
+            ⭐ Leave us a Google review
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-5 text-center" style={{ background: 'white', border: '1px solid rgba(139,92,246,0.2)' }}>
+        <p className="font-bold text-slate-800 mb-1">How was your experience?</p>
+        <p className="text-xs text-slate-500 mb-4">Your feedback earns you points</p>
+        <div className="flex justify-center gap-2 mb-4">
+          {[1, 2, 3, 4, 5].map(n => (
+            <button key={n} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} onClick={() => setScore(n)} className="text-4xl transition-transform" style={{ transform: (hover || score) >= n ? 'scale(1.1)' : 'scale(1)' }}>
+              <span style={{ filter: (hover || score) >= n ? 'none' : 'grayscale(1) opacity(0.4)' }}>⭐</span>
+            </button>
+          ))}
+        </div>
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Tell us more (optional)…" rows={3} className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none resize-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
+        {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
+        <button disabled={busy} onClick={submit} className="w-full mt-3 py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy ? 'Sending…' : 'Submit feedback'}</button>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // TAB: VISIT HISTORY
 // ================================================================
 function VisitsTab({ visits, currency }: any) {
@@ -588,6 +731,30 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
     load();
   }
 
+  // ── Gift cards ──────────────────────────────────────────────
+  const [giftCards, setGiftCards] = useState<any[]>([]);
+  const loadGiftCards = useCallback(() => {
+    portalFetch('/portal/gift-cards').then(d => setGiftCards(d.cards ?? [])).catch(() => {});
+  }, [portalFetch]);
+  useEffect(() => { loadGiftCards(); }, [loadGiftCards]);
+
+  const redeemGift = async (code: string) => {
+    const d = await portalFetch('/portal/gift-cards/redeem', { method: 'POST', body: JSON.stringify({ code }) });
+    loadGiftCards(); load();
+    return d;
+  };
+  const giftToFriend = async (id: string, toPhone: string) => {
+    await portalFetch('/portal/gift-cards/gift', { method: 'POST', body: JSON.stringify({ id, toPhone }) });
+    loadGiftCards();
+  };
+  const respondDeletion = async (id: string, accept: boolean) => {
+    await portalFetch('/portal/gift-cards/deletion-response', { method: 'POST', body: JSON.stringify({ id, accept }) });
+    loadGiftCards();
+  };
+  const submitFeedback = async (score: number, comment: string) => {
+    return portalFetch('/portal/feedback', { method: 'POST', body: JSON.stringify({ score, comment }) });
+  };
+
   if (loading) return (
     <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: '#f8fafc' }}>
       <div className="text-center">
@@ -612,8 +779,10 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   const TABS = [
     ps.showMenu && ps.menuImageUrl ? { id: 'menu',    label: 'Menu',    icon: '🍽️' } : null,
     { id: 'rewards',  label: 'Rewards',  icon: '🎁', count: customer.coupons?.length },
+    giftCards.length ? { id: 'giftcards', label: 'Gift Cards', icon: '💳', count: giftCards.length } : null,
     ps.showVisitHistory !== false   ? { id: 'history',  label: 'History',  icon: '📋' } : null,
     ps.showReferral    !== false     ? { id: 'referral', label: 'Refer',    icon: '🎉' } : null,
+    { id: 'feedback', label: 'Feedback', icon: '⭐' },
   ].filter(Boolean) as { id: string; label: string; icon: string; count?: number }[];
 
   // Default to first tab if current tab is hidden
@@ -735,8 +904,10 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
         {/* Tab content */}
         {activeTab === 'menu'    && <MenuTab menuImageUrl={ps.menuImageUrl}/>}
         {activeTab === 'rewards' && <RewardsTab coupons={customer.coupons} onRedeem={handleRedeem} currency={currency}/>}
+        {activeTab === 'giftcards' && <GiftCardsTab cards={giftCards} currency={currency} onRedeem={redeemGift} onGift={giftToFriend} onDeletionResponse={respondDeletion}/>}
         {activeTab === 'history' && <VisitsTab visits={visits} currency={currency}/>}
         {activeTab === 'referral'&& <ReferralTab customer={customer} referralCount={referralCount} bizName={bizName}/>}
+        {activeTab === 'feedback'&& <FeedbackTab onSubmit={submitFeedback} googleReviewUrl={data.googleReviewUrl}/>}
       </div>
     </div>
   );
