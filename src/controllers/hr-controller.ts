@@ -18,14 +18,36 @@
 
 import { Request, Response, Router } from 'express';
 import { Role } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
 import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { requireFeature } from '../services/entitlement-service';
+import { compressUnder } from '../utils/image-compress.util';
+import { inviteStaff } from '../services/auth-service';
 
 export const hrRouter = Router();
 hrRouter.use(tenantScope as any);
 // HR & Staff is a Pro feature.
 hrRouter.use(requireFeature('hr') as any);
+
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// In-memory so we can compress before writing to disk. Hard cap 15MB intake
+// (images get compressed under 1MB; PDFs must already be under 1MB).
+const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const DOC_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+
+// Map the HR role label → an invitable platform Role for login provisioning.
+const HR_ROLE_TO_PLATFORM: Record<string, Role> = {
+  MANAGER:   Role.BRANCH_MANAGER,
+  MARKETING: Role.MARKETING_STAFF,
+  CASHIER:   Role.CASHIER,
+  SUPPORT:   Role.CASHIER,
+  CUSTOM:    Role.CASHIER,
+  // OWNER is intentionally absent — owners aren't invited via this flow.
+};
 
 const MANAGE = [Role.TENANT_OWNER, Role.BRANCH_MANAGER];
 const bz = (req: Request) => req.tenantContext.businessId;
@@ -45,6 +67,12 @@ const wrap = (fn: (req: Request, res: Response) => Promise<void>) =>
     try { await fn(req, res); }
     catch (err) { console.error('[hr]', err); res.status(500).json({ error: 'HR_ERROR', message: (err as Error).message }); }
   };
+
+// Flip one onboarding checklist item to done (used when a login invite is sent).
+const markOnboarding = (current: unknown, key: string): any => {
+  const list = Array.isArray(current) ? (current as any[]) : DEFAULT_ONBOARDING;
+  return list.map(i => i.key === key ? { ...i, done: true, completedAt: new Date().toISOString() } : i);
+};
 
 // ================================================================
 // EMPLOYEE DIRECTORY
@@ -122,6 +150,12 @@ hrRouter.put('/employees/:id', requireRoles(...MANAGE) as any, wrap(async (req, 
 
 hrRouter.delete('/employees/:id', requireRoles(Role.TENANT_OWNER) as any, wrap(async (req, res) => {
   const businessId = bz(req);
+  // Data is preserved by default. A hard delete must be explicitly confirmed
+  // (?confirm=true); otherwise we refuse and point to suspend/terminate.
+  if (req.query.confirm !== 'true') {
+    res.status(409).json({ error: 'CONFIRM_REQUIRED', message: 'Employee records are kept by default. Suspend or terminate instead, or pass confirm=true to permanently delete.' });
+    return;
+  }
   const existing = await prisma.employee.findFirst({ where: { id: req.params.id, businessId } });
   if (!existing) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
   await prisma.$transaction([
@@ -181,8 +215,83 @@ hrRouter.delete('/documents/:docId', requireRoles(...MANAGE) as any, wrap(async 
   const businessId = bz(req);
   const existing = await prisma.employeeDocument.findFirst({ where: { id: req.params.docId, businessId } });
   if (!existing) { res.status(404).json({ error: 'DOCUMENT_NOT_FOUND' }); return; }
+  // Best-effort remove the stored file, then the record.
+  if (existing.fileUrl?.startsWith('/uploads/')) {
+    try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(existing.fileUrl))); } catch { /* ignore */ }
+  }
   await prisma.employeeDocument.delete({ where: { id: existing.id } });
   res.json({ ok: true });
+}));
+
+// Upload an actual file for an employee document. Images are compressed under
+// 1MB (resolution preserved); PDFs must already be under 1MB.
+hrRouter.post('/employees/:id/documents/upload', requireRoles(...MANAGE) as any, memUpload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const businessId = bz(req);
+      const emp = await prisma.employee.findFirst({ where: { id: req.params.id, businessId } });
+      if (!emp) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
+      if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      if (!DOC_EXTS.includes(ext)) { res.status(400).json({ error: 'Only JPG, PNG, WebP or PDF files are allowed' }); return; }
+
+      let result;
+      try { result = await compressUnder(req.file.buffer, ext, 1024 * 1024); }
+      catch (e) { res.status(413).json({ error: (e as Error).message.replace('FILE_TOO_LARGE: ', '') }); return; }
+
+      const filename = `hrdoc-${Date.now()}-${Math.random().toString(36).slice(2)}${result.ext}`;
+      fs.writeFileSync(path.join(UPLOAD_DIR, filename), result.buffer);
+
+      const doc = await prisma.employeeDocument.create({
+        data: {
+          businessId, employeeId: emp.id,
+          type: (req.body?.type as string) || 'OTHER',
+          name: (req.body?.name as string)?.trim() || req.file.originalname,
+          issuer: req.body?.issuer || null,
+          fileUrl: `/uploads/${filename}`,
+          issuedAt: req.body?.issuedAt ? new Date(req.body.issuedAt) : null,
+          expiresAt: req.body?.expiresAt ? new Date(req.body.expiresAt) : null,
+        },
+      });
+      res.status(201).json({ document: doc, compressed: result.compressed, sizeKB: Math.round(result.bytes / 1024) });
+    } catch (err) {
+      console.error('[hr:upload]', (err as Error).message);
+      res.status(500).json({ error: 'UPLOAD_FAILED' });
+    }
+  });
+
+// Send a login invite (email with credentials link) to an employee. Maps the
+// HR role to a platform role; the invited person only ever sees their role's
+// screens once they accept. Owners can't be invited via this flow.
+hrRouter.post('/employees/:id/invite', requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER) as any, wrap(async (req, res) => {
+  const { businessId, userId } = req.tenantContext;
+  const emp = await prisma.employee.findFirst({ where: { id: req.params.id, businessId } });
+  if (!emp) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
+  if (!emp.email) { res.status(400).json({ error: 'EMPLOYEE_HAS_NO_EMAIL' }); return; }
+  const platformRole = HR_ROLE_TO_PLATFORM[emp.hrRole];
+  if (!platformRole) { res.status(400).json({ error: 'ROLE_NOT_INVITABLE', message: `The ${emp.hrRole} role can't be issued a login here.` }); return; }
+  try {
+    await inviteStaff({ inviterUserId: userId, businessId, email: emp.email, role: platformRole, branchLocationId: emp.branchLocationId ?? undefined });
+    await prisma.employee.update({ where: { id: emp.id }, data: { onboardingJson: markOnboarding(emp.onboardingJson, 'invite') } });
+    res.json({ ok: true, invitedEmail: emp.email, role: platformRole });
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg === 'USER_ALREADY_EXISTS_IN_BUSINESS') { res.status(409).json({ error: 'ALREADY_HAS_LOGIN' }); return; }
+    res.status(400).json({ error: msg });
+  }
+}));
+
+// Quick status change: suspend / terminate / reactivate. Data is preserved —
+// this only flips status; records are never deleted here.
+hrRouter.post('/employees/:id/status', requireRoles(...MANAGE) as any, wrap(async (req, res) => {
+  const businessId = bz(req);
+  const status = String(req.body?.status ?? '');
+  if (!['ACTIVE', 'SUSPENDED', 'TERMINATED', 'ONBOARDING'].includes(status)) { res.status(400).json({ error: 'INVALID_STATUS' }); return; }
+  const existing = await prisma.employee.findFirst({ where: { id: req.params.id, businessId } });
+  if (!existing) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
+  const employee = await prisma.employee.update({ where: { id: existing.id }, data: { status } });
+  await prisma.auditLog.create({ data: { businessId, userId: req.tenantContext.userId, action: 'EMPLOYEE_STATUS_CHANGE', entityType: 'Employee', entityId: existing.id, metaJson: { from: existing.status, to: status } } }).catch(() => {});
+  res.json({ employee });
 }));
 
 // ================================================================

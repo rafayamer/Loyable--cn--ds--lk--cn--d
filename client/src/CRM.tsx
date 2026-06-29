@@ -516,15 +516,28 @@ const EmployeeModal=({emp,ct,onClose,onSaved}:any)=>{
 const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
   const e=data.employee;const checklist=Array.isArray(e.onboardingJson)?e.onboardingJson:[];
   const pct=checklist.length?Math.round(checklist.filter((i:any)=>i.done).length/checklist.length*100):0;
-  const [docName,setDocName]=useState("");const [docType,setDocType]=useState("CONTRACT");
-  const addDoc=async()=>{if(!docName.trim())return;await api.hr.addDocument(e.id,{name:docName,type:docType});setDocName("");onChanged();};
+  const [docType,setDocType]=useState("CONTRACT");const [docName,setDocName]=useState("");
+  const [uploading,setUploading]=useState(false);const [note,setNote]=useState("");const fileRef=useRef<HTMLInputElement>(null);
+  const onFile=async(file?:File)=>{ if(!file)return; setUploading(true);setNote("");
+    try{const r=await api.hr.uploadDocument(e.id,file,{name:docName||file.name,type:docType}); setNote(r.compressed?`Uploaded · compressed to ${r.sizeKB}KB`:`Uploaded · ${r.sizeKB}KB`); setDocName(""); onChanged();}
+    catch(err:any){setNote(err?.message||"Upload failed");}finally{setUploading(false);if(fileRef.current)fileRef.current.value="";} };
+  const invite=async()=>{setNote("");try{const r=await api.hr.invite(e.id);setNote(`Login invite sent to ${r.invitedEmail}`);}catch(err:any){setNote(err?.message==="ALREADY_HAS_LOGIN"?"This person already has a login.":err?.message==="EMPLOYEE_HAS_NO_EMAIL"?"Add an email first.":err?.message||"Could not send invite");}};
+  const setStatus=async(s:string)=>{await api.hr.setStatus(e.id,s).then(onChanged);};
   return(
     <Modal title={e.fullName} onClose={onClose} ct={ct}>
-      <div className="flex items-center gap-2 mb-3"><Pill text={e.hrRole} color="#8b5cf6"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
-      <div className="text-xs space-y-1 mb-4" style={{color:ct.tx2}}>
+      <div className="flex items-center gap-2 mb-3 flex-wrap"><Pill text={e.hrRole} color="#8b5cf6"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
+      <div className="text-xs space-y-1 mb-3" style={{color:ct.tx2}}>
         {e.jobTitle&&<div>💼 {e.jobTitle}</div>}{e.email&&<div>✉️ {e.email}</div>}{e.phone&&<div>📞 {e.phone}</div>}
         {e.emergencyContactName&&<div>🚨 {e.emergencyContactName} · {e.emergencyContactPhone||"—"}</div>}
       </div>
+      {/* Account & status actions */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <HBtn ct={ct} onClick={invite}>Send login invite</HBtn>
+        {e.status!=="SUSPENDED"&&<button onClick={()=>setStatus("SUSPENDED")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.3)"}}>Suspend</button>}
+        {e.status!=="TERMINATED"&&<button onClick={()=>setStatus("TERMINATED")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(239,68,68,0.12)",color:"#ef4444",border:"1px solid rgba(239,68,68,0.3)"}}>Terminate</button>}
+        {(e.status==="SUSPENDED"||e.status==="TERMINATED")&&<button onClick={()=>setStatus("ACTIVE")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(34,197,94,0.12)",color:"#22c55e",border:"1px solid rgba(34,197,94,0.3)"}}>Reactivate</button>}
+      </div>
+      {note&&<div className="text-xs mb-3 px-3 py-2 rounded-lg" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{note}</div>}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1"><span className="text-xs font-semibold" style={{color:ct.tx}}>Onboarding</span><span className="text-xs" style={{color:ct.tx3}}>{pct}%</span></div>
         <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
@@ -538,13 +551,19 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
         <div className="text-xs font-semibold mb-1" style={{color:ct.tx}}>Documents & Certifications</div>
         <div className="space-y-1 mb-2">{(data.documents||[]).map((d:any)=>(
           <div key={d.id} className="flex items-center gap-2 text-xs" style={{color:ct.tx2}}>
-            <FileText size={12}/><span className="flex-1">{d.name} <span style={{color:ct.tx3}}>({d.type})</span></span>
+            <FileText size={12}/>
+            {d.fileUrl?<a href={d.fileUrl} target="_blank" rel="noreferrer" className="flex-1 truncate underline" style={{color:"#06b6d4"}}>{d.name}</a>:<span className="flex-1 truncate">{d.name}</span>}
+            <span style={{color:ct.tx3}}>({d.type})</span>
             <button onClick={()=>api.hr.deleteDocument(d.id).then(onChanged)} style={{color:"#ef4444"}}><Trash2 size={12}/></button>
           </div>
         ))}{(data.documents||[]).length===0&&<div className="text-xs" style={{color:ct.tx3}}>No documents yet.</div>}</div>
-        <div className="flex gap-2"><div className="flex-1"><HInput value={docName} onChange={setDocName} placeholder="Document name" ct={ct}/></div>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1"><HInput value={docName} onChange={setDocName} placeholder="Label (optional)" ct={ct}/></div>
           <div className="w-32"><HSelect value={docType} onChange={setDocType} options={["CONTRACT","ID","CERTIFICATE","POLICY","TRAINING","OTHER"]} ct={ct}/></div>
-          <HBtn ct={ct} onClick={addDoc}>Add</HBtn></div>
+          <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="hidden" onChange={ev=>onFile(ev.target.files?.[0])}/>
+          <HBtn ct={ct} onClick={()=>fileRef.current?.click()} disabled={uploading}>{uploading?"Uploading…":"Upload"}</HBtn>
+        </div>
+        <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Images auto-compress under 1MB (resolution kept). PDFs must be under 1MB.</div>
       </div>
     </Modal>
   );
@@ -852,6 +871,23 @@ const FeatureGate=({feature,requiredPlan,children}:{feature:string;requiredPlan:
     </div>
   );
 };
+// Owner-only test redeem box: enter a plan code to switch tier and test gating.
+const RedeemCodeCard=()=>{
+  const ct=useCard();const [open,setOpen]=useState(false);const [code,setCode]=useState("");const [msg,setMsg]=useState("");const [busy,setBusy]=useState(false);
+  const isOwner=(localStorage.getItem("userRole")||"")==="TENANT_OWNER";
+  if(!isOwner)return null;
+  const redeem=async()=>{if(!code.trim())return;setBusy(true);setMsg("");try{const r=await api.entitlements.redeem(code.trim());_entCache=r.entitlements;setMsg(`Switched to ${r.planName}. Reloading…`);setTimeout(()=>window.location.reload(),700);}catch(e:any){setMsg(e?.message==="INVALID_CODE"?"That code isn't valid.":e?.message||"Failed");}finally{setBusy(false);}};
+  if(!open)return <button onClick={()=>setOpen(true)} className="text-[11px] mb-3" style={{color:ct.tx3}}>Have a plan test code?</button>;
+  return(
+    <div className="rounded-xl p-3 mb-4 flex items-center gap-2 flex-wrap" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+      <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste plan code" className="flex-1 min-w-[180px] px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+      <button onClick={redeem} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{busy?"…":"Redeem"}</button>
+      <button onClick={()=>setOpen(false)} className="text-xs" style={{color:ct.tx3}}>Close</button>
+      {msg&&<span className="text-xs w-full" style={{color:ct.tx2}}>{msg}</span>}
+    </div>
+  );
+};
+
 // Slim banner shown while the 14-day Growth trial is active.
 const TrialBanner=()=>{
   const ct=useCard();const ent=useEntitlements();
@@ -7478,7 +7514,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       </div>
       {/* Main content */}
       <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 md:pb-0`} style={{paddingBottom:"calc(6rem + env(safe-area-inset-bottom))"}}>
-        <div className="p-3 md:p-6 max-w-6xl"><TrialBanner/><ModuleTabs page={page} setPage={nav}/>{render()}</div>
+        <div className="p-3 md:p-6 max-w-6xl"><TrialBanner/><RedeemCodeCard/><ModuleTabs page={page} setPage={nav}/>{render()}</div>
       </main>
       {/* Mobile "More" bottom sheet */}
       {mobileMenu&&<div className="md:hidden fixed inset-0 z-[60]" onClick={()=>setMobileMenu(false)} style={{background:"rgba(0,0,0,0.5)"}}>

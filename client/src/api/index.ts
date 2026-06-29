@@ -287,7 +287,20 @@ export const api = {
     deleteEmployee: (id: string)             => del<any>(`/hr/employees/${id}`),
     setOnboarding:  (id: string, key: string, done: boolean) => patch<any>(`/hr/employees/${id}/onboarding`, { key, done }),
     addDocument:    (id: string, b: any)     => post<any>(`/hr/employees/${id}/documents`, b),
+    uploadDocument: async (id: string, file: File, meta: { name?: string; type?: string }): Promise<any> => {
+      const form = new FormData();
+      form.append('file', file);
+      if (meta.name) form.append('name', meta.name);
+      if (meta.type) form.append('type', meta.type);
+      const token = localStorage.getItem('accessToken') ?? '';
+      const r = await fetch(`/api/hr/employees/${id}/documents/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.message ?? d?.error ?? 'Upload failed');
+      return d;
+    },
     deleteDocument: (docId: string)          => del<any>(`/hr/documents/${docId}`),
+    invite:         (id: string)             => post<any>(`/hr/employees/${id}/invite`, {}),
+    setStatus:      (id: string, status: string) => post<any>(`/hr/employees/${id}/status`, { status }),
     // Roles & permissions
     roles:          ()                       => get<any>('/hr/roles'),
     createRole:     (b: any)                 => post<any>('/hr/roles', b),
@@ -325,6 +338,7 @@ export const api = {
   entitlements: {
     get:        () => get<any>('/entitlements'),
     publicPlans:() => get<any>('/plans'),
+    redeem:     (code: string) => post<any>('/entitlements/redeem', { code }),
   },
 
   // ── AI Business Advisor + Reports ─────────────────────────────
