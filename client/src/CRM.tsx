@@ -5607,8 +5607,9 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
     if(mode==="WALLET"&&walletCustomer?.found&&walletPoints>0){
       try{
         await api.pos.walletRedeem({customerId:walletCustomer.customerId,pointsToRedeem:walletPoints,amountDeducted:walletDiscount});
-      }catch(e){
+      }catch(e:any){
         setPlacing(false);
+        alert(`Couldn't apply points: ${e?.message||"please try again"}`);
         return;
       }
     }
@@ -5616,8 +5617,9 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
     if(mode==="WALLET"&&walletCustomer?.found&&giftDiscount>0){
       try{
         await api.pos.giftCreditRedeem({customerId:walletCustomer.customerId,amount:giftDiscount});
-      }catch(e){
+      }catch(e:any){
         setPlacing(false);
+        alert(`Couldn't apply gift credit: ${e?.message||"please try again"}`);
         return;
       }
     }

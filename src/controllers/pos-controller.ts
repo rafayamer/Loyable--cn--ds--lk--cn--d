@@ -586,10 +586,9 @@ posRouter.post('/wallet-redeem', async (req: Request, res: Response) => {
           type:         'DEBIT',
           points:       pointsToRedeem,
           balanceAfter: newBalance,
-          reason:       'MANUAL_ADJUSTMENT',
+          reason:       `POS wallet payment — ${pointsToRedeem} pts = ${amountDeducted}`,
           referenceType:'WALLET_REDEMPTION',
-          notes:        `POS wallet payment — ${pointsToRedeem} pts = ${amountDeducted} currency units`,
-        } as any,
+        },
       }),
       prisma.customer.update({
         where: { id: customerId },
