@@ -367,5 +367,7 @@ export const api = {
     walletLookup: (phone: string) => get<any>(`/pos/wallet-lookup?phone=${encodeURIComponent(phone)}`),
     walletRedeem: (body: { customerId: string; pointsToRedeem: number; amountDeducted: number }) => post<any>('/pos/wallet-redeem', body),
     giftCreditRedeem: (body: { customerId: string; amount: number }) => post<any>('/pos/giftcredit-redeem', body),
+    giftCardLookup: (code: string) => get<any>(`/pos/giftcard-lookup?code=${encodeURIComponent(code)}`),
+    giftCardRedeem: (body: { customerId: string; code: string }) => post<any>('/pos/giftcard-redeem', body),
   },
 };

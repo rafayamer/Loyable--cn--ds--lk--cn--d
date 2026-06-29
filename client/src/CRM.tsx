@@ -5502,7 +5502,21 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
   const [walletLooking,setWalletLooking]=useState(false);
   const [walletPoints,setWalletPoints]=useState(0); // pts to redeem
   const [useGift,setUseGift]=useState(false); // apply gift/shop credit
+  const [giftCodeInput,setGiftCodeInput]=useState("");const [giftRedeemMsg,setGiftRedeemMsg]=useState<{ok:boolean;text:string}|null>(null);const [giftRedeemBusy,setGiftRedeemBusy]=useState(false);
   const walletLookupTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const refreshWallet=async()=>{try{const r=await api.pos.walletLookup(phone);setWalletCustomer(r);}catch{}};
+  const redeemGiftCode=async(code:string)=>{
+    if(!walletCustomer?.customerId||!code.trim())return;
+    setGiftRedeemBusy(true);setGiftRedeemMsg(null);
+    try{
+      const r=await api.pos.giftCardRedeem({customerId:walletCustomer.customerId,code:code.trim().toUpperCase()});
+      setGiftRedeemMsg({ok:true,text:`✓ ${currency} ${Number(r.credited??0).toFixed(2)} added to gift credit`});
+      setGiftCodeInput("");setUseGift(true);await refreshWallet();
+    }catch(e:any){
+      const m=e?.message;
+      setGiftRedeemMsg({ok:false,text:m==="GIFT_CARD_NOT_FOUND"?"No card found with that code":m==="GIFT_CARD_EMPTY"?"That card has already been used":m==="GIFT_CARD_EXPIRED"?"That card has expired":m==="GIFT_CARD_INACTIVE"?"That card is not active":(m||"Could not redeem")});
+    }finally{setGiftRedeemBusy(false);}
+  };
   const [barcodeFlash,setBarcodeFlash]=useState<string|null>(null);
   const activeOrders=useOrders().filter(o=>o.status==="UNPAID");
   const cats=[...new Set(menuItems.map(i=>i.cat))];
@@ -5770,6 +5784,27 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                       </button>
                     </label>
                   )}
+                  {/* Gift cards on this account — redeem straight to credit */}
+                  {(walletCustomer.giftCards||[]).length>0&&(
+                    <div className="pt-2 mt-1 space-y-1.5" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+                      <div className="text-[11px] text-slate-400">🎁 Gift cards on this account</div>
+                      {walletCustomer.giftCards.map((g:any)=>(
+                        <div key={g.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.04)"}}>
+                          <span className="text-xs text-white font-mono">{g.code} <span className="text-emerald-300">{currency} {Number(g.balance).toFixed(2)}</span></span>
+                          <button onClick={()=>redeemGiftCode(g.code)} disabled={giftRedeemBusy} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Redeem</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Enter a gift card code manually */}
+                  <div className="pt-2 mt-1 space-y-1.5" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+                    <div className="text-[11px] text-slate-400">Enter a gift card code</div>
+                    <div className="flex gap-2">
+                      <input value={giftCodeInput} onChange={e=>setGiftCodeInput(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 min-w-0 px-3 py-2 rounded-xl text-xs text-white font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+                      <button onClick={()=>redeemGiftCode(giftCodeInput)} disabled={giftRedeemBusy||!giftCodeInput.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{giftRedeemBusy?"…":"Redeem"}</button>
+                    </div>
+                    {giftRedeemMsg&&<div className={`text-[11px] ${giftRedeemMsg.ok?"text-emerald-400":"text-red-400"}`}>{giftRedeemMsg.text}</div>}
+                  </div>
                 </>
               )}
               {!walletLooking&&!walletCustomer&&(

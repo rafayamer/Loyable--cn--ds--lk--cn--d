@@ -522,6 +522,13 @@ posRouter.get('/wallet-lookup', async (req: Request, res: Response) => {
       ? parseFloat((balance / redeemRate).toFixed(2))
       : 0;
 
+    // Active gift cards held by this customer — redeemable straight from the till.
+    const giftCards = await prisma.giftCard.findMany({
+      where:   { businessId, issuedToCustomerId: customer.id, status: 'ACTIVE' },
+      select:  { id: true, code: true, currentBalance: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
     res.json({
       found:            true,
       customerId:       customer.id,
@@ -529,6 +536,7 @@ posRouter.get('/wallet-lookup', async (req: Request, res: Response) => {
       phone,
       pointsBalance:    balance,
       walletBalance:    Number(customer.currentWalletBalance ?? 0), // gift / shop credit (money)
+      giftCards:        giftCards.map(g => ({ id: g.id, code: g.code, balance: Number(g.currentBalance) })),
       redeemRate,
       minRedeemPoints,
       maxDiscount,
@@ -593,6 +601,40 @@ posRouter.post('/wallet-redeem', async (req: Request, res: Response) => {
     res.json({ ok: true, pointsDebited: pointsToRedeem, newBalance, amountDeducted });
   } catch (err) {
     console.error('[pos] wallet-redeem error', err);
+    res.status(500).json({ error: 'Redemption failed' });
+  }
+});
+
+// ── GET /api/pos/giftcard-lookup?code= ────────────────────────────
+// Look up a gift card by code at the till (balance + status).
+posRouter.get('/giftcard-lookup', async (req: Request, res: Response) => {
+  try {
+    const businessId = getBizId(req);
+    const code = String(req.query.code ?? '').trim().toUpperCase();
+    if (!code) { res.status(400).json({ error: 'code required' }); return; }
+    const card = await prisma.giftCard.findFirst({ where: { businessId, code }, select: { code: true, currentBalance: true, status: true } });
+    if (!card) { res.json({ found: false, code }); return; }
+    res.json({ found: true, code: card.code, balance: Number(card.currentBalance), status: card.status });
+  } catch (err) {
+    console.error('[pos] giftcard-lookup error', err);
+    res.status(500).json({ error: 'Lookup failed' });
+  }
+});
+
+// ── POST /api/pos/giftcard-redeem ─────────────────────────────────
+// Redeem a gift card CODE at the till → loads its balance into the
+// customer's gift/shop credit wallet (then spendable on the bill).
+posRouter.post('/giftcard-redeem', async (req: Request, res: Response) => {
+  try {
+    const businessId = getBizId(req);
+    const { customerId, code } = req.body as { customerId: string; code: string };
+    if (!customerId || !code?.trim()) { res.status(400).json({ error: 'customerId and code required' }); return; }
+    const { redeemGiftCard } = await import('../services/loyalty-engine-service');
+    const outcome = await redeemGiftCard(businessId, code.trim().toUpperCase(), customerId);
+    if (!outcome.ok) { res.status(409).json({ error: outcome.error }); return; }
+    res.json(outcome); // { ok, credited, walletBalance }
+  } catch (err) {
+    console.error('[pos] giftcard-redeem error', err);
     res.status(500).json({ error: 'Redemption failed' });
   }
 });
