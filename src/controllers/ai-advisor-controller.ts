@@ -16,9 +16,12 @@ import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware
 import { answerQuestion } from '../services/ai/business-advisor-service';
 import { buildReport } from '../services/ai/business-report-service';
 import { deliverReportForBusiness } from '../services/ai/ai-report-runner';
+import { requireFeature } from '../services/entitlement-service';
 
 export const aiAdvisorRouter = Router();
 aiAdvisorRouter.use(tenantScope as any);
+// AI advisor + reports are a Growth feature (also included in Pro/trial).
+aiAdvisorRouter.use(requireFeature('ai_advisor') as any);
 
 const READERS = [Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF];
 

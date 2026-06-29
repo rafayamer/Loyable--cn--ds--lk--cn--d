@@ -20,9 +20,12 @@ import { Request, Response, Router } from 'express';
 import { Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
+import { requireFeature } from '../services/entitlement-service';
 
 export const hrRouter = Router();
 hrRouter.use(tenantScope as any);
+// HR & Staff is a Pro feature.
+hrRouter.use(requireFeature('hr') as any);
 
 const MANAGE = [Role.TENANT_OWNER, Role.BRANCH_MANAGER];
 const bz = (req: Request) => req.tenantContext.businessId;

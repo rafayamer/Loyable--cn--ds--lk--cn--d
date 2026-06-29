@@ -321,6 +321,12 @@ export const api = {
     decideReward:   (id: string, decision: string) => post<any>(`/hr/rewards/${id}/decision`, { decision }),
   },
 
+  // ── Plans & entitlements ──────────────────────────────────────
+  entitlements: {
+    get:        () => get<any>('/entitlements'),
+    publicPlans:() => get<any>('/plans'),
+  },
+
   // ── AI Business Advisor + Reports ─────────────────────────────
   aiAdvisor: {
     ask:            (question: string)        => post<any>('/ai-advisor/ask', { question }),

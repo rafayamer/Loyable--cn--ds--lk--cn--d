@@ -814,6 +814,57 @@ const RewardModal=({emps,ct,onClose,onSaved}:any)=>{
 };
 
 // ════════════════════════════════════════════════════════════════
+// ENTITLEMENTS · plan limits, trial state & locked feature gates
+// ════════════════════════════════════════════════════════════════
+let _entCache:any=null;let _entPromise:Promise<any>|null=null;
+const loadEntitlements=()=>{ if(_entCache)return Promise.resolve(_entCache); if(!_entPromise)_entPromise=api.entitlements.get().then(d=>{_entCache=d;return d;}).catch(()=>null); return _entPromise; };
+const useEntitlements=()=>{
+  const [ent,setEnt]=useState<any>(_entCache);
+  useEffect(()=>{let on=true;loadEntitlements().then(d=>{if(on)setEnt(d);});return()=>{on=false;};},[]);
+  return ent;
+};
+const PLAN_PITCH:Record<string,string>={
+  ai_advisor:"Get a friendly AI advisor and weekly & monthly reports that tell you who to bring back and what to do next.",
+  ai_reports:"Weekly and monthly business reports, written from your own data.",
+  hr:"Run your team — staff directory, onboarding, training, attendance, shifts, performance and rewards.",
+  multi_branch:"Manage and compare up to 3 branches from one place.",
+};
+const LockedOverlay=({requiredPlan,benefit,ct}:{requiredPlan:string;benefit:string;ct:any})=>(
+  <div className="absolute inset-0 z-20 flex items-center justify-center p-6" style={{background:"rgba(8,6,18,0.55)",backdropFilter:"blur(3px)"}}>
+    <div className="max-w-sm w-full rounded-2xl p-6 text-center" style={{background:ct.card,border:`1px solid ${ct.bdr}`,boxShadow:ct.shadow}}>
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{background:"rgba(232,116,59,0.15)"}}><Lock size={22} style={{color:"#E8743B"}}/></div>
+      <div className="text-base font-bold mb-1" style={{color:ct.tx}}>Available on {requiredPlan}</div>
+      <div className="text-sm mb-4" style={{color:ct.tx3}}>{benefit}</div>
+      <button onClick={()=>{localStorage.setItem("crm_page","settings");window.location.reload();}} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Upgrade to {requiredPlan}</button>
+    </div>
+  </div>
+);
+// Wraps a feature screen; blurs + overlays an upgrade prompt if not entitled.
+const FeatureGate=({feature,requiredPlan,children}:{feature:string;requiredPlan:string;children:any})=>{
+  const ct=useCard();const ent=useEntitlements();
+  if(!ent)return <div>{children}</div>; // entitlements unknown → don't block (backend still enforces)
+  const allowed=Array.isArray(ent.features)&&ent.features.includes(feature);
+  if(allowed)return <div>{children}</div>;
+  return(
+    <div className="relative" style={{minHeight:360}}>
+      <div style={{filter:"blur(2px)",pointerEvents:"none",opacity:0.5}}>{children}</div>
+      <LockedOverlay requiredPlan={requiredPlan} benefit={PLAN_PITCH[feature]||"Upgrade to use this feature."} ct={ct}/>
+    </div>
+  );
+};
+// Slim banner shown while the 14-day Growth trial is active.
+const TrialBanner=()=>{
+  const ct=useCard();const ent=useEntitlements();
+  if(!ent?.trial?.active)return null;
+  return(
+    <div className="rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between flex-wrap gap-2" style={{background:"rgba(232,116,59,0.1)",border:"1px solid rgba(232,116,59,0.3)"}}>
+      <span className="text-sm" style={{color:ct.tx}}><b>14-day Growth trial active</b> · {ent.trial.daysRemaining} day{ent.trial.daysRemaining===1?"":"s"} left. You have full Growth access.</span>
+      <button onClick={()=>{localStorage.setItem("crm_page","settings");window.location.reload();}} className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>Choose a plan</button>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════
 // AI BUSINESS ADVISOR + REPORTS
 // ════════════════════════════════════════════════════════════════
 const ADVISOR_SUGGESTIONS=[
@@ -1474,11 +1525,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       result:"Membership revenue now covers his rent before the month even starts."},
   ];
 
+  // Four-plan structure. Live, included features only — no roadmap promises.
   const PRICING=[
-    {name:"Free",monthly:0,yearly:0,desc:"Perfect for getting started",features:["Up to 200 Customers","200 Messages / month","QR Check-in","Basic Analytics"],cta:"Get Started",highlight:false},
-    {name:"Starter",monthly:19,yearly:15,desc:"For small businesses",features:["Up to 1,000 Customers","1,000 Messages / month","Campaigns","Coupons & Campaigns","Email Support"],cta:"Start Free Trial",highlight:false},
-    {name:"Growth",monthly:49,yearly:39,desc:"For growing businesses",features:["Up to 10,000 Customers","10,000 Messages / month","Multi-Location","Advanced Analytics","AI Insights","Priority Support"],cta:"Start Free Trial",highlight:true},
-    {name:"Pro",monthly:99,yearly:79,desc:"For large businesses",features:["Unlimited Customers","Unlimited Messages","Multi-Location","AI Insights","White Label","Priority Support"],cta:"Start Free Trial",highlight:false},
+    {name:"Free",monthly:0,yearly:0,desc:"Start with a 14-day Growth trial",features:["14-day Growth trial","1 location","Up to 100 customers","100 messages / month","Basic QR check-in & dashboard"],cta:"Get Started",highlight:false},
+    {name:"Starter",monthly:39,yearly:33,desc:"For very small single-location businesses",features:["1 branch","Up to 2,000 customers","3,000 messages / month","Loyalty points, coupons & referrals","Basic campaigns & analytics"],cta:"Start Free Trial",highlight:false},
+    {name:"Growth",monthly:99,yearly:83,desc:"Bring customers back automatically",features:["Up to 16,000 customers","24,000 messages / month","Full CRM, loyalty wallet & store credit","Campaign builder & comeback campaigns","AI advisor + weekly & monthly reports","Retention, loyalty & campaign analytics"],cta:"Start Free Trial",highlight:true},
+    {name:"Pro",monthly:199,yearly:166,desc:"For stronger operators with up to 3 branches",features:["Up to 3 branches","Unlimited customers (fair use)","High-volume messaging (fair-use)","Branch comparison & advanced analytics","Staff permissions & advanced controls","Priority support"],cta:"Start Free Trial",highlight:false},
   ];
 
   const BRANDS=["Casa Bistro","The Coffee House","Urban Cuts","FitLife Gym","Blossom Salon","Sweet Treats","AutoShine"];
@@ -7362,11 +7414,11 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"datahub":return<DataHubPage/>;
     case"ai":return<AIPage/>;
     case"analytics":return<DashboardPage setPage={nav}/>;
-    case"advisor":return<AIAdvisorPage/>;
-    case"reports":return<BusinessReportsPage/>;
+    case"advisor":return<FeatureGate feature="ai_advisor" requiredPlan="Growth"><AIAdvisorPage/></FeatureGate>;
+    case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"integrations":return<IntegrationsPage/>;
-    case"ops-hr":return<HRStaffPage/>;
+    case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Pro"><HRStaffPage/></FeatureGate>;
     case"ops-branches":return<OperationsComingSoon title="Branches" desc="Manage all your locations, their settings, geofencing and per-branch staff from one place." icon={Building}/>;
     case"ops-inventory":return<OperationsComingSoon title="Inventory" desc="Track stock levels, products and supplies across branches." icon={Layers}/>;
     case"ops-devices":return<OperationsComingSoon title="Devices" desc="Register and manage POS terminals, printers and check-in devices per branch." icon={Smartphone}/>;
@@ -7424,7 +7476,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       </div>
       {/* Main content */}
       <main className={`relative z-10 transition-all duration-300 ${col?"md:ml-[72px]":"md:ml-[240px]"} pt-14 md:pt-0 pb-24 md:pb-0`}>
-        <div className="p-3 md:p-6 max-w-6xl"><ModuleTabs page={page} setPage={nav}/>{render()}</div>
+        <div className="p-3 md:p-6 max-w-6xl"><TrialBanner/><ModuleTabs page={page} setPage={nav}/>{render()}</div>
       </main>
       {/* Mobile bottom navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto" style={{background:portalDark?"rgba(8,6,18,0.97)":"rgba(255,255,255,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:`1px solid ${pt.bdr}`}}>

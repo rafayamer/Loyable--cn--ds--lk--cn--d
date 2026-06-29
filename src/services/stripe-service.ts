@@ -59,12 +59,13 @@ const PRICE_TO_TIER: Record<string, SubscriptionTier> = {
   [process.env.STRIPE_PRICE_ENTERPRISE_A!]:     'ENTERPRISE',
 };
 
-/** Monthly message quota per tier. -1 = unlimited (Enterprise). */
+/** Monthly message quota per tier. Mirrors src/config/plans.ts (single source
+ *  of truth for the four-plan structure). -1 = fair-use unlimited. */
 export const TIER_QUOTA: Record<SubscriptionTier, number> = {
-  FREE:         500,
-  STARTER:      2_500,
-  GROWTH:       10_000,
-  PROFESSIONAL: 50_000,
+  FREE:         100,
+  STARTER:      3_000,
+  GROWTH:       24_000,   // 16,000 customers × 1.5 messages
+  PROFESSIONAL: 100_000,  // fair-use high volume
   ENTERPRISE:   -1,
 };
 
