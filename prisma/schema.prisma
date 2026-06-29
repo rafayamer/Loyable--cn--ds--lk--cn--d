@@ -386,6 +386,10 @@ model Customer {
   latestSentimentScore     Float?
   latestSentimentAt        DateTime?
 
+  // ML-lite churn risk score (0-100); computed nightly by cron-service
+  churnRiskScore           Int              @default(0)
+  churnRiskScoredAt        DateTime?
+
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 

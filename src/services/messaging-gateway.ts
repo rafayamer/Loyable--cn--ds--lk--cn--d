@@ -386,18 +386,28 @@ wahaWebhookRouter.post('/:businessId', async (req: Request, res: Response): Prom
       return;
     }
     if (event.event === 'message' && event.payload?.from && event.payload?.body) {
-      const phone = normalizePhone(event.payload.from as string);
-      const body  = (event.payload.body as string).trim().toUpperCase();
-      if (isOptOutMessage(body)) {
-        await processOptOut(phone, businessId, event.payload.body);
+      const phone    = normalizePhone(event.payload.from as string);
+      const rawBody  = (event.payload.body as string).trim();
+      const upperBody = rawBody.toUpperCase();
+
+      // Priority 1: pending opt-out reason reply (single digit 1-4)
+      const reasonKey        = `optout:reason:${phone}:${businessId}`;
+      const pendingCustomerId = await getRedisClient().get(reasonKey).catch(() => null);
+      if (pendingCustomerId && /^[1-4]$/.test(rawBody)) {
+        await processOptOutReason(phone, businessId, pendingCustomerId, rawBody);
+        return;
+      }
+
+      if (isOptOutMessage(upperBody)) {
+        await processOptOut(phone, businessId, rawBody);
       } else {
         // Check if this is a feedback rating reply (digit 1–5)
         const isFeedback = await processFeedbackReply(businessId,
           (await prisma.customer.findFirst({ where: { whatsappNumber: phone, businessId }, select: { id: true } }))?.id ?? '',
-          event.payload.body
+          rawBody
         ).catch(() => false);
         if (!isFeedback) {
-          await processInboundSentiment(phone, businessId, event.payload.body);
+          await processInboundSentiment(phone, businessId, rawBody);
         }
       }
     }
@@ -445,10 +455,17 @@ const isOptOutMessage = (upperBody: string): boolean => {
   return phrases.some(p => upperBody.includes(p));
 };
 
+const OPT_OUT_REASON_LABELS: Record<string, string> = {
+  '1': 'TOO_MANY_MESSAGES',
+  '2': 'NOT_RELEVANT',
+  '3': 'WRONG_NUMBER',
+  '4': 'OTHER',
+};
+
 const processOptOut = async (phone: string, businessId: string, rawKeyword: string): Promise<void> => {
   const customer = await prisma.customer.findFirst({
     where:  { whatsappNumber: phone, businessId },
-    select: { id: true, marketingConsentWhatsapp: true },
+    select: { id: true, marketingConsentWhatsapp: true, fullName: true },
   });
   if (!customer) return;
 
@@ -473,6 +490,42 @@ const processOptOut = async (phone: string, businessId: string, rawKeyword: stri
 
   const redis = getRedisConnection() as any;
   await redis.del(`customer:consent:${customer.id}`);
+
+  // Store pending reason-capture key (24h TTL) before sending the follow-up
+  const reasonKey = `optout:reason:${phone}:${businessId}`;
+  await getRedisClient().set(reasonKey, customer.id, { EX: 86_400 });
+
+  // Send a single non-promotional follow-up asking WHY they opted out
+  const firstName = (customer.fullName ?? 'there').split(' ')[0];
+  const reasonMsg =
+    `Hi ${firstName}, you've been removed from our messages. ✅\n\n` +
+    `Optional: reply with a number to tell us why — it helps us improve:\n` +
+    `1️⃣  Too many messages\n` +
+    `2️⃣  Not relevant to me\n` +
+    `3️⃣  Wrong number\n` +
+    `4️⃣  Other\n\n` +
+    `(You won't receive any more marketing from us.)`;
+
+  routeMessage({
+    businessId,
+    provider: 'WAHA',
+    recipientPhone: phone,
+    payload: { type: 'TEXT', body: reasonMsg },
+  }).catch(err => console.warn('[optout:reason] follow-up send failed:', err));
+};
+
+const processOptOutReason = async (phone: string, businessId: string, customerId: string, choice: string): Promise<void> => {
+  const reasonCode = OPT_OUT_REASON_LABELS[choice];
+  if (!reasonCode) return;
+
+  // Store the reason in the most recent opt-out consent log entry for this customer
+  await prisma.consentChangeLog.updateMany({
+    where:  { customerId, businessId, triggerType: 'OPT_OUT_KEYWORD' },
+    data:   { keyword: reasonCode },
+  }).catch(() => {});
+
+  const redis = getRedisClient();
+  await redis.del(`optout:reason:${phone}:${businessId}`);
 };
 
 const VERY_NEGATIVE_SIGNALS = [

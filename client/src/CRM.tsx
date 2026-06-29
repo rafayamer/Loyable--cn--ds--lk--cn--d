@@ -135,7 +135,7 @@ const mapCustomer = (c: any) => ({
   avg:          c.visitCount ? Math.round(Number(c.totalSpend ?? 0) / c.visitCount) : 0,
   segment:      c.segment ?? "NEW",
   status:       c.segment === "LOST" ? "Churned" : c.segment === "AT_RISK" ? "At Risk" : "Active",
-  churnRisk:    computeChurnRisk(c),
+  churnRisk:    c.churnRiskScore != null ? c.churnRiskScore : computeChurnRisk(c),
   clv:          Math.round(Number(c.totalSpend ?? 0) * 1.8),
   points:       c.pointsBalance ?? c.currentPointsBalance ?? 0,
   tier:         c.currentTier?.name ?? (c.currentTierId ? "Member" : "Bronze"),
@@ -1859,7 +1859,14 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
       </div>
     </div>
     {/* Stat strip */}
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[{l:"Visits",v:p.visitCount??c.visits},{l:"Total Spent",v:`£${(p.totalSpend??c.spent).toLocaleString()}`},{l:"Points",v:(p.membership?.pointsBalance??c.points).toLocaleString()},{l:"Churn Risk",v:`${c.churnRisk}%`,col:c.churnRisk>50?"#ef4444":"#22c55e"},{l:"Avg Rating",v:p.reviews?.avgScore?`${p.reviews.avgScore}★`:"—"},{l:"Referrals",v:p.referral?.referredCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold" style={{color:s.col||"white"}}>{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}</div>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      {[{l:"Visits",v:p.visitCount??c.visits},{l:"Total Spent",v:`£${(p.totalSpend??c.spent).toLocaleString()}`},{l:"Points",v:(p.membership?.pointsBalance??c.points).toLocaleString()},{l:"Avg Rating",v:p.reviews?.avgScore?`${p.reviews.avgScore}★`:"—"},{l:"Referrals",v:p.referral?.referredCount??0}].map((s,i)=><div key={i} className="gc rounded-xl p-3 text-center" style={CARD}><div className="text-lg font-bold text-white">{s.v}</div><div className="text-xs text-slate-400">{s.l}</div></div>)}
+      <div className="gc rounded-xl p-3 text-center" style={CARD}>
+        <div className="text-lg font-bold mb-1" style={{color:c.churnRisk>70?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}>{c.churnRisk}<span className="text-xs font-normal text-slate-500">%</span></div>
+        <div className="w-full h-1.5 rounded-full mb-1" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${c.churnRisk}%`,background:c.churnRisk>70?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div>
+        <div className="text-xs text-slate-400">Churn Risk</div>
+      </div>
+    </div>
     {/* Tabs */}
     <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
       {TABS.map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={tab===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>)}

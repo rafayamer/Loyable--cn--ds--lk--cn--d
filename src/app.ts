@@ -194,6 +194,14 @@ async function ensureSchemaPatches() {
       sql: 'CREATE UNIQUE INDEX IF NOT EXISTS "customer_badges_customerId_name_key" ON "customer_badges" ("customerId","name")' },
     { label: 'customer_badges idx customer',
       sql: 'CREATE INDEX IF NOT EXISTS "customer_badges_businessId_customerId_idx" ON "customer_badges" ("businessId","customerId")' },
+    // ── Churn Risk Score (ML-lite nightly scoring) ──
+    { label: 'customers.churnRiskScore',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScore" INTEGER NOT NULL DEFAULT 0' },
+    { label: 'customers.churnRiskScoredAt',
+      sql: 'ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "churnRiskScoredAt" TIMESTAMP(3)' },
+    // ── Opt-out reason stored in ConsentChangeLog (keyword field already exists) ──
+    { label: 'consent_change_log.optOutReason',
+      sql: 'ALTER TABLE "consent_change_log" ADD COLUMN IF NOT EXISTS "optOutReason" TEXT' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]

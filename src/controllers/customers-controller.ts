@@ -96,7 +96,8 @@ const listHandler = async (req: Request, res: Response): Promise<void> => {
           currentPointsBalance: true, currentTierId: true, lastVisitAt: true, firstVisitAt: true,
           createdAt: true, referralCode: true, isStaff: true,
           marketingConsentWhatsapp: true, isSuppressed: true,
-        },
+          churnRiskScore: true, churnRiskScoredAt: true,
+        } as any,
       }),
       prisma.customer.count({ where }),
     ]);
