@@ -288,6 +288,30 @@ async function ensureSchemaPatches() {
       )` },
     { label: 'cohort_retention_snapshots idx',
       sql: 'CREATE INDEX IF NOT EXISTS "crs_biz_month" ON "cohort_retention_snapshots" ("businessId","cohortMonth")' },
+    // ── Lemon Squeezy billing columns + webhook idempotency ──
+    { label: 'subscriptions.lsCustomerId',     sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lsCustomerId" TEXT' },
+    { label: 'subscriptions.lsOrderId',        sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lsOrderId" TEXT' },
+    { label: 'subscriptions.lsSubscriptionId', sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lsSubscriptionId" TEXT' },
+    { label: 'subscriptions.lsProductId',      sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lsProductId" TEXT' },
+    { label: 'subscriptions.lsVariantId',      sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lsVariantId" TEXT' },
+    { label: 'subscriptions.planSlug',         sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "planSlug" TEXT' },
+    { label: 'subscriptions.renewsAt',         sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "renewsAt" TIMESTAMP(3)' },
+    { label: 'subscriptions.endsAt',           sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "endsAt" TIMESTAMP(3)' },
+    { label: 'subscriptions.cancelledAt',      sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "cancelledAt" TIMESTAMP(3)' },
+    { label: 'subscriptions.trialEndsAt',      sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "trialEndsAt" TIMESTAMP(3)' },
+    { label: 'subscriptions.lastWebhookEventId',sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastWebhookEventId" TEXT' },
+    { label: 'subscriptions.lastSyncedAt',     sql: 'ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastSyncedAt" TIMESTAMP(3)' },
+    { label: 'processed_webhooks table',
+      sql: `CREATE TABLE IF NOT EXISTS "processed_webhooks" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "provider" TEXT NOT NULL,
+        "dedupeKey" TEXT NOT NULL,
+        "eventName" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "processed_webhooks_provider_dedupeKey_key" UNIQUE ("provider","dedupeKey")
+      )` },
+    { label: 'processed_webhooks idx',
+      sql: 'CREATE INDEX IF NOT EXISTS "pwh_provider_created" ON "processed_webhooks" ("provider","createdAt")' },
     // ── AI · Business reports & run logs ──
     { label: 'business_reports table',
       sql: `CREATE TABLE IF NOT EXISTS "business_reports" (
@@ -635,6 +659,8 @@ async function bootstrap() {
   // Mounted BEFORE express.json() so the global JSON parser does not consume
   // the stream. express.raw sets req._body=true, so express.json skips it.
   app.use('/api/stripe', express.raw({ type: '*/*' }));
+  // Lemon Squeezy webhook also needs the raw body for HMAC signature verification.
+  app.use('/api/webhooks/lemonsqueezy', express.raw({ type: '*/*' }));
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -702,6 +728,8 @@ async function bootstrap() {
   await loadRouter('./controllers/ai-advisor-controller',    'aiAdvisorRouter',       '/api/ai-advisor');
   await loadRouter('./controllers/entitlements-controller',  'plansPublicRouter',     '/api/plans');
   await loadRouter('./controllers/entitlements-controller',  'entitlementsRouter',    '/api/entitlements');
+  await loadRouter('./controllers/lemonsqueezy-controller',  'lsBillingRouter',       '/api/billing');
+  await loadRouter('./controllers/lemonsqueezy-controller',  'lsWebhookRouter',       '/api/webhooks/lemonsqueezy');
 
   // Serve uploaded files (menu images / PDFs)
   const uploadsDir = path.join(__dirname, '..', 'uploads');

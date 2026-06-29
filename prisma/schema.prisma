@@ -1139,12 +1139,40 @@ model Subscription {
   monthlyMessageQuota    Int                @default(500)
   messagesUsedThisPeriod Int                @default(0)
 
+  // ── Lemon Squeezy (provider-agnostic billing alongside Stripe) ──
+  lsCustomerId           String?
+  lsOrderId              String?
+  lsSubscriptionId       String?
+  lsProductId            String?
+  lsVariantId            String?
+  planSlug               String?            // starter_39_99 | growth_99_99 | pro_199_99 | free
+  renewsAt               DateTime?
+  endsAt                 DateTime?
+  cancelledAt            DateTime?
+  trialEndsAt            DateTime?
+  lastWebhookEventId     String?
+  lastSyncedAt           DateTime?
+
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   business               Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+// Idempotency ledger for billing webhooks — a duplicate delivery (same
+// provider + dedupe key) is ignored so a plan is never activated twice.
+model ProcessedWebhook {
+  id          String   @id @default(cuid())
+  provider    String   // LEMONSQUEEZY | STRIPE
+  dedupeKey   String   // hash of event + resource id + status + updatedAt
+  eventName   String?
+  createdAt   DateTime @default(now())
+
+  @@unique([provider, dedupeKey])
+  @@index([provider, createdAt])
+  @@map("processed_webhooks")
 }
 
 // ================================================================
