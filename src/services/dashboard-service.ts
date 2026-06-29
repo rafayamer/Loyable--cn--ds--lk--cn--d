@@ -94,10 +94,13 @@ export async function buildDashboardOverview(
   const curFrom = new Date(now.getTime() - windowDays * DAY_MS);
   const prevFrom = new Date(now.getTime() - 2 * windowDays * DAY_MS);
 
+  // Each section is independently fault-tolerant: a failure in one (e.g. a
+  // widget query) degrades to an empty payload instead of 500-ing the whole
+  // dashboard and leaving every card stuck on a skeleton.
   const [kpis, widgets, tasks] = await Promise.all([
-    buildKpis(businessId, curFrom, prevFrom, now),
-    buildWidgets(businessId, curFrom, now),
-    buildTodayTasks(businessId, now),
+    buildKpis(businessId, curFrom, prevFrom, now).catch((e) => { console.error('[dashboard] kpis failed:', e); return {} as Record<string, KpiMetric>; }),
+    buildWidgets(businessId, curFrom, now).catch((e) => { console.error('[dashboard] widgets failed:', e); return {} as Record<string, unknown>; }),
+    buildTodayTasks(businessId, now).catch((e) => { console.error('[dashboard] tasks failed:', e); return [] as TodayTask[]; }),
   ]);
 
   return {
@@ -305,18 +308,26 @@ async function buildWidgets(
 
 /** Customers with a birthday in the next `days` days (month/day aware, year-agnostic). */
 async function upcomingBirthdays(businessId: string, now: Date, days: number) {
+  // Compute the MM-DD window bounds in JS and pass them as strings — never do
+  // date arithmetic with a bound JS number inside SQL (Postgres has no
+  // `date + double precision` operator, which would throw and 500 the dashboard).
+  const end = new Date(now.getTime() + days * DAY_MS);
+  const md = (d: Date) => `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const startMD = md(now);
+  const endMD = md(end);
+  // If the window wraps the year-end (e.g. Dec 28 → Jan 03), use an OR range.
+  if (startMD > endMD) {
+    return prisma.$queryRaw<Array<{ id: string; fullName: string; birthday: Date }>>`
+      SELECT id, "fullName", birthday FROM customers
+      WHERE "businessId" = ${businessId} AND "isActive" = true AND birthday IS NOT NULL
+        AND (to_char(birthday, 'MM-DD') >= ${startMD} OR to_char(birthday, 'MM-DD') <= ${endMD})
+      ORDER BY to_char(birthday, 'MM-DD') ASC LIMIT 20`;
+  }
   return prisma.$queryRaw<Array<{ id: string; fullName: string; birthday: Date }>>`
-    SELECT id, "fullName", birthday
-    FROM customers
-    WHERE "businessId" = ${businessId}
-      AND "isActive" = true
-      AND birthday IS NOT NULL
-      AND (
-        to_char(birthday, 'MM-DD') BETWEEN to_char(${now}::date, 'MM-DD')
-          AND to_char(${now}::date + ${days}, 'MM-DD')
-      )
-    ORDER BY to_char(birthday, 'MM-DD') ASC
-    LIMIT 20`;
+    SELECT id, "fullName", birthday FROM customers
+    WHERE "businessId" = ${businessId} AND "isActive" = true AND birthday IS NOT NULL
+      AND to_char(birthday, 'MM-DD') BETWEEN ${startMD} AND ${endMD}
+    ORDER BY to_char(birthday, 'MM-DD') ASC LIMIT 20`;
 }
 
 // ----------------------------------------------------------------
