@@ -424,11 +424,21 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
   const [msg, setMsg] = useState('');
   const [giftFor, setGiftFor] = useState<string | null>(null);
   const [giftPhone, setGiftPhone] = useState('');
+  const [codeEntry, setCodeEntry] = useState('');
+
+  const ERR_TEXT: Record<string, string> = {
+    GIFT_CARD_NOT_FOUND: "We couldn't find that code.",
+    GIFT_CARD_NOT_YOURS: 'That card belongs to someone else.',
+    GIFT_CARD_INACTIVE: 'That card is no longer active.',
+    GIFT_CARD_EXPIRED: 'That card has expired.',
+    GIFT_CARD_EMPTY: 'That card has already been used.',
+  };
+  const friendly = (m: string) => ERR_TEXT[m] ?? m ?? 'Redemption failed';
 
   const doRedeem = async (code: string) => {
     setBusy(code); setErr(''); setMsg('');
-    try { const d = await onRedeem(code); setMsg(`✓ ${fmtCurrency(d.credited ?? 0, currency)} added to your balance!`); }
-    catch (e: any) { setErr(e.message ?? 'Redemption failed'); }
+    try { const d = await onRedeem(code); setMsg(`✓ ${fmtCurrency(d.credited ?? 0, currency)} added to your balance!`); setCodeEntry(''); }
+    catch (e: any) { setErr(friendly(e.message)); }
     finally { setBusy(null); }
   };
   const doGift = async (id: string) => {
@@ -445,11 +455,14 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
     finally { setBusy(null); }
   };
 
-  if (!cards?.length) return (
-    <div className="text-center py-12">
-      <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}><span className="text-3xl">💳</span></div>
-      <p className="text-slate-500 font-medium">No gift cards</p>
-      <p className="text-slate-400 text-sm mt-1">Gift cards sent to you will appear here.</p>
+  const CodeBox = (
+    <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(139,92,246,0.2)' }}>
+      <p className="font-bold text-slate-800 text-sm mb-1">Have a gift code?</p>
+      <p className="text-xs text-slate-500 mb-3">Enter the code you were given to add its value to your balance.</p>
+      <div className="flex gap-2">
+        <input value={codeEntry} onChange={e => setCodeEntry(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 px-3 py-2 rounded-xl text-sm text-slate-800 font-mono outline-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
+        <button disabled={!codeEntry.trim() || !!busy} onClick={() => doRedeem(codeEntry.trim())} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy === codeEntry.trim() ? '...' : 'Redeem'}</button>
+      </div>
     </div>
   );
 
@@ -457,7 +470,14 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
     <div className="space-y-4">
       {err && <div className="px-4 py-3 rounded-2xl text-sm text-red-600" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>{err}</div>}
       {msg && <div className="px-4 py-3 rounded-2xl text-sm text-green-700" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>{msg}</div>}
-      {cards.map((c: any) => (
+      {CodeBox}
+      {!cards?.length && (
+        <div className="text-center py-8">
+          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}><span className="text-2xl">💳</span></div>
+          <p className="text-slate-500 text-sm">No gift cards yet — any sent to you will appear here.</p>
+        </div>
+      )}
+      {(cards ?? []).map((c: any) => (
         <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6d28d9,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
           <div className="absolute -right-2 bottom-2 w-20 h-20 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}/>
@@ -469,9 +489,6 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
           <div className="text-xs opacity-75 relative mb-3">balance{c.purchaserName ? ` · from ${c.purchaserName}` : ''}</div>
           {c.message && <div className="text-sm italic opacity-90 mb-3 relative">"{c.message}"</div>}
           <div className="font-mono text-sm tracking-wider opacity-90 relative mb-4">{c.code}</div>
-          {Array.isArray(c.allowedItems) && c.allowedItems.length > 0 && (
-            <div className="text-[11px] opacity-80 relative mb-3">Redeemable for: {c.allowedItems.join(', ')}</div>
-          )}
 
           {c.status === 'PENDING_DELETE' ? (
             <div className="rounded-2xl p-3 relative" style={{ background: 'rgba(0,0,0,0.25)' }}>
@@ -779,7 +796,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
   const TABS = [
     ps.showMenu && ps.menuImageUrl ? { id: 'menu',    label: 'Menu',    icon: '🍽️' } : null,
     { id: 'rewards',  label: 'Rewards',  icon: '🎁', count: customer.coupons?.length },
-    giftCards.length ? { id: 'giftcards', label: 'Gift Cards', icon: '💳', count: giftCards.length } : null,
+    { id: 'giftcards', label: 'Gift Cards', icon: '💳', count: giftCards.length || undefined },
     ps.showVisitHistory !== false   ? { id: 'history',  label: 'History',  icon: '📋' } : null,
     ps.showReferral    !== false     ? { id: 'referral', label: 'Refer',    icon: '🎉' } : null,
     { id: 'feedback', label: 'Feedback', icon: '⭐' },

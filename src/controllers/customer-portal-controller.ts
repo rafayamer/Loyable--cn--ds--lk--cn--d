@@ -675,14 +675,17 @@ const portalGiftCardsHandler = async (req: Request, res: Response): Promise<void
   });
 };
 
-/** POST /api/portal/gift-cards/redeem — cash a held card into wallet credit. */
+/** POST /api/portal/gift-cards/redeem — cash a card (held OR a shared code) into wallet credit. */
 const portalGiftRedeemHandler = async (req: Request, res: Response): Promise<void> => {
   const { customerId, businessId } = (req as any).portalCtx;
-  const code = String(req.body?.code ?? '').trim();
+  const code = String(req.body?.code ?? '').trim().toUpperCase();
   if (!code) { res.status(400).json({ error: 'CODE_REQUIRED' }); return; }
-  // Ensure the card is actually held by this customer before redeeming.
-  const card = await prisma.giftCard.findFirst({ where: { businessId, code: code.toUpperCase(), issuedToCustomerId: customerId } });
+  const card = await prisma.giftCard.findFirst({ where: { businessId, code } });
   if (!card) { res.status(404).json({ error: 'GIFT_CARD_NOT_FOUND' }); return; }
+  // A card already held by *another* customer can't be claimed via code.
+  if (card.issuedToCustomerId && card.issuedToCustomerId !== customerId) {
+    res.status(403).json({ error: 'GIFT_CARD_NOT_YOURS' }); return;
+  }
   if (card.status === 'PENDING_DELETE') { res.status(409).json({ error: 'PENDING_DELETE', message: 'This card has a pending cancellation — respond to it first.' }); return; }
   const { redeemGiftCard } = await import('../services/loyalty-engine-service');
   const outcome = await redeemGiftCard(businessId, code, customerId);

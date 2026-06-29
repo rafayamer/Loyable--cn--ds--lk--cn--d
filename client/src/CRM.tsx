@@ -2920,11 +2920,15 @@ const RewardsManager=()=>{
 
 const GiftCardsManager=()=>{
   const [data,setData]=useState<any>(null);const [loading,setLoading]=useState(true);
-  const [show,setShow]=useState(false);const [f,setF]=useState<any>({initialBalance:25,recipientName:"",purchaserName:"",message:""});
+  const [show,setShow]=useState(false);const [f,setF]=useState<any>({initialBalance:25,purchaserName:"",message:""});
   const [issued,setIssued]=useState<any>(null);
+  // optional: assign the card directly to an existing customer
+  const [custQuery,setCustQuery]=useState("");const [custResults,setCustResults]=useState<any[]>([]);const [assignTo,setAssignTo]=useState<any>(null);
   const load=()=>{setLoading(true);api.loyaltyEngine.giftCards().then(setData).catch(()=>{}).finally(()=>setLoading(false));};
   useEffect(load,[]);
-  const issue=async()=>{try{const allowedItems=(f.allowedItemsRaw||"").split(",").map((s:string)=>s.trim()).filter(Boolean);const card=await api.loyaltyEngine.issueGiftCard({initialBalance:Number(f.initialBalance),recipientName:f.recipientName||undefined,purchaserName:f.purchaserName||undefined,message:f.message||undefined,...(allowedItems.length?{allowedItems}:{})});setIssued(card);setShow(false);setF({initialBalance:25,recipientName:"",purchaserName:"",message:""});load();}catch(e:any){alert(e?.message||"Failed");}};
+  useEffect(()=>{if(!custQuery.trim()||assignTo){setCustResults([]);return;}const t=setTimeout(()=>{api.customers.search({q:custQuery,limit:5}).then(d=>setCustResults(d.customers||[])).catch(()=>{});},300);return()=>clearTimeout(t);},[custQuery,assignTo]);
+  const resetForm=()=>{setF({initialBalance:25,purchaserName:"",message:""});setAssignTo(null);setCustQuery("");setCustResults([]);};
+  const issue=async()=>{try{const card=await api.loyaltyEngine.issueGiftCard({initialBalance:Number(f.initialBalance),purchaserName:f.purchaserName||undefined,message:f.message||undefined,...(assignTo?{issuedToCustomerId:assignTo.id,recipientName:assignTo.name||assignTo.fullName}:{})});setIssued({...card,assignedName:assignTo?(assignTo.name||assignTo.fullName):null});setShow(false);resetForm();load();}catch(e:any){alert(e?.message||"Failed");}};
   const removeCard=async(c:any)=>{
     if(c.issuedToCustomerId){
       const reason=prompt("This card is held by a customer. We'll message them for consent before deleting.\n\nReason / note to send (optional):","This gift card was issued in error — apologies for the mix-up.");
@@ -2941,15 +2945,26 @@ const GiftCardsManager=()=>{
     {data&&<div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><KPI icon={CreditCard} label="Active cards" value={data.activeCount??0} color={C.primary}/><KPI icon={DollarSign} label="Outstanding balance" value={`£${(data.outstandingBalance??0).toLocaleString()}`} color={C.green} sub="liability you've been pre-paid for"/></div>}
     {loading?<Skeleton h="h-24"/>:(data?.cards||[]).length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No gift cards issued yet.</div>:
     <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th><th className="text-right py-2.5 px-4"></th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}{c.issuedToCustomerId&&<span className="ml-1.5 text-[9px] px-1 py-0.5 rounded" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>held</span>}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={GC_STATUS[c.status]||"#6b7280"}>{c.status==="PENDING_DELETE"?"AWAITING CONSENT":c.status}</Badge></td><td className="py-2.5 px-4 text-right">{(c.status==="REDEEMED"||c.status==="VOIDED")?<span className="text-[10px] text-slate-600">archived</span>:<button onClick={()=>removeCard(c)} title={c.issuedToCustomerId?"Request deletion (needs customer consent)":"Delete"} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>}</td></tr>))}</tbody></table></div></div>}
-    {show&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setShow(false)}>
+    {show&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>{setShow(false);resetForm();}}>
       <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">Issue gift card</h3><button onClick={()=>setShow(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">Issue gift card</h3><button onClick={()=>{setShow(false);resetForm();}} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
         <div><label className="text-[11px] text-slate-400">Amount (£)</label><input type="number" value={f.initialBalance} onChange={e=>setF({...f,initialBalance:e.target.value})} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
-        <input value={f.recipientName} onChange={e=>setF({...f,recipientName:e.target.value})} placeholder="Recipient name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-        <input value={f.purchaserName} onChange={e=>setF({...f,purchaserName:e.target.value})} placeholder="Purchaser name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        {/* Optional: assign directly to a customer */}
+        <div>
+          <label className="text-[11px] text-slate-400">Send to a customer (optional)</label>
+          {assignTo?(
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl mt-1" style={{background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)"}}>
+              <span className="text-xs text-white">{assignTo.name||assignTo.fullName} <span className="text-slate-500">{assignTo.phone||assignTo.whatsappNumber}</span></span>
+              <button onClick={()=>{setAssignTo(null);setCustQuery("");}} className="text-slate-500 hover:text-white"><X size={13}/></button>
+            </div>
+          ):(<>
+            <input value={custQuery} onChange={e=>setCustQuery(e.target.value)} placeholder="Search name or phone — leave blank to just get a code" className={inp+" mt-1"} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
+            {custResults.length>0&&<div className="mt-1 rounded-xl overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.08)"}}>{custResults.map(c=><button key={c.id} onClick={()=>{setAssignTo(c);setCustResults([]);}} className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5">{c.fullName} <span className="text-slate-500">{c.whatsappNumber}</span></button>)}</div>}
+          </>)}
+        </div>
+        <input value={f.purchaserName} onChange={e=>setF({...f,purchaserName:e.target.value})} placeholder="From / purchaser name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
         <input value={f.message} onChange={e=>setF({...f,message:e.target.value})} placeholder="Gift message (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-        <div><label className="text-[11px] text-slate-400">Redeemable only for (optional, comma-separated menu items)</label><input value={f.allowedItemsRaw||""} onChange={e=>setF({...f,allowedItemsRaw:e.target.value})} placeholder="e.g. Coffee, Croissant — leave blank for anything" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
-        <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Issue card</button>
+        <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{assignTo?"Send gift card":"Create gift code"}</button>
       </div>
     </div>}
     {issued&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setIssued(null)}>
@@ -2957,7 +2972,9 @@ const GiftCardsManager=()=>{
         <CreditCard size={32} className="mx-auto text-violet-300"/><div className="text-xs text-slate-400">Gift card issued</div>
         <div className="text-2xl font-bold text-white">£{Number(issued.initialBalance)}</div>
         <div className="font-mono text-lg text-violet-200 tracking-wider">{issued.code}</div>
-        <div className="text-[11px] text-slate-400">Share this code with the recipient. They redeem it to top up their wallet.</div>
+        {issued.assignedName
+          ?<div className="text-[11px] text-green-300">✓ Sent to {issued.assignedName} — it's now in their rewards portal, ready to redeem or gift on.</div>
+          :<div className="text-[11px] text-slate-400">Share this code with anyone. They redeem it in their rewards portal (Gift Cards → “Have a code?”) to top up their balance.</div>}
         <button onClick={()=>setIssued(null)} className="w-full py-2 rounded-xl text-sm font-semibold text-white" style={{background:"rgba(255,255,255,0.1)"}}>Done</button>
       </div>
     </div>}
