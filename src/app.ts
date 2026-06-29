@@ -301,10 +301,15 @@ async function ensureSchemaPatches() {
 }
 
 async function bootstrap() {
-  // Log which critical secrets are present (values never logged) so the
-  // platform logs make missing-config obvious without crashing the boot.
+  // Fail fast on missing required secrets — an app running without these would
+  // silently accept any token (JWT_SECRET) or lose all data (DATABASE_URL).
   for (const k of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_URL']) {
-    console.log(`[app] env ${k}: ${process.env[k] ? 'set' : 'MISSING'}`);
+    if (!process.env[k]) throw new Error(`[app] FATAL: required env var ${k} is not set. Refusing to start.`);
+    console.log(`[app] env ${k}: set`);
+  }
+  // Warn (don't crash) for optional AI keys
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    console.warn('[app] WARNING: neither ANTHROPIC_API_KEY nor OPENAI_API_KEY is set — AI features will return 503.');
   }
 
   // Infrastructure init is best-effort. A Redis/DB hiccup must NOT prevent the

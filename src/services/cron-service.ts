@@ -115,12 +115,13 @@ const segmentRefreshJob = async (): Promise<Record<string, unknown>> => {
   const businesses = await prisma.business.findMany({
     where:  { isActive: true },
     select: {
-      id:                true,
-      loyalDaysWindow:   true,
-      irregularGapDays:  true,
-      lostDaysThreshold: true,
-    },
-  });
+      id:                  true,
+      loyalDaysWindow:     true,
+      irregularGapDays:    true,
+      lostDaysThreshold:   true,
+      bigSpenderThreshold: true,
+    } as any,
+  }) as unknown as Array<{ id: string; loyalDaysWindow: number; irregularGapDays: number; lostDaysThreshold: number; bigSpenderThreshold?: number | null }>;
 
   let totalProcessed = 0;
   let totalChanged   = 0;
@@ -138,15 +139,16 @@ const segmentRefreshJob = async (): Promise<Record<string, unknown>> => {
   return { businesses: businesses.length, totalProcessed, totalChanged };
 };
 
-const BIG_SPENDER_THRESHOLD = 500; // £ — configurable per business in future
-const CHUNK_SIZE             = 500;
+const CHUNK_SIZE = 500;
 
 const refreshSegmentsForBusiness = async (biz: {
-  id:                string;
-  loyalDaysWindow:   number;
-  irregularGapDays:  number;
-  lostDaysThreshold: number;
+  id:                  string;
+  loyalDaysWindow:     number;
+  irregularGapDays:    number;
+  lostDaysThreshold:   number;
+  bigSpenderThreshold?: number | null;
 }): Promise<{ processed: number; changed: number }> => {
+  const BIG_SPENDER_THRESHOLD = biz.bigSpenderThreshold ?? 500;
   const now            = Date.now();
   const loyalCutoff    = new Date(now - biz.loyalDaysWindow   * 86_400_000);
   const atRiskCutoff   = new Date(now - biz.irregularGapDays  * 86_400_000);

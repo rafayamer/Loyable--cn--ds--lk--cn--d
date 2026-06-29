@@ -106,7 +106,8 @@ whatsappRouter.get('/qr', tenantScope, async (req: Request, res: Response): Prom
           return WahaGateway.getQrCode(cfg.baseUrl, cfg.sessionId, cfg.apiKey);
         })();
     if (!qr) { res.status(503).json({ error: 'QR_NOT_AVAILABLE' }); return; }
-    res.set('Cache-Control', 'no-store').json({ qr });
+    // QR codes expire after 60s in WAHA; tell the client when to re-fetch
+    res.set('Cache-Control', 'no-store').json({ qr, expiresInSeconds: 60, generatedAt: Date.now() });
   } catch (err: any) {
     res.status(500).json({ error: err?.message ?? 'QR_FAILED' });
   }
