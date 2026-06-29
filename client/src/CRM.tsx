@@ -908,10 +908,9 @@ const PLAN_SLUG:Record<string,string>={STARTER:"starter_39_99",GROWTH:"growth_99
 const BillingPlansPage=()=>{
   const ct=useCard();const ent=useEntitlements();
   const [plans,setPlans]=useState<any[]>([]);const [busy,setBusy]=useState("");const [err,setErr]=useState("");
+  const [chosen,setChosen]=useState<any>(null); // plan selected → choice modal (pay vs secret code)
   useEffect(()=>{api.entitlements.publicPlans().then(d=>setPlans((d.plans||[]).filter((p:any)=>p.tier!=="FREE"))).catch(()=>{});},[]);
-  const subscribe=async(tier:string)=>{const slug=PLAN_SLUG[tier];if(!slug)return;setBusy(tier);setErr("");
-    try{const r=await api.billing.checkout(slug);window.location.href=r.url;}
-    catch(e:any){setErr(e?.message||"Could not start checkout. The store may still be activating.");setBusy("");}};
+  const subscribe=(p:any)=>{setErr("");setChosen(p);};
   return(
     <div>
       <div className="mb-4"><h1 className="text-2xl font-bold" style={{color:ct.tx}}>Plans & Billing</h1>
@@ -930,11 +929,44 @@ const BillingPlansPage=()=>{
           <div className="text-xs mt-1 mb-3" style={{color:ct.tx3}}>{p.tagline}</div>
           <div className="space-y-1 mb-4">{(p.highlights||[]).map((h:string,i:number)=>(<div key={i} className="text-xs flex gap-1.5" style={{color:ct.tx2}}><Check size={13} style={{color:"#22c55e",flexShrink:0,marginTop:1}}/>{h}</div>))}</div>
           {rec&&<div className="text-[11px] mb-2" style={{color:"#E8743B"}}>Use <b>LOYAL20</b> for 20% off your first 2 months.</div>}
-          <button onClick={()=>subscribe(p.tier)} disabled={!!busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{background:rec?"linear-gradient(135deg,#E8743B,#f59e0b)":ct.tx,color:rec?"#fff":ct.bg}}>{busy===p.tier?"Opening checkout…":`Choose ${p.name}`}</button>
+          <button onClick={()=>subscribe(p)} disabled={!!busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{background:rec?"linear-gradient(135deg,#E8743B,#f59e0b)":ct.tx,color:rec?"#fff":ct.bg}}>{`Choose ${p.name}`}</button>
         </div>
       );})}</div>
       <div className="text-[11px] mt-4" style={{color:ct.tx3}}>No refunds. Prices in GBP. Your customers, campaigns and loyalty data are always preserved, even if you downgrade.</div>
+      {chosen&&<PlanCheckoutModal plan={chosen} ct={ct} onClose={()=>setChosen(null)}/>}
     </div>
+  );
+};
+
+// Choice modal: proceed to real payment OR enter a secret test key that
+// simulates a successful payment (activates the plan for 1 month + email).
+const PlanCheckoutModal=({plan,ct,onClose}:any)=>{
+  const slug=PLAN_SLUG[plan.tier];
+  const [mode,setMode]=useState<"choice"|"code">("choice");
+  const [code,setCode]=useState("");const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const pay=async()=>{setBusy(true);setMsg("");try{const r=await api.billing.checkout(slug);window.location.href=r.url;}catch(e:any){setMsg(e?.message||"Could not start checkout. The store may still be activating.");setBusy(false);}};
+  const useCode=async()=>{if(!code.trim())return;setBusy(true);setMsg("");try{const r=await api.billing.simulate(slug,code.trim());if(r.ok){_entCache=r.entitlements;setMsg(`Payment simulated — ${r.planName} active until ${new Date(r.activeUntil).toLocaleDateString()}. ${r.emailStatus==="SENT"?"Confirmation email sent.":""} Opening…`);setTimeout(()=>{window.location.href="/billing/success";},900);}}catch(e:any){setMsg(e?.message==="INVALID_TEST_KEY"?"That secret code isn't valid.":e?.message||"Failed");setBusy(false);}};
+  return(
+    <Modal title={`Get ${plan.name} · £${plan.priceMonthlyGBP}/mo`} onClose={onClose} ct={ct}>
+      {mode==="choice"?(
+        <div className="space-y-3">
+          <button onClick={pay} disabled={busy} className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{busy?"Opening checkout…":"Proceed to payment"}</button>
+          <div className="flex items-center gap-2"><div className="flex-1 h-px" style={{background:ct.bdr}}/><span className="text-[11px]" style={{color:ct.tx3}}>or</span><div className="flex-1 h-px" style={{background:ct.bdr}}/></div>
+          <button onClick={()=>setMode("code")} className="w-full py-2.5 rounded-xl text-sm font-semibold" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>Enter secret code</button>
+          {msg&&<div className="text-xs" style={{color:ct.tx2}}>{msg}</div>}
+        </div>
+      ):(
+        <div className="space-y-3">
+          <div className="text-xs" style={{color:ct.tx3}}>Enter your secret activation code to simulate payment for {plan.name} (1 month).</div>
+          <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste 128-character code" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/>
+          <div className="flex gap-2">
+            <button onClick={()=>setMode("choice")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>Back</button>
+            <button onClick={useCode} disabled={busy||!code.trim()} className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{busy?"Activating…":"Activate"}</button>
+          </div>
+          {msg&&<div className="text-xs" style={{color:ct.tx2}}>{msg}</div>}
+        </div>
+      )}
+    </Modal>
   );
 };
 
@@ -5229,11 +5261,10 @@ const WhatsAppSettingsTab=()=>{
 };
 
 const PLANS=[
-  {tier:"FREE",       label:"Free",        price:"£0",     msgs:"200 msgs/mo",   features:["QR Check-in","200 customers","Basic analytics"]},
-  {tier:"STARTER",    label:"Starter",     price:"£19",    msgs:"1,000 msgs/mo", features:["Everything in Free","Campaigns","Loyalty tiers","Automations","Email support"]},
-  {tier:"GROWTH",     label:"Growth",      price:"£49",    msgs:"10,000 msgs/mo",features:["Everything in Starter","AI Insights","Multi-location","CSV import","Priority support"],highlight:true},
-  {tier:"PROFESSIONAL",label:"Professional",price:"£99",   msgs:"50,000 msgs/mo",features:["Everything in Growth","White label","API access","Outbound webhooks"]},
-  {tier:"ENTERPRISE", label:"Enterprise",  price:"Custom", msgs:"Unlimited",      features:["Everything in Professional","SLA","Dedicated support","Custom integrations"]},
+  {tier:"FREE",       label:"Free",    price:"£0",      msgs:"100 msgs/mo",   features:["14-day Growth trial","Up to 100 customers","Basic QR check-in & dashboard"]},
+  {tier:"STARTER",    label:"Starter", price:"£39.99",  msgs:"3,000 msgs/mo", features:["Up to 2,000 customers","1 branch · 3 staff","Loyalty points, coupons & referrals","Basic campaigns & analytics"]},
+  {tier:"GROWTH",     label:"Growth",  price:"£99.99",  msgs:"24,000 msgs/mo",features:["Up to 16,000 customers","Full CRM, loyalty wallet & store credit","Campaign builder & comeback campaigns","AI advisor + weekly & monthly reports"],highlight:true},
+  {tier:"PROFESSIONAL",label:"Pro",    price:"£199.99", msgs:"High volume",   features:["Up to 3 branches","Unlimited customers (fair use)","Branch comparison & advanced analytics","Staff permissions & priority support"]},
 ];
 
 const INTEGRATION_META:{[k:string]:{label:string;desc:string;icon:string;fields:{k:string;l:string;type:"text"|"password";ph:string}[]}}={

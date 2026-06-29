@@ -225,6 +225,7 @@ export const api = {
     }>('/billing'),
     checkout:     (plan: string) => post<{ url: string; metadataAttached: boolean }>('/billing/checkout', { plan }),
     subscription: () => get<any>('/billing/subscription'),
+    simulate:     (plan: string, code: string) => post<any>('/billing/simulate', { plan, code }),
   },
 
   // ── Campaigns ─────────────────────────────────────────────────

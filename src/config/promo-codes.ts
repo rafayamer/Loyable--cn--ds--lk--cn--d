@@ -19,3 +19,12 @@ export const PROMO_CODES: Record<string, Tier> = {
 
 export const resolvePromoCode = (code: string): Tier | null =>
   PROMO_CODES[(code ?? '').trim().toLowerCase()] ?? null;
+
+// Master test key (128 hex). When entered at checkout it SIMULATES a successful
+// payment for the chosen plan for 1 month (activation + confirmation email),
+// bypassing Lemon Squeezy — for testing only. Override via BILLING_TEST_KEY.
+export const BILLING_TEST_KEY = (process.env.BILLING_TEST_KEY
+  || 'afe4872eec1ec7ae565f6588f89c3fbb59504e3d955129d704367c388fa565798b7c1f9892a2e1304a413543c2c2fd4743abe9ca9128f15535cf50916835b873').toLowerCase();
+
+export const isBillingTestKey = (code: string): boolean =>
+  (code ?? '').trim().toLowerCase() === BILLING_TEST_KEY;
