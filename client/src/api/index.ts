@@ -236,7 +236,9 @@ export const api = {
     clone:   (id: string) => post<any>(`/campaigns/${id}/clone`),
     abStats: (id: string) => get<any>(`/campaigns/${id}/ab-stats`),
     pause:   (id: string) => post<any>(`/campaigns/${id}/pause`),
-    schedule:(id: string, body: any) => post<any>(`/campaigns/${id}/schedule`, body),
+    schedule: (id: string, body: any) => post<any>(`/campaigns/${id}/schedule`, body),
+    approve:  (id: string) => post<any>(`/campaigns/${id}/approve`),
+    reject:   (id: string, reason?: string) => post<any>(`/campaigns/${id}/reject`, { reason }),
   },
 
   // ── Automations ───────────────────────────────────────────────

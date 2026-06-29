@@ -214,6 +214,13 @@ async function ensureSchemaPatches() {
     // ── Per-tenant timezone support ──
     { label: 'businesses.timezone',
       sql: `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'UTC'` },
+    // ── Campaign Approval Workflow ──
+    { label: 'businesses.requiresCampaignApproval',
+      sql: 'ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "requiresCampaignApproval" BOOLEAN NOT NULL DEFAULT false' },
+    { label: 'campaigns.approvedAt',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMP(3)' },
+    { label: 'campaigns.rejectionReason',
+      sql: 'ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT' },
     // ── NPS / Feedback system ──
     { label: 'feedback_responses table',
       sql: `CREATE TABLE IF NOT EXISTS "feedback_responses" (

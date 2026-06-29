@@ -4883,9 +4883,18 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const [loading,setLoading]=useState(true);
   const [launching,setLaunching]=useState<string|null>(null);
   const [cloning,setCloning]=useState<string|null>(null);
+  const userRole=localStorage.getItem("role")||"";
+  const isOwner=userRole==="TENANT_OWNER"||userRole==="PLATFORM_ADMINISTRATOR";
   useEffect(()=>{
     api.campaigns.list().then(d=>setCampaigns(d.campaigns??[])).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
+  const approveCampaign=async(id:string)=>{
+    try{await api.campaigns.approve(id);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"DRAFT"}:c));}catch{}
+  };
+  const rejectCampaign=async(id:string)=>{
+    const reason=prompt("Reason for rejection (optional):");
+    try{await api.campaigns.reject(id,reason??undefined);setCampaigns(p=>p.map(c=>c.id===id?{...c,status:"REJECTED"}:c));}catch{}
+  };
   const launch=async(id:string)=>{
     setLaunching(id);
     try{
@@ -4945,6 +4954,7 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
             <div className="flex items-center gap-2">
               <Badge color={statusColor(c.status)}>{c.status}</Badge>
               <button onClick={()=>clone(c.id)} disabled={cloning===c.id} title="Clone campaign" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50" style={{background:"rgba(255,255,255,0.07)",color:"#94a3b8"}}>{cloning===c.id?<RefreshCw size={11} className="animate-spin"/>:<Copy size={11}/>}Clone</button>
+              {c.status==="PENDING_APPROVAL"&&isOwner&&<><button onClick={()=>approveCampaign(c.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}><Check size={11}/>Approve</button><button onClick={()=>rejectCampaign(c.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400" style={{background:"rgba(239,68,68,0.12)"}}><X size={11}/>Reject</button></>}
               {(c.status==="DRAFT"||c.status==="APPROVED")&&<button onClick={()=>launch(c.id)} disabled={launching===c.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>{launching===c.id?<RefreshCw size={11} className="animate-spin"/>:<Play size={11}/>}Launch</button>}
             </div>
           </div>

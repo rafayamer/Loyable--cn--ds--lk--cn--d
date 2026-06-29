@@ -101,6 +101,7 @@ export interface CreateCampaignInput {
   channel?:        string;
   scheduledFor?:   Date;
   abVariants?:     AbVariant[];  // Optional A/B test variants; overrides layoutJson when present
+  _forceStatus?:   string;       // Internal: override default DRAFT status (e.g. PENDING_APPROVAL)
 }
 
 /** "ALL" / "Everyone" is not a CustomerSegment enum value — store as null (= all customers). */
@@ -129,7 +130,7 @@ export const createCampaign = async (
       layoutJson:     input.layoutJson as unknown as Prisma.InputJsonValue,
       abVariants:     input.abVariants ? input.abVariants as unknown as Prisma.InputJsonValue : undefined,
       channel:        (input.channel as any) ?? 'WHATSAPP_WAHA',
-      status:         'DRAFT',
+      status:         input._forceStatus ?? 'DRAFT',
       scheduledFor:   input.scheduledFor,
     } as any,
   });
