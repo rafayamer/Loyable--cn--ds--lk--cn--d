@@ -163,9 +163,9 @@ export const renderTemplate = (
       <h1>Welcome to {{businessName}}! 👋</h1>
       <p>Hi {{name}},</p>
       <p>You've been added to <strong>{{businessName}}</strong> as <strong>{{role}}</strong>. Here are your login details:</p>
-      <div style="background:#f9f8ff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:20px 0;font-family:monospace;">
-        <div style="margin-bottom:10px;"><span style="color:#6b7280;font-size:12px;">Login Email</span><br/><strong style="color:#1a1035;font-size:15px;">{{loginEmail}}</strong></div>
-        <div><span style="color:#6b7280;font-size:12px;">Password</span><br/><strong style="color:#1a1035;font-size:15px;">{{password}}</strong></div>
+      <div style="background:#FFF7ED;border:1px solid #F1E4D8;border-radius:12px;padding:20px;margin:20px 0;font-family:monospace;">
+        <div style="margin-bottom:10px;"><span style="color:#A8A29E;font-size:12px;">Login Email</span><br/><strong style="color:#1C1917;font-size:15px;">{{loginEmail}}</strong></div>
+        <div><span style="color:#A8A29E;font-size:12px;">Password</span><br/><strong style="color:#1C1917;font-size:15px;">{{password}}</strong></div>
       </div>
       <p style="color:#ef4444;font-size:13px;">⚠️ Keep these details safe and do not share them with anyone.</p>
       {{cta:Log In Now:{{loginUrl}}}}
@@ -210,31 +210,33 @@ function interpolate(html: string, vars: Record<string, unknown>): string {
   return html;
 }
 
-/** Wrap inner content in a responsive, branded HTML shell. */
+/** Wrap inner content in a responsive, branded HTML shell.
+ *  Brand: warm cream background, white card with a soft papaya-orange glow,
+ *  papaya-orange header + buttons, calm espresso text. Modern and minimal. */
 function wrapBranded(subject: string, inner: string): string {
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${subject}</title></head>
-<body style="margin:0;padding:0;background:#f4f2fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2fb;padding:32px 12px;">
+<body style="margin:0;padding:0;background:#FFF7ED;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7ED;padding:32px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(124,58,237,0.08);">
-        <tr><td style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);padding:24px 32px;">
-          <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.02em;">♥ The Loyaly</span>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(249,115,22,0.12);border:1px solid #F1E4D8;">
+        <tr><td style="background:linear-gradient(135deg,#FF8A3D,#F97316);padding:26px 32px;">
+          <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.02em;">The Loyaly</span>
         </td></tr>
-        <tr><td style="padding:32px;color:#1e1333;font-size:15px;line-height:1.6;">
+        <tr><td style="padding:32px;color:#1C1917;font-size:15px;line-height:1.6;">
           <style>
-            h1{font-size:20px;font-weight:800;color:#1e1333;margin:0 0 16px;}
-            p{margin:0 0 14px;color:#4b3f72;}
-            .muted{color:#9488b8;font-size:13px;}
-            .btn{display:inline-block;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#ffffff !important;
-                 text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;}
+            h1{font-size:20px;font-weight:800;color:#1C1917;margin:0 0 16px;letter-spacing:-0.02em;}
+            p{margin:0 0 14px;color:#57534E;}
+            .muted{color:#A8A29E;font-size:13px;}
+            .btn{display:inline-block;background:linear-gradient(135deg,#FF8A3D,#F97316);color:#ffffff !important;
+                 text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:700;font-size:14px;}
           </style>
           ${inner}
         </td></tr>
-        <tr><td style="padding:20px 32px;border-top:1px solid #eee;color:#9488b8;font-size:12px;line-height:1.5;">
-          The Loyaly — turn one-time customers into loyal ones.<br/>
+        <tr><td style="padding:20px 32px;border-top:1px solid #F1E4D8;color:#A8A29E;font-size:12px;line-height:1.5;">
+          The Loyaly — bring customers back automatically.<br/>
           You're receiving this because you have a The Loyaly account.
         </td></tr>
       </table>

@@ -66,11 +66,11 @@ lsBillingRouter.post('/simulate', requireRoles(Role.TENANT_OWNER) as any, async 
     if (emailProvider() !== 'none' && owner?.email) {
       const until = periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;margin:0 auto;background:#FBF7F2;padding:24px;border-radius:14px">
-        <div style="font-size:13px;color:#E8743B;font-weight:800;letter-spacing:.5px">THE LOYALY</div>
+        <div style="font-size:13px;color:#F97316;font-weight:800;letter-spacing:.5px">THE LOYALY</div>
         <h1 style="font-size:20px;color:#241B17;margin:8px 0">Payment confirmed 🎉</h1>
         <p style="font-size:15px;color:#241B17;line-height:1.6">Thank you for choosing The Loyaly. Your <b>${plan.name}</b> subscription is confirmed for <b>${biz?.name ?? 'your business'}</b> and is active until <b>${until}</b>.</p>
         <p style="font-size:14px;color:#6b5d52">You can now use everything included in ${plan.name}. Open The Loyaly to continue setting up.</p>
-        <a href="${appUrl()}" style="display:inline-block;background:#E8743B;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin-top:8px">Open The Loyaly</a>
+        <a href="${appUrl()}" style="display:inline-block;background:#F97316;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin-top:8px">Open The Loyaly</a>
         <p style="font-size:11px;color:#a99c90;margin-top:18px">This is a test activation — no payment was charged.</p>
       </div>`;
       try { await sendEmail({ to: owner.email, subject: `Your The Loyaly ${plan.name} subscription is confirmed`, templateId: 'billing_confirmation', variables: {}, html }); emailStatus = 'SENT'; }

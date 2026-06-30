@@ -11,7 +11,7 @@ import { prisma } from '../../config/prisma';
 import { sendEmail, emailProvider } from '../../utils/email.util';
 import { ReportContent, Recommendation } from './business-report-service';
 
-const ORANGE = '#E8743B';   // warm Loyaly accent
+const ORANGE = '#F97316';   // warm Loyaly accent
 const DARK   = '#241B17';   // espresso heading
 const PAPER  = '#FBF7F2';
 
