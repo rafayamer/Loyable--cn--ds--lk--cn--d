@@ -77,6 +77,29 @@ const getRedis = (): RedisClientType => {
   return redisClient;
 };
 
+// ── Fail-open Redis helpers ─────────────────────────────────────
+// Auth must NOT hard-fail when Redis is unavailable (e.g. Upstash over its
+// free-tier command limit, or a transient outage). On any Redis error we
+// degrade gracefully: a GET returns null (treated as cache-miss / not-revoked),
+// a SETEX is skipped. Worst case: a revoked token might be honoured until Redis
+// recovers — an acceptable trade-off vs. locking every user out of the app.
+// The tenant-active check already falls back to the DB on a null result.
+const safeRedisGet = async (key: string): Promise<string | null> => {
+  try {
+    return await getRedis().get(key);
+  } catch (err) {
+    console.error('[tenantScope] Redis GET failed (degrading to DB):', (err as Error).message);
+    return null;
+  }
+};
+const safeRedisSetEx = async (key: string, ttl: number, val: string): Promise<void> => {
+  try {
+    await getRedis().setEx(key, ttl, val);
+  } catch (err) {
+    console.error('[tenantScope] Redis SETEX failed (ignored):', (err as Error).message);
+  }
+};
+
 // ================================================================
 // ENVIRONMENT VALIDATION
 // ================================================================
@@ -97,8 +120,6 @@ export const tenantScope = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const redis = getRedis();
-
     // ─── Step 1: Extract Bearer token ──────────────────────────
     const authHeader = req.headers.authorization;
 
@@ -123,7 +144,7 @@ export const tenantScope = async (
     // ─── Step 2: Check Redis revocation blacklist ───────────────
     // Tokens are added here on logout, password change, or forced session termination
     const revokedKey = `revoked_token:${token}`;
-    const isRevoked = await redis.get(revokedKey);
+    const isRevoked = await safeRedisGet(revokedKey);
 
     if (isRevoked) {
       res.status(401).json({
@@ -194,7 +215,7 @@ export const tenantScope = async (
 
       // ─── Step 6: Validate tenant exists and is active (cached) ─
       const cacheKey = `business_active:${businessId}`;
-      const cachedStatus = await redis.get(cacheKey);
+      const cachedStatus = await safeRedisGet(cacheKey);
 
       if (cachedStatus === null) {
         // Cache miss — query database
@@ -220,7 +241,7 @@ export const tenantScope = async (
         }
 
         // Populate cache — active tenants cached for 5 minutes
-        await redis.setEx(cacheKey, BUSINESS_ACTIVE_CACHE_TTL_SECONDS, 'active');
+        await safeRedisSetEx(cacheKey, BUSINESS_ACTIVE_CACHE_TTL_SECONDS, 'active');
 
       } else if (cachedStatus === 'suspended') {
         // Explicit suspended state cached (set when Super Admin suspends account)
