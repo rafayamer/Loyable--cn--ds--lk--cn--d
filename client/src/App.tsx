@@ -22,6 +22,15 @@ const isAdmin  = window.location.pathname.startsWith('/admin');
 const MARKETING_PATHS = ['/', '/product', '/pricing', '/about'];
 const isMarketingPath = MARKETING_PATHS.includes(window.location.pathname);
 
+// Google/Apple OAuth redirects back to `/?accessToken=...` (or `/?error=...`).
+// At that moment localStorage has no token yet, so without this guard `/` would
+// render the marketing website and the OAuth token would be lost — i.e. "I
+// signed in and landed on the homepage". When an OAuth return is detected, route
+// to the CRM, whose App reads ?accessToken= (stores it, strips the params) or
+// shows the OAuth error on the login screen.
+const _oauthParams = new URLSearchParams(window.location.search);
+const isOAuthReturn = _oauthParams.has('accessToken') || _oauthParams.has('error');
+
 function AdminOrCRM() {
   const [role, setRole] = useState<Role>(null);
   const [checked, setChecked] = useState(false);
@@ -62,8 +71,10 @@ export default function App() {
   if (isPortal) return <Suspense fallback={<PageLoader />}><CustomerPortal /></Suspense>;
   if (isTerms)  return <Suspense fallback={<PageLoader />}><TermsAndConditions /></Suspense>;
   if (isAdmin)  return <Suspense fallback={<PageLoader />}><LoyalyAdminPanel /></Suspense>;
-  // Logged-out visitors on a marketing/auth path → new motion website.
+  // Logged-out visitors on a marketing path → new motion website. BUT never
+  // when completing an OAuth sign-in (token/error is in the query) — those must
+  // reach the CRM so the token is consumed instead of dropped on the homepage.
   const hasToken = !!localStorage.getItem('accessToken');
-  if (isMarketingPath && !hasToken) return <Suspense fallback={<PageLoader />}><MarketingApp /></Suspense>;
+  if (isMarketingPath && !hasToken && !isOAuthReturn) return <Suspense fallback={<PageLoader />}><MarketingApp /></Suspense>;
   return <AdminOrCRM />;
 }
