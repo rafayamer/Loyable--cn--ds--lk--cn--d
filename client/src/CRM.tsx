@@ -275,9 +275,9 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
     {/* Logo area */}
     <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${col?"justify-center flex-col":""}`}>
       {col
-        ? <ThemeLogo dark={true} className="w-9 h-9 object-contain"/>
+        ? <ThemeLogo dark={portalDark} className="w-9 h-9 object-contain"/>
         : <div className="flex-1 min-w-0">
-            <ThemeLogo dark={true} className="w-28 h-8 object-contain object-left"/>
+            <ThemeLogo dark={portalDark} className="w-28 h-8 object-contain object-left"/>
             <div className="text-slate-500 text-[9px] tracking-wide uppercase mt-0.5">CRM Platform</div>
           </div>
       }
@@ -7619,7 +7619,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   const pt=pdTokens(portalDark);
   return(
   <PortalThemeCtx.Provider value={{pd:portalDark,setPd:(v)=>{setPortalDark(v);localStorage.setItem("portal_dark",String(v));localStorage.setItem("portal_dark",String(v));}}}>
-    <div className="min-h-screen relative overflow-x-hidden" style={{background:pt.bg,color:pt.tx,transition:"background 0.3s,color 0.3s"}}>
+    <div className={`min-h-screen relative overflow-x-hidden ${portalDark?"crm-dark":"crm-light"}`} style={{background:pt.bg,color:pt.tx,transition:"background 0.3s,color 0.3s"}}>
       {/* Ambient background orbs for glassmorphism depth */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(249,115,22,0.18) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.1) 0%,transparent 70%)",filter:"blur(40px)"}}/>
@@ -7640,6 +7640,22 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         .gc::after{content:'';position:absolute;top:0;left:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent,rgba(255,255,255,0.15));z-index:1;pointer-events:none}
         button,a{touch-action:manipulation}
         input,select,textarea{font-size:16px!important}
+        /* ── LIGHT MODE global readability ──────────────────────────
+           The CRM was built dark-first with hardcoded white/slate text and a
+           translucent-white glass card. In light mode those vanish, so we
+           remap them here once, globally. !important beats the inline styles. */
+        .crm-light .gc{background:rgba(255,255,255,0.82)!important;border:1px solid rgba(231,220,211,0.95)!important;box-shadow:0 8px 28px rgba(249,115,22,0.08)!important;backdrop-filter:blur(16px)}
+        .crm-light .gc::before{background:linear-gradient(90deg,transparent,rgba(249,115,22,0.25),transparent)}
+        .crm-light .gc::after{background:linear-gradient(180deg,rgba(249,115,22,0.2),transparent)}
+        .crm-light .text-white{color:#1C1917!important}
+        /* …but keep white text on coloured primary buttons/links crisp. */
+        .crm-light button.text-white,.crm-light a.text-white{color:#ffffff!important}
+        .crm-light .text-slate-200,.crm-light .text-slate-300{color:#44403C!important}
+        .crm-light .text-slate-400{color:#57534E!important}
+        .crm-light .text-slate-500{color:#78716C!important}
+        .crm-light .text-slate-600{color:#9A8478!important}
+        .crm-light input,.crm-light select,.crm-light textarea{color:#1C1917}
+        .crm-light input::placeholder,.crm-light textarea::placeholder{color:#A8A29E}
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
