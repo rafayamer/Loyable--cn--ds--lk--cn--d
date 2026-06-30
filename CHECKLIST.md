@@ -15,7 +15,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 7 | Campaigns: messages no longer stuck "pending" — now resolve to FAILED if undeliverable | 🟡 (needs connected WhatsApp to actually send) |
 | 8 | POS/FBR: Pakistan → FBR only; tax services for 5–6 major countries | ⬜ |
 | 9 | Settings (timezone/country/currency) apply per-business globally; country sets default dial code | ✅ |
-| 10 | Analytics wording → plain/layman | ⬜ |
+| 10 | Analytics wording → plain/layman | ✅ |
 | 11 | Heatmap should look like a heatmap, not a table | ✅ |
 | 12 | CRM fully mobile-friendly | ⬜ |
 | 13 | GDPR values (proper) | ⬜ |
@@ -30,7 +30,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 22 | CRM login page fits screen (no scroll/overflow) | 🟡 (login routing fixed; fit needs your check) |
 | 23 | Font colour correct per theme | ⬜ |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
-| 25 | Analytics (i) tooltips with easy explanations | ⬜ |
+| 25 | Analytics (i) tooltips with easy explanations | 🟡 (KPI tooltips added; more panels pending) |
 | 26 | HR looks like a weekly planner form | ⬜ |
 | 27 | Passwords set by owner only; staff email format (name)(business)(3-digit)(role)(branch)@theloyaly.com | 🟡 (email format generator exists) |
 | 30 | HR performance & rewards works / makes sense | ⬜ |

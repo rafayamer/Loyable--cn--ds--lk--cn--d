@@ -5195,10 +5195,10 @@ const AnalyticsPage=()=>{
     <div><h1 className="text-xl font-bold text-white">Analytics</h1><p className="text-xs text-slate-400 mt-0.5">A plain-language look at how your customers are doing — updated every night.</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {loading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
-        <KPI icon={Heart} label="Retention Rate" value={retRate} color={C.pink}/>
-        <KPI icon={TrendingUp} label="Avg. LTV" value={avgLtv} color={C.amber}/>
-        <KPI icon={Clock} label="Avg. Frequency" value={avgFreq} color={C.accent}/>
-        <KPI icon={Users} label="Loyal + VIP" value={((latest.loyalCustomers??0)+(latest.vipCustomers??0)).toLocaleString()||"-"} color={C.green}/>
+        <KPI icon={Heart} label="Customers who come back" value={retRate} color={C.pink} info="Out of everyone who visited, how many returned instead of disappearing. Higher is better."/>
+        <KPI icon={TrendingUp} label="Avg. value per customer" value={avgLtv} color={C.amber} info="On average, how much money each customer brings you over their whole time with you."/>
+        <KPI icon={Clock} label="How often they visit" value={avgFreq} color={C.accent} info="How many of your customers come back more than once, as a share of all customers."/>
+        <KPI icon={Users} label="Regulars & VIPs" value={((latest.loyalCustomers??0)+(latest.vipCustomers??0)).toLocaleString()||"-"} color={C.green} info="Your most loyal customers — the regulars and top spenders who keep coming back."/>
       </>}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
