@@ -506,6 +506,17 @@ export const startAllWorkers = (): {
 } => {
   const conn = getRedisConnection() as ConnectionOptions;
 
+  // Idle-polling tuning to minimise Redis commands (important on metered Redis
+  // like Upstash). drainDelay = how long the blocking pop waits when there are
+  // no jobs (seconds) — real jobs are still picked up instantly when enqueued,
+  // this only stretches the IDLE re-poll interval. stalledInterval is the
+  // periodic stalled-job check (ms). Both default low (5s / 30s); raising them
+  // cuts idle command volume several-fold with no effect on job latency.
+  const IDLE = {
+    drainDelay:      Number(process.env.WORKER_DRAIN_DELAY_SECONDS || 30),
+    stalledInterval: Number(process.env.WORKER_STALLED_INTERVAL_MS || 60_000),
+  };
+
   // ── Message Worker ──────────────────────────────────────────
   const messageWorker = new Worker<OutboundMessageJobData>(
     QUEUE_NAMES.OUTBOUND_MESSAGES,
@@ -514,6 +525,7 @@ export const startAllWorkers = (): {
       connection:  conn,
       concurrency: WORKER_CONCURRENCY,
       limiter:     GLOBAL_RATE_LIMIT,
+      ...IDLE,
     }
   );
 
@@ -521,14 +533,14 @@ export const startAllWorkers = (): {
   const automationWorker = new Worker(
     QUEUE_NAMES.AUTOMATION_TRIGGERS,
     processAutomationJob,
-    { connection: conn, concurrency: 10 }
+    { connection: conn, concurrency: 10, ...IDLE }
   );
 
   // ── Outbound Webhook Worker ─────────────────────────────────
   const webhookWorker = new Worker(
     QUEUE_NAMES.OUTBOUND_WEBHOOKS,
     processOutboundWebhookJob,
-    { connection: conn, concurrency: 15 }
+    { connection: conn, concurrency: 15, ...IDLE }
   );
 
   // ── Shared event handlers ───────────────────────────────────

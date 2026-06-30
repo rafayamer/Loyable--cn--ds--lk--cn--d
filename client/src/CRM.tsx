@@ -3106,8 +3106,8 @@ const InboxView=({connected}:{connected:boolean})=>{
   const fetchThread=async(chatId:string)=>{
     try{const r=await fetch(`/api/messages/inbox/${encodeURIComponent(chatId)}`,{headers:{Authorization:`Bearer ${token()}`}});const d=await r.json();setThread(d.messages??[]);}catch{}
   };
-  useEffect(()=>{fetchConvos();const iv=setInterval(fetchConvos,8000);return()=>clearInterval(iv);},[]);
-  useEffect(()=>{if(active){fetchThread(active.chatId);const iv=setInterval(()=>fetchThread(active.chatId),5000);return()=>clearInterval(iv);}},[active?.chatId]);
+  useEffect(()=>{fetchConvos();const iv=setInterval(fetchConvos,20000);return()=>clearInterval(iv);},[]);
+  useEffect(()=>{if(active){fetchThread(active.chatId);const iv=setInterval(()=>fetchThread(active.chatId),12000);return()=>clearInterval(iv);}},[active?.chatId]);
   useEffect(()=>{if(threadRef.current)threadRef.current.scrollTop=threadRef.current.scrollHeight;},[thread]);
   const sendReply=async()=>{
     if(!reply.trim()||!active)return;
@@ -5211,7 +5211,7 @@ const WhatsAppSettingsTab=()=>{
 
   useEffect(()=>{
     fetchStatus();
-    const iv=setInterval(fetchStatus,6000);
+    const iv=setInterval(fetchStatus,15000);
     return()=>clearInterval(iv);
   },[]);
 
@@ -7537,7 +7537,9 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     if(!loggedIn)return;
     const check=()=>api.whatsapp.status().then(d=>{setWa(d?.waha?.status==="WORKING"||!!(d?.meta?.configured));}).catch(()=>{});
     check();
-    const iv=setInterval(check,15000);
+    // Poll connection status every 60s (was 15s) — this runs for every logged-in
+    // user constantly, so it's the single biggest source of Redis commands.
+    const iv=setInterval(check,60000);
     return()=>clearInterval(iv);
   },[loggedIn]);
   const doLogout=()=>{localStorage.removeItem("accessToken");localStorage.removeItem("userRole");onLogout?.();setLoggedIn(false);};
