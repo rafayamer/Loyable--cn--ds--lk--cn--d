@@ -245,8 +245,6 @@ const MODULES=[
     {id:"analytics",label:"Overview"},
     {id:"advisor",label:"AI Advisor"},
     {id:"reports",label:"Reports"},
-    {id:"ai",label:"AI Insights"},
-    {id:"datahub",label:"Data Hub"},
   ]},
   {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.CASHIER],tabs:[
     {id:"pos",label:"POS"},
@@ -5025,6 +5023,7 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
     {id:"customers",label:"Customers",icon:Users},
     {id:"loyalty",label:"Loyalty & Points",icon:Award},
     {id:"portal",label:"Customer Portal",icon:QrCode},
+    {id:"data",label:"Import & Data",icon:Database},
   ];
   return(
     <div className="space-y-4">
@@ -5040,6 +5039,7 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
       {tab==="customers"&&<CustomersPage onSelect={onSelect}/>}
       {tab==="loyalty"&&<LoyaltyPage/>}
       {tab==="portal"&&<CustomerPortalPage/>}
+      {tab==="data"&&<DataHubPage/>}
     </div>
   );
 };
@@ -7592,9 +7592,9 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
     case"automation-builder":return<AutomationBuilderPage onBack={()=>setPage("automations")}/>;
     case"loyalty":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
-    case"datahub":return<DataHubPage/>;
-    case"ai":return<AIPage/>;
-    case"analytics":return<DashboardPage setPage={nav}/>;
+    case"datahub":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
+    case"ai":return<AnalyticsPage/>;
+    case"analytics":return<AnalyticsPage/>;
     case"advisor":return<FeatureGate feature="ai_advisor" requiredPlan="Growth"><AIAdvisorPage/></FeatureGate>;
     case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
