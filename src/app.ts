@@ -745,6 +745,12 @@ async function bootstrap() {
   await loadRouter('./controllers/auth-controller',       'authRouter',        '/api/auth');
   await loadRouter('./controllers/loyalty-controller',    'loyaltyRouter',     '/api/loyalty');
   await loadRouter('./controllers/campaign-controller',   'campaignRouter',    '/api/campaigns');
+  // Lemon Squeezy billing MUST be mounted before the legacy campaign billing
+  // router — both live at /api/billing and both define POST /checkout. First
+  // match wins in Express, so LS goes first to own checkout/simulate/subscription
+  // while the campaign router still serves its non-colliding routes (GET /,
+  // /features/:feature, /portal).
+  await loadRouter('./controllers/lemonsqueezy-controller',  'lsBillingRouter',       '/api/billing');
   await loadRouter('./controllers/campaign-controller',   'billingRouter',     '/api/billing');
   await loadRouter('./controllers/campaign-controller',   'stripeWebhookRouter','/api/stripe');
   await loadRouter('./controllers/automation-controller', 'automationRouter',  '/api/automations');
@@ -770,7 +776,6 @@ async function bootstrap() {
   await loadRouter('./controllers/ai-advisor-controller',    'aiAdvisorRouter',       '/api/ai-advisor');
   await loadRouter('./controllers/entitlements-controller',  'plansPublicRouter',     '/api/plans');
   await loadRouter('./controllers/entitlements-controller',  'entitlementsRouter',    '/api/entitlements');
-  await loadRouter('./controllers/lemonsqueezy-controller',  'lsBillingRouter',       '/api/billing');
   await loadRouter('./controllers/lemonsqueezy-controller',  'lsWebhookRouter',       '/api/webhooks/lemonsqueezy');
 
   // Serve uploaded files (menu images / PDFs)
