@@ -1095,7 +1095,7 @@ const BusinessReportsPage=()=>{
   const ct=useCard();
   const [type,setType]=useState<"WEEKLY"|"MONTHLY">("WEEKLY");
   const [preview,setPreview]=useState<any>(null);const [loading,setLoading]=useState(false);
-  const [reports,setReports]=useState<any[]>([]);const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const [reports,setReports]=useState<any[]>([]);const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");const [openReportId,setOpenReportId]=useState<string|null>(null);
   const isOwner=(localStorage.getItem("userRole")||"")==="TENANT_OWNER";
   const loadReports=()=>api.aiAdvisor.reports().then(d=>setReports(d.reports??[])).catch(()=>{});
   useEffect(()=>{loadReports();},[]);
@@ -1137,21 +1137,42 @@ const BusinessReportsPage=()=>{
           <div className="text-xs" style={{color:ct.tx3}}>{preview.feature.reason} <b>How:</b> {preview.feature.how}</div>
         </div>}
         {preview.projection&&<div className="text-xs mb-2" style={{color:ct.tx3}}><b>Growth projection (estimate):</b> {preview.projection.text} <span style={{opacity:0.8}}>{preview.projection.assumption}</span></div>}
-        {isOwner&&<div className="flex items-center gap-2 mt-3 pt-3" style={{borderTop:`1px solid ${ct.bdr}`}}>
-          <button onClick={()=>generate(false)} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>Save report</button>
-          <button onClick={()=>generate(true)} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#E8743B,#f59e0b)"}}>{busy?"Working…":"Generate & email me"}</button>
-          {msg&&<span className="text-xs" style={{color:ct.tx3}}>{msg}</span>}
+        {isOwner&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${ct.bdr}`}}>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>generate(false)} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{busy?"Working…":"Save report"}</button>
+            {msg&&<span className="text-xs" style={{color:ct.tx3}}>{msg}</span>}
+          </div>
+          <p className="text-[11px] mt-2" style={{color:ct.tx3}}>Reports are emailed to you automatically — your weekly summary every Sunday, your monthly review at month-end, and a year-in-review at year-end.</p>
         </div>}
       </div>}
       {reports.length>0&&<div>
         <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{color:ct.tx3}}>Past reports</div>
-        <div className="grid gap-2">{reports.map(r=>(
-          <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
-            <div className="flex-1 min-w-0"><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.type==="WEEKLY"?"Weekly":"Monthly"} · {new Date(r.periodStart).toLocaleDateString()}</div>
-              <div className="text-xs truncate" style={{color:ct.tx3}}>{r.summary?.slice(0,90)||r.subject}</div></div>
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" style={{background:r.emailStatus==="SENT"?"rgba(34,197,94,0.15)":"rgba(148,163,184,0.15)",color:r.emailStatus==="SENT"?"#22c55e":ct.tx3}}>{r.emailStatus==="SENT"?"emailed":r.status?.toLowerCase()}</span>
+        <div className="grid gap-2">{reports.map(r=>{
+          const label=r.type==="WEEKLY"?"Weekly":r.type==="YEARLY"?"Year in review":"Monthly";
+          const open=openReportId===r.id;
+          let recs:any[]=[]; try{recs=Array.isArray(r.recommendationsJson)?r.recommendationsJson:(typeof r.recommendationsJson==="string"?JSON.parse(r.recommendationsJson):[]);}catch{}
+          return(
+          <div key={r.id} className="rounded-xl overflow-hidden" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <button onClick={()=>setOpenReportId(open?null:r.id)} className="w-full p-3 flex items-center gap-3 text-left">
+              <div className="flex-1 min-w-0"><div className="text-sm font-semibold" style={{color:ct.tx}}>{label} · {new Date(r.periodStart).toLocaleDateString()}</div>
+                <div className="text-xs truncate" style={{color:ct.tx3}}>{r.subject||r.summary?.slice(0,90)}</div></div>
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md flex-shrink-0" style={{background:r.emailStatus==="SENT"?"rgba(34,197,94,0.15)":"rgba(148,163,184,0.15)",color:r.emailStatus==="SENT"?"#22c55e":ct.tx3}}>{r.emailStatus==="SENT"?"emailed":r.status?.toLowerCase()}</span>
+              <ChevronDown size={15} style={{color:ct.tx3,transform:open?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}/>
+            </button>
+            {open&&<div className="px-3 pb-3 pt-0" style={{borderTop:`1px solid ${ct.bdr}`}}>
+              {r.subject&&<div className="text-sm font-semibold mt-3 mb-1" style={{color:ct.tx}}>{r.subject}</div>}
+              {r.summary&&<p className="text-xs leading-relaxed mb-3" style={{color:ct.tx2}}>{r.summary}</p>}
+              {recs.length>0&&<div><div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{color:ct.tx3}}>Recommended actions</div>
+                <div className="space-y-2">{recs.map((rec:any,i:number)=>(
+                  <div key={i} className="rounded-lg p-2.5" style={{background:ct.bg2,border:`1px solid ${ct.bdr}`}}>
+                    <div className="text-xs font-semibold" style={{color:ct.tx}}>{rec.what}</div>
+                    {rec.why&&<div className="text-[11px] mt-0.5" style={{color:ct.tx3}}><b>Why:</b> {rec.why}</div>}
+                    {rec.how&&<div className="text-[11px]" style={{color:ct.tx3}}><b>How:</b> {rec.how}</div>}
+                  </div>
+                ))}</div></div>}
+            </div>}
           </div>
-        ))}</div>
+        );})}</div>
       </div>}
     </div>
   );

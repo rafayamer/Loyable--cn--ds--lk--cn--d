@@ -17,7 +17,7 @@ import { logAIRun } from './ai-run-log';
 
 export interface Recommendation { what: string; why: string; how: string; }
 export interface ReportContent {
-  type: 'WEEKLY' | 'MONTHLY';
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
   subject: string;
   previewText: string;
   summary: string;
@@ -133,7 +133,7 @@ const deriveProjection = (m: MetricsBundle): ReportContent['projection'] => {
   const rate = (m.revenue.current - m.revenue.previous) / m.revenue.previous;
   const clamped = Math.max(-0.5, Math.min(0.5, rate)); // avoid wild extrapolation
   const next = Math.round(m.revenue.current * (1 + clamped));
-  const span = m.type === 'WEEKLY' ? 'next week' : 'next month';
+  const span = m.type === 'WEEKLY' ? 'next week' : m.type === 'YEARLY' ? 'next year' : 'next month';
   return {
     text: `If the current trend holds, ${span} could land around ${money(m, next)}.`,
     isEstimate: true,
@@ -145,7 +145,7 @@ const deriveChecklist = (recs: Recommendation[]): string[] => recs.slice(0, 4).m
 
 // ── Template summary (used when LLM disabled) ──────────────────────
 const templateSummary = (m: MetricsBundle, pros: string[], cons: string[]): string => {
-  const period = m.type === 'WEEKLY' ? 'This week' : 'This month';
+  const period = m.type === 'WEEKLY' ? 'This week' : m.type === 'YEARLY' ? 'This year' : 'This month';
   const movement = m.revenue.available
     ? (up(m.revenue) ? `revenue moved up ${m.revenue.changePct}% to ${money(m, m.revenue.current)}` : down(m.revenue) ? `revenue dipped ${Math.abs(m.revenue.changePct!)}% to ${money(m, m.revenue.current)}` : `revenue held at ${money(m, m.revenue.current)}`)
     : `visit data is not flowing yet`;
@@ -163,7 +163,7 @@ const scrub = (text: string): string => {
 /** Build the full report content for a tenant + period (rules + optional LLM narration). */
 export const buildReport = async (
   businessId: string,
-  type: 'WEEKLY' | 'MONTHLY',
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   now = new Date(),
 ): Promise<ReportContent> => {
   const m = await computeMetrics(businessId, type, now);
@@ -183,21 +183,29 @@ export const buildReport = async (
         { role: 'user', content: reportUserPrompt(metricsToBlock(m)) },
       ], 320);
       if (out && out.trim().length > 40) { summary = scrub(out.trim()); llmUsed = true; }
-      await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : 'MONTHLY_REPORT', inputSummary: `${type} metrics`, outputSummary: 'feedback summary', status: 'OK' });
+      await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : type === 'YEARLY' ? 'YEARLY_REPORT' : 'MONTHLY_REPORT', inputSummary: `${type} metrics`, outputSummary: 'feedback summary', status: 'OK' });
     } catch (e) {
-      await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : 'MONTHLY_REPORT', status: 'ERROR', error: (e as Error).message });
+      await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : type === 'YEARLY' ? 'YEARLY_REPORT' : 'MONTHLY_REPORT', status: 'ERROR', error: (e as Error).message });
     }
   } else {
-    await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : 'MONTHLY_REPORT', status: 'LLM_DISABLED', outputSummary: 'template summary' });
+    await logAIRun({ businessId, taskType: type === 'WEEKLY' ? 'WEEKLY_REPORT' : type === 'YEARLY' ? 'YEARLY_REPORT' : 'MONTHLY_REPORT', status: 'LLM_DISABLED', outputSummary: 'template summary' });
   }
 
-  const periodLabel = type === 'WEEKLY' ? 'Weekly' : 'Monthly';
+  const periodLabel = type === 'WEEKLY' ? 'Weekly' : type === 'YEARLY' ? 'Year in review' : 'Monthly';
   const trend = m.revenue.available && m.revenue.changePct != null ? (m.revenue.changePct >= 0 ? `up ${m.revenue.changePct}%` : `down ${Math.abs(m.revenue.changePct)}%`) : 'your latest numbers';
+  // Year-end gets a warm new-year greeting; weekly/monthly keep the revenue subject.
+  const nextYear = (m.window.end.getUTCFullYear()) + 1;
+  const subject = type === 'YEARLY'
+    ? `Your ${m.window.end.getUTCFullYear()} year in review — and best wishes for ${nextYear}`
+    : `Your ${periodLabel} Loyaly report — revenue ${trend}`;
+  const yearSummary = type === 'YEARLY'
+    ? `Here's everything your business achieved this year. Thank you for a wonderful ${m.window.end.getUTCFullYear()} — wishing you an even better ${nextYear}. ${summary}`
+    : summary;
   return {
     type,
-    subject: `Your ${periodLabel} Loyaly report — revenue ${trend}`,
-    previewText: summary.slice(0, 120),
-    summary,
+    subject,
+    previewText: yearSummary.slice(0, 120),
+    summary: yearSummary,
     pros, cons, painPoints, powerPoints,
     recommendations, feature, projection,
     checklist: deriveChecklist(recommendations),
@@ -213,7 +221,7 @@ export const buildReport = async (
  */
 export const generateAndPersistReport = async (
   businessId: string,
-  type: 'WEEKLY' | 'MONTHLY',
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   now = new Date(),
 ): Promise<{ id: string; created: boolean; content: ReportContent; periodStart: Date }> => {
   const content = await buildReport(businessId, type, now);

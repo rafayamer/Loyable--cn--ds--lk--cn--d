@@ -64,7 +64,7 @@ export const advisorUserPrompt = (question: string, metricsBlock: string): strin
   `Owner question: "${question}"\n\nVerified business data (the ONLY facts you may use):\n${metricsBlock}`;
 
 // ── Weekly / Monthly report narration ──────────────────────────────
-export const reportSystemPrompt = (period: 'WEEKLY' | 'MONTHLY'): string => `${BRAND_VOICE}
+export const reportSystemPrompt = (period: 'WEEKLY' | 'MONTHLY' | 'YEARLY'): string => `${BRAND_VOICE}
 
 You are writing the ${period === 'WEEKLY' ? 'weekly' : 'monthly'} business report for the owner.
 ${period === 'WEEKLY'

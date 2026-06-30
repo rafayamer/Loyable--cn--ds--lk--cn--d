@@ -18,7 +18,7 @@ export interface MetricDelta { current: number; previous: number; changePct: num
 
 export interface MetricsBundle {
   businessId: string;
-  type: 'WEEKLY' | 'MONTHLY';
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
   window: PeriodWindow;
   currency: string;
   revenue:        MetricDelta & { available: boolean };
@@ -43,13 +43,21 @@ const pctChange = (cur: number, prev: number): number | null =>
 
 const num = (v: unknown): number => Number(v ?? 0);
 
-/** Build the comparison window for a weekly or monthly report ending "now". */
-export const buildWindow = (type: 'WEEKLY' | 'MONTHLY', now = new Date()): PeriodWindow => {
+/** Build the comparison window for a weekly, monthly or yearly report ending "now". */
+export const buildWindow = (type: 'WEEKLY' | 'MONTHLY' | 'YEARLY', now = new Date()): PeriodWindow => {
   if (type === 'WEEKLY') {
     const end = now;
     const start = new Date(end.getTime() - 7 * 86_400_000);
     const prevEnd = start;
     const prevStart = new Date(start.getTime() - 7 * 86_400_000);
+    return { start, end, prevStart, prevEnd };
+  }
+  if (type === 'YEARLY') {
+    // YEARLY: current calendar year-to-date vs the previous full year.
+    const end = now;
+    const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+    const prevEnd = start;
+    const prevStart = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
     return { start, end, prevStart, prevEnd };
   }
   // MONTHLY: current calendar month-to-date vs previous full month-equivalent span
@@ -66,7 +74,7 @@ export const buildWindow = (type: 'WEEKLY' | 'MONTHLY', now = new Date()): Perio
  */
 export const computeMetrics = async (
   businessId: string,
-  type: 'WEEKLY' | 'MONTHLY',
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   now = new Date(),
 ): Promise<MetricsBundle> => {
   const w = buildWindow(type, now);

@@ -51,7 +51,7 @@ aiAdvisorRouter.get('/reports', requireRoles(...READERS) as any, wrap(async (req
     where: { businessId },
     orderBy: { periodStart: 'desc' },
     take: 24,
-    select: { id: true, type: true, periodStart: true, periodEnd: true, status: true, subject: true, summary: true, emailStatus: true, llmUsed: true, createdAt: true, sentAt: true },
+    select: { id: true, type: true, periodStart: true, periodEnd: true, status: true, subject: true, summary: true, previewText: true, recommendationsJson: true, emailStatus: true, llmUsed: true, createdAt: true, sentAt: true },
   });
   res.json({ reports });
 }));

@@ -9,12 +9,12 @@ import { prisma } from '../../config/prisma';
 import { generateAndPersistReport } from './business-report-service';
 import { sendReportEmail } from './ai-report-email-service';
 
-export interface ReportRunSummary { type: 'WEEKLY' | 'MONTHLY'; tenants: number; generated: number; sent: number; skipped: number; failed: number; }
+export interface ReportRunSummary { type: 'WEEKLY' | 'MONTHLY' | 'YEARLY'; tenants: number; generated: number; sent: number; skipped: number; failed: number; }
 
 /** Generate + deliver one tenant's report. Idempotent end-to-end. */
 export const deliverReportForBusiness = async (
   businessId: string,
-  type: 'WEEKLY' | 'MONTHLY',
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   opts: { email?: boolean; now?: Date } = {},
 ): Promise<{ id: string; created: boolean; emailStatus: string }> => {
   const { id, created, content } = await generateAndPersistReport(businessId, type, opts.now);
@@ -28,7 +28,7 @@ export const deliverReportForBusiness = async (
 
 /** Run reports for every active tenant. Safe to re-run (idempotent). */
 export const runReportsForAllTenants = async (
-  type: 'WEEKLY' | 'MONTHLY',
+  type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   opts: { email?: boolean; now?: Date } = {},
 ): Promise<ReportRunSummary> => {
   const businesses = await prisma.business.findMany({ where: { isActive: true }, select: { id: true } });

@@ -15,7 +15,7 @@ const COST_PER_1K: Record<string, { in: number; out: number }> = {
 
 export interface AIRunInput {
   businessId: string;
-  taskType: 'ADVISOR' | 'WEEKLY_REPORT' | 'MONTHLY_REPORT' | 'PROJECTION';
+  taskType: 'ADVISOR' | 'WEEKLY_REPORT' | 'MONTHLY_REPORT' | 'YEARLY_REPORT' | 'PROJECTION';
   inputSummary?: string;
   outputSummary?: string;
   model?: string;

@@ -76,13 +76,17 @@ export const startAllCronJobs = (): void => {
   // 03:30 UTC — cohort retention analysis (monthly snapshot)
   cron.schedule('30 3 * * *', jobRunner('cohortRetention', cohortRetentionJob), { timezone: 'UTC' });
 
-  // Mon 21:00 — weekly AI business report (last 7 days vs previous 7)
-  cron.schedule('0 21 * * 1', jobRunner('weeklyReport', weeklyReportJob), { timezone: REPORT_TZ });
+  // Sunday 21:00 — weekly AI business report (last 7 days vs previous 7)
+  cron.schedule('0 21 * * 0', jobRunner('weeklyReport', weeklyReportJob), { timezone: REPORT_TZ });
 
-  // 1st of month 21:00 — monthly AI business report
-  cron.schedule('0 21 1 * *', jobRunner('monthlyReport', monthlyReportJob), { timezone: REPORT_TZ });
+  // Month-end 21:00 — monthly review. Fires on days 28–31 and the job itself
+  // only runs when tomorrow is the 1st (i.e. today is the last day of the month).
+  cron.schedule('0 21 28-31 * *', jobRunner('monthlyReport', monthlyReportJob), { timezone: REPORT_TZ });
 
-  console.log('[cron] 13 jobs registered (8 nightly + 2 reports + 1 hourly + 2 frequent).');
+  // Dec 31 21:00 — year-in-review email with best wishes for the new year.
+  cron.schedule('0 21 31 12 *', jobRunner('yearlyReport', yearlyReportJob), { timezone: REPORT_TZ });
+
+  console.log('[cron] 14 jobs registered (8 nightly + 3 reports + 1 hourly + 2 frequent).');
 };
 
 /**
@@ -857,8 +861,17 @@ const feedbackDispatchJob = async (): Promise<Record<string, unknown>> => {
 const weeklyReportJob = async (): Promise<Record<string, unknown>> =>
   runReportsForAllTenants('WEEKLY', { email: true }) as unknown as Record<string, unknown>;
 
-const monthlyReportJob = async (): Promise<Record<string, unknown>> =>
-  runReportsForAllTenants('MONTHLY', { email: true }) as unknown as Record<string, unknown>;
+// Scheduled on days 28–31; only actually run on the LAST day of the month so
+// the monthly review lands at month-end (not the 1st).
+const monthlyReportJob = async (): Promise<Record<string, unknown>> => {
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  if (tomorrow.getDate() !== 1) return { skipped: 'not_month_end' };
+  return runReportsForAllTenants('MONTHLY', { email: true }) as unknown as Record<string, unknown>;
+};
+
+const yearlyReportJob = async (): Promise<Record<string, unknown>> =>
+  runReportsForAllTenants('YEARLY', { email: true }) as unknown as Record<string, unknown>;
 
 // ================================================================
 // JOB 8 — WHATSAPP SESSION HEALTH CHECK (every 5 min)
