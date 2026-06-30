@@ -73,10 +73,23 @@ const COUNTRY_CODES = [
   {code:"+212",flag:"🇲🇦"},{code:"+90",flag:"🇹🇷"},{code:"+7",flag:"🇷🇺"},
 ];
 
+// Maps the business country (ISO-2, set in Settings) to its dial code, so new
+// phone inputs default to the owner's country instead of always +44.
+const COUNTRY_TO_CC: Record<string,string> = {
+  GB:"+44", US:"+1", PK:"+92", AE:"+971", SA:"+966", IN:"+91", AU:"+61",
+  DE:"+49", FR:"+33", IT:"+39", ES:"+34", NL:"+31", BR:"+55", ZA:"+27",
+  NG:"+234", KE:"+254", MY:"+60", SG:"+65", ID:"+62", PH:"+63", EG:"+20",
+  MA:"+212", TR:"+90", RU:"+7", CA:"+1",
+};
+function defaultCC() {
+  try { return COUNTRY_TO_CC[localStorage.getItem("biz_country")||""] || "+44"; }
+  catch { return "+44"; }
+}
+
 function detectCC(value: string) {
   // Sort by length descending so +234 matches before +23
   const sorted = [...COUNTRY_CODES].sort((a,b)=>b.code.length-a.code.length);
-  return sorted.find(c=>value.startsWith(c.code))?.code ?? "+44";
+  return sorted.find(c=>value.startsWith(c.code))?.code ?? defaultCC();
 }
 
 function PhoneInput({

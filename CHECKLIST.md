@@ -14,7 +14,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 6 | Automations toggle now actually turns on/off (was 404 + silent fail) | ✅ |
 | 7 | Campaigns: messages no longer stuck "pending" — now resolve to FAILED if undeliverable | 🟡 (needs connected WhatsApp to actually send) |
 | 8 | POS/FBR: Pakistan → FBR only; tax services for 5–6 major countries | ⬜ |
-| 9 | Settings (timezone/country/currency) apply per-business globally; country sets default dial code | ⬜ |
+| 9 | Settings (timezone/country/currency) apply per-business globally; country sets default dial code | ✅ |
 | 10 | Analytics wording → plain/layman | ⬜ |
 | 11 | Heatmap should look like a heatmap, not a table | ⬜ |
 | 12 | CRM fully mobile-friendly | ⬜ |
