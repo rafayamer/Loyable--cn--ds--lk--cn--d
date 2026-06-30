@@ -116,7 +116,7 @@ const TIER_ORDER: Tier[] = ['FREE', 'STARTER', 'GROWTH', 'PROFESSIONAL', 'ENTERP
 const TIER_COLORS: Record<Tier, string> = {
   FREE:         'bg-slate-100 text-slate-600',
   STARTER:      'bg-blue-100 text-blue-700',
-  GROWTH:       'bg-violet-100 text-violet-700',
+  GROWTH:       'bg-orange-100 text-orange-700',
   PROFESSIONAL: 'bg-amber-100 text-amber-700',
   ENTERPRISE:   'bg-emerald-100 text-emerald-700',
 };
@@ -610,7 +610,7 @@ const PlatformSettingsSection: React.FC = () => {
           </Field>
           <Field label="Accent Colour">
             <div className="flex items-center gap-3">
-              <input type="color" value={form.accentColor ?? '#8b5cf6'} onChange={e => setF('accentColor', e.target.value)} className="h-9 w-14 rounded border border-slate-300 cursor-pointer"/>
+              <input type="color" value={form.accentColor ?? '#F97316'} onChange={e => setF('accentColor', e.target.value)} className="h-9 w-14 rounded border border-slate-300 cursor-pointer"/>
               <Input value={form.accentColor ?? ''} onChange={e => setF('accentColor', e.target.value)} className="flex-1"/>
             </div>
           </Field>

@@ -25,7 +25,7 @@ function PortalPhoneInput({value,onChange}:{value:string;onChange:(v:string)=>vo
         {PORTAL_CC.map(c=><option key={c.code} value={c.code} style={{background:"#2d1b6e"}}>{c.flag} {c.code}</option>)}
       </select>
       <div style={{width:"1px",height:"20px",background:"rgba(255,255,255,0.2)"}}/>
-      <input type="tel" value={local} onChange={e=>onChange(cc+e.target.value.replace(/[^\d\s\-]/g,"").replace(/^0+/,""))} placeholder="7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+      <input type="tel" value={local} onChange={e=>onChange(cc+e.target.value.replace(/[^\d\s\-]/g,"").replace(/^0+/,""))} placeholder="7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-orange-400 outline-none text-sm"/>
     </div>
   );
 }
@@ -61,7 +61,7 @@ const TIER_GRADIENT: Record<string, string> = {
   Diamond:  'linear-gradient(135deg,#b9f2ff,#4fb3d1)',
 };
 function tierGrad(name?: string) {
-  return name ? (TIER_GRADIENT[name] ?? 'linear-gradient(135deg,#8b5cf6,#7c3aed)') : 'linear-gradient(135deg,#8b5cf6,#7c3aed)';
+  return name ? (TIER_GRADIENT[name] ?? 'linear-gradient(135deg,#F97316,#EA6A0E)') : 'linear-gradient(135deg,#F97316,#EA6A0E)';
 }
 
 function fmt(date: string) {
@@ -176,62 +176,62 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
         <div className="text-center mb-6">
           <ThemeLogo dark={true} className="w-28 h-28 object-contain mx-auto mb-4"/>
           <h1 className="text-white font-black text-2xl">{bizName}</h1>
-          <p className="text-purple-300 text-sm mt-1">Your Loyalty Rewards</p>
+          <p className="text-orange-300 text-sm mt-1">Your Loyalty Rewards</p>
         </div>
 
         <div className="rounded-3xl p-6" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
           <h2 className="text-white font-bold text-lg mb-1">Check your rewards</h2>
-          <p className="text-purple-200 text-sm mb-5">{otpStep ? `We sent a 6-digit code to ${maskedPhone} on WhatsApp. Enter it below.` : 'Enter your phone number and first name to view your loyalty account.'}</p>
+          <p className="text-orange-200 text-sm mb-5">{otpStep ? `We sent a 6-digit code to ${maskedPhone} on WhatsApp. Enter it below.` : 'Enter your phone number and first name to view your loyalty account.'}</p>
 
           {otpStep ? (
             <form onSubmit={verify} className="space-y-4">
               <div>
-                <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Verification Code</label>
+                <label className="block text-orange-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Verification Code</label>
                 <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                  <input type="text" inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/[^\d]/g, ''))} placeholder="123456" autoFocus className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-lg tracking-[0.5em] font-mono"/>
+                  <input type="text" inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/[^\d]/g, ''))} placeholder="123456" autoFocus className="flex-1 bg-transparent text-white placeholder-orange-400 outline-none text-lg tracking-[0.5em] font-mono"/>
                 </div>
-                {devCode && <p className="text-purple-400 text-xs mt-1.5">Dev code: <span className="font-mono text-white">{devCode}</span></p>}
+                {devCode && <p className="text-orange-400 text-xs mt-1.5">Dev code: <span className="font-mono text-white">{devCode}</span></p>}
               </div>
               {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
-              <button type="submit" disabled={loading||code.length<4} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+              <button type="submit" disabled={loading||code.length<4} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
                 {loading ? 'Verifying...' : 'Verify & Continue →'}
               </button>
-              <button type="button" onClick={() => { setOtpStep(false); setCode(''); setErr(''); }} className="w-full text-purple-300 text-xs">← Use a different number</button>
+              <button type="button" onClick={() => { setOtpStep(false); setCode(''); setErr(''); }} className="w-full text-orange-300 text-xs">← Use a different number</button>
             </form>
           ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
+              <label className="block text-orange-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">Phone Number</label>
               <PortalPhoneInput value={phone} onChange={setPhone}/>
             </div>
             <div>
-              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">First Name</label>
+              <label className="block text-orange-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">First Name</label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Icon.user />
-                <input type="text" inputMode="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required autoComplete="given-name" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+                <input type="text" inputMode="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your first name" required autoComplete="given-name" className="flex-1 bg-transparent text-white placeholder-orange-400 outline-none text-sm"/>
               </div>
             </div>
             {/* Optional email for bonus points */}
             <div>
-              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
+              <label className="block text-orange-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
                 Email {emailBonusPts > 0 && <span className="normal-case text-yellow-300 font-normal">(+{emailBonusPts} bonus pts)</span>}
               </label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current" strokeWidth={2}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-                <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={emailBonusPts > 0 ? `Add email to earn ${emailBonusPts} bonus points` : "your@email.com (optional)"} autoComplete="email" className="flex-1 bg-transparent text-white placeholder-purple-400 outline-none text-sm"/>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-orange-300 fill-none stroke-current" strokeWidth={2}><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+                <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={emailBonusPts > 0 ? `Add email to earn ${emailBonusPts} bonus points` : "your@email.com (optional)"} autoComplete="email" className="flex-1 bg-transparent text-white placeholder-orange-400 outline-none text-sm"/>
               </div>
             </div>
             {/* Birthday field */}
             <div>
-              <label className="block text-purple-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
+              <label className="block text-orange-200 text-xs font-semibold mb-1.5 uppercase tracking-wide">
                 Date of Birth
                 {birthdayBonusPts > 0
                   ? <span className="normal-case text-yellow-300 font-normal ml-1">(+{birthdayBonusPts} pts on your birthday 🎂)</span>
-                  : <span className="normal-case text-purple-400 font-normal ml-1"> — we'll send you a birthday surprise 🎂</span>
+                  : <span className="normal-case text-orange-400 font-normal ml-1"> — we'll send you a birthday surprise 🎂</span>
                 }
               </label>
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-300 fill-none stroke-current flex-shrink-0" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-orange-300 fill-none stroke-current flex-shrink-0" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                 <input
                   type="date"
                   value={birthday}
@@ -241,24 +241,24 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
                   style={{ colorScheme: 'dark' }}
                 />
               </div>
-              <p className="text-purple-400 text-xs mt-1">Optional — add your birthday to receive a special reward every year</p>
+              <p className="text-orange-400 text-xs mt-1">Optional — add your birthday to receive a special reward every year</p>
             </div>
             {/* Consent + T&C */}
             <label className="flex items-start gap-3 cursor-pointer">
-              <div onClick={() => setConsent(p => !p)} className="mt-0.5 w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center transition-all" style={{ background: consent ? 'linear-gradient(135deg,#8b5cf6,#7c3aed)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(139,92,246,0.5)' }}>
+              <div onClick={() => setConsent(p => !p)} className="mt-0.5 w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center transition-all" style={{ background: consent ? 'linear-gradient(135deg,#F97316,#EA6A0E)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(249,115,22,0.5)' }}>
                 {consent && <svg viewBox="0 0 12 12" className="w-3 h-3"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth={2} fill="none"/></svg>}
               </div>
-              <span className="text-xs text-purple-200 leading-relaxed">I agree to receive loyalty messages on WhatsApp and accept the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-purple-300 underline hover:text-white">terms &amp; conditions</a>. You can opt out anytime by replying STOP.</span>
+              <span className="text-xs text-orange-200 leading-relaxed">I agree to receive loyalty messages on WhatsApp and accept the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-orange-300 underline hover:text-white">terms &amp; conditions</a>. You can opt out anytime by replying STOP.</span>
             </label>
             {err && <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>}
             {bonusMsg && <div className="px-4 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#fde68a' }}>🎉 {bonusMsg}</div>}
-            <button type="submit" disabled={loading||!consent} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+            <button type="submit" disabled={loading||!consent} className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
               {loading ? 'Sending code...' : 'Send Verification Code →'}
             </button>
           </form>
           )}
         </div>
-        <p className="text-center text-purple-400 text-xs mt-6">Powered by The Loyaly · Your data is secure</p>
+        <p className="text-center text-orange-400 text-xs mt-6">Powered by The Loyaly · Your data is secure</p>
       </div>
     </div>
   );
@@ -328,7 +328,7 @@ function MenuTab({ menuImageUrl }: { menuImageUrl: string }) {
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-2xl text-white text-sm font-semibold"
-          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+          style={{ background: 'linear-gradient(135deg,#6366f1,#F97316)' }}
         >
           Open Menu PDF
         </a>
@@ -378,7 +378,7 @@ function RewardsTab({ coupons, onRedeem, currency }: any) {
 
   if (!coupons?.length) return (
     <div className="text-center py-12">
-      <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}>
+      <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.15)' }}>
         <span className="text-3xl">🎁</span>
       </div>
       <p className="text-slate-500 font-medium">No rewards yet</p>
@@ -390,21 +390,21 @@ function RewardsTab({ coupons, onRedeem, currency }: any) {
     <div className="space-y-3">
       {err && <div className="px-4 py-3 rounded-2xl text-sm text-red-600" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>{err}</div>}
       {coupons.map((c: any) => (
-        <div key={c.id} className={`rounded-2xl p-4 border transition-all ${redeemed.has(c.code) ? 'opacity-50' : ''}`} style={{ background: redeemed.has(c.code) ? '#f9fafb' : 'white', border: redeemed.has(c.code) ? '1px solid #e5e7eb' : '1px solid rgba(139,92,246,0.2)' }}>
+        <div key={c.id} className={`rounded-2xl p-4 border transition-all ${redeemed.has(c.code) ? 'opacity-50' : ''}`} style={{ background: redeemed.has(c.code) ? '#f9fafb' : 'white', border: redeemed.has(c.code) ? '1px solid #e5e7eb' : '1px solid rgba(249,115,22,0.2)' }}>
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
               <span className="text-white font-black text-lg">
                 {c.type === 'PERCENTAGE_DISCOUNT' ? `${c.value}%` : c.type === 'FREE_PRODUCT' ? 'Free' : fmtCurrency(Number(c.value ?? 0), currency)}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-slate-800 text-sm">{c.freeProductName || (c.type === 'PERCENTAGE_DISCOUNT' ? `${c.value}% off` : c.type === 'FREE_PRODUCT' ? 'Free item' : `${fmtCurrency(Number(c.value ?? 0), currency)} off`)}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Code: <span className="font-mono font-bold text-purple-600">{c.code}</span></p>
+              <p className="text-xs text-slate-500 mt-0.5">Code: <span className="font-mono font-bold text-orange-600">{c.code}</span></p>
               {c.expiresAt && <p className="text-xs text-slate-400 mt-0.5">Expires {fmt(c.expiresAt)}</p>}
             </div>
             {redeemed.has(c.code)
               ? <div className="flex items-center gap-1 text-green-600 text-xs font-semibold"><Icon.check/> Used</div>
-              : <button onClick={() => handleRedeem(c.code)} disabled={!!redeeming} className="text-xs font-bold px-3 py-1.5 rounded-xl text-white transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+              : <button onClick={() => handleRedeem(c.code)} disabled={!!redeeming} className="text-xs font-bold px-3 py-1.5 rounded-xl text-white transition-opacity disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
                   {redeeming === c.code ? '...' : 'Redeem'}
                 </button>
             }
@@ -460,15 +460,15 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
   };
 
   const CodeBox = (
-    <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(139,92,246,0.2)' }}>
+    <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(249,115,22,0.2)' }}>
       <div className="flex items-center justify-between mb-1">
         <p className="font-bold text-slate-800 text-sm">Have a gift code?</p>
-        <button onClick={() => setShowRules(v => !v)} aria-label="How gift cards work" className="text-slate-400 hover:text-violet-500 text-base leading-none">ⓘ</button>
+        <button onClick={() => setShowRules(v => !v)} aria-label="How gift cards work" className="text-slate-400 hover:text-orange-500 text-base leading-none">ⓘ</button>
       </div>
       <p className="text-xs text-slate-500 mb-3">Enter the code you were given to add it to your balance.</p>
       <div className="flex gap-2">
         <input value={codeEntry} onChange={e => setCodeEntry(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm text-slate-800 font-mono outline-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
-        <button disabled={!codeEntry.trim() || !!busy} onClick={() => doRedeem(codeEntry.trim())} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy === codeEntry.trim() ? '...' : 'Redeem'}</button>
+        <button disabled={!codeEntry.trim() || !!busy} onClick={() => doRedeem(codeEntry.trim())} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>{busy === codeEntry.trim() ? '...' : 'Redeem'}</button>
       </div>
       {showRules && (
         <ul className="mt-3 pt-3 space-y-1.5 text-xs text-slate-600" style={{ borderTop: '1px solid #eee' }}>
@@ -490,12 +490,12 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
       {CodeBox}
       {!cards?.length && (
         <div className="text-center py-8">
-          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}><span className="text-2xl">💳</span></div>
+          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.15)' }}><span className="text-2xl">💳</span></div>
           <p className="text-slate-500 text-sm">No gift cards yet — any sent to you will appear here.</p>
         </div>
       )}
       {(cards ?? []).map((c: any) => (
-        <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6d28d9,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
+        <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#C2410C,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
           <div className="absolute -right-2 bottom-2 w-20 h-20 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}/>
           <div className="flex items-center justify-between mb-6 relative">
@@ -511,14 +511,14 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
             <div className="rounded-2xl p-3 relative" style={{ background: 'rgba(0,0,0,0.25)' }}>
               <div className="text-xs mb-2">⚠️ The business asked to cancel this card{c.deletionReason ? `: "${c.deletionReason}"` : '.'}</div>
               <div className="flex gap-2">
-                <button disabled={!!busy} onClick={() => doDeletion(c.id, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>Accept cancellation</button>
+                <button disabled={!!busy} onClick={() => doDeletion(c.id, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#C2410C' }}>Accept cancellation</button>
                 <button disabled={!!busy} onClick={() => doDeletion(c.id, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>Keep my card</button>
               </div>
             </div>
           ) : (
             <div className="relative">
               <div className="flex gap-2">
-                <button disabled={!!busy} onClick={() => doRedeem(c.code)} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>
+                <button disabled={!!busy} onClick={() => doRedeem(c.code)} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{ background: 'rgba(255,255,255,0.95)', color: '#C2410C' }}>
                   {busy === c.code ? '...' : 'Add to my balance'}
                 </button>
                 <button disabled={!!busy} onClick={() => setGiftFor(giftFor === c.id ? null : c.id)} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.15)' }}>Gift</button>
@@ -529,7 +529,7 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
                   <input value={giftName} onChange={e => setGiftName(e.target.value)} placeholder="Their name (optional)" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
                   <input value={giftPhone} onChange={e => setGiftPhone(e.target.value)} placeholder="+44 7911 123456" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
                   <input value={giftEmail} onChange={e => setGiftEmail(e.target.value)} type="email" placeholder="their@email.com (recommended)" className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none" style={{ background: 'white' }}/>
-                  <button disabled={!!busy} onClick={() => doGift(c.id)} className="w-full py-2 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#6d28d9' }}>{busy === c.id ? 'Sending…' : 'Send gift'}</button>
+                  <button disabled={!!busy} onClick={() => doGift(c.id)} className="w-full py-2 rounded-xl text-sm font-bold" style={{ background: 'rgba(255,255,255,0.95)', color: '#C2410C' }}>{busy === c.id ? 'Sending…' : 'Send gift'}</button>
                 </div>
               )}
             </div>
@@ -565,7 +565,7 @@ function FeedbackTab({ onSubmit, googleReviewUrl }: any) {
       <div className="text-center py-10">
         <div className="text-5xl mb-3">🙏</div>
         <p className="text-slate-800 font-bold text-lg">Thank you for your feedback!</p>
-        {done.pointsAwarded > 0 && <p className="text-purple-600 font-semibold mt-1">+{done.pointsAwarded} points added</p>}
+        {done.pointsAwarded > 0 && <p className="text-orange-600 font-semibold mt-1">+{done.pointsAwarded} points added</p>}
         {score >= 4 && reviewLink && (
           <a href={reviewLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-5 px-5 py-3 rounded-2xl text-white text-sm font-bold" style={{ background: 'linear-gradient(135deg,#4285F4,#34A853)' }}>
             ⭐ Leave us a Google review
@@ -577,7 +577,7 @@ function FeedbackTab({ onSubmit, googleReviewUrl }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl p-5 text-center" style={{ background: 'white', border: '1px solid rgba(139,92,246,0.2)' }}>
+      <div className="rounded-2xl p-5 text-center" style={{ background: 'white', border: '1px solid rgba(249,115,22,0.2)' }}>
         <p className="font-bold text-slate-800 mb-1">How was your experience?</p>
         <p className="text-xs text-slate-500 mb-4">Your feedback earns you points</p>
         <div className="flex justify-center gap-2 mb-4">
@@ -589,7 +589,7 @@ function FeedbackTab({ onSubmit, googleReviewUrl }: any) {
         </div>
         <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Tell us more (optional)…" rows={3} className="w-full px-3 py-2 rounded-xl text-sm text-slate-800 outline-none resize-none" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}/>
         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
-        <button disabled={busy} onClick={submit} className="w-full mt-3 py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>{busy ? 'Sending…' : 'Submit feedback'}</button>
+        <button disabled={busy} onClick={submit} className="w-full mt-3 py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>{busy ? 'Sending…' : 'Submit feedback'}</button>
       </div>
     </div>
   );
@@ -609,7 +609,7 @@ function VisitsTab({ visits, currency }: any) {
     <div className="space-y-2">
       {visits.map((v: any) => (
         <div key={v.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
             <span className="text-white text-lg">✓</span>
           </div>
           <div className="flex-1">
@@ -619,7 +619,7 @@ function VisitsTab({ visits, currency }: any) {
               : <p className="text-xs text-slate-400">Check-in</p>}
           </div>
           <div className="text-right">
-            <p className="font-bold text-purple-600 text-sm">+{v.pointsEarned ?? 0}</p>
+            <p className="font-bold text-orange-600 text-sm">+{v.pointsEarned ?? 0}</p>
             <p className="text-xs text-slate-400">pts</p>
           </div>
         </div>
@@ -644,7 +644,7 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
       <div className="rounded-3xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1e0a3c,#3d1a6e)', color: 'white' }}>
         <div className="text-4xl mb-2">🎉</div>
         <h3 className="font-black text-xl mb-1">Refer Friends</h3>
-        <p className="text-purple-200 text-sm">Share your code and earn bonus points when friends join!</p>
+        <p className="text-orange-200 text-sm">Share your code and earn bonus points when friends join!</p>
         <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
           <span className="flex-1 font-mono font-bold text-white text-sm truncate">{customer.referralCode}</span>
           <button onClick={copy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: copied ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.2)' }}>
@@ -654,7 +654,7 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
       </div>
       <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid #f1f5f9' }}>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
             <span className="text-white font-black text-xl">{referralCount}</span>
           </div>
           <div>
@@ -666,7 +666,7 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
       <button
         onClick={() => navigator.share?.({ title: `Join ${bizName} loyalty!`, text: `Use my referral code to join the loyalty program!`, url: referralUrl })}
         className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
-        style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}
+        style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}
       >
         <Icon.share /> Share My Code
       </button>
@@ -807,7 +807,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
     <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: '#f8fafc' }}>
       <div className="text-center">
         <p className="text-red-500 font-medium mb-3">{err}</p>
-        <button onClick={load} className="px-4 py-2 rounded-xl text-white text-sm" style={{ background: '#8b5cf6' }}>Retry</button>
+        <button onClick={load} className="px-4 py-2 rounded-xl text-white text-sm" style={{ background: '#F97316' }}>Retry</button>
       </div>
     </div>
   );
@@ -847,7 +847,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
       <div className="max-w-sm mx-auto px-4 py-4 space-y-4">
         {/* Announcement */}
         {ps.showAnnouncement && ps.announcementText && (
-          <div className="px-4 py-3 rounded-2xl text-sm font-medium" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }}>
+          <div className="px-4 py-3 rounded-2xl text-sm font-medium" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)', color: 'white' }}>
             📢 {ps.announcementText}
           </div>
         )}
@@ -860,7 +860,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
               </div>
               <button onClick={handleCheckIn} disabled={checkingIn}
                 className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-60 transition-all active:scale-95"
-                style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>
+                style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}>
                 {checkingIn ? '…' : 'Check In'}
               </button>
             </div>
@@ -879,7 +879,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
         {/* WiFi */}
         {ps.showWifi && (ps.wifiName || ps.wifiPassword) && (
           <div className="rounded-2xl p-4" style={{ background: portalDark ? 'rgba(255,255,255,0.05)' : 'white', border: `1px solid ${portalDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}` }}>
-            <div className="flex items-center gap-2 mb-2 text-purple-700">
+            <div className="flex items-center gap-2 mb-2 text-orange-700">
               <Icon.wifi/><span className="font-bold text-sm">Free WiFi</span>
             </div>
             {ps.wifiName && (
@@ -909,7 +909,7 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
             <div className="space-y-1.5">
               {perks.map((perk: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-slate-700">
-                  <span className="text-purple-500"><Icon.check/></span>{perk}
+                  <span className="text-orange-500"><Icon.check/></span>{perk}
                 </div>
               ))}
               {perks.length === 0 && (
@@ -928,12 +928,12 @@ function Dashboard({ token, bizName, currency, portalSettings, checkInConfig, on
                 onClick={() => switchTab(t.id)}
                 className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap"
                 style={activeTab === t.id
-                  ? { background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: 'white' }
+                  ? { background: 'linear-gradient(135deg,#F97316,#EA6A0E)', color: 'white' }
                   : { color: '#64748b' }}
               >
                 {t.icon} {t.label}
                 {(t as any).count != null && (t as any).count > 0 && (
-                  <span className="ml-0.5 px-1.5 rounded-full text-[10px]" style={activeTab === t.id ? { background: 'rgba(255,255,255,0.25)' } : { background: '#ede9fe', color: '#7c3aed' }}>{(t as any).count}</span>
+                  <span className="ml-0.5 px-1.5 rounded-full text-[10px]" style={activeTab === t.id ? { background: 'rgba(255,255,255,0.25)' } : { background: '#ede9fe', color: '#EA6A0E' }}>{(t as any).count}</span>
                 )}
               </button>
             ))}
@@ -986,10 +986,10 @@ export default function CustomerPortal() {
         <ThemeLogo dark={true} className="w-14 h-14 object-contain mx-auto mb-4"/>
         <h1 className="font-black text-xl mb-2">Loyalty Portal</h1>
         {slug
-          ? <p className="text-purple-300 text-sm">The loyalty program <span className="font-mono bg-white/10 px-1 rounded">/{slug}</span> was not found or is inactive.</p>
-          : <p className="text-purple-300 text-sm">No loyalty program specified in the link.</p>
+          ? <p className="text-orange-300 text-sm">The loyalty program <span className="font-mono bg-white/10 px-1 rounded">/{slug}</span> was not found or is inactive.</p>
+          : <p className="text-orange-300 text-sm">No loyalty program specified in the link.</p>
         }
-        <p className="text-purple-400/60 text-xs mt-3">Please ask your business for the correct QR code or link.</p>
+        <p className="text-orange-400/60 text-xs mt-3">Please ask your business for the correct QR code or link.</p>
       </div>
     </div>
   );

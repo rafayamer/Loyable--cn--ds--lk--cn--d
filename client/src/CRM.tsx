@@ -8,15 +8,15 @@ import { Users, BarChart3, MessageSquare, Zap, Settings, LogOut, ChevronRight, S
 // SCHEMA ENUMS (mirrors Prisma schema)
 // ════════════════════════════════════════════════════════════════
 const SEG_COLORS: Record<string,string> = { NEW:"#3b82f6", LOYAL:"#22c55e", VIP:"#f59e0b", AT_RISK:"#ef4444", LOST:"#6b7280", BIG_SPENDER:"#06b6d4", COUPON_HUNTER:"#ec4899" };
-const STATUS_COLORS: Record<string,string> = { PENDING:"#f59e0b", QUEUED:"#3b82f6", SENT:"#22c55e", DELIVERED:"#10b981", READ:"#06b6d4", FAILED:"#ef4444", CONSENT_REVOKED:"#6b7280", DROPPED_COOLDOWN:"#8b5cf6", DROPPED_QUOTA:"#f97316" };
-const ROLE_COLORS: Record<string,string> = { PLATFORM_ADMINISTRATOR:"#ef4444", TENANT_OWNER:"#f59e0b", BRANCH_MANAGER:"#8b5cf6", CASHIER:"#3b82f6", MARKETING_STAFF:"#22c55e", CUSTOMER:"#06b6d4" };
-const TIER_COLORS: Record<string,string> = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFESSIONAL:"#8b5cf6", ENTERPRISE:"#f59e0b" };
-const C = { primary:"#8b5cf6", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
+const STATUS_COLORS: Record<string,string> = { PENDING:"#f59e0b", QUEUED:"#3b82f6", SENT:"#22c55e", DELIVERED:"#10b981", READ:"#06b6d4", FAILED:"#ef4444", CONSENT_REVOKED:"#6b7280", DROPPED_COOLDOWN:"#F97316", DROPPED_QUOTA:"#f97316" };
+const ROLE_COLORS: Record<string,string> = { PLATFORM_ADMINISTRATOR:"#ef4444", TENANT_OWNER:"#f59e0b", BRANCH_MANAGER:"#F97316", CASHIER:"#3b82f6", MARKETING_STAFF:"#22c55e", CUSTOMER:"#06b6d4" };
+const TIER_COLORS: Record<string,string> = { FREE:"#6b7280", STARTER:"#3b82f6", GROWTH:"#22c55e", PROFESSIONAL:"#F97316", ENTERPRISE:"#f59e0b" };
+const C = { primary:"#F97316", accent:"#06b6d4", green:"#22c55e", red:"#ef4444", amber:"#f59e0b", pink:"#ec4899", blue:"#3b82f6" };
 
 // ── Global design tokens ──────────────────────────────────────────
 const GS  = "rgba(255,255,255,0.08)";
 const GSB = "1px solid rgba(255,255,255,0.18)";
-const BG  = "linear-gradient(135deg,#080612 0%,#0f0a1e 50%,#080d1a 100%)";
+const BG  = "linear-gradient(135deg,#0E0704 0%,#1A0F0A 50%,#120B07 100%)";
 const INP = { background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)" };
 const CARD: React.CSSProperties = {
   background:"rgba(255,255,255,0.07)",
@@ -168,7 +168,7 @@ const KPI=({icon:Icon,label,value,change,positive,color,sub,info}:{icon?:any;lab
   </div>
 );
 const WAIcon=({size=18,className=""})=><svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
-const inp="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-violet-500/40 transition-all";
+const inp="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-orange-500/40 transition-all";
 const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90";
 
 // ════════════════════════════════════════════════════════════════
@@ -271,7 +271,7 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
   const {pd,setPd}=usePd();
   const NAV=NAV_ALL.filter(it=>it.roles.includes(role));
   return(
-  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:portalDark?"linear-gradient(180deg,#0a0414 0%,#0d0520 60%,#0a0414 100%)":"linear-gradient(180deg,#ffffff 0%,#faf5ff 60%,#ffffff 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:portalDark?"1px solid rgba(139,92,246,0.12)":"1px solid rgba(139,92,246,0.18)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
+  <div className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ${col?"w-[72px]":"w-[240px]"}`} style={{background:portalDark?"linear-gradient(180deg,#0E0704 0%,#1A0F0A 60%,#0E0704 100%)":"linear-gradient(180deg,#ffffff 0%,#FFFBF5 60%,#ffffff 100%)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:portalDark?"1px solid rgba(249,115,22,0.12)":"1px solid rgba(249,115,22,0.18)",boxShadow:"4px 0 32px rgba(0,0,0,0.4)"}}>
     {/* Logo area */}
     <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${col?"justify-center flex-col":""}`}>
       {col
@@ -289,16 +289,16 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse"/>
       <span className="text-xs text-emerald-400 font-medium truncate">{localStorage.getItem("biz_name")||"Your Business"}</span>
     </div>}
-    {!col&&<div className="mx-3 mb-4 px-2 py-0.5 rounded-md inline-flex"><span className="text-[9px] font-bold uppercase tracking-widest" style={{color:ROLE_COLORS[role]||"#8b5cf6"}}>{role?.replace(/_/g," ")}</span></div>}
-    {col&&<div className="mx-2 mb-3 h-px" style={{background:"linear-gradient(90deg,transparent,rgba(139,92,246,0.3),transparent)"}}/>}
+    {!col&&<div className="mx-3 mb-4 px-2 py-0.5 rounded-md inline-flex"><span className="text-[9px] font-bold uppercase tracking-widest" style={{color:ROLE_COLORS[role]||"#F97316"}}>{role?.replace(/_/g," ")}</span></div>}
+    {col&&<div className="mx-2 mb-3 h-px" style={{background:"linear-gradient(90deg,transparent,rgba(249,115,22,0.3),transparent)"}}/>}
     {/* Nav items */}
     <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto scrollbar-hide">{NAV.map(it=>{
       const active=moduleForPage(page)?.id===it.id;
       return(
         <button key={it.id} onClick={()=>setPage(firstPageOf(it))} title={col?it.label:undefined}
           className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${col?"justify-center px-0":"px-3"} ${active?"text-white":"text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]"}`}
-          style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.18),rgba(6,182,212,0.06))",boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.2)",paddingLeft:col?undefined:"10px"}:{}}>
-          <it.icon size={16} className={`flex-shrink-0 ${active?"text-violet-400":""}`}/>
+          style={active?{background:"linear-gradient(135deg,rgba(249,115,22,0.18),rgba(6,182,212,0.06))",boxShadow:"inset 0 0 0 1px rgba(249,115,22,0.2)",paddingLeft:col?undefined:"10px"}:{}}>
+          <it.icon size={16} className={`flex-shrink-0 ${active?"text-orange-400":""}`}/>
           {!col&&<span className="flex-1 text-left">{it.label}</span>}
           {!col&&it.id==="campaigns"&&wa&&<div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>}
           {!col&&it.id==="analytics"&&<span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>AI</span>}
@@ -308,7 +308,7 @@ const Sidebar=({page,setPage,col,setCol,onLogout,wa,role,portalDark,setPortalDar
     {/* Divider */}
     <div className="mx-3 h-px mb-2" style={{background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)"}}/>
     <div className="p-2.5">
-      <button onClick={()=>setPd(!pd)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 hover:bg-violet-500/10 ${col?"justify-center":""}`} style={{color:pd?"#a78bfa":"#6d28d9"}}>
+      <button onClick={()=>setPd(!pd)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 hover:bg-orange-500/10 ${col?"justify-center":""}`} style={{color:pd?"#FFB085":"#C2410C"}}>
         {pd
           ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
@@ -335,7 +335,7 @@ const ModuleTabs=({page,setPage}:{page:string;setPage:(p:string)=>void})=>{
           <button key={t.id} onClick={()=>setPage(t.id)}
             className="px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all"
             style={active
-              ?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.28)"}
+              ?{background:"linear-gradient(135deg,rgba(249,115,22,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(249,115,22,0.28)"}
               :{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>
             {t.label}
           </button>
@@ -431,7 +431,7 @@ const Pill=({text,color}:{text:string;color:string})=>(
 );
 const HBtn=({children,onClick,variant="primary",ct,disabled}:any)=>(
   <button onClick={onClick} disabled={disabled} className="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-    style={variant==="primary"?{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)",color:"#fff"}:{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{children}</button>
+    style={variant==="primary"?{background:"linear-gradient(135deg,#F97316,#06b6d4)",color:"#fff"}:{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{children}</button>
 );
 const Modal=({title,onClose,children,ct}:any)=>(
   <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}} onClick={onClose}>
@@ -466,7 +466,7 @@ const HRStaffPage=()=>{
       <div className="flex items-center gap-1 mb-5 overflow-x-auto scrollbar-hide">
         {HR_TABS.map(t=>{const active=tab===t.id;return(
           <button key={t.id} onClick={()=>setTab(t.id)} className="px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all"
-            style={active?{background:"linear-gradient(135deg,rgba(139,92,246,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(139,92,246,0.28)"}:{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>{t.label}</button>
+            style={active?{background:"linear-gradient(135deg,rgba(249,115,22,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(249,115,22,0.28)"}:{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>{t.label}</button>
         );})}
       </div>
       {tab==="directory"&&<HRDirectory ct={ct}/>}
@@ -498,12 +498,12 @@ const HRDirectory=({ct}:any)=>{
        rows.length===0?<div className="rounded-2xl p-10 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No employees yet. Add your first team member.</div>:
        <div className="grid gap-2">{rows.map(e=>(
          <div key={e.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
-           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{background:"rgba(139,92,246,0.18)",color:"#a78bfa"}}>{(e.fullName||"?").slice(0,2).toUpperCase()}</div>
+           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{background:"rgba(249,115,22,0.18)",color:"#FFB085"}}>{(e.fullName||"?").slice(0,2).toUpperCase()}</div>
            <div className="flex-1 min-w-0">
              <div className="text-sm font-semibold truncate" style={{color:ct.tx}}>{e.fullName}</div>
              <div className="text-xs truncate" style={{color:ct.tx3}}>{[e.jobTitle,e.email].filter(Boolean).join(" · ")||"—"}</div>
            </div>
-           <Pill text={e.hrRole} color="#8b5cf6"/>
+           <Pill text={e.hrRole} color="#F97316"/>
            <Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/>
            <button onClick={()=>api.hr.employee(e.id).then(setDetail)} className="text-xs px-2 py-1 rounded-lg" style={{color:ct.tx3,background:ct.bg2}}>View</button>
            <button onClick={()=>setEdit(e)} style={{color:ct.tx3}}><Edit size={15}/></button>
@@ -553,7 +553,7 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
   const setStatus=async(s:string)=>{await api.hr.setStatus(e.id,s).then(onChanged);};
   return(
     <Modal title={e.fullName} onClose={onClose} ct={ct}>
-      <div className="flex items-center gap-2 mb-3 flex-wrap"><Pill text={e.hrRole} color="#8b5cf6"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
+      <div className="flex items-center gap-2 mb-3 flex-wrap"><Pill text={e.hrRole} color="#F97316"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
       <div className="text-xs space-y-1 mb-3" style={{color:ct.tx2}}>
         {e.jobTitle&&<div>💼 {e.jobTitle}</div>}{e.email&&<div>✉️ {e.email}</div>}{e.phone&&<div>📞 {e.phone}</div>}
         {e.emergencyContactName&&<div>🚨 {e.emergencyContactName} · {e.emergencyContactPhone||"—"}</div>}
@@ -568,7 +568,7 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
       {note&&<div className="text-xs mb-3 px-3 py-2 rounded-lg" style={{background:ct.bg2,color:ct.tx2,border:`1px solid ${ct.bdr}`}}>{note}</div>}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1"><span className="text-xs font-semibold" style={{color:ct.tx}}>Onboarding</span><span className="text-xs" style={{color:ct.tx3}}>{pct}%</span></div>
-        <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+        <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#F97316,#06b6d4)"}}/></div>
         <div className="space-y-1">{checklist.map((i:any)=>(
           <label key={i.key} className="flex items-center gap-2 text-xs cursor-pointer" style={{color:ct.tx2}}>
             <input type="checkbox" checked={!!i.done} onChange={()=>api.hr.setOnboarding(e.id,i.key,!i.done).then(onChanged)}/>{i.label}
@@ -655,7 +655,7 @@ const HROnboarding=({ct}:any)=>{
        <div className="grid gap-3">{rows.map(e=>{const cl=Array.isArray(e.onboardingJson)?e.onboardingJson:[];const pct=cl.length?Math.round(cl.filter((i:any)=>i.done).length/cl.length*100):0;return(
         <div key={e.id} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
           <div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold" style={{color:ct.tx}}>{e.fullName}</div><span className="text-xs" style={{color:ct.tx3}}>{pct}%</span></div>
-          <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+          <div className="h-1.5 rounded-full mb-2" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${pct}%`,background:"linear-gradient(90deg,#F97316,#06b6d4)"}}/></div>
           <div className="grid sm:grid-cols-2 gap-1">{cl.map((i:any)=>(
             <label key={i.key} className="flex items-center gap-2 text-xs cursor-pointer" style={{color:ct.tx2}}><input type="checkbox" checked={!!i.done} onChange={()=>toggle(e.id,i.key,!i.done)}/>{i.label}</label>
           ))}</div>
@@ -814,7 +814,7 @@ const HRPerformance=({ct}:any)=>{
         <div key={r.employeeId} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
           <div className="flex items-center justify-between mb-1.5"><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.fullName}<span className="text-xs font-normal ml-2" style={{color:ct.tx3}}>{r.jobTitle||""}</span></div>
             <div className="text-sm font-bold" style={{color:ct.tx}}>{sym}{r.revenue.toLocaleString()}</div></div>
-          <div className="h-1.5 rounded-full mb-1.5" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${r.revenue/max*100}%`,background:"linear-gradient(90deg,#8b5cf6,#06b6d4)"}}/></div>
+          <div className="h-1.5 rounded-full mb-1.5" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${r.revenue/max*100}%`,background:"linear-gradient(90deg,#F97316,#06b6d4)"}}/></div>
           <div className="flex gap-3 text-[11px]" style={{color:ct.tx3}}><span>{r.visits} visits</span><span>·</span><span>{r.rewardPoints} reward pts</span></div>
         </div>
       ))}</div>}
@@ -1008,7 +1008,7 @@ const BillingSuccessPage=()=>{
     poll();return()=>{stop=true;};},[]);
   const activated=sub?.active&&sub?.tier&&sub.tier!=="FREE";
   return(
-    <div style={{minHeight:"100vh",background:"#06040f",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"-apple-system,Segoe UI,Roboto,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"#0E0704",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"-apple-system,Segoe UI,Roboto,sans-serif"}}>
       <div style={{maxWidth:420,textAlign:"center"}}>
         <div style={{width:56,height:56,borderRadius:16,background:"rgba(232,116,59,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}}>
           <div style={{width:24,height:24,border:"3px solid #E8743B",borderTopColor:"transparent",borderRadius:"50%",animation:activated?"none":"spin 0.8s linear infinite"}}/>
@@ -1222,16 +1222,16 @@ const usePd = ()=>useContext(PortalThemeCtx);
 const useCard=()=>{ const {pd}=useContext(PortalThemeCtx); return pdTokens(pd); };
 // Reactive design tokens for portal light/dark
 const pdTokens=(pd:boolean)=>({
-  bg:    pd?"#06040f":"#f5f3ff",
+  bg:    pd?"#0E0704":"#FFF7ED",
   bg2:   pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.85)",
   card:  pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.92)",
-  bdr:   pd?"rgba(255,255,255,0.18)":"rgba(139,92,246,0.18)",
-  tx:    pd?"#ffffff":"#1e1333",
-  tx2:   pd?"rgba(255,255,255,0.6)":"#4b3f72",
-  tx3:   pd?"rgba(255,255,255,0.35)":"#7c6fa0",
+  bdr:   pd?"rgba(255,255,255,0.18)":"rgba(249,115,22,0.18)",
+  tx:    pd?"#ffffff":"#1C1917",
+  tx2:   pd?"rgba(255,255,255,0.6)":"#57534E",
+  tx3:   pd?"rgba(255,255,255,0.35)":"#9A8478",
   inp:   pd?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.9)",
-  inpBd: pd?"rgba(255,255,255,0.15)":"rgba(139,92,246,0.25)",
-  shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(139,92,246,0.1)",
+  inpBd: pd?"rgba(255,255,255,0.15)":"rgba(249,115,22,0.25)",
+  shadow:pd?"0 8px 32px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)":"0 4px 20px rgba(249,115,22,0.1)",
 });
 
 // Theme-aware brand logo — white.png on dark bg, black.png on light bg (brand spec)
@@ -1285,7 +1285,7 @@ function QuotaBanner({ recipients }: { recipients?: number }) {
 
 const AuthBg=()=>(
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
-    <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.06] blur-3xl" style={{background:"#8b5cf6"}}/>
+    <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.06] blur-3xl" style={{background:"#F97316"}}/>
     <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full opacity-[0.06] blur-3xl" style={{background:"#06b6d4"}}/>
     <div className="absolute top-3/4 left-1/4 w-64 h-64 rounded-full opacity-[0.04] blur-3xl" style={{background:"#ec4899"}}/>
   </div>
@@ -1326,7 +1326,7 @@ const OkBox=({msg}:{msg:string})=>msg?(
 
 const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:string,type?:string,value:string,onChange:(v:string)=>void,onEnter?:()=>void,placeholder?:string})=>{
   const {dark}=useTheme();
-  const s:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035",transition:"border-color .2s"};
+  const s:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",transition:"border-color .2s"};
   return(
     <div>
       <label className="text-xs font-medium mb-1.5 block" style={{color:dark?"#94a3b8":"#6b7280"}}>{label}</label>
@@ -1338,7 +1338,7 @@ const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:strin
 const Btn=({onClick,disabled,loading:ld,children}:{onClick:()=>void,disabled?:boolean,loading?:boolean,children:React.ReactNode})=>(
   <button onClick={onClick} disabled={disabled||ld}
     className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[.98] shadow-sm"
-    style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+    style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
     {ld&&<RefreshCw size={14} className="animate-spin"/>}{children}
   </button>
 );
@@ -1405,7 +1405,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   };
   const {dark}=useTheme();
   const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
-  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
   if(bizChoices){
     return(
       <div>
@@ -1414,14 +1414,14 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
           {bizChoices.map(b=>(
             <button key={b.id} onClick={async()=>{setLoading(true);try{await doLogin(e,p,b.id);}catch(ex){setErr((ex as Error).message);}finally{setLoading(false);}}}
               className="w-full text-left rounded-xl px-4 py-3 transition-all"
-              style={{background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:"1px solid rgba(124,58,237,0.25)"}}>
-              <div className="font-semibold text-sm" style={{color:dark?"white":"#1a1035"}}>{b.name}</div>
+              style={{background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:"1px solid rgba(124,58,237,0.25)"}}>
+              <div className="font-semibold text-sm" style={{color:dark?"white":"#1C1917"}}>{b.name}</div>
               <div className="text-xs mt-0.5" style={{color:dark?"#94a3b8":"#6b7280"}}>{b.role.replace(/_/g," ")}</div>
             </button>
           ))}
         </div>
         <ErrBox msg={err}/>
-        <button onClick={()=>setBizChoices(null)} className="w-full text-center text-xs mt-2" style={{color:"#8b5cf6"}}>← Back</button>
+        <button onClick={()=>setBizChoices(null)} className="w-full text-center text-xs mt-2" style={{color:"#F97316"}}>← Back</button>
       </div>
     );
   }
@@ -1431,7 +1431,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
       <Divider/>
       {totpRequired?(
         <div className="space-y-4 mb-5">
-          <div className="p-3 rounded-xl flex items-center gap-2" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Lock size={14} className="text-violet-400 flex-shrink-0"/><span className="text-xs text-slate-300">Enter the 6-digit code from your authenticator app to continue</span></div>
+          <div className="p-3 rounded-xl flex items-center gap-2" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}><Lock size={14} className="text-orange-400 flex-shrink-0"/><span className="text-xs text-slate-300">Enter the 6-digit code from your authenticator app to continue</span></div>
           <div><label style={fldLbl}>Authenticator Code</label><input autoFocus value={totpCode} onChange={ev=>setTotpCode(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} maxLength={6} placeholder="000000" className="text-center font-mono text-xl tracking-widest" style={{...fldInp,letterSpacing:"0.3em"}}/></div>
         </div>
       ):(
@@ -1440,7 +1440,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label style={fldLbl}>Password</label>
-              <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#8b5cf6"}}>Forgot password?</button>
+              <button onClick={()=>onView("forgot")} className="text-xs font-semibold transition-colors" style={{color:"#F97316"}}>Forgot password?</button>
             </div>
             <input value={p} onChange={ev=>setP(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&submit()} type="password" placeholder="••••••••" style={fldInp}/>
           </div>
@@ -1448,7 +1448,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
       )}
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Sign In</Btn>
-      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Don't have an account? <button onClick={()=>onView("signup")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign up free</button></p>
+      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Don't have an account? <button onClick={()=>onView("signup")} className="font-semibold" style={{color:"#F97316"}}>Sign up free</button></p>
     </div>
   );
 };
@@ -1490,9 +1490,9 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
   };
   const {dark}=useTheme();
   const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
-  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
   const selSt={...fldInp,appearance:"none" as const};
-  const optBg=dark?"#1a1035":"white";
+  const optBg=dark?"#1C1917":"white";
   return(
     <div>
       <SocialButtons loading={loading} socialLoading={socialLoading} onSocial={p=>{setSocialLoading(p);window.location.href=`/api/auth/${p}`;}}/>
@@ -1517,7 +1517,7 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
       </div>
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading} disabled={!!socialLoading}>Create Account</Btn>
-      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Already have an account? <button onClick={()=>onView("login")} className="font-semibold" style={{color:"#8b5cf6"}}>Sign in</button></p>
+      <p className="mt-5 text-center text-xs" style={{color:dark?"#64748b":"#9ca3af"}}>Already have an account? <button onClick={()=>onView("login")} className="font-semibold" style={{color:"#F97316"}}>Sign in</button></p>
       <div className="mt-4 flex flex-wrap justify-center gap-4">
         {[{icon:"🛡️",l:"GDPR Compliant"},{icon:"🔒",l:"Secure & Encrypted"},{icon:"⭐",l:"Trusted by Businesses"}].map(b=>(
           <div key={b.l} className="flex items-center gap-1.5 text-[11px]" style={{color:dark?"#64748b":"#9ca3af"}}><span>{b.icon}</span>{b.l}</div>
@@ -1549,7 +1549,7 @@ const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
       </div>
       <h3 className="text-white font-semibold text-lg mb-2">Check your inbox</h3>
       <p className="text-slate-400 text-sm mb-6">If an account exists for <span className="text-white">{email}</span>, you'll receive a password reset link within a few minutes.</p>
-      <button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 text-sm font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={14}/> Back to sign in</button>
+      <button onClick={()=>onView("login")} className="text-orange-400 hover:text-orange-300 text-sm font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={14}/> Back to sign in</button>
     </div>
   );
   return(
@@ -1563,7 +1563,7 @@ const ForgotView=({onView}:{onView:(v:AuthView)=>void})=>{
       </div>
       <ErrBox msg={err}/>
       <Btn onClick={submit} loading={loading}>Send Reset Link</Btn>
-      <p className="mt-4 text-center text-xs text-slate-500"><button onClick={()=>onView("login")} className="text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={12}/> Back to sign in</button></p>
+      <p className="mt-4 text-center text-xs text-slate-500"><button onClick={()=>onView("login")} className="text-orange-400 hover:text-orange-300 font-medium flex items-center gap-1 mx-auto"><ArrowLeft size={12}/> Back to sign in</button></p>
     </div>
   );
 };
@@ -1667,7 +1667,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const tx2   = D?"#94a3b8":"#64748b";
   const tx3   = D?"#64748b":"#94a3b8";
   const bdr   = D?"#1e293b":"#e2e8f0";
-  const inpBg = D?"rgba(255,255,255,0.07)":"#f9f8ff";
+  const inpBg = D?"rgba(255,255,255,0.07)":"#FFF7ED";
   const inpBd = D?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)";
   const navBg = D?"rgba(9,9,11,0.88)":"rgba(255,255,255,0.88)";
   const secPillBg  = D?"#0f172a":"#f8fafc";
@@ -1723,7 +1723,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
   // Emotional, story-driven case studies
   const CASE_STUDIES=[
-    {emoji:"☕",biz:"The Corner Café",owner:"Amara",city:"Manchester",color:"#8b5cf6",
+    {emoji:"☕",biz:"The Corner Café",owner:"Amara",city:"Manchester",color:"#F97316",
       stat:"+62%",statLabel:"repeat visits in 4 months",
       story:"Amara nearly closed her café after the chain across the street opened. The Loyaly helped her remember every regular's name and order. When her quietest customers drifted away, automatic 'we miss you' messages with a free-coffee reward brought them back. Today her café is the busiest on the street again.",
       result:"From 30 to 480 loyal regulars — and a 6-month waitlist for her weekend brunch."},
@@ -1806,7 +1806,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <ThemeCtx.Provider value={{dark}}>
       <div className="min-h-screen flex flex-col lg:flex-row" style={{background:bg}}>
         {/* Left panel — marketing */}
-        <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#6d28d9 0%,#7c3aed 40%,#4f46e5 100%)"}}>
+        <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#C2410C 0%,#EA6A0E 40%,#4f46e5 100%)"}}>
           <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
           <div className="relative z-10">
             <button onClick={()=>setView("landing")} className="mb-12">
@@ -1815,7 +1815,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
               {view==="signup"?"Create Your The Loyaly Account":"Welcome Back to The Loyaly"}
             </h1>
-            <p className="text-purple-200 text-sm mb-8 leading-relaxed">Join thousands of businesses that are turning one-time customers into loyal customers.</p>
+            <p className="text-orange-200 text-sm mb-8 leading-relaxed">Join thousands of businesses that are turning one-time customers into loyal customers.</p>
             {[
               {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,t:"Grow Your Customers",d:"Track visits, understand behavior and build stronger relationships."},
               {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,t:"Reward Loyalty",d:"Points, tiers, and exclusive rewards that keep customers coming back."},
@@ -1826,7 +1826,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white" style={{background:"rgba(255,255,255,0.15)"}}>{f.icon}</div>
                 <div>
                   <div className="text-white font-semibold text-sm">{f.t}</div>
-                  <div className="text-purple-200 text-xs mt-0.5 leading-relaxed">{f.d}</div>
+                  <div className="text-orange-200 text-xs mt-0.5 leading-relaxed">{f.d}</div>
                 </div>
               </div>
             ))}
@@ -1836,12 +1836,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{borderColor:"rgba(255,255,255,0.1)"}}>
               <img src="/white.png" alt="" className="w-5 h-5 object-contain"/>
               <span className="text-white text-xs font-semibold">Dashboard</span>
-              <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-purple-200 text-[10px]">Davita ▾</span></div>
+              <div className="ml-auto flex items-center gap-1"><div className="w-6 h-6 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}/><span className="text-orange-200 text-[10px]">Davita ▾</span></div>
             </div>
             <div className="p-4 grid grid-cols-4 gap-2">
               {[{l:"Total Customers",v:"12,458",c:"+12.5%"},{l:"Active Customers",v:"8,215",c:"+8.3%"},{l:"Repeat Customers",v:"6,125",c:"+15.2%"},{l:"Revenue Recovered",v:"£23,560",c:"+18.7%"}].map((k,i)=>(
                 <div key={i} className="rounded-lg p-2" style={{background:"rgba(255,255,255,0.1)"}}>
-                  <div className="text-purple-200 text-[9px]">{k.l}</div>
+                  <div className="text-orange-200 text-[9px]">{k.l}</div>
                   <div className="text-white font-bold text-sm">{k.v}</div>
                   <div className="text-green-300 text-[9px]">{k.c}</div>
                 </div>
@@ -1856,9 +1856,9 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
               <ThemeLogo dark={dark} className="h-7 w-auto object-contain"/>
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
-              {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Log in</button></>}
-              {view==="login"&&<><span className="text-sm" style={{color:tx2}}>New to The Loyaly?</span><button onClick={()=>nav("signup")} className="text-sm font-semibold" style={{color:"#7c3aed"}}>Sign up free</button></>}
-              {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>nav("login")} className="text-sm font-semibold flex items-center gap-1" style={{color:"#7c3aed"}}><ArrowLeft size={13}/>Back to login</button>}
+              {view==="signup"&&<><span className="text-sm" style={{color:tx2}}>Already have an account?</span><button onClick={()=>nav("login")} className="text-sm font-semibold" style={{color:"#EA6A0E"}}>Log in</button></>}
+              {view==="login"&&<><span className="text-sm" style={{color:tx2}}>New to The Loyaly?</span><button onClick={()=>nav("signup")} className="text-sm font-semibold" style={{color:"#EA6A0E"}}>Sign up free</button></>}
+              {(view==="forgot"||view==="forgot-sent")&&<button onClick={()=>nav("login")} className="text-sm font-semibold flex items-center gap-1" style={{color:"#EA6A0E"}}><ArrowLeft size={13}/>Back to login</button>}
             </div>
           </div>
           <div className="flex-1 flex items-center justify-center px-6 py-10">
@@ -1867,7 +1867,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             </div>
           </div>
           <div className="px-6 py-4 text-center text-xs" style={{color:tx3}}>
-            By signing up, you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#7c3aed"}}>Terms &amp; Conditions</a> and <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#7c3aed"}}>Privacy Policy</a>
+            By signing up, you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#EA6A0E"}}>Terms &amp; Conditions</a> and <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{color:"#EA6A0E"}}>Privacy Policy</a>
           </div>
         </div>
       </div>
@@ -1902,10 +1902,10 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         .lyl-cs-track:hover{animation-play-state:paused}
         @keyframes lyl-pulse-ring{0%{transform:scale(.9);opacity:.7}70%{transform:scale(1.3);opacity:0}100%{opacity:0}}
         @keyframes lyl-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-        .lyl-grad-text{background:linear-gradient(90deg,#8b5cf6,#ec4899,#06b6d4,#8b5cf6);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lyl-shimmer 6s linear infinite}
+        .lyl-grad-text{background:linear-gradient(90deg,#F97316,#ec4899,#06b6d4,#F97316);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lyl-shimmer 6s linear infinite}
         @media (prefers-reduced-motion: reduce){.lyl-cs-track,.lyl-track,.lyl-steps-track,.lyl-cube,.lyl-grad-text{animation:none !important}}
         .lyl-cube{width:90px;height:90px;transform-style:preserve-3d;animation:lyl-cube-float 12s ease-in-out infinite;position:relative}
-        .lyl-cube-face{position:absolute;width:90px;height:90px;border:1px solid rgba(167,139,250,0.4);background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(109,40,217,0.04))}
+        .lyl-cube-face{position:absolute;width:90px;height:90px;border:1px solid rgba(167,139,250,0.4);background:linear-gradient(135deg,rgba(249,115,22,0.08),rgba(109,40,217,0.04))}
         .lyl-cube-face.front {transform:translateZ(45px)}
         .lyl-cube-face.back  {transform:rotateY(180deg) translateZ(45px)}
         .lyl-cube-face.left  {transform:rotateY(-90deg) translateZ(45px)}
@@ -1938,8 +1938,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
               : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:tx2}}><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
             }
           </button>
-          <button onClick={()=>nav("login")} className="hidden md:block px-4 py-2 rounded-md text-sm font-medium border transition-colors hover:opacity-80" style={{borderColor:"#8b5cf6",color:tx}}>Sign in</button>
-          <button onClick={()=>nav("signup")} className="px-4 py-2 rounded-md text-sm font-medium text-white transition-colors hover:opacity-90" style={{background:"#8b5cf6"}}>Get started</button>
+          <button onClick={()=>nav("login")} className="hidden md:block px-4 py-2 rounded-md text-sm font-medium border transition-colors hover:opacity-80" style={{borderColor:"#F97316",color:tx}}>Sign in</button>
+          <button onClick={()=>nav("signup")} className="px-4 py-2 rounded-md text-sm font-medium text-white transition-colors hover:opacity-90" style={{background:"#F97316"}}>Get started</button>
           <button className="md:hidden" onClick={()=>setMobileNav(!mobileNav)} style={{color:tx}}>{mobileNav?<X size={22}/>:<Menu size={22}/>}</button>
         </div>
 
@@ -1951,8 +1951,8 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             ))}
             <a href="#how-it-works" onClick={()=>setMobileNav(false)} style={{color:tx}}>How it Works</a>
             <button onClick={()=>{setMobileNav(false);nav("login");}} className="transition-opacity hover:opacity-70" style={{color:tx}}>Sign in</button>
-            <button onClick={()=>{setMobileNav(false);nav("signup");}} className="px-8 py-2.5 rounded-md text-white text-base font-medium" style={{background:"#8b5cf6"}}>Get started</button>
-            <button onClick={()=>setMobileNav(false)} className="aspect-square size-10 flex items-center justify-center text-white rounded-md" style={{background:"#8b5cf6"}}><X size={20}/></button>
+            <button onClick={()=>{setMobileNav(false);nav("signup");}} className="px-8 py-2.5 rounded-md text-white text-base font-medium" style={{background:"#F97316"}}>Get started</button>
+            <button onClick={()=>setMobileNav(false)} className="aspect-square size-10 flex items-center justify-center text-white rounded-md" style={{background:"#F97316"}}><X size={20}/></button>
           </div>
         )}
       </nav>
@@ -1960,12 +1960,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       {/* ── Hero ────────────────────────────────────────────── */}
       <div id="home" className="flex flex-col items-center justify-center text-center px-4 pt-36 pb-20 relative overflow-hidden">
         {/* Gradient bg blobs */}
-        <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.25) 0%,transparent 70%)":"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(139,92,246,0.12) 0%,transparent 70%)"}}/>
+        <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(249,115,22,0.25) 0%,transparent 70%)":"radial-gradient(ellipse 80% 60% at 50% -10%,rgba(249,115,22,0.12) 0%,transparent 70%)"}}/>
         <div className="absolute inset-0 pointer-events-none" style={{background:D?"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.1) 0%,transparent 60%)":"radial-gradient(ellipse 40% 30% at 80% 60%,rgba(79,70,229,0.06) 0%,transparent 60%)"}}/>
 
         {/* Neon rotating cube — left */}
         <div className="absolute pointer-events-none" style={{left:"5%",top:"18%",perspective:"500px",opacity:D?0.65:0.35}}>
-          <div className="lyl-cube" style={{filter:"drop-shadow(0 0 12px rgba(139,92,246,0.6))"}}>
+          <div className="lyl-cube" style={{filter:"drop-shadow(0 0 12px rgba(249,115,22,0.6))"}}>
             {["front","back","left","right","top","bottom"].map(f=><div key={f} className={`lyl-cube-face ${f}`}/>)}
           </div>
         </div>
@@ -1981,7 +1981,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         {/* Social proof pill */}
         <div className="relative flex flex-wrap items-center justify-center gap-3 p-1.5 pr-5 mb-6 rounded-full border" style={{border:`1px solid ${bdr}`,background:D?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.8)"}}>
           <div className="flex items-center -space-x-2.5">
-            {[["#8b5cf6","MB"],["#06b6d4","SJ"],["#ec4899","JW"]].map(([c,initials],i)=>(
+            {[["#F97316","MB"],["#06b6d4","SJ"],["#ec4899","JW"]].map(([c,initials],i)=>(
               <div key={i} className="size-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2" style={{background:c,["--tw-ring-color" as any]:bg}}>{initials}</div>
             ))}
           </div>
@@ -1991,7 +1991,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         {/* Headline */}
         <h1 className="mt-2 text-4xl sm:text-5xl md:text-[64px] font-black leading-tight max-w-3xl tracking-tight px-2" style={{color:tx}}>
           Turn One-Time Customers Into{" "}
-          <span style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
+          <span style={{background:"linear-gradient(135deg,#F97316,#C2410C)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Loyal Customers</span>
         </h1>
         <p className="text-base mt-4 max-w-lg leading-relaxed" style={{color:tx2}}>
           The Loyaly helps businesses track visits, reward loyalty, automate WhatsApp marketing and bring customers back — all in one powerful platform.
@@ -1999,26 +1999,26 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
         {/* CTA buttons */}
         <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
-          <button onClick={()=>nav("signup")} className="px-7 h-11 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-lg" style={{background:"#8b5cf6"}}>Get started free</button>
-          <button className="flex items-center gap-2 h-11 px-7 rounded-md text-sm font-medium border transition-opacity hover:opacity-70" style={{borderColor:"#8b5cf6",color:tx2}}>
+          <button onClick={()=>nav("signup")} className="px-7 h-11 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-lg" style={{background:"#F97316"}}>Get started free</button>
+          <button className="flex items-center gap-2 h-11 px-7 rounded-md text-sm font-medium border transition-opacity hover:opacity-70" style={{borderColor:"#F97316",color:tx2}}>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
             <span>Watch demo</span>
           </button>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-5 mt-5 text-xs" style={{color:tx3}}>
           {["14-Day Free Trial","No Credit Card","Setup in 2 Minutes"].map(l=>(
-            <span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-violet-500"/>{l}</span>
+            <span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-orange-500"/>{l}</span>
           ))}
         </div>
 
         {/* Dashboard mockup */}
         <div className="relative mt-16 w-full max-w-4xl mx-auto">
-          <div className="absolute -inset-4 rounded-3xl opacity-20 blur-3xl" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/>
+          <div className="absolute -inset-4 rounded-3xl opacity-20 blur-3xl" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}/>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border" style={{background:D?"#111118":"#ffffff",borderColor:bdr}}>
             <div className="flex items-center gap-2 px-4 py-3 border-b" style={{background:D?"rgba(255,255,255,0.03)":"#f8fafc",borderColor:bdr}}>
               <img src={D?'/white.png':'/black.png'} alt="" className="w-4 h-4 object-contain"/>
               <span className="font-bold text-xs" style={{color:tx}}>Dashboard</span>
-              <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}/></div>
+              <div className="ml-auto flex items-center gap-2"><span className="text-xs" style={{color:tx2}}>Davita ▾</span><div className="w-6 h-6 rounded-full" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}/></div>
             </div>
             <div className="p-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -2035,13 +2035,13 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
                   <div className="text-xs font-semibold mb-2" style={{color:tx}}>Visits Overview</div>
                   <div className="h-16 flex items-end gap-1">
                     {[40,55,35,70,50,85,60,75,45,90,65,80].map((h,i)=>(
-                      <div key={i} className="flex-1 rounded-sm" style={{height:`${h}%`,background:"linear-gradient(to top,#8b5cf6,#a78bfa)",opacity:0.7}}/>
+                      <div key={i} className="flex-1 rounded-sm" style={{height:`${h}%`,background:"linear-gradient(to top,#F97316,#FFB085)",opacity:0.7}}/>
                     ))}
                   </div>
                 </div>
                 <div className="rounded-xl p-3 border" style={{background:D?"rgba(255,255,255,0.02)":"#f8fafc",borderColor:bdr}}>
                   <div className="text-xs font-semibold mb-2" style={{color:tx}}>Top Campaigns</div>
-                  {[{l:"Birthday Offer",w:75,c:"#8b5cf6"},{l:"Weekend Promo",w:55,c:"#06b6d4"},{l:"Win-Back",w:35,c:"#ec4899"},{l:"New Menu",w:20,c:"#f59e0b"}].map((b,i)=>(
+                  {[{l:"Birthday Offer",w:75,c:"#F97316"},{l:"Weekend Promo",w:55,c:"#06b6d4"},{l:"Win-Back",w:35,c:"#ec4899"},{l:"New Menu",w:20,c:"#f59e0b"}].map((b,i)=>(
                     <div key={i} className="mb-1.5">
                       <div className="text-[9px] mb-0.5" style={{color:tx3}}>{b.l}</div>
                       <div className="h-1.5 rounded-full" style={{background:D?"rgba(255,255,255,0.06)":"#ede9fe"}}><div className="h-full rounded-full" style={{width:`${b.w}%`,background:b.c}}/></div>
@@ -2052,10 +2052,10 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             </div>
           </div>
           {/* Floating loyalty points card */}
-          <div className="absolute -bottom-4 -left-4 w-36 rounded-2xl p-3 shadow-xl border hidden sm:block" style={{background:"linear-gradient(135deg,#7c3aed,#8b5cf6)",borderColor:"rgba(255,255,255,0.2)"}}>
+          <div className="absolute -bottom-4 -left-4 w-36 rounded-2xl p-3 shadow-xl border hidden sm:block" style={{background:"linear-gradient(135deg,#EA6A0E,#F97316)",borderColor:"rgba(255,255,255,0.2)"}}>
             <div className="flex items-center gap-1.5 mb-2"><div className="w-4 h-4 rounded-md" style={{background:"rgba(255,255,255,0.25)"}}/><span className="text-white text-[9px] font-bold">The Loyaly</span></div>
             <div className="text-white font-black text-lg">2,450</div>
-            <div className="text-purple-200 text-[9px]">Loyalty Points</div>
+            <div className="text-orange-200 text-[9px]">Loyalty Points</div>
             <div className="mt-2 h-1 rounded-full" style={{background:"rgba(255,255,255,0.2)"}}><div className="h-full w-3/4 rounded-full" style={{background:"rgba(255,255,255,0.7)"}}/></div>
           </div>
         </div>
@@ -2091,7 +2091,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="mt-12 max-w-6xl mx-auto" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"16px"}}>
           {LS_FEATURES.map((f,i)=>(
             <div key={i} className="rounded-xl border text-left transition-all hover:shadow-md hover:-translate-y-0.5" style={{border:`1px solid ${bdr}`,background:card,padding:"22px",display:"flex",flexDirection:"column",gap:"12px"}}>
-              <div className="rounded-xl flex items-center justify-center" style={{width:"40px",height:"40px",background:D?"rgba(139,92,246,0.15)":"#ede9fe",color:"#8b5cf6"}}>{f.icon}</div>
+              <div className="rounded-xl flex items-center justify-center" style={{width:"40px",height:"40px",background:D?"rgba(249,115,22,0.15)":"#ede9fe",color:"#F97316"}}>{f.icon}</div>
               <h3 className="font-semibold" style={{color:tx,fontSize:"14px"}}>{f.title}</h3>
               <p className="leading-relaxed" style={{color:tx2,fontSize:"12px"}}>{f.desc}</p>
             </div>
@@ -2112,21 +2112,21 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
               {[...STEPS,...STEPS].map((s,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:"0",flexShrink:0}}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:130,padding:"0 8px"}}>
-                    <div style={{fontSize:10,fontWeight:700,marginBottom:6,color:"#a78bfa",letterSpacing:"0.08em"}}>0{(i%STEPS.length)+1}</div>
-                    <div style={{width:56,height:56,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white",boxShadow:"0 4px 20px rgba(139,92,246,0.4)"}}>{s.icon}</div>
+                    <div style={{fontSize:10,fontWeight:700,marginBottom:6,color:"#FFB085",letterSpacing:"0.08em"}}>0{(i%STEPS.length)+1}</div>
+                    <div style={{width:56,height:56,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"white",boxShadow:"0 4px 20px rgba(249,115,22,0.4)"}}>{s.icon}</div>
                     <div style={{fontSize:12,fontWeight:700,marginTop:10,textAlign:"center",color:tx,lineHeight:1.3}}>{s.n}</div>
                     <div style={{fontSize:10,textAlign:"center",marginTop:4,color:tx2,lineHeight:1.4,maxWidth:110}}>{s.d}</div>
                   </div>
                   {(i%STEPS.length)<STEPS.length-1&&(
                     <div style={{display:"flex",alignItems:"center",marginTop:-40,flexShrink:0}}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"><polyline points="9 18 15 12 9 6"/></svg>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
                   )}
                 </div>
               ))}
             </div>
           </div>
-          <button onClick={()=>nav("signup")} className="mt-10 px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{background:"#8b5cf6"}}>Get Started Free</button>
+          <button onClick={()=>nav("signup")} className="mt-10 px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{background:"#F97316"}}>Get Started Free</button>
         </div>
       </div>
 
@@ -2138,7 +2138,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <div className="flex flex-wrap justify-center gap-8 mt-12 max-w-3xl mx-auto">
           {INDUSTRIES.map(ind=>(
             <div key={ind.l} className="flex flex-col items-center gap-2 cursor-pointer group">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(139,92,246,0.12)":"#ede9fe",border:`1px solid ${bdr}`,color:"#8b5cf6"}}>{ind.icon}</div>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all group-hover:scale-110 group-hover:shadow-lg" style={{background:D?"rgba(249,115,22,0.12)":"#ede9fe",border:`1px solid ${bdr}`,color:"#F97316"}}>{ind.icon}</div>
               <span className="text-xs font-medium" style={{color:tx2}}>{ind.l}</span>
             </div>
           ))}
@@ -2158,7 +2158,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
                 <div className="flex gap-0.5 mb-4">{Array(t.stars).fill(0).map((_,j)=><Star key={j} size={14} className="text-yellow-400 fill-yellow-400"/>)}</div>
                 <p className="text-sm leading-relaxed mb-5" style={{color:tx2}}>"{t.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{t.avatar}</div>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{t.avatar}</div>
                   <div><div className="text-sm font-semibold" style={{color:tx}}>{t.name}</div><div className="text-xs" style={{color:tx2}}>{t.biz}</div></div>
                 </div>
               </div>
@@ -2166,7 +2166,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
           <div className="flex justify-center gap-2 mt-6">
             {TESTIMONIALS.map((_,i)=>(
-              <button key={i} onClick={()=>setTestimonialIdx(i)} className="w-2.5 h-2.5 rounded-full transition-all" style={{background:i===testimonialIdx?"#8b5cf6":"rgba(139,92,246,0.25)"}}/>
+              <button key={i} onClick={()=>setTestimonialIdx(i)} className="w-2.5 h-2.5 rounded-full transition-all" style={{background:i===testimonialIdx?"#F97316":"rgba(249,115,22,0.25)"}}/>
             ))}
           </div>
         </div>
@@ -2174,7 +2174,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
       {/* ── Case Studies ────────────────────────────────────── */}
       <div id="stories" className="py-20 px-4 relative overflow-hidden">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)"}}/>
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(249,115,22,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.05) 0%,transparent 70%)"}}/>
         <Reveal className="text-center mb-3 relative">
           <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Success Stories</p>
           <h2 className="text-3xl md:text-4xl font-black mt-1" style={{color:tx}}>Real Businesses. <span className="lyl-grad-text">Real Comebacks.</span></h2>
@@ -2185,7 +2185,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <Reveal delay={80} className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 mb-14 relative">
           {[{n:"2.3M+",l:"customers retained"},{n:"£18M+",l:"revenue recovered"},{n:"47%",l:"avg. repeat-visit lift"},{n:"1,000+",l:"happy businesses"}].map((m,i)=>(
             <div key={i} className="text-center px-4">
-              <div className="text-2xl sm:text-3xl font-black" style={{color:"#8b5cf6"}}>{m.n}</div>
+              <div className="text-2xl sm:text-3xl font-black" style={{color:"#F97316"}}>{m.n}</div>
               <div className="text-xs mt-0.5" style={{color:tx2}}>{m.l}</div>
             </div>
           ))}
@@ -2193,15 +2193,15 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
 
         {/* Featured story */}
         <Reveal delay={120} className="max-w-5xl mx-auto mb-12 relative">
-          <div className="rounded-3xl p-8 md:p-10 border relative overflow-hidden" style={D?{background:"linear-gradient(145deg,rgba(139,92,246,0.12),rgba(236,72,153,0.06))",borderColor:"rgba(139,92,246,0.25)"}:{background:"linear-gradient(145deg,#faf5ff,#fff1f7)",borderColor:"#eaddff"}}>
+          <div className="rounded-3xl p-8 md:p-10 border relative overflow-hidden" style={D?{background:"linear-gradient(145deg,rgba(249,115,22,0.12),rgba(236,72,153,0.06))",borderColor:"rgba(249,115,22,0.25)"}:{background:"linear-gradient(145deg,#FFFBF5,#fff1f7)",borderColor:"#eaddff"}}>
             <div className="absolute -top-10 -right-10 text-[160px] leading-none opacity-10 pointer-events-none select-none">{CASE_STUDIES[0].emoji}</div>
             <div className="relative grid md:grid-cols-3 gap-8 items-center">
               <div className="md:col-span-2">
                 <div className="flex gap-0.5 mb-4">{Array(5).fill(0).map((_,j)=><Star key={j} size={16} className="text-yellow-400 fill-yellow-400"/>)}</div>
                 <p className="text-lg md:text-xl font-medium leading-relaxed mb-5" style={{color:tx}}>"{CASE_STUDIES[0].story}"</p>
-                <p className="text-sm font-semibold mb-1" style={{color:"#8b5cf6"}}>✦ {CASE_STUDIES[0].result}</p>
+                <p className="text-sm font-semibold mb-1" style={{color:"#F97316"}}>✦ {CASE_STUDIES[0].result}</p>
                 <div className="flex items-center gap-3 mt-5">
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style={{background:`linear-gradient(135deg,${CASE_STUDIES[0].color},#7c3aed)`}}>{CASE_STUDIES[0].owner[0]}</div>
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style={{background:`linear-gradient(135deg,${CASE_STUDIES[0].color},#EA6A0E)`}}>{CASE_STUDIES[0].owner[0]}</div>
                   <div><div className="text-sm font-bold" style={{color:tx}}>{CASE_STUDIES[0].owner} · {CASE_STUDIES[0].biz}</div><div className="text-xs" style={{color:tx2}}>{CASE_STUDIES[0].city}</div></div>
                 </div>
               </div>
@@ -2227,7 +2227,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
                 <p className="text-xs leading-relaxed mb-3 flex-1" style={{color:tx2}}>"{c.story.length>180?c.story.slice(0,180)+"…":c.story}"</p>
                 <p className="text-[11px] font-semibold mb-3" style={{color:c.color}}>✦ {c.result}</p>
                 <div className="flex items-center gap-2 pt-3 border-t" style={{borderColor:bdr}}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{background:`linear-gradient(135deg,${c.color},#7c3aed)`}}>{c.owner[0]}</div>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{background:`linear-gradient(135deg,${c.color},#EA6A0E)`}}>{c.owner[0]}</div>
                   <div><div className="text-xs font-semibold" style={{color:tx}}>{c.owner} · {c.biz}</div><div className="text-[10px]" style={{color:tx3}}>{c.city}</div></div>
                 </div>
               </div>
@@ -2235,22 +2235,22 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
         </div>
         <Reveal delay={60} className="text-center mt-12">
-          <button onClick={()=>nav("signup")} className="px-7 py-3 rounded-md text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] shadow-lg" style={{background:"#8b5cf6"}}>Write Your Comeback Story →</button>
+          <button onClick={()=>nav("signup")} className="px-7 py-3 rounded-md text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] shadow-lg" style={{background:"#F97316"}}>Write Your Comeback Story →</button>
         </Reveal>
       </div>
 
       {/* ── Pricing ─────────────────────────────────────────── */}
       <div id="pricing" className="py-20 px-4 relative">
         {/* Color splash decoration */}
-        <div className="absolute -top-32 left-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.08) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.06) 0%,transparent 70%)"}}/>
+        <div className="absolute -top-32 left-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(249,115,22,0.08) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.06) 0%,transparent 70%)"}}/>
         <div className="text-center mb-12">
           <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Pricing</p>
           <h2 className="text-3xl font-black mt-1 mb-2" style={{color:tx}}>Choose the Perfect Plan for Your Business</h2>
           <p className="text-sm max-w-lg mx-auto mb-8" style={{color:tx2}}>Flexible pricing options designed to meet your needs — whether you're just getting started or scaling up.</p>
           {/* Toggle */}
           <div className="inline-flex items-center gap-1 p-1 rounded-xl border" style={{background:D?"rgba(255,255,255,0.04)":"#f1f5f9",border:`1px solid ${bdr}`}}>
-            <button onClick={()=>setPricingYearly(false)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all" style={{background:!pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:!pricingYearly?"white":tx2}}>Monthly</button>
-            <button onClick={()=>setPricingYearly(true)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2" style={{background:pricingYearly?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"transparent",color:pricingYearly?"white":tx2}}>
+            <button onClick={()=>setPricingYearly(false)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all" style={{background:!pricingYearly?"linear-gradient(135deg,#F97316,#EA6A0E)":"transparent",color:!pricingYearly?"white":tx2}}>Monthly</button>
+            <button onClick={()=>setPricingYearly(true)} className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2" style={{background:pricingYearly?"linear-gradient(135deg,#F97316,#EA6A0E)":"transparent",color:pricingYearly?"white":tx2}}>
               Yearly <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.15)",color:"#22c55e"}}>Save 20%</span>
             </button>
           </div>
@@ -2261,12 +2261,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             const isPopular=plan.highlight;
             return(
               <div key={i} className="p-6 rounded-2xl w-full max-w-[280px] flex flex-col relative transition-all hover:-translate-y-1" style={{
-                boxShadow:isPopular?"0 4px 40px rgba(139,92,246,0.3)":"0 4px 24px rgba(0,0,0,0.06)",
-                background:isPopular?"linear-gradient(145deg,#4f46e5,#7c3aed)":"",
+                boxShadow:isPopular?"0 4px 40px rgba(249,115,22,0.3)":"0 4px 24px rgba(0,0,0,0.06)",
+                background:isPopular?"linear-gradient(145deg,#4f46e5,#EA6A0E)":"",
                 ...(isPopular?{}:{background:D?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.8)",border:`1px solid ${bdr}`}),
               }}>
                 {isPopular&&(
-                  <div className="flex items-center gap-1 text-xs py-1.5 px-2.5 rounded-md font-medium absolute top-4 right-4 bg-white text-violet-600">
+                  <div className="flex items-center gap-1 text-xs py-1.5 px-2.5 rounded-md font-medium absolute top-4 right-4 bg-white text-orange-600">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>
                     Most Popular
                   </div>
@@ -2280,12 +2280,12 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
                 <ul className="space-y-2.5 flex-1 mb-6">
                   {plan.features.map((f,j)=>(
                     <li key={j} className="flex items-center gap-2 text-xs" style={{color:isPopular?"rgba(255,255,255,0.85)":tx2}}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{color:isPopular?"white":"#8b5cf6",flexShrink:0}}><path d="M20 6 9 17l-5-5"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{color:isPopular?"white":"#F97316",flexShrink:0}}><path d="M20 6 9 17l-5-5"/></svg>
                       {f}
                     </li>
                   ))}
                 </ul>
-                <button onClick={()=>nav("signup")} className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90" style={{background:isPopular?"white":"#8b5cf6",color:isPopular?"#7c3aed":"white"}}>
+                <button onClick={()=>nav("signup")} className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90" style={{background:isPopular?"white":"#F97316",color:isPopular?"#EA6A0E":"white"}}>
                   {plan.cta}
                 </button>
               </div>
@@ -2298,7 +2298,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <div className="py-20 px-4" style={{background:bg2}}>
         <div className="relative max-w-2xl mx-auto">
           {/* Color splash left decoration */}
-          <div className="absolute -left-48 top-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(139,92,246,0.06) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)"}}/>
+          <div className="absolute -left-48 top-0 w-96 h-96 rounded-full pointer-events-none" style={{background:D?"radial-gradient(circle,rgba(249,115,22,0.06) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.05) 0%,transparent 70%)"}}/>
           <div className="text-center mb-10">
             <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>FAQ's</p>
             <h2 className="text-3xl font-black mt-1" style={{color:tx}}>Frequently Asked Questions</h2>
@@ -2306,7 +2306,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
           <div className="w-full space-y-0">
             {FAQS.map((faq,i)=>(
-              <div key={i} className="border-b cursor-pointer w-full" style={{borderColor:D?"rgba(139,92,246,0.2)":bdr}} onClick={()=>setFaqOpen(faqOpen===i?null:i)}>
+              <div key={i} className="border-b cursor-pointer w-full" style={{borderColor:D?"rgba(249,115,22,0.2)":bdr}} onClick={()=>setFaqOpen(faqOpen===i?null:i)}>
                 <div className="flex items-center justify-between py-4">
                   <h3 className="text-sm font-medium pr-4" style={{color:tx}}>{faq.q}</h3>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:tx2,transform:faqOpen===i?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.3s ease",flexShrink:0}}><path d="m6 9 6 6 6-6"/></svg>
@@ -2326,10 +2326,10 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         <p className="text-sm max-w-md mx-auto mb-8" style={{color:tx2}}>Start your 14-day free trial today. No credit card required. Cancel anytime.</p>
         <div className="flex flex-col sm:flex-row gap-3">
           <input type="email" placeholder="Enter your business email" className="px-4 py-3 rounded-md text-sm outline-none w-72" style={{background:D?"rgba(255,255,255,0.07)":"#f8fafc",border:`1px solid ${bdr}`,color:tx}}/>
-          <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap" style={{background:"#8b5cf6"}}>Start Free Trial</button>
+          <button onClick={()=>nav("signup")} className="px-6 py-3 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap" style={{background:"#F97316"}}>Start Free Trial</button>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-5 mt-5 text-xs" style={{color:tx3}}>
-          {["14-Day Free Trial","No Credit Card","Cancel Anytime"].map(l=><span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-violet-500"/>{l}</span>)}
+          {["14-Day Free Trial","No Credit Card","Cancel Anytime"].map(l=><span key={l} className="flex items-center gap-1.5"><Check size={12} className="text-orange-500"/>{l}</span>)}
         </div>
       </div>
 
@@ -2398,8 +2398,8 @@ const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
   const [done,setDone]=useState(false);
-  const card:React.CSSProperties={background:dark?"#1e1333":"#fff",borderRadius:"20px",padding:"40px",maxWidth:"420px",width:"100%",boxShadow:"0 8px 32px rgba(124,58,237,0.15)"};
-  const fld:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#f9f8ff",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1a1035",marginTop:"6px"};
+  const card:React.CSSProperties={background:dark?"#1C1917":"#fff",borderRadius:"20px",padding:"40px",maxWidth:"420px",width:"100%",boxShadow:"0 8px 32px rgba(124,58,237,0.15)"};
+  const fld:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",marginTop:"6px"};
   const lbl:React.CSSProperties={fontSize:"12px",fontWeight:600,color:dark?"#94a3b8":"#374151"};
   const submit=async()=>{
     if(!name.trim()){setErr("Please enter your name.");return;}
@@ -2420,22 +2420,22 @@ const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
     finally{setLoading(false);}
   };
   return(
-    <div style={{minHeight:"100vh",background:dark?"#0f0a1e":"#f4f2fb",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+    <div style={{minHeight:"100vh",background:dark?"#1A0F0A":"#FFF7ED",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
       <div style={card}>
         <div style={{textAlign:"center",marginBottom:"28px"}}>
           <img src={dark?'/white.png':'/black.png'} alt="The Loyaly" style={{height:40,objectFit:'contain',marginBottom:4}}/>
-          <p style={{marginTop:"8px",fontSize:"15px",fontWeight:600,color:dark?"#e2d9f3":"#1e1333"}}>Accept Your Invitation</p>
-          <p style={{fontSize:"13px",color:dark?"#9488b8":"#6b7280",marginTop:"4px"}}>Set your name and password to get started</p>
+          <p style={{marginTop:"8px",fontSize:"15px",fontWeight:600,color:dark?"#e2d9f3":"#1C1917"}}>Accept Your Invitation</p>
+          <p style={{fontSize:"13px",color:dark?"#A8A29E":"#6b7280",marginTop:"4px"}}>Set your name and password to get started</p>
         </div>
         {done?(
-          <div style={{textAlign:"center",color:"#8b5cf6",fontWeight:600}}>Account created! Logging you in…</div>
+          <div style={{textAlign:"center",color:"#F97316",fontWeight:600}}>Account created! Logging you in…</div>
         ):(
           <div className="space-y-4">
             <div><label style={lbl}>Full Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" style={fld}/></div>
             <div><label style={lbl}>Password</label><input value={pw} onChange={e=>setPw(e.target.value)} type="password" placeholder="Min 8 characters" style={fld}/></div>
             <div><label style={lbl}>Confirm Password</label><input value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} type="password" placeholder="Repeat password" style={fld}/></div>
             {err&&<div style={{color:"#ef4444",fontSize:"13px",fontWeight:500}}>{err}</div>}
-            <button onClick={submit} disabled={loading} className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",marginTop:"8px"}}>
+            <button onClick={submit} disabled={loading} className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",marginTop:"8px"}}>
               {loading&&<RefreshCw size={14} className="animate-spin"/>}Create Account & Sign In
             </button>
           </div>
@@ -2503,7 +2503,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   });
   const k=dash?.kpis;
   const visitTrend=(dash?.visitTrend??[]).map((d:any)=>({day:d.day?.slice(5),v:d.visits,r:d.revenue}));
-  const segData=(dash?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#8b5cf6"}));
+  const segData=(dash?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#F97316"}));
   const quotaPct=k&&k.quotaTotal>0?Math.round((k.quotaUsed/k.quotaTotal)*100):0;
   const latest=snapshot[snapshot.length-1]??{};
   const msgPerf=snapshot.slice(-8).map((s:any)=>({w:(s.snapshotDate??s.createdAt??"").toString().slice(5,10),sent:s.messagesSent||0,del:s.messagesDelivered||0,read:s.messagesRead||0}));
@@ -2531,7 +2531,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:quotaWarn.pct>=100?"rgba(239,68,68,0.15)":"rgba(245,158,11,0.12)",border:`1px solid ${quotaWarn.pct>=100?"rgba(239,68,68,0.4)":"rgba(245,158,11,0.3)"}`}}>
           <AlertTriangle size={16} className={quotaWarn.pct>=100?"text-red-400":"text-amber-400"}/>
           <span className={`text-sm font-semibold ${quotaWarn.pct>=100?"text-red-400":"text-amber-400"}`}>{quotaWarn.pct>=100?"Quota exhausted — campaigns paused":`Quota at ${quotaWarn.pct}% — ${quotaWarn.total-quotaWarn.used} messages remaining`}</span>
-          <button onClick={()=>setPage("settings")} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Upgrade</button>
+          <button onClick={()=>setPage("settings")} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Upgrade</button>
           <button onClick={()=>setQuotaWarn(null)} className="text-slate-500 hover:text-slate-300 text-lg leading-none">×</button>
         </div>
       )}
@@ -2543,7 +2543,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {(["7d","30d","90d"] as const).map(p=>(
-            <button key={p} onClick={()=>applyPreset(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${preset===p?"text-white":"text-slate-400 hover:text-white"}`} style={preset===p?{background:"rgba(139,92,246,0.25)"}:{background:"rgba(255,255,255,0.03)"}}>{p}</button>
+            <button key={p} onClick={()=>applyPreset(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${preset===p?"text-white":"text-slate-400 hover:text-white"}`} style={preset===p?{background:"rgba(249,115,22,0.25)"}:{background:"rgba(255,255,255,0.03)"}}>{p}</button>
           ))}
           <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
             <input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPreset("custom");}} className="bg-transparent text-slate-300 outline-none text-xs w-[110px]"/>
@@ -2608,12 +2608,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         </div>
 
         {/* AI Business Advisor */}
-        <div className="gc rounded-xl p-4" style={{...CARD,border:"1px solid rgba(139,92,246,0.25)"}}>
-          <div className="flex items-center gap-2 mb-3"><Brain size={15} style={{color:C.primary}}/><h3 className="text-sm font-bold text-white">AI Business Advisor</h3><span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"/></div>
+        <div className="gc rounded-xl p-4" style={{...CARD,border:"1px solid rgba(249,115,22,0.25)"}}>
+          <div className="flex items-center gap-2 mb-3"><Brain size={15} style={{color:C.primary}}/><h3 className="text-sm font-bold text-white">AI Business Advisor</h3><span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"/></div>
           {advisorLoading?<div className="space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-16"/>)}</div>:
             (!advisor||(advisor.insights??[]).length===0)?<div className="py-8 text-center text-slate-500 text-sm">Keep using The Loyaly — once there's enough activity, your advisor will surface ways to grow.</div>:
             <div className="space-y-3">
-              {advisor.summary&&<div className="text-[12px] text-slate-200 leading-relaxed p-3 rounded-lg" style={{background:"rgba(139,92,246,0.1)"}}>💡 {advisor.summary}</div>}
+              {advisor.summary&&<div className="text-[12px] text-slate-200 leading-relaxed p-3 rounded-lg" style={{background:"rgba(249,115,22,0.1)"}}>💡 {advisor.summary}</div>}
               {(advisor.insights??[]).map((ins:any)=>(
                 <div key={ins.id} className="p-3 rounded-lg" style={{background:"rgba(255,255,255,0.025)",borderLeft:`2px solid ${SEV_COLOR[ins.severity]||C.primary}`}}>
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -2666,7 +2666,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
       {k&&k.quotaTotal>0&&<div className="gc rounded-xl px-4 py-3" style={CARD}>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 flex-shrink-0">Monthly Quota</span>
-          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${Math.min(quotaPct,100)}%`,background:quotaPct>90?"#ef4444":quotaPct>75?"#f59e0b":"#8b5cf6"}}/></div>
+          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${Math.min(quotaPct,100)}%`,background:quotaPct>90?"#ef4444":quotaPct>75?"#f59e0b":"#F97316"}}/></div>
           <span className="text-xs font-mono text-white flex-shrink-0">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()}</span>
           <span className={`text-xs font-bold flex-shrink-0 ${quotaPct>90?"text-red-400":quotaPct>75?"text-amber-400":"text-slate-400"}`}>{quotaPct}%</span>
         </div>
@@ -2676,7 +2676,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Visits & Revenue</h3>
-          {loading?<Skeleton h="h-[200px]"/>:<ResponsiveContainer width="100%" height={200}><AreaChart data={visitTrend.length?visitTrend:[{day:"No data",v:0,r:0}]}><defs><linearGradient id="gv2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="gr2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.3}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="day" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="v" name="Visits" stroke="#8b5cf6" fill="url(#gv2)" strokeWidth={2}/><Area type="monotone" dataKey="r" name="Revenue £" stroke="#06b6d4" fill="url(#gr2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
+          {loading?<Skeleton h="h-[200px]"/>:<ResponsiveContainer width="100%" height={200}><AreaChart data={visitTrend.length?visitTrend:[{day:"No data",v:0,r:0}]}><defs><linearGradient id="gv2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F97316" stopOpacity={0.3}/><stop offset="100%" stopColor="#F97316" stopOpacity={0}/></linearGradient><linearGradient id="gr2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#06b6d4" stopOpacity={0.3}/><stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="day" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="v" name="Visits" stroke="#F97316" fill="url(#gv2)" strokeWidth={2}/><Area type="monotone" dataKey="r" name="Revenue £" stroke="#06b6d4" fill="url(#gr2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
         <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Segments</h3>
@@ -2699,7 +2699,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         <div className="gc rounded-xl p-4" style={CARD}>
           <h3 className="text-sm font-semibold text-white mb-3">Customer Growth</h3>
           {analyticsLoading?<Skeleton h="h-[160px]"/>:growthData.length===0?<div className="h-[160px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet</div>:
-          <ResponsiveContainer width="100%" height={160}><AreaChart data={growthData}><defs><linearGradient id="ggrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="ggrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total" stroke="#8b5cf6" fill="url(#ggrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Loyal" stroke="#22c55e" fill="url(#ggrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
+          <ResponsiveContainer width="100%" height={160}><AreaChart data={growthData}><defs><linearGradient id="ggrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F97316" stopOpacity={0.35}/><stop offset="100%" stopColor="#F97316" stopOpacity={0}/></linearGradient><linearGradient id="ggrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total" stroke="#F97316" fill="url(#ggrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Loyal" stroke="#22c55e" fill="url(#ggrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
         </div>
       </div>
 
@@ -2707,12 +2707,12 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
       <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2"><AlertTriangle size={13} className="text-red-400"/>At-Risk Customers</h3>
-          <button onClick={()=>setPage("customers")} className="text-xs text-violet-400">View all →</button>
+          <button onClick={()=>setPage("customers")} className="text-xs text-orange-400">View all →</button>
         </div>
         {atRisk.length===0?<p className="text-xs text-slate-500 text-center py-4">No at-risk customers — great retention! 🎉</p>:
         <div className="space-y-2">{atRisk.slice(0,5).map((c:any,i:number)=>(
           <div key={i} className="flex items-center gap-3 p-2 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"},${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#F97316"},${SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#F97316"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white font-medium truncate">{c.name}</div>
               <div className="text-xs text-slate-500">{c.segment} · Last visit: {c.lastVisit}</div>
@@ -2721,7 +2721,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
               <div className={`text-sm font-bold ${c.churnRisk>75?"text-red-400":c.churnRisk>50?"text-amber-400":"text-green-400"}`}>{c.churnRisk}%</div>
               <div className="text-xs text-slate-500">churn risk</div>
             </div>
-            <button onClick={()=>setPage("messages")} className="flex-shrink-0 p-1.5 rounded-lg text-xs text-white" style={{background:"rgba(139,92,246,0.2)"}} title="Send message"><Send size={12}/></button>
+            <button onClick={()=>setPage("messages")} className="flex-shrink-0 p-1.5 rounded-lg text-xs text-white" style={{background:"rgba(249,115,22,0.2)"}} title="Send message"><Send size={12}/></button>
           </div>
         ))}</div>}
       </div>
@@ -2767,7 +2767,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
       {/* Saved views */}
       {views.length>0&&<div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[11px]" style={{color:ct.tx3}}>Saved views:</span>
-        {views.map(v=><span key={v.id} className="group flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] cursor-pointer" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}} onClick={()=>applyView(v)}><Eye size={10}/>{v.name}{v.isShared&&<span className="opacity-60">·shared</span>}<X size={10} className="opacity-0 group-hover:opacity-70 hover:!opacity-100" onClick={(e)=>{e.stopPropagation();api.customers.deleteSavedView(v.id).then(loadViews);}}/></span>)}
+        {views.map(v=><span key={v.id} className="group flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] cursor-pointer" style={{background:"rgba(249,115,22,0.12)",color:"#c4b5fd"}} onClick={()=>applyView(v)}><Eye size={10}/>{v.name}{v.isShared&&<span className="opacity-60">·shared</span>}<X size={10} className="opacity-0 group-hover:opacity-70 hover:!opacity-100" onClick={(e)=>{e.stopPropagation();api.customers.deleteSavedView(v.id).then(loadViews);}}/></span>)}
       </div>}
       {/* Filter bar */}
       <div className="flex gap-2 flex-wrap">
@@ -2778,17 +2778,17 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
         {showSave?<div className="flex items-center gap-1"><input autoFocus value={viewName} onChange={e=>setViewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveView()} placeholder="View name…" className="w-28 px-2 py-2 rounded-lg text-xs outline-none" style={{background:ct.inp,border:`1px solid ${ct.inpBd}`,color:ct.tx}}/><button onClick={saveView} className="px-2 py-2 rounded-lg text-xs text-white" style={{background:C.primary}}><Check size={13}/></button><button onClick={()=>setShowSave(false)} className="px-2 py-2 rounded-lg text-xs" style={{color:ct.tx3}}><X size={13}/></button></div>
         :<button onClick={()=>setShowSave(true)} className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs" style={{background:"rgba(255,255,255,0.05)",border:`1px solid ${ct.inpBd}`,color:ct.tx2}}><Plus size={12}/>Save view</button>}
       </div>
-      <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
+      <div className="flex gap-1 flex-wrap">{segs.map(s=><button key={s} onClick={()=>setSeg(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${seg===s?"text-white":"text-slate-400"}`} style={seg===s?{background:SEG_COLORS[s]||"rgba(249,115,22,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 font-medium" style={{color:ct.tx2}}>Customer</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Segment</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Visits</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>Churn</th><th className="text-left py-3 px-3 font-medium hidden md:table-cell" style={{color:ct.tx2}}>CLV</th><th className="text-left py-3 px-3 font-medium hidden sm:table-cell" style={{color:ct.tx2}}>Points</th><th className="text-left py-3 px-3 font-medium" style={{color:ct.tx2}}>Status</th></tr></thead>
           <tbody>{filtered.map(c=>(
             <tr key={c.id} onClick={()=>onSelect(c)} className="border-b border-white/3 hover:bg-white/3 cursor-pointer">
-              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:any)=>n[0]).join("")}</div><div className="min-w-0"><div className="font-medium flex items-center gap-1.5" style={{color:ct.tx}}>{c.name}{(c.tags||[]).slice(0,2).map((t:string)=><span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
-              <td className="py-3 px-3"><Badge color={SEG_COLORS[c.segment]||"#8b5cf6"}>{c.segment}</Badge></td>
+              <td className="py-3 px-4"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#F97316"},${SEG_COLORS[c.segment]||"#F97316"}88)`}}>{c.name.split(" ").map((n:any)=>n[0]).join("")}</div><div className="min-w-0"><div className="font-medium flex items-center gap-1.5" style={{color:ct.tx}}>{c.name}{(c.tags||[]).slice(0,2).map((t:string)=><span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div><div style={{color:ct.tx3}}>{c.phone}</div></div></div></td>
+              <td className="py-3 px-3"><Badge color={SEG_COLORS[c.segment]||"#F97316"}>{c.segment}</Badge></td>
               <td className="py-3 px-3 hidden sm:table-cell" style={{color:ct.tx2}}>{c.visits}</td>
               <td className="py-3 px-3 hidden md:table-cell"><div className="flex items-center gap-1"><div className="w-12 h-1.5 rounded-full" style={{background:"rgba(255,255,255,0.08)"}}><div className="h-full rounded-full" style={{width:`${c.churnRisk}%`,background:c.churnRisk>75?"#ef4444":c.churnRisk>40?"#f59e0b":"#22c55e"}}/></div><span className="text-xs text-slate-400">{c.churnRisk}%</span></div></td>
               <td className="py-3 px-3 hidden md:table-cell" style={{color:ct.tx2}}>£{c.clv.toLocaleString()}</td>
-              <td className="py-3 px-3 hidden sm:table-cell"><span className="text-violet-400 font-medium">{c.points.toLocaleString()}</span></td>
+              <td className="py-3 px-3 hidden sm:table-cell"><span className="text-orange-400 font-medium">{c.points.toLocaleString()}</span></td>
               <td className="py-3 px-3"><span className={`font-medium ${c.status==="Active"?"text-green-400":c.status==="At Risk"?"text-amber-400":"text-red-400"}`}>{c.status}</span></td>
             </tr>
           ))}</tbody></table></div>
@@ -2798,7 +2798,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
 };
 
 const TL_ICON:Record<string,any>={VISIT:ShoppingBag,MESSAGE:Send,POINTS:Star,TIER:Crown,SEGMENT:Users,REVIEW:Star,NOTE:FileText,CONSENT:Shield,JOINED:UserPlus};
-const TL_COLOR:Record<string,string>={VISIT:"#22c55e",MESSAGE:"#3b82f6",POINTS:"#f59e0b",TIER:"#eab308",SEGMENT:"#8b5cf6",REVIEW:"#ec4899",NOTE:"#06b6d4",CONSENT:"#64748b",JOINED:"#8b5cf6"};
+const TL_COLOR:Record<string,string>={VISIT:"#22c55e",MESSAGE:"#3b82f6",POINTS:"#f59e0b",TIER:"#eab308",SEGMENT:"#F97316",REVIEW:"#ec4899",NOTE:"#06b6d4",CONSENT:"#64748b",JOINED:"#F97316"};
 
 const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,onMsg:(c:any)=>void})=>{
   const [tab,setTab]=useState<"overview"|"timeline"|"financials"|"referrals"|"notes">("overview");
@@ -2845,11 +2845,11 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
     {/* Header */}
     <div className="gc rounded-xl p-5" style={CARD}>
       <div className="flex items-start gap-4 flex-wrap">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#8b5cf6"},${SEG_COLORS[c.segment]||"#8b5cf6"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0" style={{background:`linear-gradient(135deg,${SEG_COLORS[c.segment]||"#F97316"},${SEG_COLORS[c.segment]||"#F97316"}88)`}}>{c.name.split(" ").map((n:string)=>n[0]).join("")}</div>
         <div className="flex-1 min-w-48">
-          <div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.segment}</Badge><span className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style={{background:(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"22",border:"1px solid "+(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"44",color:TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}}><Crown size={10}/>{p.membership?.tier||c.tier||"No Tier"}</span></div>
+          <div className="flex items-center gap-2 flex-wrap"><h2 className="text-lg font-bold text-white">{c.name}</h2><Badge color={SEG_COLORS[c.segment as keyof typeof SEG_COLORS]||"#F97316"}>{c.segment}</Badge><span className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1" style={{background:(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"22",border:"1px solid "+(TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280")+"44",color:TIER_COLORS[c.tier as keyof typeof TIER_COLORS]||"#6b7280"}}><Crown size={10}/>{p.membership?.tier||c.tier||"No Tier"}</span></div>
           <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1"><span className="flex items-center gap-1"><Phone size={10}/>{c.phone||"—"}</span>{p.email&&<span className="flex items-center gap-1"><Mail size={10}/>{p.email}</span>}{p.birthday&&<span className="flex items-center gap-1"><Gift size={10}/>{new Date(p.birthday).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>}{p.consent&&!p.consent.whatsapp&&<span className="flex items-center gap-1 text-amber-400"><EyeOff size={10}/>Opted-out</span>}</div>
-          <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-violet-300">{c.referralCode}</span>{tags.map(t=><span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div>
+          <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-slate-500"><Hash size={10}/><span className="font-mono text-orange-300">{c.referralCode}</span>{tags.map(t=><span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>{t}</span>)}</div>
         </div>
         <button onClick={()=>onMsg(c)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white font-medium flex-shrink-0" style={{background:"linear-gradient(135deg,#25D366,#128C7E)"}}><WAIcon size={12} className="text-white"/>WhatsApp</button>
       </div>
@@ -2865,7 +2865,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
     </div>
     {/* Tabs */}
     <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
-      {TABS.map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={tab===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>)}
+      {TABS.map(([id,label,Icon])=><button key={id} onClick={()=>setTab(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={tab===id?{background:"linear-gradient(135deg,rgba(249,115,22,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>)}
     </div>
 
     {/* OVERVIEW */}
@@ -2876,7 +2876,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
           {[["Gender",p.gender],["Address",p.address],["Joined",p.createdAt?new Date(p.createdAt).toLocaleDateString("en-GB"):null],["First visit",p.firstVisitAt?new Date(p.firstVisitAt).toLocaleDateString("en-GB"):null],["Last visit",p.lastVisitAt?timeAgo(p.lastVisitAt):"Never"]].filter(r=>r[1]).map(([l,v])=><div key={l} className="flex justify-between"><span className="text-slate-500">{l}</span><span className="text-slate-200">{v}</span></div>)}
           {fav.length>0&&<div className="pt-2 border-t border-white/5"><div className="text-slate-500 mb-1.5">Favourite products</div><div className="flex flex-wrap gap-1">{fav.map((f:string)=><span key={f} className="px-2 py-0.5 rounded text-[10px]" style={{background:"rgba(245,158,11,0.15)",color:"#fbbf24"}}>{f}</span>)}</div></div>}
           {Object.keys(prefs).length>0&&<div className="pt-2 border-t border-white/5">{Object.entries(prefs).map(([k,v])=><div key={k} className="flex justify-between"><span className="text-slate-500 capitalize">{k}</span><span className="text-slate-200">{String(v)}</span></div>)}</div>}
-          {Object.keys(social).length>0&&<div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(social).map(([k,v])=><span key={k} className="px-2 py-0.5 rounded text-[10px] flex items-center gap-1" style={{background:"rgba(139,92,246,0.15)",color:"#c4b5fd"}}><Link size={9}/>{k}: {String(v)}</span>)}</div>}
+          {Object.keys(social).length>0&&<div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(social).map(([k,v])=><span key={k} className="px-2 py-0.5 rounded text-[10px] flex items-center gap-1" style={{background:"rgba(249,115,22,0.15)",color:"#c4b5fd"}}><Link size={9}/>{k}: {String(v)}</span>)}</div>}
         </div>}
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
@@ -2884,13 +2884,13 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
           <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Points Ledger</h3>
           <button onClick={()=>setPtOpen(o=>!o)} className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg" style={{background:C.primary+"22",color:"#c4b5fd"}}><Plus size={11}/>Adjust points</button>
         </div>
-        {ptOpen&&<div className="mb-3 p-3 rounded-lg space-y-2" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.2)"}}>
+        {ptOpen&&<div className="mb-3 p-3 rounded-lg space-y-2" style={{background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)"}}>
           <div className="flex gap-2">
             <select value={ptDir} onChange={e=>setPtDir(e.target.value as any)} className="px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}><option value="CREDIT">Give</option><option value="DEBIT">Remove</option></select>
             <input type="number" value={ptAmt} onChange={e=>setPtAmt(e.target.value)} placeholder="Points" className="w-24 px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
             <input value={ptReason} onChange={e=>setPtReason(e.target.value)} placeholder="Reason (optional)" className="flex-1 px-2 py-1.5 rounded-lg text-xs outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"white"}}/>
           </div>
-          <button onClick={adjustPoints} disabled={ptBusy} className="w-full py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{ptBusy?"Saving…":ptDir==="CREDIT"?`Give ${ptAmt||0} points`:`Remove ${ptAmt||0} points`}</button>
+          <button onClick={adjustPoints} disabled={ptBusy} className="w-full py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{ptBusy?"Saving…":ptDir==="CREDIT"?`Give ${ptAmt||0} points`:`Remove ${ptAmt||0} points`}</button>
         </div>}
         {loading?<Skeleton h="h-32"/>:ledger.length===0?<p className="text-xs text-slate-500 text-center py-6">No points activity yet</p>:
         <div className="space-y-1 max-h-56 overflow-y-auto">{ledger.map((l:any,i:number)=><div key={l.id||i} className="flex items-center gap-3 py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}><div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${l.type==="CREDIT"?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}</div><div className="flex-1 min-w-0"><div className="text-xs text-white font-medium truncate">{l.reason||"Transaction"}</div></div><div className="text-right flex-shrink-0"><div className={`text-xs font-bold ${l.type==="CREDIT"?"text-green-400":"text-red-400"}`}>{l.type==="CREDIT"?"+":"-"}{l.points}pts</div><div className="text-xs text-slate-500">{(l.balanceAfter??0).toLocaleString()} bal</div></div></div>)}</div>}
@@ -2901,7 +2901,7 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
     {tab==="timeline"&&<div className="gc rounded-xl p-4" style={CARD}>
       <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Activity size={14} style={{color:C.primary}}/>Customer Timeline</h3>
       {timeline===null?<Skeleton h="h-40"/>:timeline.length===0?<p className="text-xs text-slate-500 text-center py-8">No history yet.</p>:
-      <div className="relative pl-1">{timeline.map((e,i)=>{const Icon=TL_ICON[e.type]||CircleCheck;const col=TL_COLOR[e.type]||"#8b5cf6";return(
+      <div className="relative pl-1">{timeline.map((e,i)=>{const Icon=TL_ICON[e.type]||CircleCheck;const col=TL_COLOR[e.type]||"#F97316";return(
         <div key={i} className="flex gap-3 pb-4 relative">
           {i<timeline.length-1&&<div className="absolute left-[13px] top-7 bottom-0 w-px" style={{background:"rgba(255,255,255,0.08)"}}/>}
           <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10" style={{background:col+"22"}}><Icon size={13} style={{color:col}}/></div>
@@ -2934,8 +2934,8 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Gift size={14} style={{color:C.pink}}/>Referrals</h3>
         {!refData?<Skeleton h="h-24"/>:<>
           <div className="grid grid-cols-2 gap-3 mb-3"><div className="p-3 rounded-lg text-center" style={{background:"rgba(236,72,153,0.1)"}}><div className="text-xl font-bold text-white">{refData.referredCount}</div><div className="text-[11px] text-slate-400">customers referred</div></div><div className="p-3 rounded-lg text-center" style={{background:"rgba(34,197,94,0.1)"}}><div className="text-xl font-bold text-green-400">£{refData.referralRevenue.toLocaleString()}</div><div className="text-[11px] text-slate-400">referral revenue</div></div></div>
-          {refData.referrer&&<div className="text-[11px] text-slate-400 mb-2">Referred by <span className="text-violet-300">{refData.referrer.fullName}</span></div>}
-          {refData.referred?.length>0?<div className="space-y-1 max-h-44 overflow-y-auto">{refData.referred.map((r:any)=><div key={r.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded" style={{background:"rgba(255,255,255,0.02)"}}><span className="text-slate-300 truncate">{r.fullName}</span><span className="text-green-400">£{r.totalSpend.toLocaleString()}</span></div>)}</div>:<p className="text-[11px] text-slate-500 text-center py-4">No referrals yet. Share their code <span className="font-mono text-violet-300">{refData.referralCode}</span> to start.</p>}
+          {refData.referrer&&<div className="text-[11px] text-slate-400 mb-2">Referred by <span className="text-orange-300">{refData.referrer.fullName}</span></div>}
+          {refData.referred?.length>0?<div className="space-y-1 max-h-44 overflow-y-auto">{refData.referred.map((r:any)=><div key={r.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded" style={{background:"rgba(255,255,255,0.02)"}}><span className="text-slate-300 truncate">{r.fullName}</span><span className="text-green-400">£{r.totalSpend.toLocaleString()}</span></div>)}</div>:<p className="text-[11px] text-slate-500 text-center py-4">No referrals yet. Share their code <span className="font-mono text-orange-300">{refData.referralCode}</span> to start.</p>}
         </>}
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
@@ -2975,13 +2975,13 @@ const MetaWizard=({onDone,onClose}:any)=>{
   return(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.75)",backdropFilter:"blur(8px)"}}>
       <div className="w-full max-w-lg rounded-2xl" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.08)"}}>
-        <div className="p-5 border-b border-white/5"><div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(37,211,102,0.15)"}}><WAIcon size={20} className="text-green-400"/></div><div><h2 className="text-base font-bold text-white">Connect Meta WhatsApp</h2><p className="text-xs text-slate-400">WAHA · Meta Cloud API · Dual gateway</p></div></div><button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button></div><div className="flex gap-1">{steps.map((s,i)=><div key={i} className="flex-1"><div className={`h-1 rounded-full ${i<step?"bg-green-500":i===step?"bg-violet-500":"bg-white/10"}`}/><div className={`text-xs mt-1 ${i<=step?"text-slate-300":"text-slate-600"}`}>{s}</div></div>)}</div></div>
+        <div className="p-5 border-b border-white/5"><div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(37,211,102,0.15)"}}><WAIcon size={20} className="text-green-400"/></div><div><h2 className="text-base font-bold text-white">Connect Meta WhatsApp</h2><p className="text-xs text-slate-400">WAHA · Meta Cloud API · Dual gateway</p></div></div><button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button></div><div className="flex gap-1">{steps.map((s,i)=><div key={i} className="flex-1"><div className={`h-1 rounded-full ${i<step?"bg-green-500":i===step?"bg-orange-500":"bg-white/10"}`}/><div className={`text-xs mt-1 ${i<=step?"text-slate-300":"text-slate-600"}`}>{s}</div></div>)}</div></div>
         <div className="p-5 min-h-[240px] flex flex-col">
           {step===0&&<div className="flex-1 flex flex-col items-center justify-center text-center space-y-4"><div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{background:"#0668E1"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M6.915 4.03c-1.968 0-3.286 1.14-4.323 2.89C1.56 8.567 1 10.737 1 12.2c0 2.386.843 4.2 3.111 4.2 1.39 0 2.477-.703 3.672-2.485.862-1.285 1.665-2.924 2.342-4.297l.376-.762c.537-1.084 1.14-2.238 1.86-3.166C13.38 4.353 14.632 3.6 16.1 3.6c1.737 0 3.151.85 4.153 2.372C21.224 7.4 21.8 9.544 21.8 11.8c0 2.812-.757 4.893-2.1 6.272C18.423 19.37 16.6 20 14.467 20v-2.2c1.6 0 2.857-.47 3.756-1.37.912-.912 1.477-2.387 1.477-4.63 0-1.856-.477-3.61-1.328-4.93-.756-1.174-1.725-1.77-2.872-1.77-.968 0-1.706.462-2.474 1.397-.6.73-1.14 1.694-1.735 2.896l-.309.625c-.748 1.512-1.608 3.244-2.588 4.704C7.1 16.64 5.61 17.6 3.811 17.6 1.89 17.6.5 16.527.5 13.8c0-1.3.312-2.9.973-4.385C2.2 7.83 3.2 6.47 4.47 5.53 5.4 4.83 6.467 4.43 7.615 4.43z"/></svg></div><div><h3 className="text-white font-semibold">Sign in with Meta</h3><p className="text-xs text-slate-400 max-w-xs">Connect your Meta Business Suite to access WhatsApp Cloud API with automatic BullMQ queue integration</p></div><button onClick={go} disabled={loading} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"#0668E1"}}>{loading?<RefreshCw size={16} className="animate-spin"/>:null}{loading?"Authenticating...":"Continue with Meta"}</button><p className="text-xs text-slate-500 flex items-center gap-1"><Shield size={10}/>OAuth 2.0 · Argon2id stored credentials</p></div>}
-          {step===1&&<div className="flex-1 space-y-4"><div className="flex items-center gap-2 p-3 rounded-xl text-xs text-green-300" style={{background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.15)"}}><CircleCheck size={14}/>Connected to Meta Business Suite</div><div className="p-3 rounded-xl cursor-pointer" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.3)"}}><div className="text-sm text-white font-medium">The Coffee House</div><div className="text-xs text-slate-400">WABA ID: 827360646830020 · Phone ID: 944772475375221</div></div><button onClick={()=>setStep(2)} className={`${btn}`} style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Select this account</button></div>}
-          {step===2&&<div className="flex-1 space-y-4"><label className="text-xs text-slate-400">WhatsApp Business Phone (E.164 format)</label><input defaultValue="+44 20 7946 0958" className={`${inp}`} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-xs text-slate-500 space-y-1">{["Number must not be on WhatsApp Messenger","Must be able to receive SMS verification","Credentials encrypted with AES-256 at rest"].map((r,i)=><div key={i} className="flex items-center gap-1.5"><Check size={10} className="text-amber-400"/>{r}</div>)}</div><button onClick={go} disabled={loading} className={`${btn} flex items-center gap-2`} style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading?<RefreshCw size={12} className="animate-spin"/>:null}{loading?"Sending code...":"Send Verification Code"}</button></div>}
-          {step===3&&<div className="flex-1 space-y-4"><p className="text-xs text-cyan-300 flex items-center gap-2"><Phone size={12}/>Code sent to +44 20 7946 0958</p><div className="flex gap-2">{[0,1,2,3,4,5].map(i=><input key={i} maxLength={1} className="w-10 h-12 rounded-lg text-center text-white text-lg font-bold outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>)}</div><button onClick={go} disabled={loading} className={`${btn} flex items-center gap-2`} style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading?<RefreshCw size={12} className="animate-spin"/>:null}{loading?"Verifying...":"Verify & Activate"}</button></div>}
-          {step===4&&<div className="flex-1 flex flex-col items-center justify-center text-center space-y-4"><CircleCheck size={48} className="text-green-400"/><h3 className="text-white font-semibold text-lg">WhatsApp Connected!</h3><div className="text-xs text-slate-400 space-y-1"><div>BullMQ worker activated · Rate limiting: 200 msg/s</div><div>Cooldown interceptor: 72h · GDPR opt-out: active</div></div><button onClick={onDone} className={`${btn} px-6 py-2.5 rounded-xl text-sm font-semibold`} style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Go to Messages</button></div>}
+          {step===1&&<div className="flex-1 space-y-4"><div className="flex items-center gap-2 p-3 rounded-xl text-xs text-green-300" style={{background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.15)"}}><CircleCheck size={14}/>Connected to Meta Business Suite</div><div className="p-3 rounded-xl cursor-pointer" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.3)"}}><div className="text-sm text-white font-medium">The Coffee House</div><div className="text-xs text-slate-400">WABA ID: 827360646830020 · Phone ID: 944772475375221</div></div><button onClick={()=>setStep(2)} className={`${btn}`} style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Select this account</button></div>}
+          {step===2&&<div className="flex-1 space-y-4"><label className="text-xs text-slate-400">WhatsApp Business Phone (E.164 format)</label><input defaultValue="+44 20 7946 0958" className={`${inp}`} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><div className="text-xs text-slate-500 space-y-1">{["Number must not be on WhatsApp Messenger","Must be able to receive SMS verification","Credentials encrypted with AES-256 at rest"].map((r,i)=><div key={i} className="flex items-center gap-1.5"><Check size={10} className="text-amber-400"/>{r}</div>)}</div><button onClick={go} disabled={loading} className={`${btn} flex items-center gap-2`} style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{loading?<RefreshCw size={12} className="animate-spin"/>:null}{loading?"Sending code...":"Send Verification Code"}</button></div>}
+          {step===3&&<div className="flex-1 space-y-4"><p className="text-xs text-cyan-300 flex items-center gap-2"><Phone size={12}/>Code sent to +44 20 7946 0958</p><div className="flex gap-2">{[0,1,2,3,4,5].map(i=><input key={i} maxLength={1} className="w-10 h-12 rounded-lg text-center text-white text-lg font-bold outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>)}</div><button onClick={go} disabled={loading} className={`${btn} flex items-center gap-2`} style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{loading?<RefreshCw size={12} className="animate-spin"/>:null}{loading?"Verifying...":"Verify & Activate"}</button></div>}
+          {step===4&&<div className="flex-1 flex flex-col items-center justify-center text-center space-y-4"><CircleCheck size={48} className="text-green-400"/><h3 className="text-white font-semibold text-lg">WhatsApp Connected!</h3><div className="text-xs text-slate-400 space-y-1"><div>BullMQ worker activated · Rate limiting: 200 msg/s</div><div>Cooldown interceptor: 72h · GDPR opt-out: active</div></div><button onClick={onDone} className={`${btn} px-6 py-2.5 rounded-xl text-sm font-semibold`} style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Go to Messages</button></div>}
         </div>
       </div>
     </div>
@@ -3054,7 +3054,7 @@ const SendMessageModal=({onClose,onSent}:{onClose:()=>void,onSent:()=>void})=>{
             :search&&customers.length>0&&<div className="rounded-lg overflow-hidden max-h-36 overflow-y-auto" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
               {customers.slice(0,8).map((c:any)=>(
                 <button key={c.id} onClick={()=>{setSelected(c);setSearch(c.fullName);}} className="w-full text-left px-3 py-2 hover:bg-white/5 flex items-center gap-2 border-b border-white/5 last:border-0">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:"rgba(139,92,246,0.3)"}}>{c.fullName?.[0]}</div>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:"rgba(249,115,22,0.3)"}}>{c.fullName?.[0]}</div>
                   <div><div className="text-xs text-white">{c.fullName}</div><div className="text-xs text-slate-500">{c.whatsappNumber||"no number"}</div></div>
                 </button>
               ))}
@@ -3118,11 +3118,11 @@ const InboxView=({connected}:{connected:boolean})=>{
       setReply("");fetchThread(active.chatId);fetchConvos();
     }catch{}finally{setSending(false);}
   };
-  const bg=dark?"#0f0a1e":"#f4f2fb";
+  const bg=dark?"#1A0F0A":"#FFF7ED";
   const card=dark?"rgba(255,255,255,0.04)":"#fff";
   const border=dark?"rgba(255,255,255,0.08)":"rgba(124,58,237,0.1)";
-  const txt=dark?"#e2d9f3":"#1e1333";
-  const sub=dark?"#9488b8":"#6b7280";
+  const txt=dark?"#e2d9f3":"#1C1917";
+  const sub=dark?"#A8A29E":"#6b7280";
   if(!connected)return(
     <div className="rounded-xl p-12 flex flex-col items-center justify-center text-center" style={{background:card,border:`1px solid ${border}`}}>
       <MessageSquare size={32} className="text-slate-500 mb-3"/>
@@ -3143,8 +3143,8 @@ const InboxView=({connected}:{connected:boolean})=>{
             const displayName=hasRealName?c.name:c.phone||"Unknown";
             const displayPhone=hasRealName?c.phone:null;
             return(
-            <div key={c.chatId} onClick={()=>setActive(c)} className="flex items-center gap-3 p-3 cursor-pointer transition-colors" style={{background:active?.chatId===c.chatId?(dark?"rgba(139,92,246,0.15)":"rgba(139,92,246,0.08)"):"transparent"}}>
-              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>{displayName[0]?.toUpperCase()||"?"}</div>
+            <div key={c.chatId} onClick={()=>setActive(c)} className="flex items-center gap-3 p-3 cursor-pointer transition-colors" style={{background:active?.chatId===c.chatId?(dark?"rgba(249,115,22,0.15)":"rgba(249,115,22,0.08)"):"transparent"}}>
+              <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white" style={{background:"linear-gradient(135deg,#F97316,#C2410C)"}}>{displayName[0]?.toUpperCase()||"?"}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
@@ -3170,7 +3170,7 @@ const InboxView=({connected}:{connected:boolean})=>{
         ):(
           <>
             <div className="flex items-center gap-3 p-3 border-b" style={{borderColor:border}}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)"}}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#C2410C)"}}>
                 {(active.name&&active.name!==active.phone&&!phoneRe.test(active.name)?active.name:active.phone||"?")[0]?.toUpperCase()}
               </div>
               <div>
@@ -3183,7 +3183,7 @@ const InboxView=({connected}:{connected:boolean})=>{
             <div ref={threadRef} className="flex-1 overflow-y-auto p-4 space-y-2">
               {thread.map((m,i)=>(
                 <div key={m.id??i} className={`flex ${m.fromMe?"justify-end":"justify-start"}`}>
-                  <div className="max-w-xs px-3 py-2 rounded-xl text-sm" style={{background:m.fromMe?"linear-gradient(135deg,#8b5cf6,#7c3aed)":dark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:m.fromMe?"#fff":txt,borderRadius:m.fromMe?"16px 16px 4px 16px":"16px 16px 16px 4px"}}>
+                  <div className="max-w-xs px-3 py-2 rounded-xl text-sm" style={{background:m.fromMe?"linear-gradient(135deg,#F97316,#EA6A0E)":dark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:m.fromMe?"#fff":txt,borderRadius:m.fromMe?"16px 16px 4px 16px":"16px 16px 16px 4px"}}>
                     <p style={{wordBreak:"break-word"}}>{m.body}</p>
                     <p className="text-xs mt-1 opacity-60 text-right">{chatTime(m.timestamp)}</p>
                   </div>
@@ -3251,11 +3251,11 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
       </div>
       <div className="flex gap-1">
         <button onClick={()=>setView("inbox")} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view==="inbox"?"text-white":"text-slate-400"}`} style={view==="inbox"?{background:"linear-gradient(135deg,#25D366,#128C7E)"}:{background:"rgba(255,255,255,0.03)"}}>Inbox</button>
-        <button onClick={()=>setView("log")} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view==="log"?"text-white":"text-slate-400"}`} style={view==="log"?{background:"rgba(139,92,246,0.3)"}:{background:"rgba(255,255,255,0.03)"}}>Delivery Log</button>
+        <button onClick={()=>setView("log")} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view==="log"?"text-white":"text-slate-400"}`} style={view==="log"?{background:"rgba(249,115,22,0.3)"}:{background:"rgba(255,255,255,0.03)"}}>Delivery Log</button>
       </div>
       {view==="inbox"?<InboxView connected={connected}/>:(
       <>
-      <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(139,92,246,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
+      <div className="flex gap-1 flex-wrap">{statuses.map(s=><button key={s} onClick={()=>setStatusFilter(s)} className={`px-2 py-1.5 rounded-lg text-xs transition-all ${statusFilter===s?"text-white":"text-slate-400"}`} style={statusFilter===s?{background:STATUS_COLORS[s as keyof typeof STATUS_COLORS]||"rgba(249,115,22,0.2)"}:{background:"rgba(255,255,255,0.03)"}}>{s}</button>)}</div>
       {byStatus.length>0&&<div className="flex flex-wrap gap-2">{byStatus.map(({s,c,n})=><div key={s} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{background:c+"14",border:"1px solid "+(c)+"30"}}><div className="w-2 h-2 rounded-full" style={{background:c}}/><span className="text-slate-300">{s}</span><span className="font-bold ml-1" style={{color:c}}>{n}</span></div>)}</div>}
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5"><th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Status</th><th className="text-left py-3 px-3 text-slate-400 font-medium hidden md:table-cell">Provider ID</th><th className="text-left py-3 px-3 text-slate-400 font-medium">Sent</th></tr></thead>
@@ -3278,7 +3278,7 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
 // ════════════════════════════════════════════════════════════════
 // CAMPAIGN BUILDER (@dnd-kit/core simulation)
 // ════════════════════════════════════════════════════════════════
-const BLOCK_PALETTE=[{type:"TEXT",icon:Type,label:"Text Block",color:"#3b82f6"},{type:"IMAGE",icon:Image,label:"Image Block",color:"#22c55e"},{type:"COUPON",icon:Tag,label:"Coupon Block",color:"#f59e0b"},{type:"URL_BUTTON",icon:Link,label:"URL Button",color:"#ec4899"},{type:"AI_ASSIST",icon:Brain,label:"AI Assistant",color:"#8b5cf6"}];
+const BLOCK_PALETTE=[{type:"TEXT",icon:Type,label:"Text Block",color:"#3b82f6"},{type:"IMAGE",icon:Image,label:"Image Block",color:"#22c55e"},{type:"COUPON",icon:Tag,label:"Coupon Block",color:"#f59e0b"},{type:"URL_BUTTON",icon:Link,label:"URL Button",color:"#ec4899"},{type:"AI_ASSIST",icon:Brain,label:"AI Assistant",color:"#F97316"}];
 const CB_TEMPLATES=[
   {label:"Win-Back",emoji:"💔",seg:"AT_RISK",msg:"Hey {name}! 👋 We miss you at {biz}. It's been a while — come back this week and enjoy a special treat just for you. We'd love to see you again! ❤️"},
   {label:"Birthday",emoji:"🎂",seg:"ALL",msg:"Happy Birthday {name}! 🎉🎂 The whole team at {biz} is wishing you an amazing day. As our gift to you, enjoy a special surprise on your next visit. Come celebrate with us!"},
@@ -3379,7 +3379,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
         <p className="text-xs text-slate-400 mb-2 font-medium">Start from a template</p>
         <div className="flex flex-wrap gap-2">
           {CB_TEMPLATES.map(t=>(
-            <button key={t.label} onClick={()=>applyTemplate(t)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#c4b5fd"}}>
+            <button key={t.label} onClick={()=>applyTemplate(t)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#c4b5fd"}}>
               <span>{t.emoji}</span>{t.label}
             </button>
           ))}
@@ -3404,7 +3404,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
             <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} rows={5} placeholder="Write your message here…" className="w-full px-3 py-2.5 rounded-xl text-sm text-white resize-y outline-none leading-relaxed" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {["{name}","{biz}"].map(tok=>(
-                <button key={tok} onClick={()=>setMsgText(p=>p+" "+tok)} className="px-2 py-0.5 rounded-md text-[11px] font-mono" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>{tok}</button>
+                <button key={tok} onClick={()=>setMsgText(p=>p+" "+tok)} className="px-2 py-0.5 rounded-md text-[11px] font-mono" style={{background:"rgba(249,115,22,0.12)",border:"1px solid rgba(249,115,22,0.2)",color:"#FFB085"}}>{tok}</button>
               ))}
               <span className="text-[10px] text-slate-600 self-center ml-1">click to insert personalisation</span>
             </div>
@@ -3412,10 +3412,10 @@ const CampaignBuilderPage=({onBack}:any)=>{
 
           {/* AI assistant */}
           <div className="gc rounded-xl p-4" style={CARD}>
-            <div className="flex items-center gap-2 mb-2"><Brain size={13} className="text-violet-400"/><span className="text-xs font-semibold text-slate-300">Write with AI</span><span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.1)",color:"#06b6d4"}}>Beta</span></div>
+            <div className="flex items-center gap-2 mb-2"><Brain size={13} className="text-orange-400"/><span className="text-xs font-semibold text-slate-300">Write with AI</span><span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.1)",color:"#06b6d4"}}>Beta</span></div>
             <div className="flex gap-2">
               <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAI()} placeholder='e.g. "20% off this weekend only"' className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-              <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Writing…":"Generate"}</button>
+              <button onClick={runAI} disabled={!aiPrompt||aiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{aiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}{aiLoading?"Writing…":"Generate"}</button>
             </div>
           </div>
 
@@ -3423,18 +3423,18 @@ const CampaignBuilderPage=({onBack}:any)=>{
           <div className="gc rounded-xl p-4" style={CARD}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Repeat size={13} className="text-violet-400"/>
+                <Repeat size={13} className="text-orange-400"/>
                 <span className="text-xs font-semibold text-slate-300">A/B Test</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(139,92,246,0.1)",color:"#a78bfa"}}>Split 50/50</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(249,115,22,0.1)",color:"#FFB085"}}>Split 50/50</span>
               </div>
-              <button onClick={()=>setAbEnabled(p=>!p)} className={`w-9 h-5 rounded-full transition-all relative ${abEnabled?"bg-violet-600":"bg-white/10"}`}>
+              <button onClick={()=>setAbEnabled(p=>!p)} className={`w-9 h-5 rounded-full transition-all relative ${abEnabled?"bg-orange-600":"bg-white/10"}`}>
                 <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${abEnabled?"left-5":"left-0.5"}`}/>
               </button>
             </div>
             {abEnabled&&<div className="mt-3 space-y-2 pt-3 border-t border-white/5">
               <p className="text-[11px] text-slate-400">Variant A uses the message above. Write Variant B below — we'll split your audience 50/50 and pick the winner after 24h.</p>
               <label className="text-xs text-slate-400 block">Variant B Message</label>
-              <textarea value={msgTextB} onChange={e=>setMsgTextB(e.target.value)} rows={4} placeholder="Alternative message for Variant B…" className="w-full px-3 py-2 rounded-xl text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(139,92,246,0.25)"}}/>
+              <textarea value={msgTextB} onChange={e=>setMsgTextB(e.target.value)} rows={4} placeholder="Alternative message for Variant B…" className="w-full px-3 py-2 rounded-xl text-xs text-white resize-y outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(249,115,22,0.25)"}}/>
             </div>}
           </div>
 
@@ -3484,12 +3484,12 @@ const CampaignBuilderPage=({onBack}:any)=>{
                   {imageUrl&&<div className="w-full h-20 rounded-lg overflow-hidden bg-white/5"><img src={imageUrl} alt="" className="w-full h-full object-cover" onError={e=>(e.currentTarget.style.display="none")}/></div>}
                   {previewText&&<div className="rounded-2xl rounded-tl-sm p-2.5 max-w-[90%]" style={{background:"rgba(255,255,255,0.08)"}}><p className="text-white text-[11px] leading-relaxed whitespace-pre-wrap">{previewText}</p></div>}
                   {couponCode&&<div className="rounded-xl p-2 text-center" style={{background:"rgba(245,158,11,0.15)",border:"1px dashed rgba(245,158,11,0.4)"}}><div className="text-amber-300 font-bold text-xs tracking-widest">{couponCode}</div><div className="text-amber-200/70 text-[10px] mt-0.5">{couponDesc||"Special offer"}</div></div>}
-                  {buttonLabel&&buttonUrl&&<div className="rounded-xl py-1.5 text-center" style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.3)"}}><span className="text-violet-300 text-[11px] font-medium">{buttonLabel}</span></div>}
+                  {buttonLabel&&buttonUrl&&<div className="rounded-xl py-1.5 text-center" style={{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.3)"}}><span className="text-orange-300 text-[11px] font-medium">{buttonLabel}</span></div>}
                 </div>
                 <div className="p-2 flex gap-1" style={{background:"#1e3a2f"}}><div className="flex-1 rounded-full text-[10px] px-2 py-1 text-slate-500" style={{background:"rgba(255,255,255,0.05)"}}>Message</div><div className="w-6 h-6 rounded-full flex items-center justify-center" style={{background:"#25D366"}}><Send size={10} className="text-white"/></div></div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 text-center"><span className="text-violet-300 font-mono">{"{name}"}</span> will be replaced with each customer's real name</p>
+            <p className="text-[10px] text-slate-500 mt-2 text-center"><span className="text-orange-300 font-mono">{"{name}"}</span> will be replaced with each customer's real name</p>
           </div>
 
           {/* Audience & Send settings */}
@@ -3507,7 +3507,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
                 <label className="text-xs text-slate-400 mb-1 block">Send via</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[{v:"WHATSAPP_WAHA",l:"WhatsApp",ico:"💬"},{v:"EMAIL",l:"Email",ico:"📧"}].map(ch=>(
-                    <button key={ch.v} onClick={()=>setCChannel(ch.v)} className={`py-2 rounded-lg text-xs font-medium transition-all ${cChannel===ch.v?"text-white":"text-slate-400"}`} style={cChannel===ch.v?{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.4)"}:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                    <button key={ch.v} onClick={()=>setCChannel(ch.v)} className={`py-2 rounded-lg text-xs font-medium transition-all ${cChannel===ch.v?"text-white":"text-slate-400"}`} style={cChannel===ch.v?{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.4)"}:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
                       <div>{ch.ico}</div><div className="mt-0.5">{ch.l}</div>
                     </button>
                   ))}
@@ -3527,7 +3527,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
                 {saving==="launch"?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}
                 {saving==="launch"?"Sending…":cSchedule?"Schedule Campaign":"Send Campaign Now"}
               </button>
-              <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-50" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)",color:"#c4b5fd"}}>
+              <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-50" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#c4b5fd"}}>
                 {saving==="draft"?"Saving…":"Save as Draft"}
               </button>
             </div>
@@ -3541,8 +3541,8 @@ const CampaignBuilderPage=({onBack}:any)=>{
 // ════════════════════════════════════════════════════════════════
 // AUTOMATION BUILDER (reactflow simulation)
 // ════════════════════════════════════════════════════════════════
-const TRIGGERS=[{type:"BIRTHDAY",label:"Birthday",icon:Gift,color:"#ec4899",desc:"Customer's birthday today"},{type:"INACTIVITY",label:"Inactivity",icon:Clock,color:"#ef4444",desc:"No visit > N days"},{type:"VISIT_MILESTONE",label:"Visit Milestone",icon:Star,color:"#f59e0b",desc:"Reaches X visits"},{type:"TIER_UPGRADE",label:"Tier Upgrade",icon:Crown,color:"#06b6d4",desc:"Moves to new loyalty tier"},{type:"SENTIMENT_NEGATIVE",label:"Neg. Sentiment",icon:AlertTriangle,color:"#8b5cf6",desc:"WAHA inbound very-negative"}];
-const ACTIONS=[{type:"SEND_WHATSAPP",label:"Send WhatsApp",icon:MessageSquare,color:"#25D366",desc:"Route via BullMQ → gateway"},{type:"AWARD_POINTS",label:"Award Points",icon:StarIcon,color:"#f59e0b",desc:"Append to RewardPointsLedger"},{type:"CHANGE_SEGMENT",label:"Change Segment",icon:Users,color:"#8b5cf6",desc:"Update CustomerSegment enum"},{type:"SEND_EMAIL",label:"Send Email",icon:Mail,color:"#3b82f6",desc:"Queue email job"},{type:"MANAGER_ALERT",label:"Manager Alert",icon:Bell,color:"#ef4444",desc:"Push to dashboard notification"}];
+const TRIGGERS=[{type:"BIRTHDAY",label:"Birthday",icon:Gift,color:"#ec4899",desc:"Customer's birthday today"},{type:"INACTIVITY",label:"Inactivity",icon:Clock,color:"#ef4444",desc:"No visit > N days"},{type:"VISIT_MILESTONE",label:"Visit Milestone",icon:Star,color:"#f59e0b",desc:"Reaches X visits"},{type:"TIER_UPGRADE",label:"Tier Upgrade",icon:Crown,color:"#06b6d4",desc:"Moves to new loyalty tier"},{type:"SENTIMENT_NEGATIVE",label:"Neg. Sentiment",icon:AlertTriangle,color:"#F97316",desc:"WAHA inbound very-negative"}];
+const ACTIONS=[{type:"SEND_WHATSAPP",label:"Send WhatsApp",icon:MessageSquare,color:"#25D366",desc:"Route via BullMQ → gateway"},{type:"AWARD_POINTS",label:"Award Points",icon:StarIcon,color:"#f59e0b",desc:"Append to RewardPointsLedger"},{type:"CHANGE_SEGMENT",label:"Change Segment",icon:Users,color:"#F97316",desc:"Update CustomerSegment enum"},{type:"SEND_EMAIL",label:"Send Email",icon:Mail,color:"#3b82f6",desc:"Queue email job"},{type:"MANAGER_ALERT",label:"Manager Alert",icon:Bell,color:"#ef4444",desc:"Push to dashboard notification"}];
 const AutomationBuilderPage=({onBack}:any)=>{
   const bizName=localStorage.getItem("biz_name")||"Your Business";
   const [step,setStep]=useState(1);
@@ -3621,10 +3621,10 @@ const AutomationBuilderPage=({onBack}:any)=>{
         {[{n:1,l:"When?"},{n:2,l:"Message"},{n:3,l:"Timing"},{n:4,l:"Save"}].map((s,i,arr)=>(
           <div key={s.n} className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step>=s.n?"text-white":"text-slate-500"}`} style={{background:step>=s.n?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.06)"}}>{step>s.n?<Check size={12}/>:s.n}</div>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step>=s.n?"text-white":"text-slate-500"}`} style={{background:step>=s.n?"linear-gradient(135deg,#F97316,#EA6A0E)":"rgba(255,255,255,0.06)"}}>{step>s.n?<Check size={12}/>:s.n}</div>
               <span className={`text-xs font-medium hidden sm:block ${step===s.n?"text-white":step>s.n?"text-slate-400":"text-slate-600"}`}>{s.l}</span>
             </div>
-            {i<arr.length-1&&<div className="flex-1 h-px min-w-4" style={{background:step>s.n?"rgba(139,92,246,0.4)":"rgba(255,255,255,0.06)"}}/>}
+            {i<arr.length-1&&<div className="flex-1 h-px min-w-4" style={{background:step>s.n?"rgba(249,115,22,0.4)":"rgba(255,255,255,0.06)"}}/>}
           </div>
         ))}
       </div>
@@ -3643,7 +3643,7 @@ const AutomationBuilderPage=({onBack}:any)=>{
               </button>
             ))}
           </div>
-          <button onClick={()=>setStep(2)} className="w-full mt-5 py-3 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Write Message →</button>
+          <button onClick={()=>setStep(2)} className="w-full mt-5 py-3 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Next — Write Message →</button>
         </div>
       )}
 
@@ -3657,28 +3657,28 @@ const AutomationBuilderPage=({onBack}:any)=>{
             </div>
             <p className="text-xs text-slate-400 mb-3">This message will be sent automatically when the trigger fires. Use variables to personalise it.</p>
             {!msgBody&&SUGGESTIONS[trig]&&(
-              <button onClick={()=>setMsgBody(SUGGESTIONS[trig])} className="w-full mb-3 flex items-center gap-2 p-3 rounded-lg text-left text-xs" style={{background:"rgba(139,92,246,0.08)",border:"1px dashed rgba(139,92,246,0.3)"}}>
-                <Zap size={12} className="text-violet-400 flex-shrink-0"/>
-                <span className="text-violet-300 font-medium">Use suggested message</span>
+              <button onClick={()=>setMsgBody(SUGGESTIONS[trig])} className="w-full mb-3 flex items-center gap-2 p-3 rounded-lg text-left text-xs" style={{background:"rgba(249,115,22,0.08)",border:"1px dashed rgba(249,115,22,0.3)"}}>
+                <Zap size={12} className="text-orange-400 flex-shrink-0"/>
+                <span className="text-orange-300 font-medium">Use suggested message</span>
                 <span className="text-slate-500 ml-auto flex-shrink-0">tap to apply</span>
               </button>
             )}
             <textarea value={msgBody} onChange={e=>setMsgBody(e.target.value)} rows={6} placeholder={`Write your message here… e.g. "${SUGGESTIONS[trig]?.slice(0,60)}…"`} className="w-full px-4 py-3 rounded-xl text-sm text-white resize-y outline-none leading-relaxed" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {[["{{name}}","Customer name"],["{{points}}","Points balance"],["{{tier}}","Loyalty tier"],["{{visits}}","Visit count"]].map(([v,d])=>(
-                <button key={v} onClick={()=>setMsgBody(p=>p+v)} title={d} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.2)",color:"#a78bfa"}}>+{v}</button>
+                <button key={v} onClick={()=>setMsgBody(p=>p+v)} title={d} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(249,115,22,0.12)",border:"1px solid rgba(249,115,22,0.2)",color:"#FFB085"}}>+{v}</button>
               ))}
             </div>
             {/* Write with AI */}
-            <div className="mt-4 rounded-xl p-4" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+            <div className="mt-4 rounded-xl p-4" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.15)"}}>
               <div className="flex items-center gap-2 mb-3">
-                <Brain size={13} className="text-violet-400"/>
+                <Brain size={13} className="text-orange-400"/>
                 <span className="text-xs font-semibold text-slate-200">Write with AI</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{background:"rgba(6,182,212,0.1)",color:"#06b6d4"}}>Beta</span>
               </div>
               <div className="flex gap-2">
                 <input value={autoAiPrompt} onChange={e=>setAutoAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runAutoAI()} placeholder={`e.g. "give them a free dessert on their birthday"`} className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-                <button onClick={runAutoAI} disabled={!autoAiPrompt||autoAiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                <button onClick={runAutoAI} disabled={!autoAiPrompt||autoAiLoading} className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-40 flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
                   {autoAiLoading?<RefreshCw size={12} className="animate-spin"/>:<Zap size={12}/>}
                   {autoAiLoading?"Writing…":"Generate"}
                 </button>
@@ -3694,7 +3694,7 @@ const AutomationBuilderPage=({onBack}:any)=>{
           </div>
           <div className="flex gap-3">
             <button onClick={()=>setStep(1)} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-slate-400" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>← Back</button>
-            <button onClick={()=>setStep(3)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Set Timing →</button>
+            <button onClick={()=>setStep(3)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Next — Set Timing →</button>
           </div>
         </div>
       )}
@@ -3718,13 +3718,13 @@ const AutomationBuilderPage=({onBack}:any)=>{
             {/* Timing presets */}
             <div className="flex flex-wrap gap-2 mt-3">
               {[{l:"Immediately",d:0,u:"minutes"},{l:"1 hour later",d:1,u:"hours"},{l:"Same evening",d:6,u:"hours"},{l:"Next day",d:1,u:"days"},{l:"3 days later",d:3,u:"days"}].map(p=>(
-                <button key={p.l} onClick={()=>{setDelay(p.d);setDelayUnit(p.u as any);}} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={delay===p.d&&delayUnit===p.u?{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.4)",color:"#c4b5fd"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b"}}>{p.l}</button>
+                <button key={p.l} onClick={()=>{setDelay(p.d);setDelayUnit(p.u as any);}} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={delay===p.d&&delayUnit===p.u?{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.4)",color:"#c4b5fd"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b"}}>{p.l}</button>
               ))}
             </div>
           </div>
           <div className="flex gap-3">
             <button onClick={()=>setStep(2)} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-slate-400" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>← Back</button>
-            <button onClick={()=>setStep(4)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Next — Review & Save →</button>
+            <button onClick={()=>setStep(4)} className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Next — Review & Save →</button>
           </div>
         </div>
       )}
@@ -3832,7 +3832,7 @@ const LoyaltyPage=()=>{
       {/* Loyalty engine sub-tabs */}
       <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
         {([["config","Tiers & Points",Sliders],["rewards","Rewards",Gift],["giftcards","Gift Cards",CreditCard],["challenges","Challenges",Target],["qr","QR Check-ins",QrCode]] as [string,string,any][]).map(([id,label,Icon])=>(
-          <button key={id} onClick={()=>setSub(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${sub===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={sub===id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>
+          <button key={id} onClick={()=>setSub(id as any)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${sub===id?"text-white":"text-slate-400 hover:text-slate-200"}`} style={sub===id?{background:"linear-gradient(135deg,rgba(249,115,22,0.25),rgba(6,182,212,0.1))"}:{}}><Icon size={13}/>{label}</button>
         ))}
       </div>
       {sub==="rewards"&&<RewardsManager/>}
@@ -3843,7 +3843,7 @@ const LoyaltyPage=()=>{
       <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white">Tier Configuration — Adjust sliders to set thresholds</h3>
-          <button onClick={save} disabled={saving||loading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:saved?<Check size={12}/>:null}{saving?"Saving…":saved?"Saved!":"Save Tiers"}</button>
+          <button onClick={save} disabled={saving||loading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:saved?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:saved?<Check size={12}/>:null}{saving?"Saving…":saved?"Saved!":"Save Tiers"}</button>
         </div>
         {loading?<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_,i)=><Skeleton key={i} h="h-48"/>)}</div>:tiers.length===0?<p className="text-xs text-slate-500 text-center py-8">No tiers configured yet — run database seed to create default tiers</p>:
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{tiers.sort((a,b)=>a.rank-b.rank).map((t,i)=>{
@@ -3862,8 +3862,8 @@ const LoyaltyPage=()=>{
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Sliders size={14} className="text-violet-400"/>Points & Referral Settings</h3>
-          <button onClick={saveConfig} disabled={savingConfig} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:savedConfig?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Sliders size={14} className="text-orange-400"/>Points & Referral Settings</h3>
+          <button onClick={saveConfig} disabled={savingConfig} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:savedConfig?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
             {savingConfig?<RefreshCw size={12} className="animate-spin"/>:savedConfig?<Check size={12}/>:null}
             {savingConfig?"Saving…":savedConfig?"Saved!":"Save Settings"}
           </button>
@@ -3888,15 +3888,15 @@ const LoyaltyPage=()=>{
                 <input type="range" min={min} max={max} step={step}
                   value={(pointsConfig as any)[key]}
                   onChange={e=>setPointsConfig(p=>({...p,[key]:Number(e.target.value)}))}
-                  className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer" style={{accentColor:"#8b5cf6"}}/>
-                <span className="text-sm font-bold text-violet-400 min-w-[40px] text-right">{(pointsConfig as any)[key]}</span>
+                  className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer" style={{accentColor:"#F97316"}}/>
+                <span className="text-sm font-bold text-orange-400 min-w-[40px] text-right">{(pointsConfig as any)[key]}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Info size={14} className="text-violet-400"/>How Points Work</h3>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Info size={14} className="text-orange-400"/>How Points Work</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           {[{icon:Star,title:"Earn Points",desc:"1 point per £1 spent at check-in. Points are awarded via the POS webhook or manual check-in.",col:C.amber},{icon:Gift,title:"Redeem Rewards",desc:"Customers redeem via QR code or staff on the POS. Redemptions create DEBIT ledger entries.",col:C.green},{icon:Crown,title:"Tier Upgrades",desc:"Tiers are evaluated nightly by cron-service. Upgrades trigger TIER_UPGRADE automation.",col:C.primary}].map((item,i)=>(
             <div key={i} className="p-3 rounded-xl" style={{background:(item.col)+"0a",border:"1px solid "+(item.col)+"20"}}>
@@ -3925,7 +3925,7 @@ const RewardsManager=()=>{
   const save=async()=>{try{const body={...form,pointsCost:Number(form.pointsCost),value:form.value!=null&&form.value!==""?Number(form.value):undefined,minTierRank:form.minTierRank!=null&&form.minTierRank!==""?Number(form.minTierRank):null,stock:form.stock!=null&&form.stock!==""?Number(form.stock):null,perCustomerLimit:form.perCustomerLimit!=null&&form.perCustomerLimit!==""?Number(form.perCustomerLimit):null};if(form.id)await api.loyaltyEngine.updateReward(form.id,body);else await api.loyaltyEngine.createReward(body);setForm(null);load();}catch(e:any){alert(e?.message||"Save failed");}};
   const del=async(id:string)=>{if(!confirm("Delete this reward?"))return;await api.loyaltyEngine.deleteReward(id);load();};
   return(<div className="space-y-4">
-    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Rewards Catalogue</h3><p className="text-[11px] text-slate-500">Point-priced rewards your customers can redeem.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New reward</button></div>
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Rewards Catalogue</h3><p className="text-[11px] text-slate-500">Point-priced rewards your customers can redeem.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={13}/>New reward</button></div>
     {loading?<Skeleton h="h-24"/>:rewards.length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No rewards yet. Create your first to give customers a reason to keep coming back.</div>:
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{rewards.map(r=>(
       <div key={r.id} className="gc rounded-xl p-4" style={{...CARD,opacity:r.isActive?1:0.55}}>
@@ -3949,7 +3949,7 @@ const RewardsManager=()=>{
           <input type="number" value={form.perCustomerLimit??""} onChange={e=>setForm({...form,perCustomerLimit:e.target.value})} placeholder="Per-cust" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Active</label>
-        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{form.id?"Save changes":"Create reward"}</button>
+        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{form.id?"Save changes":"Create reward"}</button>
       </div>
     </div>}
   </div>);
@@ -3979,10 +3979,10 @@ const GiftCardsManager=()=>{
   };
   const GC_STATUS:Record<string,string>={ACTIVE:C.green,REDEEMED:C.blue,PENDING_DELETE:C.amber,VOIDED:"#6b7280",EXPIRED:"#6b7280"};
   return(<div className="space-y-4">
-    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white flex items-center gap-1.5">Gift Cards<button onClick={()=>setShowInfo(true)} title="How gift cards work" className="text-slate-500 hover:text-violet-300"><Info size={14}/></button></h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>Issue gift card</button></div>
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white flex items-center gap-1.5">Gift Cards<button onClick={()=>setShowInfo(true)} title="How gift cards work" className="text-slate-500 hover:text-orange-300"><Info size={14}/></button></h3><p className="text-[11px] text-slate-500">Prepaid stored value — upfront cash flow that redeems into customer wallets.</p></div><button onClick={()=>setShow(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={13}/>Issue gift card</button></div>
     {showInfo&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setShowInfo(false)}>
       <div className="w-full max-w-lg rounded-2xl p-5 max-h-[85vh] overflow-y-auto" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-white flex items-center gap-2"><CreditCard size={16} className="text-violet-300"/>How gift cards work</h3><button onClick={()=>setShowInfo(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
+        <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold text-white flex items-center gap-2"><CreditCard size={16} className="text-orange-300"/>How gift cards work</h3><button onClick={()=>setShowInfo(false)} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
         <div className="space-y-4 text-xs">
           {[
             {icon:DollarSign,col:C.green,title:"They're real money",body:"A gift card is prepaid stored value. It can be spent on anything — there are no item restrictions. Think of it like cash credit, not a coupon."},
@@ -4001,12 +4001,12 @@ const GiftCardsManager=()=>{
             </div>
           ))}
         </div>
-        <button onClick={()=>setShowInfo(false)} className="w-full mt-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Got it</button>
+        <button onClick={()=>setShowInfo(false)} className="w-full mt-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Got it</button>
       </div>
     </div>}
     {data&&<div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><KPI icon={CreditCard} label="Active cards" value={data.activeCount??0} color={C.primary}/><KPI icon={DollarSign} label="Outstanding balance" value={`£${(data.outstandingBalance??0).toLocaleString()}`} color={C.green} sub="liability you've been pre-paid for"/></div>}
     {loading?<Skeleton h="h-24"/>:(data?.cards||[]).length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No gift cards issued yet.</div>:
-    <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th><th className="text-right py-2.5 px-4"></th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-violet-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}{c.issuedToCustomerId&&<span className="ml-1.5 text-[9px] px-1 py-0.5 rounded" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>held</span>}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={GC_STATUS[c.status]||"#6b7280"}>{c.status==="PENDING_DELETE"?"AWAITING CONSENT":c.status}</Badge></td><td className="py-2.5 px-4 text-right">{(c.status==="REDEEMED"||c.status==="VOIDED")?<span className="text-[10px] text-slate-600">archived</span>:<button onClick={()=>removeCard(c)} title={c.issuedToCustomerId?"Request deletion (needs customer consent)":"Delete"} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>}</td></tr>))}</tbody></table></div></div>}
+    <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400"><th className="text-left py-2.5 px-4">Code</th><th className="text-left py-2.5 px-3">Recipient</th><th className="text-left py-2.5 px-3">Balance</th><th className="text-left py-2.5 px-3">Status</th><th className="text-right py-2.5 px-4"></th></tr></thead><tbody>{data.cards.map((c:any)=>(<tr key={c.id} className="border-b border-white/3"><td className="py-2.5 px-4 font-mono text-orange-300">{c.code}</td><td className="py-2.5 px-3 text-slate-300">{c.recipientName||"—"}{c.issuedToCustomerId&&<span className="ml-1.5 text-[9px] px-1 py-0.5 rounded" style={{background:"rgba(6,182,212,0.15)",color:"#67e8f9"}}>held</span>}</td><td className="py-2.5 px-3 text-white">£{Number(c.currentBalance)} <span className="text-slate-600">/ £{Number(c.initialBalance)}</span></td><td className="py-2.5 px-3"><Badge color={GC_STATUS[c.status]||"#6b7280"}>{c.status==="PENDING_DELETE"?"AWAITING CONSENT":c.status}</Badge></td><td className="py-2.5 px-4 text-right">{(c.status==="REDEEMED"||c.status==="VOIDED")?<span className="text-[10px] text-slate-600">archived</span>:<button onClick={()=>removeCard(c)} title={c.issuedToCustomerId?"Request deletion (needs customer consent)":"Delete"} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>}</td></tr>))}</tbody></table></div></div>}
     {show&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>{setShow(false);resetForm();}}>
       <div className="w-full max-w-md rounded-2xl p-5 space-y-3" style={{background:"#13102b",border:"1px solid rgba(255,255,255,0.1)"}} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-white">Issue gift card</h3><button onClick={()=>{setShow(false);resetForm();}} className="text-slate-500 hover:text-white"><X size={16}/></button></div>
@@ -4026,14 +4026,14 @@ const GiftCardsManager=()=>{
         </div>
         <input value={f.purchaserName} onChange={e=>setF({...f,purchaserName:e.target.value})} placeholder="From / purchaser name (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
         <input value={f.message} onChange={e=>setF({...f,message:e.target.value})} placeholder="Gift message (optional)" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-        <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{assignTo?"Send gift card":"Create gift code"}</button>
+        <button onClick={issue} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{assignTo?"Send gift card":"Create gift code"}</button>
       </div>
     </div>}
     {issued&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setIssued(null)}>
-      <div className="w-full max-w-sm rounded-2xl p-6 text-center space-y-3" style={{background:"linear-gradient(135deg,#1a1340,#2d1f5e)",border:"1px solid rgba(139,92,246,0.4)"}} onClick={e=>e.stopPropagation()}>
-        <CreditCard size={32} className="mx-auto text-violet-300"/><div className="text-xs text-slate-400">Gift card issued</div>
+      <div className="w-full max-w-sm rounded-2xl p-6 text-center space-y-3" style={{background:"linear-gradient(135deg,#1a1340,#2d1f5e)",border:"1px solid rgba(249,115,22,0.4)"}} onClick={e=>e.stopPropagation()}>
+        <CreditCard size={32} className="mx-auto text-orange-300"/><div className="text-xs text-slate-400">Gift card issued</div>
         <div className="text-2xl font-bold text-white">£{Number(issued.initialBalance)}</div>
-        <div className="font-mono text-lg text-violet-200 tracking-wider">{issued.code}</div>
+        <div className="font-mono text-lg text-orange-200 tracking-wider">{issued.code}</div>
         {issued.assignedName
           ?<div className="text-[11px] text-green-300">✓ Sent to {issued.assignedName} — it's now in their rewards portal, ready to redeem or gift on.</div>
           :<div className="text-[11px] text-slate-400">Share this code with anyone. They redeem it in their rewards portal (Gift Cards → “Have a code?”) to top up their balance.</div>}
@@ -4053,7 +4053,7 @@ const ChallengesManager=()=>{
   const save=async()=>{try{const body={...form,goal:Number(form.goal),rewardPoints:Number(form.rewardPoints)};if(form.id)await api.loyaltyEngine.updateChallenge(form.id,body);else await api.loyaltyEngine.createChallenge(body);setForm(null);load();}catch(e:any){alert(e?.message||"Save failed");}};
   const del=async(id:string)=>{if(!confirm("Delete this challenge?"))return;await api.loyaltyEngine.deleteChallenge(id);load();};
   return(<div className="space-y-4">
-    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Challenges & Badges</h3><p className="text-[11px] text-slate-500">Limited-time missions that turn habits into a game customers want to win.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New challenge</button></div>
+    <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-white">Challenges & Badges</h3><p className="text-[11px] text-slate-500">Limited-time missions that turn habits into a game customers want to win.</p></div><button onClick={()=>setForm({...blank})} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={13}/>New challenge</button></div>
     {loading?<Skeleton h="h-24"/>:items.length===0?<div className="gc rounded-xl p-8 text-center text-xs text-slate-500" style={CARD}>No challenges yet. Try “Visit 5 times this month → 100 bonus points”.</div>:
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{items.map(ch=>(
       <div key={ch.id} className="gc rounded-xl p-4" style={{...CARD,opacity:ch.isActive?1:0.55}}>
@@ -4075,7 +4075,7 @@ const ChallengesManager=()=>{
           <input value={form.badgeIcon} onChange={e=>setForm({...form,badgeIcon:e.target.value})} placeholder="🏆" maxLength={2} className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",textAlign:"center"}}/>
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Active</label>
-        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{form.id?"Save changes":"Create challenge"}</button>
+        <button onClick={save} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{form.id?"Save changes":"Create challenge"}</button>
       </div>
     </div>}
   </div>);
@@ -4097,8 +4097,8 @@ const QrGenerator=()=>{
       {scope==="EVENT"&&<input value={eventId} onChange={e=>setEventId(e.target.value)} placeholder="Event name/ID" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>}
       <div><label className="text-[11px] text-slate-400">Expiry (seconds, blank = no expiry for static)</label><input type="number" value={ttl} onChange={e=>setTtl(e.target.value)} placeholder="e.g. 60 for dynamic" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div>
       <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={geo} onChange={e=>setGeo(e.target.checked)}/>Geolocation fraud check</label>
-      {geo&&<div className="space-y-2"><div className="grid grid-cols-3 gap-2"><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="Lat" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="Lng" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={radius} onChange={e=>setRadius(e.target.value)} placeholder="Radius m" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div><button onClick={useMyLocation} className="text-[11px] text-violet-300 flex items-center gap-1">📍 Use my current location</button></div>}
-      <button onClick={gen} disabled={busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{busy?<RefreshCw size={14} className="animate-spin"/>:<QrCode size={14}/>}Generate QR</button>
+      {geo&&<div className="space-y-2"><div className="grid grid-cols-3 gap-2"><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="Lat" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="Lng" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/><input value={radius} onChange={e=>setRadius(e.target.value)} placeholder="Radius m" className={inp} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/></div><button onClick={useMyLocation} className="text-[11px] text-orange-300 flex items-center gap-1">📍 Use my current location</button></div>}
+      <button onClick={gen} disabled={busy} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{busy?<RefreshCw size={14} className="animate-spin"/>:<QrCode size={14}/>}Generate QR</button>
     </div>
     <div className="gc rounded-xl p-4 flex flex-col items-center justify-center text-center" style={CARD}>
       {result?<><div className="bg-white p-3 rounded-xl"><img src={qrSrc} alt="QR code" width={200} height={200}/></div><div className="text-[11px] text-slate-400 mt-3 break-all max-w-xs">{result.checkinUrl}</div>{result.exp&&<div className="text-[10px] text-amber-400 mt-1">Expires {new Date(result.exp).toLocaleString()}</div>}<button onClick={()=>navigator.clipboard?.writeText(result.checkinUrl)} className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white" style={{background:"rgba(255,255,255,0.1)"}}><Copy size={12}/>Copy link</button></>:<div className="text-xs text-slate-500"><QrCode size={40} className="mx-auto mb-2 opacity-40"/>Your QR code will appear here.</div>}
@@ -4253,7 +4253,7 @@ const DataHubPage=()=>{
       <div className="flex gap-1 flex-wrap">{[
         {k:"queue",l:"Message Queue"},{k:"customers",l:"Customers"},{k:"add",l:"Add Customer"},{k:"import",l:"Import CSV"},{k:"format",l:"Column Format"}
       ].map(({k,l})=>(
-        <button key={k} onClick={()=>setTab(k)} className={`px-3 py-2 rounded-lg text-xs ${tab===k?"text-white":"text-slate-400"}`} style={tab===k?{background:"rgba(139,92,246,0.2)"}:{}}>
+        <button key={k} onClick={()=>setTab(k)} className={`px-3 py-2 rounded-lg text-xs ${tab===k?"text-white":"text-slate-400"}`} style={tab===k?{background:"rgba(249,115,22,0.2)"}:{}}>
           {l}
         </button>
       ))}</div>
@@ -4273,11 +4273,11 @@ const DataHubPage=()=>{
               <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
                 <td className="py-2.5 px-4 font-medium text-white">{m.customer?.fullName||"—"}</td>
                 <td className="py-2.5 px-3 text-slate-400 font-mono">{m.customer?.whatsappNumber||m.recipientPhone||"—"}</td>
-                <td className="py-2.5 px-3">{m.customer?.segment?<Badge color="#8b5cf6">{m.customer.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
+                <td className="py-2.5 px-3">{m.customer?.segment?<Badge color="#F97316">{m.customer.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
                 <td className="py-2.5 px-3 text-amber-300 font-medium">{m.customer?.pointsBalance!=null?m.customer.pointsBalance.toLocaleString():"—"}</td>
                 <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
                 <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
-                <td className="py-2.5 px-3"><button onClick={()=>{setSendMsgFor(m);setDirectMsg("");}} className="px-2 py-1 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 transition-all" style={{border:"1px solid rgba(139,92,246,0.3)"}}><MessageSquare size={11} className="inline mr-1"/>Message</button></td>
+                <td className="py-2.5 px-3"><button onClick={()=>{setSendMsgFor(m);setDirectMsg("");}} className="px-2 py-1 rounded-lg text-xs text-orange-300 hover:bg-orange-500/10 transition-all" style={{border:"1px solid rgba(249,115,22,0.3)"}}><MessageSquare size={11} className="inline mr-1"/>Message</button></td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -4285,12 +4285,12 @@ const DataHubPage=()=>{
         </div>
         {/* Send direct message modal */}
         {sendMsgFor&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)"}}>
-          <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{background:"#181124",border:"1px solid rgba(139,92,246,0.3)"}}>
+          <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{background:"#181124",border:"1px solid rgba(249,115,22,0.3)"}}>
             <div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Send Message to {sendMsgFor.customer?.fullName}</h3><button onClick={()=>setSendMsgFor(null)}><X size={16} className="text-slate-400"/></button></div>
             <p className="text-xs text-slate-400">{sendMsgFor.customer?.whatsappNumber||sendMsgFor.recipientPhone}</p>
             <textarea value={directMsg} onChange={e=>setDirectMsg(e.target.value)} rows={4} placeholder="Type your message…" className="w-full px-3 py-2 rounded-xl text-sm text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             <div className="flex gap-2">
-              <button onClick={handleSendDirect} disabled={!directMsg.trim()||sendingDirect} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{sendingDirect?<RefreshCw size={12} className="animate-spin"/>:<Send size={12}/>}{sendingDirect?"Sending…":"Send"}</button>
+              <button onClick={handleSendDirect} disabled={!directMsg.trim()||sendingDirect} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{sendingDirect?<RefreshCw size={12} className="animate-spin"/>:<Send size={12}/>}{sendingDirect?"Sending…":"Send"}</button>
               <button onClick={()=>setSendMsgFor(null)} className="px-4 py-2 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
             </div>
           </div>
@@ -4300,7 +4300,7 @@ const DataHubPage=()=>{
       {tab==="customers"&&<div className="gc rounded-xl overflow-hidden" style={CARD}>
         <div className="p-3 border-b border-white/5 flex items-center gap-2">
           <div className="relative flex-1 max-w-xs"><Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"/><input value={custSearch} onChange={e=>setCustSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadCustomers();}} placeholder="Search name / phone / email…" className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-          <button onClick={loadCustomers} className="px-3 py-1.5 rounded-lg text-xs text-violet-300" style={{border:"1px solid rgba(139,92,246,0.3)"}}><RefreshCw size={11} className="inline mr-1"/>Refresh</button>
+          <button onClick={loadCustomers} className="px-3 py-1.5 rounded-lg text-xs text-orange-300" style={{border:"1px solid rgba(249,115,22,0.3)"}}><RefreshCw size={11} className="inline mr-1"/>Refresh</button>
         </div>
         <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5">
           <th className="text-left py-3 px-4 text-slate-400 font-medium">Customer</th>
@@ -4315,7 +4315,7 @@ const DataHubPage=()=>{
             <tr key={c.id} className="border-b border-white/3 hover:bg-white/2" style={c.isStaff?{background:"rgba(245,158,11,0.05)"}:{}}>
               <td className="py-2.5 px-4 font-medium text-white">{c.fullName}{c.isStaff&&<span className="ml-2 text-[9px] px-1.5 py-0.5 rounded text-amber-300" style={{background:"rgba(245,158,11,0.15)"}}>STAFF</span>}</td>
               <td className="py-2.5 px-3 text-slate-400 font-mono">{c.whatsappNumber||c.phone||"—"}</td>
-              <td className="py-2.5 px-3 hidden sm:table-cell">{c.segment?<Badge color="#8b5cf6">{c.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
+              <td className="py-2.5 px-3 hidden sm:table-cell">{c.segment?<Badge color="#F97316">{c.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
               <td className="py-2.5 px-3 text-amber-300 font-medium hidden md:table-cell">{(c.pointsBalance??c.currentPointsBalance??0).toLocaleString()}</td>
               <td className="py-2.5 px-3 hidden md:table-cell"><span style={{color:(c.churnRisk??0)>50?"#ef4444":(c.churnRisk??0)>25?"#f59e0b":"#22c55e"}}>{c.churnRisk??0}%</span></td>
               <td className="py-2.5 px-3">
@@ -4324,7 +4324,7 @@ const DataHubPage=()=>{
                 </button>
               </td>
               <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                <button onClick={()=>{setSendMsgFor({customer:{fullName:c.fullName,whatsappNumber:c.whatsappNumber||c.phone,id:c.id},customerId:c.id});setDirectMsg("");}} disabled={c.isStaff} title={c.isStaff?"Staff cannot be messaged":"Send message"} className="px-2 py-1 rounded-lg text-xs text-violet-300 hover:bg-violet-500/10 disabled:opacity-30 mr-1" style={{border:"1px solid rgba(139,92,246,0.3)"}}><MessageSquare size={11}/></button>
+                <button onClick={()=>{setSendMsgFor({customer:{fullName:c.fullName,whatsappNumber:c.whatsappNumber||c.phone,id:c.id},customerId:c.id});setDirectMsg("");}} disabled={c.isStaff} title={c.isStaff?"Staff cannot be messaged":"Send message"} className="px-2 py-1 rounded-lg text-xs text-orange-300 hover:bg-orange-500/10 disabled:opacity-30 mr-1" style={{border:"1px solid rgba(249,115,22,0.3)"}}><MessageSquare size={11}/></button>
                 <button onClick={()=>deleteCustomer(c)} disabled={busyRow===c.id} title="Delete customer" className="px-2 py-1 rounded-lg text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-30" style={{border:"1px solid rgba(239,68,68,0.3)"}}><Trash2 size={11}/></button>
               </td>
             </tr>
@@ -4334,37 +4334,37 @@ const DataHubPage=()=>{
       </div>}
 
       {tab==="add"&&<div className="gc rounded-xl p-5 space-y-4" style={CARD}>
-        <div><h3 className="text-sm font-semibold text-white flex items-center gap-2"><UserPlus size={14} className="text-violet-400"/>Add Customer Manually</h3><p className="text-xs text-slate-400 mt-1">Register a new customer, optionally assign initial points and send a welcome message.</p></div>
+        <div><h3 className="text-sm font-semibold text-white flex items-center gap-2"><UserPlus size={14} className="text-orange-400"/>Add Customer Manually</h3><p className="text-xs text-slate-400 mt-1">Register a new customer, optionally assign initial points and send a welcome message.</p></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label className="text-xs text-slate-400 mb-1 block">Full Name *</label><input value={acName} onChange={e=>setAcName(e.target.value)} placeholder="Jane Smith" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
           <div><label className="text-xs text-slate-400 mb-1 block">WhatsApp Phone *</label><PhoneInput value={acPhone} onChange={setAcPhone} inputStyle={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",padding:"8px 12px",fontSize:"14px"}}/></div>
-          <div><label className="text-xs text-slate-400 mb-1 block">Category / Segment</label><select value={acCategory} onChange={e=>setAcCategory(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.3)"}}>{["NEW","REGULAR","VIP","AT_RISK","LOST","BIG_SPENDER"].map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s}</option>)}</select></div>
+          <div><label className="text-xs text-slate-400 mb-1 block">Category / Segment</label><select value={acCategory} onChange={e=>setAcCategory(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(249,115,22,0.12)",border:"1px solid rgba(249,115,22,0.3)"}}>{["NEW","REGULAR","VIP","AT_RISK","LOST","BIG_SPENDER"].map(s=><option key={s} value={s} style={{background:"#1a1030"}}>{s}</option>)}</select></div>
           <div><label className="text-xs text-slate-400 mb-1 block">Starting Points</label><input type="number" value={acPoints} onChange={e=>setAcPoints(Number(e.target.value))} min={0} placeholder="0" className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
         </div>
         <div className="pt-2 border-t border-white/5">
           <label className="flex items-center gap-3 cursor-pointer">
-            <div onClick={()=>setAcSendMsg(p=>!p)} className="w-10 h-5 rounded-full transition-all relative flex-shrink-0" style={{background:acSendMsg?"linear-gradient(135deg,#8b5cf6,#7c3aed)":"rgba(255,255,255,0.1)"}}>
+            <div onClick={()=>setAcSendMsg(p=>!p)} className="w-10 h-5 rounded-full transition-all relative flex-shrink-0" style={{background:acSendMsg?"linear-gradient(135deg,#F97316,#EA6A0E)":"rgba(255,255,255,0.1)"}}>
               <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:acSendMsg?"calc(100% - 18px)":"2px"}}/>
             </div>
             <span className="text-sm text-white">Send welcome message on WhatsApp</span>
           </label>
           {acSendMsg&&<div className="mt-3 space-y-2">
             <textarea value={acMsg} onChange={e=>setAcMsg(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-xl text-xs text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-            <div className="flex flex-wrap gap-1.5">{["{{name}}","{{points}}","{{tier}}","{{business_name}}"].map(v=><button key={v} onClick={()=>setAcMsg(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}}>+{v}</button>)}</div>
+            <div className="flex flex-wrap gap-1.5">{["{{name}}","{{points}}","{{tier}}","{{business_name}}"].map(v=><button key={v} onClick={()=>setAcMsg(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(249,115,22,0.12)",color:"#c4b5fd"}}>+{v}</button>)}</div>
           </div>}
         </div>
         {acResult&&<p className="text-xs" style={{color:acResult.ok?"#22c55e":"#ef4444"}}>{acResult.text}</p>}
-        <button onClick={handleAddCustomer} disabled={acSaving||!acName.trim()||!acPhone.trim()} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{acSaving?<RefreshCw size={14} className="animate-spin"/>:<UserPlus size={14}/>}{acSaving?"Creating…":"Add Customer"}</button>
+        <button onClick={handleAddCustomer} disabled={acSaving||!acName.trim()||!acPhone.trim()} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{acSaving?<RefreshCw size={14} className="animate-spin"/>:<UserPlus size={14}/>}{acSaving?"Creating…":"Add Customer"}</button>
       </div>}
 
       {tab==="import"&&<div className="space-y-4">
         {/* Step 1: Upload */}
         {step==="upload"&&<div className="gc rounded-xl p-5" style={CARD}>
-          <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Download size={14} className="text-violet-400"/>Import Customers via CSV / XLSX</h3>
+          <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Download size={14} className="text-orange-400"/>Import Customers via CSV / XLSX</h3>
           <p className="text-xs text-slate-400 mb-4">Upload a spreadsheet. We'll read the column headers and let you map them to the right fields before importing.</p>
-          <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-xl cursor-pointer transition-all" style={{background:"rgba(139,92,246,0.05)",border:"2px dashed rgba(139,92,246,0.3)"}}>
+          <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-xl cursor-pointer transition-all" style={{background:"rgba(249,115,22,0.05)",border:"2px dashed rgba(249,115,22,0.3)"}}>
             <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} disabled={uploading}/>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.15)"}}><Download size={24} className="text-violet-400"/></div>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{background:"rgba(249,115,22,0.15)"}}><Download size={24} className="text-orange-400"/></div>
             <div className="text-center"><div className="text-sm font-semibold text-white">{uploading?"Reading file…":"Drop CSV or XLSX here"}</div><div className="text-xs text-slate-400 mt-1">or click to browse · max 10 MB</div></div>
           </label>
           {importMsg&&<p className="text-xs mt-3 text-center" style={{color:importMsg.ok?"#22c55e":"#ef4444"}}>{importMsg.text}</p>}
@@ -4374,15 +4374,15 @@ const DataHubPage=()=>{
         {step==="map"&&<div className="space-y-4">
           <div className="gc rounded-xl p-5" style={CARD}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2"><FileText size={14} className="text-violet-400"/>Map Columns — {rowCount} rows detected</h3>
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2"><FileText size={14} className="text-orange-400"/>Map Columns — {rowCount} rows detected</h3>
               <button onClick={resetImport} className="text-xs text-slate-400 hover:text-white"><X size={13}/></button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Match each column from your file to the correct field. At least <span className="text-violet-300 font-medium">WhatsApp Number</span> must be mapped.</p>
+            <p className="text-xs text-slate-400 mb-4">Match each column from your file to the correct field. At least <span className="text-orange-300 font-medium">WhatsApp Number</span> must be mapped.</p>
             <div className="space-y-2 mb-4">
               {headers.map(h=>(
                 <div key={h} className="flex items-center gap-3">
                   <div className="flex-1 text-xs text-white font-mono truncate px-3 py-2 rounded-lg" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>{h}{sampleRows[0]&&sampleRows[0][h]!==undefined&&<span className="text-slate-500 ml-2">e.g. {String(sampleRows[0][h]).slice(0,20)}</span>}</div>
-                  <select value={mapping[h]||""} onChange={e=>{const v=e.target.value;setMapping(p=>({...p,[h]:v}));}} className="text-xs text-white px-2 py-2 rounded-lg outline-none" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)"}}>
+                  <select value={mapping[h]||""} onChange={e=>{const v=e.target.value;setMapping(p=>({...p,[h]:v}));}} className="text-xs text-white px-2 py-2 rounded-lg outline-none" style={{background:"rgba(249,115,22,0.15)",border:"1px solid rgba(249,115,22,0.3)"}}>
                     <option value="" style={{background:"#1a1030"}}>— Skip —</option>
                     {TARGET_FIELDS.map(f=><option key={f} value={f} style={{background:"#1a1030"}}>{TARGET_LABELS[f]}</option>)}
                   </select>
@@ -4391,7 +4391,7 @@ const DataHubPage=()=>{
             </div>
             {importMsg&&<p className="text-xs mb-3" style={{color:importMsg.ok?"#22c55e":"#ef4444"}}>{importMsg.text}</p>}
             <div className="flex gap-2">
-              <button onClick={handleImport} disabled={uploading} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+              <button onClick={handleImport} disabled={uploading} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
                 {uploading?<RefreshCw size={12} className="animate-spin"/>:<Upload size={12}/>}{uploading?"Importing…":`Import ${rowCount} rows`}
               </button>
               <button onClick={resetImport} className="px-4 py-2.5 rounded-xl text-xs text-slate-400 hover:text-white" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
@@ -4406,14 +4406,14 @@ const DataHubPage=()=>{
             <div><div className="text-sm font-semibold text-white">Import Complete</div><div className="text-xs text-slate-400 mt-0.5">{importMsg?.text}</div></div>
           </div>
           {importResult&&<div className="grid grid-cols-3 gap-3 mb-4">
-            {[{l:"Created",v:importResult.created??0,c:"#22c55e"},{l:"Updated",v:importResult.updated??0,c:"#8b5cf6"},{l:"Skipped",v:importResult.skipped??0,c:"#94a3b8"}].map(s=>(
+            {[{l:"Created",v:importResult.created??0,c:"#22c55e"},{l:"Updated",v:importResult.updated??0,c:"#F97316"},{l:"Skipped",v:importResult.skipped??0,c:"#94a3b8"}].map(s=>(
               <div key={s.l} className="text-center p-3 rounded-xl" style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${s.c}22`}}>
                 <div className="text-xl font-bold" style={{color:s.c}}>{s.v}</div>
                 <div className="text-[10px] text-slate-400 mt-0.5">{s.l}</div>
               </div>
             ))}
           </div>}
-          <button onClick={resetImport} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Import Another File</button>
+          <button onClick={resetImport} className="w-full py-2.5 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Import Another File</button>
         </div>}
       </div>}
 
@@ -4426,7 +4426,7 @@ const DataHubPage=()=>{
               <thead><tr className="border-b border-white/5"><th className="text-left py-2 px-3 text-slate-400 font-medium">Column Name</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Type</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Required</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Example</th><th className="text-left py-2 px-3 text-slate-400 font-medium">Description</th></tr></thead>
               <tbody>{CUSTOMER_COLS.map((col,i)=>(
                 <tr key={i} className="border-b border-white/3">
-                  <td className="py-2.5 px-3 font-mono text-violet-300">{col.col}</td>
+                  <td className="py-2.5 px-3 font-mono text-orange-300">{col.col}</td>
                   <td className="py-2.5 px-3 text-slate-400">{col.type}</td>
                   <td className="py-2.5 px-3">{col.required?<Badge color="#22c55e">Required</Badge>:<span className="text-slate-500">Optional</span>}</td>
                   <td className="py-2.5 px-3 font-mono text-slate-300">{col.example}</td>
@@ -4437,7 +4437,7 @@ const DataHubPage=()=>{
           </div>
         </div>
         <div className="gc rounded-xl p-4" style={CARD}>
-          <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-2"><Info size={13} className="text-violet-400"/>Example CSV content</h3>
+          <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-2"><Info size={13} className="text-orange-400"/>Example CSV content</h3>
           <pre className="text-xs text-green-400 overflow-x-auto p-3 rounded-lg" style={{background:"rgba(0,0,0,0.4)",fontFamily:"monospace"}}>{`fullName,phone,email,totalSpend,visitCount,marketingConsent
 John Smith,+447911123456,john@email.com,250.00,12,true
 Maria Garcia,+34612345678,maria@cafe.es,85.50,4,true
@@ -4467,13 +4467,13 @@ const AIPage=()=>{
   const suggestions=["How many customers haven't visited in 60 days?","Which segment has the highest average spend?","What is my churn rate this month?","Show top 5 customers by points balance"];
   return(
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold flex items-center gap-2" style={{color:ct.tx}}><Brain size={22} className="text-violet-400"/>AI Business Intelligence</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Natural language → Prisma query → GPT insight · businessId injected server-side</p></div>
+      <div><h1 className="text-xl font-bold flex items-center gap-2" style={{color:ct.tx}}><Brain size={22} className="text-orange-400"/>AI Business Intelligence</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Natural language → Prisma query → GPT insight · businessId injected server-side</p></div>
       <div className="gc rounded-xl p-4" style={CARD}>
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Brain size={14} className="text-violet-400"/>Ask Your Data</h3>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Brain size={14} className="text-orange-400"/>Ask Your Data</h3>
         <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((q,i)=><button key={i} onClick={()=>setQuery(q)} className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-all" style={{border:"1px solid rgba(255,255,255,0.06)"}}>{q}</button>)}</div>
-        <div className="flex gap-2"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&run()} placeholder="Ask anything about your customers, revenue, campaigns..." className={`flex-1 ${inp}`} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><button onClick={run} disabled={!query||loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{loading?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}{loading?"Thinking…":"Ask"}</button></div>
+        <div className="flex gap-2"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&run()} placeholder="Ask anything about your customers, revenue, campaigns..." className={`flex-1 ${inp}`} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/><button onClick={run} disabled={!query||loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{loading?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}{loading?"Thinking…":"Ask"}</button></div>
         {err&&<div className="mt-3 p-3 rounded-lg text-xs text-red-400" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{err}</div>}
-        {res&&<div className="mt-3 p-4 rounded-xl" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.2)"}}><p className="text-sm text-white leading-relaxed">{res.insight??res.answer}</p>{res.dataSnapshot&&<p className="text-xs text-slate-400 mt-2">{res.dataSnapshot.summary}</p>}{res.actionLabel&&res.actionPath&&<a href={res.actionPath} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{res.actionLabel}</a>}{res.data&&Array.isArray(res.data)&&res.data.length>0&&<div className="mt-3 space-y-1">{res.data.slice(0,5).map((row:any,i:number)=><div key={i} className="text-xs text-slate-300 font-mono bg-black/20 px-2 py-1 rounded">{JSON.stringify(row)}</div>)}</div>}</div>}
+        {res&&<div className="mt-3 p-4 rounded-xl" style={{background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)"}}><p className="text-sm text-white leading-relaxed">{res.insight??res.answer}</p>{res.dataSnapshot&&<p className="text-xs text-slate-400 mt-2">{res.dataSnapshot.summary}</p>}{res.actionLabel&&res.actionPath&&<a href={res.actionPath} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{res.actionLabel}</a>}{res.data&&Array.isArray(res.data)&&res.data.length>0&&<div className="mt-3 space-y-1">{res.data.slice(0,5).map((row:any,i:number)=><div key={i} className="text-xs text-slate-300 font-mono bg-black/20 px-2 py-1 rounded">{JSON.stringify(row)}</div>)}</div>}</div>}
       </div>
     </div>
   );
@@ -4582,7 +4582,7 @@ const CustomerPortalPage=()=>{
       <img src="${qrDataUrl}" style="width:280px;height:280px;margin-bottom:16px"/>
       <h2 style="margin:0 0 4px;color:#1e0a3c;font-size:18px">${bizName}</h2>
       <p style="margin:0;color:#6b7280;font-size:13px">Scan to view your loyalty rewards</p>
-      <p style="margin:8px 0 0;color:#8b5cf6;font-size:11px;font-family:monospace">${portalUrl}</p>
+      <p style="margin:8px 0 0;color:#F97316;font-size:11px;font-family:monospace">${portalUrl}</p>
     </body></html>`);
     w.document.close();
     w.print();
@@ -4590,7 +4590,7 @@ const CustomerPortalPage=()=>{
 
   if(!slug) return(
     <div className="p-6"><div className="rounded-2xl p-8 text-center" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
-      <QrCode size={40} className="mx-auto mb-3 text-purple-400"/>
+      <QrCode size={40} className="mx-auto mb-3 text-orange-400"/>
       <h2 className="text-white font-bold mb-2">Business slug not set</h2>
       <p className="text-slate-400 text-sm">Please log out and log in again to reload your business settings.</p>
     </div></div>
@@ -4599,7 +4599,7 @@ const CustomerPortalPage=()=>{
   return(
     <div className="p-4 md:p-6 space-y-5 max-w-3xl">
       <div>
-        <h1 className="text-xl font-bold text-white flex items-center gap-2"><QrCode size={20} className="text-purple-400"/>Customer Portal</h1>
+        <h1 className="text-xl font-bold text-white flex items-center gap-2"><QrCode size={20} className="text-orange-400"/>Customer Portal</h1>
         <p className="text-xs text-slate-400 mt-0.5">Print or share the QR code so customers can scan &amp; view their loyalty rewards</p>
       </div>
 
@@ -4608,8 +4608,8 @@ const CustomerPortalPage=()=>{
         {([["qr","QR Code & Link"],["today","Today's Customers"],["content","Portal Content"]] as const).map(([id,label])=>(
           <button key={id} onClick={()=>setActiveTab(id as any)}
             className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={activeTab===id?{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}:{color:"#94a3b8"}}>
-            {label}{id==="today"&&todayCustomers.length>0&&<span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" style={{background:"rgba(139,92,246,0.3)"}}>{todayCustomers.length}</span>}
+            style={activeTab===id?{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"white"}:{color:"#94a3b8"}}>
+            {label}{id==="today"&&todayCustomers.length>0&&<span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" style={{background:"rgba(249,115,22,0.3)"}}>{todayCustomers.length}</span>}
           </button>
         ))}
       </div>
@@ -4619,9 +4619,9 @@ const CustomerPortalPage=()=>{
         <PortalCard>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Link size={12}/>Portal Link</p>
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-3" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>
-            <span className="flex-1 text-sm text-purple-300 font-mono truncate">{portalUrl}</span>
+            <span className="flex-1 text-sm text-orange-300 font-mono truncate">{portalUrl}</span>
             <button onClick={copyLink} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={copied?{background:"rgba(34,197,94,0.2)",color:"#4ade80"}:{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+              style={copied?{background:"rgba(34,197,94,0.2)",color:"#4ade80"}:{background:"rgba(249,115,22,0.2)",color:"#FFB085"}}>
               {copied?<><Check size={12}/>Copied!</>:<><Copy size={12}/>Copy</>}
             </button>
             <a href={portalUrl} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"><ExternalLink size={14}/></a>
@@ -4647,7 +4647,7 @@ const CustomerPortalPage=()=>{
               <div className="flex flex-wrap gap-2">
                 <button onClick={downloadQR} disabled={!qrDataUrl}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-                  style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+                  style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"white"}}>
                   <Download size={14}/>Save PNG
                 </button>
                 <button onClick={printQR} disabled={!qrDataUrl}
@@ -4684,7 +4684,7 @@ const CustomerPortalPage=()=>{
       {activeTab==="today"&&<>
         <PortalCard>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-white font-bold flex items-center gap-2"><UserCheck size={16} className="text-purple-400"/>Today's Customers</p>
+            <p className="text-white font-bold flex items-center gap-2"><UserCheck size={16} className="text-orange-400"/>Today's Customers</p>
             <span className="text-xs text-slate-400">{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long"})}</span>
           </div>
           {todayLoading?(
@@ -4700,7 +4700,7 @@ const CustomerPortalPage=()=>{
               {todayCustomers.map((c:any,i:number)=>(
                 <div key={c.id??i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{background:"rgba(255,255,255,0.04)"}}>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+                    style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"white"}}>
                     {(c.name||"?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -4708,7 +4708,7 @@ const CustomerPortalPage=()=>{
                     <p className="text-slate-400 text-xs">{c.whatsappNumber||c.phone||""}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-purple-400 text-sm font-bold">{c.pointsBalance??0} pts</p>
+                    <p className="text-orange-400 text-sm font-bold">{c.pointsBalance??0} pts</p>
                     <p className="text-slate-500 text-xs">{c.tier||"Member"}</p>
                   </div>
                   {c.isNew&&<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:"rgba(34,197,94,0.2)",color:"#4ade80"}}>NEW</span>}
@@ -4730,7 +4730,7 @@ const CustomerPortalPage=()=>{
               </div>
               <button onClick={()=>setPs((p:any)=>({...p,showMenu:!p.showMenu}))}
                 className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
-                style={{background:ps.showMenu?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                style={{background:ps.showMenu?"#F97316":"rgba(255,255,255,0.12)"}}>
                 <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
                   style={{left:ps.showMenu?"calc(100% - 22px)":"2px"}}/>
               </button>
@@ -4748,7 +4748,7 @@ const CustomerPortalPage=()=>{
                   <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
                 </div>
                 <label className="flex items-center justify-center gap-2 py-2.5 rounded-xl cursor-pointer transition-all"
-                  style={{background:"rgba(139,92,246,0.12)",border:"1px dashed rgba(139,92,246,0.4)",color:"#c4b5fd"}}>
+                  style={{background:"rgba(249,115,22,0.12)",border:"1px dashed rgba(249,115,22,0.4)",color:"#c4b5fd"}}>
                   <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="hidden"
                     onChange={async e=>{
                       const f=e.target.files?.[0]; if(!f) return;
@@ -4772,7 +4772,7 @@ const CustomerPortalPage=()=>{
           {false&&(
           <PortalCard>
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <Image size={14} className="text-violet-400"/>Background Images
+              <Image size={14} className="text-orange-400"/>Background Images
             </h3>
             <p className="text-xs text-slate-400 mb-3">Upload custom backgrounds for different screen sizes. Customers will see these behind the portal.</p>
             {(["Mobile","Tablet","Desktop"] as const).map(device=>{
@@ -4780,7 +4780,7 @@ const CustomerPortalPage=()=>{
               return(
                 <div key={device} className="mb-3">
                   <label className="text-xs text-slate-400 mb-1 block">{device} Background</label>
-                  <label className="flex items-center justify-center gap-2 py-2 rounded-xl cursor-pointer transition-all" style={{background:"rgba(139,92,246,0.08)",border:"1px dashed rgba(139,92,246,0.3)",color:"#c4b5fd"}}>
+                  <label className="flex items-center justify-center gap-2 py-2 rounded-xl cursor-pointer transition-all" style={{background:"rgba(249,115,22,0.08)",border:"1px dashed rgba(249,115,22,0.3)",color:"#c4b5fd"}}>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
                       onChange={async e=>{
                         const f=e.target.files?.[0]; if(!f) return;
@@ -4806,7 +4806,7 @@ const CustomerPortalPage=()=>{
               </div>
               <button onClick={()=>setPs((p:any)=>({...p,showWifi:!p.showWifi}))}
                 className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
-                style={{background:ps.showWifi?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                style={{background:ps.showWifi?"#F97316":"rgba(255,255,255,0.12)"}}>
                 <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
                   style={{left:ps.showWifi?"calc(100% - 22px)":"2px"}}/>
               </button>
@@ -4840,7 +4840,7 @@ const CustomerPortalPage=()=>{
               </div>
               <button onClick={()=>setPs((p:any)=>({...p,showAnnouncement:!p.showAnnouncement}))}
                 className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
-                style={{background:ps.showAnnouncement?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                style={{background:ps.showAnnouncement?"#F97316":"rgba(255,255,255,0.12)"}}>
                 <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
                   style={{left:ps.showAnnouncement?"calc(100% - 22px)":"2px"}}/>
               </button>
@@ -4869,7 +4869,7 @@ const CustomerPortalPage=()=>{
                   </div>
                   <button onClick={()=>setPs((p:any)=>({...p,[item.key]:!p[item.key]}))}
                     className="w-11 h-6 rounded-full transition-all flex-shrink-0 relative"
-                    style={{background:ps[item.key]?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                    style={{background:ps[item.key]?"#F97316":"rgba(255,255,255,0.12)"}}>
                     <span className="absolute top-0.5 transition-all w-5 h-5 rounded-full bg-white shadow"
                       style={{left:ps[item.key]?"calc(100% - 22px)":"2px"}}/>
                   </button>
@@ -4903,7 +4903,7 @@ const CustomerPortalPage=()=>{
               </div>
               <button onClick={addCustomSection}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                style={{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+                style={{background:"rgba(249,115,22,0.2)",color:"#FFB085"}}>
                 <Plus size={12}/>Add Section
               </button>
             </div>
@@ -4924,7 +4924,7 @@ const CustomerPortalPage=()=>{
                       style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
                     <button onClick={()=>updateSection(i,"visible",!sec.visible)}
                       className="w-9 h-5 rounded-full transition-all flex-shrink-0 relative"
-                      style={{background:sec.visible?"#8b5cf6":"rgba(255,255,255,0.12)"}}>
+                      style={{background:sec.visible?"#F97316":"rgba(255,255,255,0.12)"}}>
                       <span className="absolute top-0.5 transition-all w-4 h-4 rounded-full bg-white shadow"
                         style={{left:sec.visible?"calc(100% - 18px)":"2px"}}/>
                     </button>
@@ -4957,7 +4957,7 @@ const CustomerPortalPage=()=>{
                 }}
                 disabled={locDetecting}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-50"
-                style={{background:"rgba(139,92,246,0.2)",color:"#a78bfa"}}>
+                style={{background:"rgba(249,115,22,0.2)",color:"#FFB085"}}>
                 {locDetecting?"Detecting…":"📡 Use My Location"}
               </button>
             </div>
@@ -4998,7 +4998,7 @@ const CustomerPortalPage=()=>{
               }}
               disabled={locSaving||!locLat||!locLon}
               className="w-full mt-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-              style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",color:"#c4b5fd"}}>
+              style={{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.35)",color:"#c4b5fd"}}>
               {locSaving?"Saving…":locSaved?"✓ Saved!":"Save Location"}
             </button>
           </PortalCard>
@@ -5006,7 +5006,7 @@ const CustomerPortalPage=()=>{
           {/* Save button */}
           <button onClick={savePortalSettings} disabled={psSaving}
             className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"white"}}>
+            style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"white"}}>
             {psSaving?"Saving…":psSaved?<><Check size={16}/>Saved!</>:"Save Portal Settings"}
           </button>
         </div>}
@@ -5032,7 +5032,7 @@ const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>switchTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-all ${tab===t.id?"text-white":"text-slate-400 hover:text-slate-200"}`}
-            style={tab===t.id?{background:"linear-gradient(135deg,rgba(139,92,246,0.25),rgba(6,182,212,0.1))"}:{}}>
+            style={tab===t.id?{background:"linear-gradient(135deg,rgba(249,115,22,0.25),rgba(6,182,212,0.1))"}:{}}>
             <t.icon size={13}/>{t.label}
           </button>
         ))}
@@ -5133,7 +5133,7 @@ const AnalyticsPage=()=>{
   useEffect(()=>{
     Promise.all([
       api.analytics.snapshot(30).then(d=>setSnapshot(Array.isArray(d)?d:[])).catch(()=>{}),
-      api.dashboard.get().then(d=>setSegData((d?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#8b5cf6"})))).catch(()=>{}),
+      api.dashboard.get().then(d=>setSegData((d?.segments??[]).map((s:any)=>({...s,color:SEG_COLORS[s.name as keyof typeof SEG_COLORS]||"#F97316"})))).catch(()=>{}),
     ]).finally(()=>setLoading(false));
   },[]);
   const latest=snapshot[snapshot.length-1]??{};
@@ -5168,7 +5168,7 @@ const AnalyticsPage=()=>{
     <div className="gc rounded-xl p-4" style={CARD}>
       <h3 className="text-sm font-semibold text-white mb-3">Customer Growth & Retention</h3>
       {loading?<Skeleton h="h-[200px]"/>:growthData.length===0?<div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">No snapshot data yet — snapshots are computed nightly</div>:
-      <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}/><stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#8b5cf6" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
+      <ResponsiveContainer width="100%" height={200}><AreaChart data={growthData}><defs><linearGradient id="agrow1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F97316" stopOpacity={0.35}/><stop offset="100%" stopColor="#F97316" stopOpacity={0}/></linearGradient><linearGradient id="agrow2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.35}/><stop offset="100%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)"/><XAxis dataKey="m" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:"#1e1e2d",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:12,color:"#fff"}}/><Area type="monotone" dataKey="c" name="Total Customers" stroke="#F97316" fill="url(#agrow1)" strokeWidth={2}/><Area type="monotone" dataKey="ret" name="Active" stroke="#22c55e" fill="url(#agrow2)" strokeWidth={2}/></AreaChart></ResponsiveContainer>}
     </div>
     <NpsPanel/>
     <div className="gc rounded-xl p-4" style={CARD}>
@@ -5272,11 +5272,11 @@ const WhatsAppSettingsTab=()=>{
             {qr
               ? qr.startsWith("data:")
                 ? <img src={qr} alt="WhatsApp QR" className="w-52 h-52 rounded-xl bg-white p-2"/>
-                : <div className="rounded-xl bg-white p-3"><Suspense fallback={<div className="w-52 h-52 flex items-center justify-center"><RefreshCw size={24} className="animate-spin text-violet-400"/></div>}><QRCodeSVG value={qr} size={200}/></Suspense></div>
+                : <div className="rounded-xl bg-white p-3"><Suspense fallback={<div className="w-52 h-52 flex items-center justify-center"><RefreshCw size={24} className="animate-spin text-orange-400"/></div>}><QRCodeSVG value={qr} size={200}/></Suspense></div>
               : <div className="w-52 h-52 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.05)"}}><RefreshCw size={28} className="text-slate-500 animate-spin"/></div>
             }
           </div>
-          <button onClick={fetchQr} className="text-xs text-violet-400 flex items-center gap-1 mx-auto"><RefreshCw size={10}/>Refresh QR</button>
+          <button onClick={fetchQr} className="text-xs text-orange-400 flex items-center gap-1 mx-auto"><RefreshCw size={10}/>Refresh QR</button>
         </>}
         {starting2&&<>
           <div className="text-lg font-bold text-amber-400 mb-1">Starting…</div>
@@ -5343,7 +5343,7 @@ const WhatsAppSettingsTab=()=>{
                 <input value={(cfg as any)[f.k]||""} type={f.type||"text"} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none font-mono" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
               </div>
             ))}
-            <button onClick={saveAdvanced} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"rgba(139,92,246,0.3)"}}>{saving?"Saving…":"Save"}</button>
+            <button onClick={saveAdvanced} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"rgba(249,115,22,0.3)"}}>{saving?"Saving…":"Save"}</button>
           </div>
         )}
       </div>
@@ -5402,7 +5402,7 @@ const TwoFactorPanel=()=>{
           <div className="text-sm font-semibold text-white flex items-center gap-2"><Lock size={14} className={enabled?"text-green-400":"text-amber-400"}/>{enabled?"Two-Factor Authentication: ON":"Two-Factor Authentication: OFF"}</div>
           <div className="text-xs text-slate-400 mt-0.5">{enabled?"Your account is protected with TOTP 2FA (Google Authenticator / Authy)":"Add an extra layer of security — required every time you log in"}</div>
         </div>
-        {status&&!enabled&&step==="idle"&&<button onClick={startSetup} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Enable</button>}
+        {status&&!enabled&&step==="idle"&&<button onClick={startSetup} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Enable</button>}
         {status&&enabled&&step==="idle"&&<button onClick={()=>{setStep("disable");setMsg(null);}} className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400" style={{background:"rgba(239,68,68,0.1)"}}>Disable</button>}
       </div>
       {step==="setup"&&qr&&(
@@ -5495,7 +5495,7 @@ const IntegrationsTab=()=>{
                   <input type={f.type} value={cfg[f.k]||""} onChange={e=>setCfg(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
                 ))}
                 <div className="flex gap-2 pt-1">
-                  <button onClick={()=>save(provider)} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={11} className="animate-spin"/>:<Check size={11}/>}Save & Connect</button>
+                  <button onClick={()=>save(provider)} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{saving?<RefreshCw size={11} className="animate-spin"/>:<Check size={11}/>}Save & Connect</button>
                   <button onClick={()=>runTest(provider)} disabled={testing===provider} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.1)",color:"#67e8f9"}}>{testing===provider?<RefreshCw size={11} className="animate-spin"/>:<Wifi size={11}/>}Test Connection</button>
                 </div>
               </div>
@@ -5571,7 +5571,7 @@ const AddStaffForm=()=>{
         </div>
         <p className="text-xs text-amber-400 mt-2">⚠️ Save the password now — it is not shown again after this screen.</p>
       </div>
-      <button onClick={()=>setResult(null)} className="text-xs font-medium px-3 py-2 rounded-lg text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Add Another Staff Member</button>
+      <button onClick={()=>setResult(null)} className="text-xs font-medium px-3 py-2 rounded-lg text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Add Another Staff Member</button>
     </div>
   );
 
@@ -5606,11 +5606,11 @@ const AddStaffForm=()=>{
           <PhoneInput value={staffPhone} onChange={v=>{setStaffPhone(v);setErr("");}} inputStyle={inpSt}/>
         </div>
       </div>
-      <div className="rounded-lg px-3 py-2 text-xs text-slate-400" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
-        🔑 Login email will be auto-generated as <span className="font-mono text-violet-300">{staffName.trim()?`${staffName.trim().split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g,"")}.${staffRole==="BRANCH_MANAGER"?"manager":staffRole==="MARKETING_STAFF"?"marketing":"staff"}XX@theloyaly.com`:"name.roleXX@theloyaly.com"}</span>
+      <div className="rounded-lg px-3 py-2 text-xs text-slate-400" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.15)"}}>
+        🔑 Login email will be auto-generated as <span className="font-mono text-orange-300">{staffName.trim()?`${staffName.trim().split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g,"")}.${staffRole==="BRANCH_MANAGER"?"manager":staffRole==="MARKETING_STAFF"?"marketing":"staff"}XX@theloyaly.com`:"name.roleXX@theloyaly.com"}</span>
       </div>
       {err&&<div className="text-xs text-red-400">{err}</div>}
-      <button onClick={create} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+      <button onClick={create} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
         {saving?<RefreshCw size={12} className="animate-spin"/>:<UserPlus size={12}/>}{saving?"Creating…":"Create Staff Account"}
       </button>
 
@@ -5651,7 +5651,7 @@ const DeleteAccountModal=({onClose,onDeleted}:{onClose:()=>void,onDeleted:()=>vo
   };
   return(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)"}}>
-      <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{background:"#0f0a1e",border:"1px solid rgba(239,68,68,0.3)"}}>
+      <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{background:"#1A0F0A",border:"1px solid rgba(239,68,68,0.3)"}}>
         {step===1&&<>
           <div className="text-center">
             <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{background:"rgba(239,68,68,0.12)"}}>
@@ -5818,14 +5818,14 @@ const SettingsPage=({wa,onConnect}:any)=>{
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
-      <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(139,92,246,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
+      <div className="flex gap-1 overflow-x-auto pb-1">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs whitespace-nowrap ${tab===t.id?"text-white":"text-slate-400"}`} style={tab===t.id?{background:"rgba(249,115,22,0.2)"}:{}}><t.icon size={12}/>{t.label}{t.id==="whatsapp"&&<span className={`w-1.5 h-1.5 rounded-full ${wa?"bg-green-400":"bg-red-400"}`}/>}</button>)}</div>
       {tab==="loyalty"&&<LoyaltyPage/>}
       <div className="gc rounded-xl p-5" style={{...CARD,...(tab==="loyalty"?{display:"none"}:{})}}>
         {tab==="business"&&<div className="space-y-4">
           <div className="flex items-center gap-4 mb-2">
             {logoUrlVal
               ?<img src={logoUrlVal} className="w-16 h-16 rounded-2xl object-contain" style={{background:"rgba(255,255,255,0.08)"}} alt="logo"/>
-              :<div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#8b5cf6,#06b6d4)"}}><span className="text-white font-bold text-xl">{bizNameVal.slice(0,2).toUpperCase()||"BZ"}</span></div>
+              :<div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#F97316,#06b6d4)"}}><span className="text-white font-bold text-xl">{bizNameVal.slice(0,2).toUpperCase()||"BZ"}</span></div>
             }
             <div>
               <div className="text-xs font-semibold text-white">{bizNameVal||"Your Business"}</div>
@@ -5844,7 +5844,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
                 {INDUSTRY_OPTIONS.map(o=><option key={o} value={o} style={{background:"#1a1030"}}>{o}</option>)}
               </select>
               <div className="text-[10px] text-slate-500 mt-1">
-                POS type: <span className="text-violet-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
+                POS type: <span className="text-orange-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
               </div>
             </div>
           </div>
@@ -5853,12 +5853,12 @@ const SettingsPage=({wa,onConnect}:any)=>{
               <div className="text-xs font-medium text-white">Campaign Approval Workflow</div>
               <div className="text-[10px] text-slate-500 mt-0.5">When on, campaigns created by Marketing Staff go to PENDING_APPROVAL — you must approve before launch</div>
             </div>
-            <button onClick={()=>setRequiresApproval(p=>!p)} className="w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-4" style={{background:requiresApproval?"#8b5cf6":"rgba(255,255,255,0.1)"}}>
+            <button onClick={()=>setRequiresApproval(p=>!p)} className="w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-4" style={{background:requiresApproval?"#F97316":"rgba(255,255,255,0.1)"}}>
               <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{left:requiresApproval?"calc(100% - 18px)":"2px"}}/>
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+            <button onClick={saveBizSettings} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save Changes</button>
             {bizSaved&&<span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12}/>Saved</span>}
           </div>
         </div>}
@@ -5892,7 +5892,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
           </div>
 
           {/* Invite form */}
-          <div className="p-4 rounded-xl space-y-3" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
+          <div className="p-4 rounded-xl space-y-3" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.15)"}}>
             <h4 className="text-xs font-semibold text-white">Add a Staff Member</h4>
             <p className="text-xs text-slate-400">Fill in their details. The system will generate a login email for them. You set the password. Their credentials will be emailed to them.</p>
             <AddStaffForm/>
@@ -5909,7 +5909,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         </div>}
         {tab==="integrations"&&<IntegrationsTab/>}
         {tab==="stripe"&&<BillingTab/>}
-        {tab==="security"&&<div className="space-y-4"><TwoFactorPanel/>{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
+        {tab==="security"&&<div className="space-y-4"><TwoFactorPanel/>{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-orange-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
         {tab==="fbr"&&<FBRPanel/>}
       </div>
@@ -5925,12 +5925,12 @@ const AbStatsBar=({campaignId,winnerId}:{campaignId:string;winnerId?:string|null
   useEffect(()=>{api.campaigns.abStats(campaignId).then(setAb).catch(()=>{});},[campaignId]);
   if(!ab?.isAbTest||!ab.variants?.length)return null;
   return(
-    <div className="rounded-xl p-3 space-y-2" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-300"><Repeat size={11}/>A/B Test Results{ab.winner&&<span className="ml-1 px-1.5 py-0.5 rounded text-[10px]" style={{background:"rgba(34,197,94,0.15)",color:"#4ade80"}}>Winner: Variant {ab.winner}</span>}</div>
+    <div className="rounded-xl p-3 space-y-2" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.15)"}}>
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-orange-300"><Repeat size={11}/>A/B Test Results{ab.winner&&<span className="ml-1 px-1.5 py-0.5 rounded text-[10px]" style={{background:"rgba(34,197,94,0.15)",color:"#4ade80"}}>Winner: Variant {ab.winner}</span>}</div>
       {ab.variants.map((v:any)=>(
         <div key={v.id} className="flex items-center gap-2">
           <span className="text-[11px] font-mono text-slate-300 w-6">{v.id}</span>
-          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${v.stats?.readRate??0}%`,background:ab.winner===v.id?"#22c55e":"#8b5cf6"}}/></div>
+          <div className="flex-1 h-2 rounded-full" style={{background:"rgba(255,255,255,0.06)"}}><div className="h-full rounded-full transition-all" style={{width:`${v.stats?.readRate??0}%`,background:ab.winner===v.id?"#22c55e":"#F97316"}}/></div>
           <span className="text-[11px] text-slate-400 w-10 text-right">{v.stats?.readRate??0}% read</span>
           <span className="text-[11px] text-slate-500 w-12 text-right">{v.stats?.sent??0} sent</span>
         </div>
@@ -5999,7 +5999,7 @@ const SegmentsPage=()=>{
         <div>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs text-slate-400">Match</span>
-            <div className="flex gap-1">{(["AND","OR"] as const).map(l=><button key={l} onClick={()=>setLogic(l)} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${logic===l?"text-white":"text-slate-400"}`} style={{background:logic===l?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.04)"}}>{l}</button>)}</div>
+            <div className="flex gap-1">{(["AND","OR"] as const).map(l=><button key={l} onClick={()=>setLogic(l)} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${logic===l?"text-white":"text-slate-400"}`} style={{background:logic===l?"rgba(249,115,22,0.3)":"rgba(255,255,255,0.04)"}}>{l}</button>)}</div>
             <span className="text-xs text-slate-400">of the following rules:</span>
           </div>
           <div className="space-y-2">{conditions.map((c:any,i:number)=>(
@@ -6014,12 +6014,12 @@ const SegmentsPage=()=>{
               {conditions.length>1&&<button onClick={()=>removeCond(i)} className="text-slate-500 hover:text-red-400"><X size={14}/></button>}
             </div>
           ))}</div>
-          <button onClick={addCond} className="mt-2 flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"><Plus size={12}/>Add rule</button>
+          <button onClick={addCond} className="mt-2 flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300"><Plus size={12}/>Add rule</button>
         </div>
         <div className="flex items-center gap-3 pt-2 border-t border-white/5">
           <button onClick={doPreview} disabled={previewing} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium" style={{background:"rgba(6,182,212,0.12)",color:"#67e8f9"}}>{previewing?<RefreshCw size={12} className="animate-spin"/>:<Eye size={12}/>}Preview</button>
           {preview&&<span className="text-xs text-slate-300"><span className="font-bold text-white">{preview.count}</span> customers match</span>}
-          <button onClick={doSave} disabled={saving||!name.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50 ml-auto" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:<Check size={12}/>}Save Segment</button>
+          <button onClick={doSave} disabled={saving||!name.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50 ml-auto" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{saving?<RefreshCw size={12} className="animate-spin"/>:<Check size={12}/>}Save Segment</button>
         </div>
       </div>
     </div>
@@ -6029,14 +6029,14 @@ const SegmentsPage=()=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Custom Segments</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Build no-code audience filters with AND/OR rule trees</p></div>
-        <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={13}/>New Segment</button>
+        <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={13}/>New Segment</button>
       </div>
       <div className="gc rounded-xl overflow-hidden" style={CARD}>
         {loading?<div className="p-4 space-y-2">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-12"/>)}</div>:segs.length===0?(
           <div className="py-12 text-center space-y-3">
             <Filter size={32} className="mx-auto text-slate-600"/>
             <p className="text-sm text-slate-400">No custom segments yet</p>
-            <button onClick={startNew} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create your first segment</button>
+            <button onClick={startNew} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Create your first segment</button>
           </div>
         ):(
           <div className="divide-y divide-white/5">{segs.map((s:any)=>(
@@ -6098,10 +6098,10 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
   const totalSent=campaigns.reduce((a:number,c:any)=>a+(c.stats?.sent??0),0);
   const totalDel=campaigns.reduce((a:number,c:any)=>a+(c.stats?.delivered??0),0);
   const totalRead=campaigns.reduce((a:number,c:any)=>a+(c.stats?.read??0),0);
-  const statusColor=(s:string)=>s==="ACTIVE"||s==="LAUNCHED"?C.green:s==="SCHEDULED"?C.amber:s==="DRAFT"?"#64748b":s==="COMPLETED"?"#8b5cf6":"#64748b";
+  const statusColor=(s:string)=>s==="ACTIVE"||s==="LAUNCHED"?C.green:s==="SCHEDULED"?C.amber:s==="DRAFT"?"#64748b":s==="COMPLETED"?"#F97316":"#64748b";
   return(
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">Send WhatsApp messages to your customers in bulk</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
+      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">Send WhatsApp messages to your customers in bulk</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={14}/>Campaign Builder</button></div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {loading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
@@ -6112,15 +6112,15 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
         </>}
       </div>
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:campaigns.length===0?
-        <div className="gc rounded-xl p-8 text-center" style={CARD}><Target size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No campaigns yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Create First Campaign</button></div>:
+        <div className="gc rounded-xl p-8 text-center" style={CARD}><Target size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No campaigns yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Create First Campaign</button></div>:
       <div className="space-y-3">{campaigns.map((c:any)=>(
         <div key={c.id} className="gc rounded-xl p-4" style={CARD}>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:statusColor(c.status)+"20"}}>
-                {c.status==="ACTIVE"||c.status==="LAUNCHED"?<Play size={15} className="text-green-400"/>:c.status==="SCHEDULED"?<Clock size={15} className="text-amber-400"/>:c.status==="COMPLETED"?<Check size={15} className="text-violet-400"/>:<Edit size={15} className="text-slate-400"/>}
+                {c.status==="ACTIVE"||c.status==="LAUNCHED"?<Play size={15} className="text-green-400"/>:c.status==="SCHEDULED"?<Clock size={15} className="text-amber-400"/>:c.status==="COMPLETED"?<Check size={15} className="text-orange-400"/>:<Edit size={15} className="text-slate-400"/>}
               </div>
-              <div><div className="text-sm font-medium text-white">{c.name}</div><div className="text-xs text-slate-400 flex items-center gap-1.5">{c.targetSegment&&<Badge color={SEG_COLORS[c.targetSegment as keyof typeof SEG_COLORS]||"#8b5cf6"}>{c.targetSegment}</Badge>}<span>·</span><span className="font-mono">{new Date(c.createdAt||Date.now()).toLocaleDateString()}</span></div></div>
+              <div><div className="text-sm font-medium text-white">{c.name}</div><div className="text-xs text-slate-400 flex items-center gap-1.5">{c.targetSegment&&<Badge color={SEG_COLORS[c.targetSegment as keyof typeof SEG_COLORS]||"#F97316"}>{c.targetSegment}</Badge>}<span>·</span><span className="font-mono">{new Date(c.createdAt||Date.now()).toLocaleDateString()}</span></div></div>
             </div>
             <div className="flex items-center gap-2">
               <Badge color={statusColor(c.status)}>{c.status}</Badge>
@@ -6184,7 +6184,7 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
             <div className="text-xs text-slate-400 mt-0.5">{total} total executions</div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={()=>{setShowTest(p=>!p);setTestResult(null);}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",color:"#a78bfa"}}>
+            <button onClick={()=>{setShowTest(p=>!p);setTestResult(null);}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:"rgba(249,115,22,0.15)",border:"1px solid rgba(249,115,22,0.3)",color:"#FFB085"}}>
               <Play size={11}/> Test Fire
             </button>
             <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={16}/></button>
@@ -6193,8 +6193,8 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
 
         {/* Test Fire panel */}
         {showTest&&(
-          <div className="p-4 border-b border-white/5" style={{background:"rgba(139,92,246,0.05)"}}>
-            <p className="text-xs text-violet-300 mb-3 font-medium">Choose a customer to send this automation to right now (bypasses cooldown for testing):</p>
+          <div className="p-4 border-b border-white/5" style={{background:"rgba(249,115,22,0.05)"}}>
+            <p className="text-xs text-orange-300 mb-3 font-medium">Choose a customer to send this automation to right now (bypasses cooldown for testing):</p>
             {testResult&&<div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{background:testResult.ok?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",color:testResult.ok?"#86efac":"#fca5a5"}}>{testResult.msg}</div>}
             <input value={custSearch} onChange={e=>setCustSearch(e.target.value)} placeholder="Search customers…" className="w-full px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500 outline-none mb-2" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -6204,7 +6204,7 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
                     <div className="text-xs font-medium text-white">{c.fullName}</div>
                     <div className="text-[10px] text-slate-500">{c.whatsappNumber}</div>
                   </div>
-                  <button onClick={()=>testFire(c.id,c.fullName)} disabled={!!testingId} className="px-2.5 py-1 rounded-md text-[10px] font-semibold text-white disabled:opacity-40 flex items-center gap-1" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+                  <button onClick={()=>testFire(c.id,c.fullName)} disabled={!!testingId} className="px-2.5 py-1 rounded-md text-[10px] font-semibold text-white disabled:opacity-40 flex items-center gap-1" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
                     {testingId===c.id?<RefreshCw size={10} className="animate-spin"/>:<Zap size={10}/>}
                     {testingId===c.id?"Firing…":"Fire"}
                   </button>
@@ -6219,7 +6219,7 @@ const AutomationRunsModal=({auto,onClose}:{auto:any;onClose:()=>void})=>{
           {loading?[...Array(5)].map((_,i)=><Skeleton key={i} h="h-14"/>):runs.length===0?
             <div className="text-center py-8 space-y-3">
               <div className="text-slate-400 text-sm">No runs yet — this automation hasn't fired</div>
-              <button onClick={()=>setShowTest(true)} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>
+              <button onClick={()=>setShowTest(true)} className="px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>
                 <Play size={11} className="inline mr-1"/>Test fire it now
               </button>
             </div>:
@@ -6276,23 +6276,23 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
   return(
     <div className="space-y-4">
       {logsFor&&<AutomationRunsModal auto={logsFor} onClose={()=>setLogsFor(null)}/>}
-      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Automations</h1><p className="text-xs text-slate-400 mt-0.5">Set up automatic messages that send themselves — no manual work needed</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Build Automation</button></div>
+      <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Automations</h1><p className="text-xs text-slate-400 mt-0.5">Set up automatic messages that send themselves — no manual work needed</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}><Plus size={14}/>Build Automation</button></div>
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:autos.length===0?
-        <div className="gc rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Build First Automation</button></div>:
+        <div className="gc rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Build First Automation</button></div>:
       <div className="space-y-3">{autos.map((a:any)=>{
         const on=a.isActive??a.on??false;
         const compiledActions=(a.compiledJson?.actions||a.compiledJson||[]);
         const triggerType=a.trigger?.type||a.trigger||(typeof a.compiledJson?.trigger==="object"?a.compiledJson?.trigger?.type:a.compiledJson?.trigger)||"—";
         return(
-        <div key={a.id} className={`gc rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} style={{...CARD,border:`1px solid ${on?"rgba(139,92,246,0.3)":"rgba(255,255,255,0.07)"}`}}>
+        <div key={a.id} className={`gc rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} style={{...CARD,border:`1px solid ${on?"rgba(249,115,22,0.3)":"rgba(255,255,255,0.07)"}`}}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:on?"rgba(139,92,246,0.15)":"rgba(255,255,255,0.05)"}}><Zap size={16} className={on?"text-violet-400":"text-slate-500"}/></div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:on?"rgba(249,115,22,0.15)":"rgba(255,255,255,0.05)"}}><Zap size={16} className={on?"text-orange-400":"text-slate-500"}/></div>
               <div className="min-w-0"><div className="text-sm font-medium text-white truncate">{a.name}</div><div className="text-xs text-slate-400 mt-0.5 truncate"><span className="text-cyan-400">IF</span> {getTriggerLabel(triggerType)} <span className="text-amber-400">→ THEN</span> {getActionLabel(compiledActions)}</div></div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={()=>setLogsFor(a)} className="px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300 font-medium flex items-center gap-1" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="View run logs"><Activity size={11}/>Logs</button>
-              <button onClick={()=>toggle(a.id,on)} disabled={toggling===a.id} className={`w-10 h-5 rounded-full relative flex-shrink-0 transition-colors ${on?"bg-violet-500":"bg-white/10"} disabled:opacity-50`}>
+              <button onClick={()=>toggle(a.id,on)} disabled={toggling===a.id} className={`w-10 h-5 rounded-full relative flex-shrink-0 transition-colors ${on?"bg-orange-500":"bg-white/10"} disabled:opacity-50`}>
                 {toggling===a.id?<RefreshCw size={10} className="absolute inset-0 m-auto text-white animate-spin"/>:<div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:on?22:2}}/>}
               </button>
             </div>
@@ -6324,18 +6324,18 @@ type MenuItem={id:string;cat:string;name:string;price:number;stock?:number;color
 const DEFAULT_MENUS:Record<string,MenuItem[]>={
   restaurant:[
     {id:"r1",cat:"Starters",name:"Soup of the Day",price:3.5,stock:20,color:"#f59e0b"},{id:"r2",cat:"Starters",name:"Garlic Bread",price:2.5,stock:30,color:"#f59e0b"},
-    {id:"r3",cat:"Mains",name:"Grilled Chicken",price:12.5,stock:15,color:"#8b5cf6"},{id:"r4",cat:"Mains",name:"Beef Burger",price:9.5,stock:20,color:"#8b5cf6"},{id:"r5",cat:"Mains",name:"Margherita Pizza",price:10.0,stock:10,color:"#8b5cf6"},{id:"r6",cat:"Mains",name:"Pasta Carbonara",price:9.0,stock:18,color:"#8b5cf6"},
+    {id:"r3",cat:"Mains",name:"Grilled Chicken",price:12.5,stock:15,color:"#F97316"},{id:"r4",cat:"Mains",name:"Beef Burger",price:9.5,stock:20,color:"#F97316"},{id:"r5",cat:"Mains",name:"Margherita Pizza",price:10.0,stock:10,color:"#F97316"},{id:"r6",cat:"Mains",name:"Pasta Carbonara",price:9.0,stock:18,color:"#F97316"},
     {id:"r7",cat:"Drinks",name:"Americano",price:2.8,stock:50,color:"#06b6d4"},{id:"r8",cat:"Drinks",name:"Latte",price:3.5,stock:50,color:"#06b6d4"},{id:"r9",cat:"Drinks",name:"Fresh OJ",price:3.0,stock:25,color:"#06b6d4"},
     {id:"r10",cat:"Desserts",name:"Chocolate Brownie",price:4.5,stock:12,color:"#ec4899"},{id:"r11",cat:"Desserts",name:"Cheesecake",price:4.0,stock:8,color:"#ec4899"},
   ],
   salon:[
     {id:"s1",cat:"Hair",name:"Haircut – Ladies",price:35,color:"#ec4899"},{id:"s2",cat:"Hair",name:"Haircut – Gents",price:20,color:"#ec4899"},{id:"s3",cat:"Hair",name:"Hair Colour",price:65,color:"#ec4899"},{id:"s4",cat:"Hair",name:"Highlights",price:80,color:"#ec4899"},
-    {id:"s5",cat:"Nails",name:"Manicure",price:25,color:"#8b5cf6"},{id:"s6",cat:"Nails",name:"Pedicure",price:30,color:"#8b5cf6"},{id:"s7",cat:"Nails",name:"Gel Nails",price:45,color:"#8b5cf6"},
+    {id:"s5",cat:"Nails",name:"Manicure",price:25,color:"#F97316"},{id:"s6",cat:"Nails",name:"Pedicure",price:30,color:"#F97316"},{id:"s7",cat:"Nails",name:"Gel Nails",price:45,color:"#F97316"},
     {id:"s8",cat:"Skin",name:"Facial",price:50,color:"#06b6d4"},{id:"s9",cat:"Skin",name:"Threading",price:8,color:"#06b6d4"},{id:"s10",cat:"Skin",name:"Eyebrow Shape",price:12,color:"#06b6d4"},
     {id:"s11",cat:"Packages",name:"Bridal Package",price:250,color:"#f59e0b"},{id:"s12",cat:"Packages",name:"Pamper Day",price:120,color:"#f59e0b"},
   ],
   gym:[
-    {id:"g1",cat:"Memberships",name:"Monthly – Basic",price:30,desc:"Gym access only",color:"#3b82f6"},{id:"g2",cat:"Memberships",name:"Monthly – Premium",price:50,desc:"Gym + classes",color:"#8b5cf6"},
+    {id:"g1",cat:"Memberships",name:"Monthly – Basic",price:30,desc:"Gym access only",color:"#3b82f6"},{id:"g2",cat:"Memberships",name:"Monthly – Premium",price:50,desc:"Gym + classes",color:"#F97316"},
     {id:"g3",cat:"Memberships",name:"Quarterly",price:85,desc:"3 month all-access",color:"#06b6d4"},{id:"g4",cat:"Memberships",name:"Annual",price:299,desc:"Best value",color:"#f59e0b"},
     {id:"g5",cat:"Add-ons",name:"Day Pass",price:8,desc:"Single visit",color:"#22c55e"},{id:"g6",cat:"Add-ons",name:"PT Session (1hr)",price:45,desc:"Personal training",color:"#ec4899"},
     {id:"g7",cat:"Add-ons",name:"Class Pack (10)",price:70,desc:"10 group classes",color:"#f97316"},{id:"g8",cat:"Add-ons",name:"Locker Rental",price:5,desc:"Monthly locker",color:"#6b7280"},
@@ -6479,13 +6479,13 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
                 <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
                   {item.image
                     ?<img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
-                    :<div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(139,92,246,0.12)"}}><ShoppingBag size={14} className="text-violet-400"/></div>
+                    :<div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(249,115,22,0.12)"}}><ShoppingBag size={14} className="text-orange-400"/></div>
                   }
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-xs font-semibold">{item.name}</div>
                     <div className="text-slate-400 text-[10px]">{item.desc||""} {item.stock!=null?`· Stock: ${item.stock}`:""}</div>
                   </div>
-                  <span className="text-violet-400 text-xs font-bold">{item.price.toFixed(2)}</span>
+                  <span className="text-orange-400 text-xs font-bold">{item.price.toFixed(2)}</span>
                   <button onClick={()=>startEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)"}}><Edit size={12}/></button>
                   <button onClick={()=>setItems(p=>p.filter(i=>i.id!==item.id))} className="p-1.5 rounded-lg text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)"}}><X size={12}/></button>
                 </div>
@@ -6504,7 +6504,7 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
                 :<div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.04)",border:"1px dashed rgba(255,255,255,0.15)"}}><Image size={18} className="text-slate-500"/></div>
               }
               <div>
-                <button onClick={pickImage} className="block px-3 py-1.5 rounded-lg text-[11px] text-violet-400 font-semibold mb-1" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}>📷 {form.image?"Change Photo":"Upload Photo"}</button>
+                <button onClick={pickImage} className="block px-3 py-1.5 rounded-lg text-[11px] text-orange-400 font-semibold mb-1" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}>📷 {form.image?"Change Photo":"Upload Photo"}</button>
                 {form.image&&<button onClick={()=>setForm(p=>({...p,image:""}))} className="text-[10px] text-red-400 hover:text-red-300">Remove</button>}
                 <div className="text-[10px] text-slate-500 mt-0.5">PNG/JPG · max 500 KB</div>
               </div>
@@ -6519,13 +6519,13 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
               <div className="col-span-2"><label className="text-[10px] text-slate-400 block mb-1">Description</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/></div>
             </div>
             <div className="flex gap-2">
-              <button onClick={applyEdit} className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Item</button>
+              <button onClick={applyEdit} className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save Item</button>
               <button onClick={()=>setEditing(null)} className="px-4 py-2 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.06)"}}>Cancel</button>
             </div>
           </div>
         )}
         <div className="flex items-center justify-between p-5 border-t border-white/10">
-          <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-violet-400 font-semibold" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}><Plus size={13}/>Add Item</button>
+          <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-orange-400 font-semibold" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}><Plus size={13}/>Add Item</button>
           <button onClick={save} className="px-5 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Save & Close</button>
         </div>
       </div>
@@ -6648,16 +6648,16 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
           <button onClick={markPaid} disabled={paying} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>
             {paying?<RefreshCw size={12} className="animate-spin"/>:<CheckCircle size={12}/>}{paying?"Processing...":"Mark as Paid"}
           </button>
-          <button onClick={openEdit} className="px-3 py-2 rounded-xl text-violet-300 hover:text-white transition-colors" style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.25)"}} title="Edit Order"><Edit size={14}/></button>
+          <button onClick={openEdit} className="px-3 py-2 rounded-xl text-orange-300 hover:text-white transition-colors" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.25)"}} title="Edit Order"><Edit size={14}/></button>
           <button onClick={()=>printBill(order,currency,lastFbrData)} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="Print Bill"><Printer size={14}/></button>
           <button onClick={()=>{if(confirm("Delete this unpaid order?"))removeOrder(order.id);}} className="px-3 py-2 rounded-xl text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}} title="Delete Order"><Trash2 size={14}/></button>
         </div>
       )}
       {/* Inline order editor */}
       {editing&&(
-        <div className="mt-3 rounded-xl overflow-hidden" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(139,92,246,0.25)"}}>
+        <div className="mt-3 rounded-xl overflow-hidden" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(249,115,22,0.25)"}}>
           <div className="px-3 py-2 flex items-center justify-between" style={{borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-            <span className="text-xs font-semibold text-violet-300">Edit Order</span>
+            <span className="text-xs font-semibold text-orange-300">Edit Order</span>
             <button onClick={()=>setEditing(false)} className="text-slate-500 hover:text-slate-300"><X size={14}/></button>
           </div>
           {/* Current items */}
@@ -6667,7 +6667,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
                 <button onClick={()=>editQty(i.name,-1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(239,68,68,0.2)",color:"#f87171"}}>−</button>
                 <span className="text-slate-300 flex-1 truncate">{i.name}</span>
                 <span className="text-white font-bold w-4 text-center">{i.qty}</span>
-                <button onClick={()=>editQty(i.name,1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(139,92,246,0.25)",color:"#c4b5fd"}}>+</button>
+                <button onClick={()=>editQty(i.name,1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(249,115,22,0.25)",color:"#c4b5fd"}}>+</button>
                 <span className="text-slate-400 w-16 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
               </div>
             ))}
@@ -6687,7 +6687,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
             <div className="flex-1 text-xs text-white font-bold">
               New total: {currency} {editItems.reduce((s,i)=>s+i.qty*i.price,0).toFixed(2)}
             </div>
-            <button onClick={saveEdit} className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Save Changes</button>
+            <button onClick={saveEdit} className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save Changes</button>
             <button onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-lg text-xs text-slate-400" style={{background:"rgba(255,255,255,0.05)"}}>Cancel</button>
           </div>
         </div>
@@ -6711,8 +6711,8 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
             <div className="flex items-center gap-2 text-xs">
               {waSent==="sending"&&<><RefreshCw size={11} className="animate-spin text-slate-400"/><span className="text-slate-400">Sending WhatsApp receipt…</span></>}
               {waSent==="ok"&&<><WAIcon size={12} className="text-green-400"/><span className="text-green-400">WhatsApp receipt sent to {normPhone(order.phone)}</span></>}
-              {waSent==="fail"&&<><XCircle size={11} className="text-red-400"/><span className="text-red-400">WhatsApp failed</span><button onClick={()=>sendWA(order)} className="ml-auto text-violet-400 underline text-[10px]">Retry</button></>}
-              {waSent==="none"&&<><WAIcon size={12} className="text-slate-500"/><span className="text-slate-500">No WA sent</span><button onClick={()=>sendWA(order)} className="ml-auto text-violet-400 underline text-[10px]">Send now</button></>}
+              {waSent==="fail"&&<><XCircle size={11} className="text-red-400"/><span className="text-red-400">WhatsApp failed</span><button onClick={()=>sendWA(order)} className="ml-auto text-orange-400 underline text-[10px]">Retry</button></>}
+              {waSent==="none"&&<><WAIcon size={12} className="text-slate-500"/><span className="text-slate-500">No WA sent</span><button onClick={()=>sendWA(order)} className="ml-auto text-orange-400 underline text-[10px]">Send now</button></>}
             </div>
           )}
           {!order.phone&&<div className="text-[10px] text-slate-500">No phone number — WhatsApp receipt skipped</div>}
@@ -6827,7 +6827,7 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
                 </td>
                 <td className="px-4 py-3 text-white font-medium">{item.name}</td>
                 <td className="px-4 py-3"><span className="text-[10px] text-slate-400">{item.cat}</span></td>
-                <td className="px-4 py-3 text-violet-400 font-semibold">{item.price.toFixed(2)}</td>
+                <td className="px-4 py-3 text-orange-400 font-semibold">{item.price.toFixed(2)}</td>
                 {bizType==="restaurant"&&<td className="px-4 py-3 text-slate-400 text-[10px]">{item.prepTime?`${item.prepTime}m`:"—"}</td>}
                 {bizType==="retail"&&<td className="px-4 py-3 text-slate-500 text-[10px] font-mono">{item.barcode||"—"}</td>}
                 <td className="px-4 py-3">
@@ -6840,7 +6840,7 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
                   ):<span className="text-slate-600">Unlimited</span>}
                 </td>
                 <td className="px-4 py-3">
-                  {item.stock==null&&<button onClick={()=>update(item.id,50)} className="text-[10px] text-violet-400 hover:text-violet-300">Track Stock</button>}
+                  {item.stock==null&&<button onClick={()=>update(item.id,50)} className="text-[10px] text-orange-400 hover:text-orange-300">Track Stock</button>}
                   {item.stock!=null&&<button onClick={()=>update(item.id,undefined as any)} className="text-[10px] text-slate-500 hover:text-slate-300">Remove</button>}
                 </td>
               </tr>
@@ -6848,7 +6848,7 @@ const InventoryPanel=({bizType}:{bizType:string})=>{
           </tbody>
         </table>
       </div>
-      <button onClick={save} disabled={saving} className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saved ✓":"Save Stock Levels"}</button>
+      <button onClick={save} disabled={saving} className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{saving?"Saved ✓":"Save Stock Levels"}</button>
     </div>
   );
 };
@@ -7012,7 +7012,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
         {extraTop}
         {bizType==="retail"&&(
           <div className="gc rounded-2xl px-4 py-3 flex items-center gap-3" style={CARD}>
-            <Tag size={16} className="text-violet-400 flex-shrink-0"/>
+            <Tag size={16} className="text-orange-400 flex-shrink-0"/>
             <div className="flex-1">
               <div className="text-xs text-slate-300">Barcode scanner active — scan any product to add it instantly</div>
               <div className="text-[10px] text-slate-500 mt-0.5">Or set barcodes per product in Inventory tab</div>
@@ -7029,7 +7029,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
         <div className="gc rounded-2xl p-5" style={CARD}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
-              {cats.map((c,i)=>{const color=menuItems.find(x=>x.cat===c)?.color||"#8b5cf6";return(
+              {cats.map((c,i)=>{const color=menuItems.find(x=>x.cat===c)?.color||"#F97316";return(
                 <button key={c} onClick={()=>setCat(i)} className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all" style={cat===i?{background:(color)+"33",border:"1px solid "+(color)+"55",color}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#94a3b8"}}>{c}</button>
               );})}
             </div>
@@ -7040,7 +7040,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
               const inOrder=order.find(x=>x.name===item.name);
               const outOfStock=item.stock!=null&&item.stock<=0;
               return(
-                <div key={item.id} className="rounded-xl overflow-hidden transition-all" style={{background:inOrder?"rgba(139,92,246,0.12)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(139,92,246,0.4)":"1px solid rgba(255,255,255,0.08)",opacity:outOfStock?0.4:1}}>
+                <div key={item.id} className="rounded-xl overflow-hidden transition-all" style={{background:inOrder?"rgba(249,115,22,0.12)":"rgba(255,255,255,0.04)",border:inOrder?"1px solid rgba(249,115,22,0.4)":"1px solid rgba(255,255,255,0.08)",opacity:outOfStock?0.4:1}}>
                   {item.image&&<img src={item.image} alt={item.name} className="w-full h-20 object-cover"/>}
                   <button onClick={()=>!outOfStock&&addItem(item)} className="w-full p-3 text-left" disabled={outOfStock}>
                     <div className="text-white text-xs font-semibold mb-0.5 leading-tight">{item.name}</div>
@@ -7054,14 +7054,14 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                   {inOrder&&(
                     <div className="flex items-center justify-between px-3 pb-2">
                       <button onClick={()=>removeItem(item.name)} className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{background:"rgba(239,68,68,0.25)"}}>−</button>
-                      <span className="text-violet-300 text-xs font-bold">×{inOrder.qty}</span>
-                      <button onClick={()=>addItem(item)} className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{background:"rgba(139,92,246,0.35)"}}>+</button>
+                      <span className="text-orange-300 text-xs font-bold">×{inOrder.qty}</span>
+                      <button onClick={()=>addItem(item)} className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{background:"rgba(249,115,22,0.35)"}}>+</button>
                     </div>
                   )}
                 </div>
               );
             })}
-            {menuItems.filter(i=>i.cat===cats[cat]).length===0&&<div className="col-span-3 py-6 text-center text-slate-500 text-xs">No items in this category. <button onClick={()=>setShowMenu(true)} className="text-violet-400 underline">Add items</button></div>}
+            {menuItems.filter(i=>i.cat===cats[cat]).length===0&&<div className="col-span-3 py-6 text-center text-slate-500 text-xs">No items in this category. <button onClick={()=>setShowMenu(true)} className="text-orange-400 underline">Add items</button></div>}
           </div>
         </div>
 
@@ -7093,15 +7093,15 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           </div>
           <div className="flex gap-2 mb-3">
             {(["CASH","CARD","WALLET"] as const).map(m=>(
-              <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(139,92,246,0.3)",border:"1px solid rgba(139,92,246,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
+              <button key={m} onClick={()=>setMode(m)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${mode===m?"text-white":"text-slate-400"}`} style={mode===m?{background:"rgba(249,115,22,0.3)",border:"1px solid rgba(249,115,22,0.5)"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}>
                 {m==="CASH"&&"💵"}{m==="CARD"&&"💳"}{m==="WALLET"&&"⭐"}{m}
               </button>
             ))}
           </div>
           {/* Wallet panel */}
           {mode==="WALLET"&&(
-            <div className="mb-4 rounded-2xl p-4 space-y-3" style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.25)"}}>
-              {walletLooking&&<div className="text-xs text-violet-300 flex items-center gap-2"><RefreshCw size={12} className="animate-spin"/>Looking up points…</div>}
+            <div className="mb-4 rounded-2xl p-4 space-y-3" style={{background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.25)"}}>
+              {walletLooking&&<div className="text-xs text-orange-300 flex items-center gap-2"><RefreshCw size={12} className="animate-spin"/>Looking up points…</div>}
               {!walletLooking&&walletCustomer&&!walletCustomer.found&&phone.replace(/\D/g,"").length>=7&&(
                 <div className="text-xs text-amber-400 flex items-center gap-2">⚠️ No loyalty account found for this number — they'll earn points but can't redeem yet</div>
               )}
@@ -7110,7 +7110,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs font-semibold text-white">{walletCustomer.fullName}</div>
-                      <div className="text-[11px] text-violet-300 mt-0.5">⭐ {walletCustomer.pointsBalance.toLocaleString()} points available</div>
+                      <div className="text-[11px] text-orange-300 mt-0.5">⭐ {walletCustomer.pointsBalance.toLocaleString()} points available</div>
                       {walletCustomer.minRedeemPoints>0&&walletCustomer.pointsBalance<walletCustomer.minRedeemPoints&&(
                         <div className="text-[10px] text-amber-400 mt-0.5">Minimum {walletCustomer.minRedeemPoints} pts needed to redeem</div>
                       )}
@@ -7124,7 +7124,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-400">Points to redeem</span>
-                        <span className="text-violet-300 font-semibold">{walletPoints} pts = <span className="text-green-400 font-bold">{currency} {(walletPoints/(walletCustomer.redeemRate??100)).toFixed(2)}</span> off</span>
+                        <span className="text-orange-300 font-semibold">{walletPoints} pts = <span className="text-green-400 font-bold">{currency} {(walletPoints/(walletCustomer.redeemRate??100)).toFixed(2)}</span> off</span>
                       </div>
                       <input
                         type="range"
@@ -7134,7 +7134,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                         value={walletPoints}
                         onChange={e=>setWalletPoints(Number(e.target.value))}
                         className="w-full h-1.5 rounded-full appearance-none"
-                        style={{accentColor:"#8b5cf6"}}
+                        style={{accentColor:"#F97316"}}
                       />
                       <div className="flex justify-between text-[10px] text-slate-500"><span>0 pts</span><span>{Math.min(walletCustomer.pointsBalance,Math.ceil((orderRaw-discountValue)*(walletCustomer.redeemRate??100)))} pts</span></div>
                     </div>
@@ -7158,7 +7158,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                       {walletCustomer.giftCards.map((g:any)=>(
                         <div key={g.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg" style={{background:"rgba(255,255,255,0.04)"}}>
                           <span className="text-xs text-white font-mono">{g.code} <span className="text-emerald-300">{currency} {Number(g.balance).toFixed(2)}</span></span>
-                          <button onClick={()=>redeemGiftCode(g.code)} disabled={giftRedeemBusy} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>Redeem</button>
+                          <button onClick={()=>redeemGiftCode(g.code)} disabled={giftRedeemBusy} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Redeem</button>
                         </div>
                       ))}
                     </div>
@@ -7168,7 +7168,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
                     <div className="text-[11px] text-slate-400">Enter a gift card code</div>
                     <div className="flex gap-2">
                       <input value={giftCodeInput} onChange={e=>setGiftCodeInput(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX-XXXX" className="flex-1 min-w-0 px-3 py-2 rounded-xl text-xs text-white font-mono outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
-                      <button onClick={()=>redeemGiftCode(giftCodeInput)} disabled={giftRedeemBusy||!giftCodeInput.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex-shrink-0" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{giftRedeemBusy?"…":"Redeem"}</button>
+                      <button onClick={()=>redeemGiftCode(giftCodeInput)} disabled={giftRedeemBusy||!giftCodeInput.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{giftRedeemBusy?"…":"Redeem"}</button>
                     </div>
                     {giftRedeemMsg&&<div className={`text-[11px] ${giftRedeemMsg.ok?"text-emerald-400":"text-red-400"}`}>{giftRedeemMsg.text}</div>}
                   </div>
@@ -7182,7 +7182,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
           <div className="flex items-center gap-2 flex-wrap">
             <label className="text-xs text-slate-400">Discount</label>
             <div className="flex rounded-lg overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.1)"}}>
-              {(['value','percent'] as const).map(m=><button key={m} onClick={()=>setDiscountMode(m)} className="px-2.5 py-1 text-xs font-medium transition-all" style={discountMode===m?{background:"rgba(139,92,246,0.4)",color:"white"}:{background:"rgba(255,255,255,0.04)",color:"#94a3b8"}}>{m==='value'?currency:'%'}</button>)}
+              {(['value','percent'] as const).map(m=><button key={m} onClick={()=>setDiscountMode(m)} className="px-2.5 py-1 text-xs font-medium transition-all" style={discountMode===m?{background:"rgba(249,115,22,0.4)",color:"white"}:{background:"rgba(255,255,255,0.04)",color:"#94a3b8"}}>{m==='value'?currency:'%'}</button>)}
             </div>
             <input className="w-20 px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} type="number" min={0} step={discountMode==='percent'?1:0.01} max={discountMode==='percent'?100:undefined} placeholder={discountMode==='percent'?'%':'0.00'} value={discount||''} onChange={e=>setDiscount(Number(e.target.value))}/>
             {discount>0&&discountValue>0&&<span className="text-xs text-amber-400">= {currency} {discountValue.toFixed(2)} off</span>}
@@ -7198,7 +7198,7 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
             {order.map((i,idx)=><div key={idx} className="flex justify-between text-slate-300"><span>{i.name} ×{i.qty}</span><span>{currency} {(i.qty*i.price).toFixed(2)}</span></div>)}
             {!order.length&&<div className="text-slate-500 text-center py-3">Tap items from the menu</div>}
             {discountValue>0&&<div className="flex justify-between text-amber-400"><span>Discount {discount>0?`(${discount}${discountMode==='percent'?'%':''})`:''}  </span><span>-{currency} {discountValue.toFixed(2)}</span></div>}
-            {walletDiscount>0&&<div className="flex justify-between text-violet-400"><span>⭐ Wallet ({walletPoints} pts)</span><span>-{currency} {walletDiscount.toFixed(2)}</span></div>}
+            {walletDiscount>0&&<div className="flex justify-between text-orange-400"><span>⭐ Wallet ({walletPoints} pts)</span><span>-{currency} {walletDiscount.toFixed(2)}</span></div>}
             {giftDiscount>0&&<div className="flex justify-between text-emerald-400"><span>💳 Gift credit</span><span>-{currency} {giftDiscount.toFixed(2)}</span></div>}
           </div>
           <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold"><span>TOTAL</span><span>{currency} {total.toFixed(2)}</span></div>
@@ -7238,7 +7238,7 @@ const SalesHistory=({currency}:{currency:string})=>{
               <option value="">All</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="WALLET">Wallet</option>
             </select>
           </div>
-          <button onClick={()=>{setPg(1);load();}} className="px-3 py-1.5 rounded-xl text-xs text-white font-medium" style={{background:"rgba(139,92,246,0.3)"}}>Apply</button>
+          <button onClick={()=>{setPg(1);load();}} className="px-3 py-1.5 rounded-xl text-xs text-white font-medium" style={{background:"rgba(249,115,22,0.3)"}}>Apply</button>
         </div>
       </div>
       <div className="gc rounded-2xl overflow-hidden" style={CARD}>
@@ -7252,7 +7252,7 @@ const SalesHistory=({currency}:{currency:string})=>{
                 <td className="px-4 py-3 text-slate-300">{new Date(s.visitedAt).toLocaleString("en-GB",{dateStyle:"short",timeStyle:"short"})}</td>
                 <td className="px-4 py-3 text-white">{s.customer?.fullName??"—"}</td>
                 <td className="px-4 py-3 text-white font-medium">{currency} {Number(s.amountSpent).toFixed(2)}</td>
-                <td className="px-4 py-3"><Badge color={s.paymentMode==="CASH"?"#22c55e":s.paymentMode==="CARD"?"#3b82f6":"#8b5cf6"}>{s.paymentMode??"—"}</Badge></td>
+                <td className="px-4 py-3"><Badge color={s.paymentMode==="CASH"?"#22c55e":s.paymentMode==="CARD"?"#3b82f6":"#F97316"}>{s.paymentMode??"—"}</Badge></td>
                 <td className="px-4 py-3 text-slate-500 font-mono text-[10px] max-w-[100px] truncate">{s.fbrInvoiceNumber??"—"}</td>
                 <td className="px-4 py-3">{s.fbrSubmittedAt?<Badge color="#22c55e">OK</Badge>:<Badge color="#f59e0b">Pending</Badge>}</td>
                 <td className="px-4 py-3"><button onClick={e=>{e.stopPropagation();window.open(api.pos.receipt(s.id),"_blank");}} className="p-1 rounded text-slate-400 hover:text-white"><Printer size={12}/></button></td>
@@ -7278,7 +7278,7 @@ const SalesHistory=({currency}:{currency:string})=>{
             ))}
           </div>
           <div className="flex gap-2 mt-5">
-            <button onClick={()=>window.open(api.pos.receipt(sel.id),"_blank")} className="flex-1 py-2.5 rounded-xl text-xs text-white flex items-center justify-center gap-1.5 font-medium" style={{background:"rgba(139,92,246,0.3)"}}><Printer size={12}/>Receipt</button>
+            <button onClick={()=>window.open(api.pos.receipt(sel.id),"_blank")} className="flex-1 py-2.5 rounded-xl text-xs text-white flex items-center justify-center gap-1.5 font-medium" style={{background:"rgba(249,115,22,0.3)"}}><Printer size={12}/>Receipt</button>
             {!sel.fbrSubmittedAt&&<button onClick={async()=>{try{await api.pos.retryFbr(sel.id);setSel(null);load();}catch(e){alert((e as Error).message);}}} className="flex-1 py-2.5 rounded-xl text-xs text-amber-400 flex items-center justify-center gap-1.5" style={{background:"rgba(245,158,11,0.1)"}}><RefreshCw size={12}/>Retry FBR</button>}
           </div>
         </div>
@@ -7334,7 +7334,7 @@ const FBRPanel=()=>{
       <div className="gc rounded-2xl p-5" style={CARD}>
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-semibold text-white">FBR / PRA Configuration</span>
-          <button onClick={()=>setS(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrEnabled?"bg-violet-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrEnabled?22:2}}/></button>
+          <button onClick={()=>setS(p=>({...p,fbrEnabled:!p.fbrEnabled}))} className={`w-10 h-5 rounded-full relative transition-colors ${s.fbrEnabled?"bg-orange-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.fbrEnabled?22:2}}/></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div><label className="text-[10px] text-slate-400 block mb-1">Country</label>
@@ -7379,7 +7379,7 @@ const FBRPanel=()=>{
               setRes("ok");
             }catch(e:any){setFormErr(e?.message||"Save failed");}
             setSaving(false);
-          }} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}>{saving?"Saving...":"Save Settings"}</button>
+          }} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{saving?"Saving...":"Save Settings"}</button>
           <button onClick={async()=>{setTesting(true);setRes(null);try{await api.pos.stats();setRes("ok");}catch{setRes("fail");}setTesting(false);}} disabled={testing} className="px-4 py-2 rounded-xl text-xs text-slate-300 disabled:opacity-50 flex items-center gap-1.5" style={{background:"rgba(255,255,255,0.06)"}}>{testing?<RefreshCw size={12} className="animate-spin"/>:<WifiIcon size={12}/>}Test Connection</button>
           {res&&<span className={`px-3 py-2 rounded-xl text-xs ${res==="ok"?"text-green-400":"text-red-400"}`}>{res==="ok"?"✓ Connected":"✗ Failed"}</span>}
         </div>
@@ -7398,7 +7398,7 @@ const BIZ_TYPES=[
   {id:"restaurant",label:"Restaurant / Café",icon:"🍽",color:"#f59e0b"},
   {id:"salon",label:"Salon / Beauty",icon:"💇",color:"#ec4899"},
   {id:"gym",label:"Gym / Fitness",icon:"💪",color:"#06b6d4"},
-  {id:"retail",label:"Retail / General",icon:"🛍",color:"#8b5cf6"},
+  {id:"retail",label:"Retail / General",icon:"🛍",color:"#F97316"},
 ];
 
 const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
@@ -7443,7 +7443,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
           <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5"/>
           <div>
             <div className="text-white font-semibold text-sm mb-1">Business type not set</div>
-            <div className="text-xs text-slate-400">Go to <strong className="text-violet-400">Settings → Business Profile</strong> and set your industry category to auto-configure the POS for your business.</div>
+            <div className="text-xs text-slate-400">Go to <strong className="text-orange-400">Settings → Business Profile</strong> and set your industry category to auto-configure the POS for your business.</div>
           </div>
         </div>
       </div>
@@ -7461,7 +7461,7 @@ const POSPage=({role=ROLES.OWNER}:{role?:string})=>{
         </div>
         <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(255,255,255,0.05)"}}>
           {allTabs.map(([t,label])=>(
-            <button key={t} onClick={()=>setTab(t as any)} className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(139,92,246,0.3)"}:{}}>
+            <button key={t} onClick={()=>setTab(t as any)} className={`relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab===t?"text-white":"text-slate-400 hover:text-white"}`} style={tab===t?{background:"rgba(249,115,22,0.3)"}:{}}>
               {label}
               {(t==="kds")&&activeOrders.length>0&&<span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{background:"#ef4444"}}>{activeOrders.length}</span>}
             </button>
@@ -7622,10 +7622,10 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     <div className="min-h-screen relative overflow-x-hidden" style={{background:pt.bg,color:pt.tx,transition:"background 0.3s,color 0.3s"}}>
       {/* Ambient background orbs for glassmorphism depth */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(139,92,246,0.18) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%)",filter:"blur(40px)"}}/>
+        <div style={{position:"absolute",top:"-10%",left:"-5%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(249,115,22,0.18) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.1) 0%,transparent 70%)",filter:"blur(40px)"}}/>
         <div style={{position:"absolute",top:"40%",right:"-10%",width:"600px",height:"600px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)":"radial-gradient(circle,rgba(6,182,212,0.07) 0%,transparent 70%)",filter:"blur(40px)"}}/>
         <div style={{position:"absolute",bottom:"-10%",left:"30%",width:"500px",height:"500px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(236,72,153,0.08) 0%,transparent 70%)":"radial-gradient(circle,rgba(236,72,153,0.05) 0%,transparent 70%)",filter:"blur(40px)"}}/>
-        <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(139,92,246,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(139,92,246,0.05) 0%,transparent 70%)",filter:"blur(30px)"}}/>
+        <div style={{position:"absolute",top:"20%",left:"40%",width:"300px",height:"300px",borderRadius:"50%",background:portalDark?"radial-gradient(circle,rgba(249,115,22,0.07) 0%,transparent 70%)":"radial-gradient(circle,rgba(249,115,22,0.05) 0%,transparent 70%)",filter:"blur(30px)"}}/>
       </div>
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -7633,8 +7633,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         body{overscroll-behavior:none}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.35);border-radius:4px}
-        ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,0.6)}
+        ::-webkit-scrollbar-thumb{background:rgba(249,115,22,0.35);border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(249,115,22,0.6)}
         .gc{position:relative;overflow:hidden}
         .gc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);z-index:1;pointer-events:none}
         .gc::after{content:'';position:absolute;top:0;left:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent,rgba(255,255,255,0.15));z-index:1;pointer-events:none}
