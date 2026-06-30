@@ -3926,10 +3926,27 @@ const LoyaltyPage=()=>{
           ))}
         </div>
       </div>
+      {(()=>{
+        const ppp=Number((pointsConfig as any).pointsPerPound)||1;
+        const rate=Number((pointsConfig as any).redeemRate)||100;
+        const spend=50;
+        const earned=spend*ppp;
+        const rewardValue=(earned/rate);
+        const cur=localStorage.getItem("biz_currency")||"GBP";const sym=cur==="USD"?"$":cur==="PKR"?"₨":cur==="GBP"?"£":cur==="EUR"?"€":"£";
+        return(
+        <div className="gc rounded-xl p-4" style={{...CARD,borderColor:"rgba(249,115,22,0.3)"}}>
+          <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2"><DollarSign size={14} className="text-orange-400"/>Example with your current settings <InfoDot text="A quick illustration so you can see exactly what your customers earn and get back. Move the sliders above and this updates."/></h3>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            A customer spends <span className="text-white font-semibold">{sym}{spend}</span> → they earn <span className="text-orange-400 font-semibold">{earned} points</span>.
+            With your settings, <span className="text-white font-semibold">{rate} points = {sym}1</span>, so those points are worth about <span className="text-emerald-400 font-semibold">{sym}{rewardValue.toFixed(2)}</span> off their next visit.
+          </p>
+          <p className="text-[11px] text-slate-500 mt-2">This is just an example to show how generous your rewards feel. Adjust the sliders to make it more or less rewarding.</p>
+        </div>);
+      })()}
       <div className="gc rounded-xl p-4" style={CARD}>
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Info size={14} className="text-orange-400"/>How Points Work</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          {[{icon:Star,title:"Earn Points",desc:"1 point per £1 spent at check-in. Points are awarded via the POS webhook or manual check-in.",col:C.amber},{icon:Gift,title:"Redeem Rewards",desc:"Customers redeem via QR code or staff on the POS. Redemptions create DEBIT ledger entries.",col:C.green},{icon:Crown,title:"Tier Upgrades",desc:"Tiers are evaluated nightly by cron-service. Upgrades trigger TIER_UPGRADE automation.",col:C.primary}].map((item,i)=>(
+          {[{icon:Star,title:"Earn Points",desc:"Customers earn points every time they spend with you and check in.",col:C.amber},{icon:Gift,title:"Redeem Rewards",desc:"They turn points into rewards by scanning their QR code or asking your staff at the till.",col:C.green},{icon:Crown,title:"Tier Upgrades",desc:"Regulars automatically move up to higher tiers and get a friendly upgrade message.",col:C.primary}].map((item,i)=>(
             <div key={i} className="p-3 rounded-xl" style={{background:(item.col)+"0a",border:"1px solid "+(item.col)+"20"}}>
               <item.icon size={16} style={{color:item.col}} className="mb-2"/>
               <div className="font-medium text-white mb-1">{item.title}</div>

@@ -37,7 +37,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 31 | HR included in Growth plan | ✅ |
 | 32 | Role-based: only that role's panel is shown | ✅ |
 | 32b | Pro = everything unlimited except branches & integrations | ✅ |
-| 33 | Rewards calculator illustrative/easy + (i) | ⬜ |
+| 33 | Rewards calculator illustrative/easy + (i) | ✅ |
 | 34 | Website wording non-technical | 🟡 (rewritten in site overhaul; review) |
 | 35 | Signup shows "continue to …railway.app" | ⚙️ Google OAuth consent screen (Cloud Console) |
 | 36 | theloyaly.com default; dashboard shows railway url | ⚙️ Railway env vars (API_BASE_URL/FRONTEND_URL) |
