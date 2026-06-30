@@ -16,7 +16,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 8 | POS/FBR: Pakistan → FBR only; tax services for 5–6 major countries | ⬜ |
 | 9 | Settings (timezone/country/currency) apply per-business globally; country sets default dial code | ✅ |
 | 10 | Analytics wording → plain/layman | ⬜ |
-| 11 | Heatmap should look like a heatmap, not a table | ⬜ |
+| 11 | Heatmap should look like a heatmap, not a table | ✅ |
 | 12 | CRM fully mobile-friendly | ⬜ |
 | 13 | GDPR values (proper) | ⬜ |
 | 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | 🟡 (drainDelay/stalled tuning already in place) |

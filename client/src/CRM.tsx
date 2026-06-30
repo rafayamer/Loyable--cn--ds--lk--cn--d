@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext, lazy, Suspense, Fragment } from "react";
 const QRCodeSVG = lazy(()=>import("qrcode.react").then(m=>({default:m.QRCodeSVG})));
 import { api } from "./api/index";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
@@ -5132,41 +5132,42 @@ const CohortHeatmap=()=>{
   const [cohorts,setCohorts]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   useEffect(()=>{api.ai.cohortRetention(6).then(d=>setCohorts(d?.cohorts??[])).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  // A real heatmap cell: the colour fills the whole square and gets stronger
+  // (more green) the more customers came back. Empty = not enough history yet.
   const cell=(val:number)=>{
-    if(val<0)return{bg:"rgba(255,255,255,0.04)",text:"—",col:"#475569"};
-    const bg=val>=70?"rgba(34,197,94,0.25)":val>=40?"rgba(245,158,11,0.2)":"rgba(239,68,68,0.15)";
-    const col=val>=70?"#4ade80":val>=40?"#fbbf24":"#f87171";
-    return{bg,text:`${val}%`,col};
+    if(val==null||val<0)return{bg:"rgba(255,255,255,0.04)",text:"",col:"#475569"};
+    const t=Math.max(0,Math.min(1,val/100));
+    // Blend red (low) → amber (mid) → green (high) with intensity by value.
+    const col=val>=70?"#052e16":val>=40?"#3a2a06":"#3a0a0a";
+    const base=val>=70?"34,197,94":val>=40?"245,158,11":"239,68,68";
+    return{bg:`rgba(${base},${0.18+t*0.62})`,text:`${Math.round(val)}%`,col:val>=40?"#0b1220":"#fff"};
   };
+  const cols=["M+1","M+3","M+6"];
   if(loading)return<Skeleton h="h-48"/>;
-  if(cohorts.length===0)return<div className="text-xs text-slate-500 text-center py-8">No cohort data yet — requires at least 1 month of customer history</div>;
+  if(cohorts.length===0)return<div className="text-xs text-slate-500 text-center py-8">Not enough history yet — this fills in once you have about a month of customers.</div>;
   return(
     <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead><tr className="text-slate-400 text-[11px]">
-          <th className="text-left pb-2 pr-3">Cohort</th>
-          <th className="pb-2 px-2">Size</th>
-          <th className="pb-2 px-2">M+1</th>
-          <th className="pb-2 px-2">M+3</th>
-          <th className="pb-2 px-2">M+6</th>
-        </tr></thead>
-        <tbody>{cohorts.map((c:any)=>(
-          <tr key={c.cohort} className="border-t border-white/5">
-            <td className="py-1.5 pr-3 font-mono text-slate-300">{c.cohort}</td>
-            <td className="py-1.5 px-2 text-center text-slate-400">{c.size}</td>
+      <div className="inline-grid gap-1.5 text-[11px]" style={{gridTemplateColumns:`auto auto repeat(${cols.length},minmax(54px,1fr))`}}>
+        {/* header row */}
+        <div className="text-slate-400 font-medium flex items-end pb-1 pr-2">Joined</div>
+        <div className="text-slate-400 font-medium flex items-end justify-center pb-1">People</div>
+        {cols.map(c=><div key={c} className="text-slate-400 font-medium flex items-end justify-center pb-1">{c}</div>)}
+        {/* data rows */}
+        {cohorts.map((c:any)=>(
+          <Fragment key={c.cohort}>
+            <div className="flex items-center font-mono text-slate-300 pr-2">{c.cohort}</div>
+            <div className="flex items-center justify-center text-slate-400">{c.size}</div>
             {[c.m1,c.m3,c.m6].map((v:number,i:number)=>{const s=cell(v);return(
-              <td key={i} className="py-1.5 px-2 text-center">
-                <span className="px-2 py-0.5 rounded font-semibold" style={{background:s.bg,color:s.col}}>{s.text}</span>
-              </td>
+              <div key={i} className="flex items-center justify-center rounded-md font-semibold" style={{background:s.bg,color:s.col,height:"34px"}} title={s.text?`${s.text} of this group came back`:"Not available yet"}>{s.text||"·"}</div>
             );})}
-          </tr>
-        ))}</tbody>
-      </table>
-      <div className="flex items-center gap-3 mt-3 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(34,197,94,0.25)"}}/>≥70% retained</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(245,158,11,0.2)"}}/>40-69%</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded" style={{background:"rgba(239,68,68,0.15)"}}/>&lt;40%</span>
-        <span className="ml-1">— = data not yet available</span>
+          </Fragment>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-3 text-[10px] text-slate-500">
+        <span>Fewer come back</span>
+        <span className="inline-block h-2.5 w-8 rounded" style={{background:"linear-gradient(90deg,rgba(239,68,68,0.7),rgba(245,158,11,0.7),rgba(34,197,94,0.8))"}}/>
+        <span>More come back</span>
+        <span className="ml-1">· darker green = stronger loyalty</span>
       </div>
     </div>
   );
@@ -5191,7 +5192,7 @@ const AnalyticsPage=()=>{
   const avgFreq=latest.repeatVisitRate!=null?`${Number(latest.repeatVisitRate).toFixed(1)}%`:"-";
   return(
   <div className="space-y-4">
-    <div><h1 className="text-xl font-bold text-white">Analytics</h1><p className="text-xs text-slate-400 mt-0.5">Pre-computed AnalyticsSnapshot · nightly node-cron · never live DB queries</p></div>
+    <div><h1 className="text-xl font-bold text-white">Analytics</h1><p className="text-xs text-slate-400 mt-0.5">A plain-language look at how your customers are doing — updated every night.</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {loading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
         <KPI icon={Heart} label="Retention Rate" value={retRate} color={C.pink}/>
