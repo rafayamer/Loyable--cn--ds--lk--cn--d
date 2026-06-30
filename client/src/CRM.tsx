@@ -6276,8 +6276,12 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
     try{
       if(isActive) await api.automations.deactivate(id);
       else await api.automations.activate(id);
-      setAutos(p=>p.map(a=>a.id===id?{...a,isActive:!a.isActive}:a));
-    }catch(e){}finally{setToggling(null);}
+      setAutos(p=>p.map(a=>a.id===id?{...a,isActive:!a.isActive,status:isActive?"PAUSED":"ACTIVE"}:a));
+    }catch(e:any){
+      alert(e?.message?.includes("COMPILE")||e?.message?.includes("NOT_COMPILED")
+        ? "This automation needs to be finished and saved before it can be turned on. Open it, complete the steps, then save."
+        : (e?.message||"Couldn't update this automation. Please try again."));
+    }finally{setToggling(null);}
   };
   const TRIGGER_NAMES:Record<string,string>={BIRTHDAY:"🎂 Birthday",INACTIVITY:"⏰ Inactivity",VISIT_MILESTONE:"⭐ Visit Milestone",TIER_UPGRADE:"👑 Tier Upgrade",SENTIMENT_NEGATIVE:"⚠️ Negative Sentiment",NEW_CUSTOMER:"👋 New Customer",SPEND_THRESHOLD:"💰 Spend Threshold"};
   const ACTION_NAMES:Record<string,string>={SEND_WHATSAPP:"💬 Send WhatsApp",AWARD_POINTS:"⭐ Award Points",CHANGE_SEGMENT:"🏷️ Change Segment",SEND_EMAIL:"📧 Send Email",MANAGER_ALERT:"🔔 Manager Alert",DEDUCT_POINTS:"➖ Deduct Points"};
