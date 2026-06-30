@@ -231,10 +231,7 @@ const getPosBizType=():string=>{
 // components keep working — the modules only reorganise navigation.
 const MODULES=[
   {id:"dashboard",icon:LayoutDashboard,label:"Dashboard",roles:[ROLES.OWNER],tabs:[]},
-  {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[
-    {id:"customers",label:"CRM"},
-    {id:"segments",label:"Segments"},
-  ]},
+  {id:"customers",icon:Users,label:"Customers",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[]},
   {id:"loyalty",icon:Award,label:"Loyalty",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[]},
   {id:"campaigns",icon:Send,label:"Campaigns",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF],tabs:[
     {id:"campaigns",label:"Campaigns"},
@@ -3817,8 +3814,8 @@ const LoyaltyPage=()=>{
       const b=d?.user?.business??d?.business??{};
       setPointsConfig(p=>({...p,
         pointsPerPound:b.pointsPerPound??1,
-        referralBonusPoints:b.referralBonusPoints??50,
-        referralReferrerPoints:b.referralReferrerPoints??25,
+        referralBonusPoints:Number(b.portalSettings?.referralBonusPoints??b.referralBonusPoints??50),
+        referralReferrerPoints:Number(b.portalSettings?.referralReferrerPoints??b.referralReferrerPoints??25),
         pointsExpiryDays:b.pointsExpiryDays??365,
         minRedeemPoints:b.minRedeemPoints??100,
         redeemRate:b.redeemRate??100,
@@ -3832,13 +3829,13 @@ const LoyaltyPage=()=>{
     try{
       await api.settings.update(pointsConfig);
       setSavedConfig(true);setTimeout(()=>setSavedConfig(false),2500);
-    }catch{}finally{setSavingConfig(false);}
+    }catch(e:any){alert(e?.message||"Couldn't save settings. Please try again.");}finally{setSavingConfig(false);}
   };
   const update=(i:number,field:string,val:any)=>setTiers(p=>p.map((t,j)=>j===i?{...t,[field]:val}:t));
   const save=async()=>{
     setSaving(true);
     try{await api.analytics.updateTiers(tiers);setSaved(true);setTimeout(()=>setSaved(false),2500);}
-    catch(e){}finally{setSaving(false);}
+    catch(e:any){alert(e?.message||"Couldn't save tiers. Please try again.");}finally{setSaving(false);}
   };
   const tierColors=["#cd7f32","#c0c0c0","#ffd700","#b19cd9","#ef4444","#06b6d4"];
   return(
@@ -5040,11 +5037,10 @@ const CustomerPortalPage=()=>{
 // CUSTOMERS UNIFIED (Customers + Loyalty + Portal tabs)
 // ════════════════════════════════════════════════════════════════
 const CustomersUnifiedPage=({onSelect,setPage}:{onSelect:(c:any)=>void,setPage:(p:string)=>void})=>{
-  const [tab,setTab]=useState(()=>localStorage.getItem("customers_tab")??"customers");
+  const [tab,setTab]=useState(()=>{const s=localStorage.getItem("customers_tab");return ["customers","portal","data"].includes(s||"")?s as string:"customers";});
   const switchTab=(t:string)=>{setTab(t);localStorage.setItem("customers_tab",t);};
   const tabs=[
     {id:"customers",label:"Customers",icon:Users},
-    {id:"loyalty",label:"Loyalty & Points",icon:Award},
     {id:"portal",label:"Customer Portal",icon:QrCode},
     {id:"data",label:"Import & Data",icon:Database},
   ];
@@ -7624,7 +7620,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"segments":return<SegmentsPage/>;
     case"automations":return<AutomationsPage onBuilder={()=>setPage("automation-builder")}/>;
     case"automation-builder":return<AutomationBuilderPage onBack={()=>setPage("automations")}/>;
-    case"loyalty":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
+    case"loyalty":return<LoyaltyPage/>;
     case"datahub":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"ai":return<AnalyticsPage/>;
     case"analytics":return<AnalyticsPage/>;

@@ -496,9 +496,11 @@ const UpdateMeSchema = z.object({
   redeemRate:      z.number().int().min(1).max(100000).optional(),
   minRedeemPoints: z.number().int().min(0).max(100000).optional(),
   pointsExpiryDays:z.number().int().min(0).max(3650).optional(),
-  // Bonus-point incentives — stored inside the portalSettings JSON blob
+  // Bonus-point incentives + referral points — stored inside the portalSettings JSON blob
   emailBonusPoints:   z.number().int().min(0).max(100000).optional(),
   birthdayBonusPoints:z.number().int().min(0).max(100000).optional(),
+  referralBonusPoints:    z.number().int().min(0).max(100000).optional(),
+  referralReferrerPoints: z.number().int().min(0).max(100000).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
@@ -510,7 +512,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
     // them into the existing object so other portal keys (wifi, announcement,
     // menu, etc.) are preserved rather than overwritten.
     let portalSettingsUpdate: Record<string, unknown> | undefined;
-    if (body.emailBonusPoints !== undefined || body.birthdayBonusPoints !== undefined) {
+    if (body.emailBonusPoints !== undefined || body.birthdayBonusPoints !== undefined
+        || body.referralBonusPoints !== undefined || body.referralReferrerPoints !== undefined) {
       const current = await prisma.business.findUnique({
         where:  { id: businessId },
         select: { portalSettings: true },
@@ -520,6 +523,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...ps,
         ...(body.emailBonusPoints    !== undefined && { emailBonusPoints:    body.emailBonusPoints }),
         ...(body.birthdayBonusPoints !== undefined && { birthdayBonusPoints: body.birthdayBonusPoints }),
+        ...(body.referralBonusPoints    !== undefined && { referralBonusPoints:    body.referralBonusPoints }),
+        ...(body.referralReferrerPoints !== undefined && { referralReferrerPoints: body.referralReferrerPoints }),
       };
     }
 
