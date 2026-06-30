@@ -14,7 +14,21 @@ import { bootBaileySessions } from './services/baileys-service';
 // Print the moment the process starts so we always see *something* in
 // the platform logs, and never let an async crash die silently.
 console.log('[app] Process starting. NODE_ENV=' + (process.env.NODE_ENV ?? 'undefined'));
+// Throttle noisy, expected transient rejections (chiefly Redis: Upstash
+// over-limit or a socket drop) so a degraded dependency can't flood the logs
+// or trip Railway's log rate limit. Other rejections are always logged.
+let _lastRedisRejectionLog = 0;
 process.on('unhandledRejection', (reason) => {
+  const msg = (reason as Error)?.message ?? String(reason);
+  const isRedis = /max requests limit exceeded|max daily request limit|Socket closed unexpectedly|Connection is closed|ECONNRESET|ETIMEDOUT/i.test(msg);
+  if (isRedis) {
+    const now = Date.now();
+    if (now - _lastRedisRejectionLog > 60_000) {
+      _lastRedisRejectionLog = now;
+      console.error('[app] UNHANDLED REJECTION (Redis, throttled):', msg);
+    }
+    return;
+  }
   console.error('[app] UNHANDLED REJECTION:', reason);
 });
 process.on('uncaughtException', (err) => {
@@ -683,8 +697,18 @@ async function bootstrap() {
     next();
   });
 
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', ts: new Date().toISOString() });
+  app.get('/health', async (_req, res) => {
+    // Reports Redis + DB health so the admin panel (and uptime checks) can flag
+    // problems like an Upstash over-limit before they break the whole app.
+    const [{ redisHealth }, { prisma }] = await Promise.all([
+      import('./config/redis'),
+      import('./config/prisma'),
+    ]);
+    const redis = await redisHealth();
+    let db: { ok: boolean; error?: string } = { ok: true };
+    try { await prisma.$queryRaw`SELECT 1`; } catch (e) { db = { ok: false, error: (e as Error).message }; }
+    const ok = redis.ok && db.ok;
+    res.status(ok ? 200 : 503).json({ status: ok ? 'ok' : 'degraded', redis, db, ts: new Date().toISOString() });
   });
 
   // ── API Routes ────────────────────────────────────────────────

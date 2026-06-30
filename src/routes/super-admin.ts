@@ -31,7 +31,7 @@ import { issueImpersonationToken }       from '../services/token-service';
 import { getMessageQueueHealth }         from '../services/messaging-queue';
 import { syncTierToRedis, TIER_QUOTA, TIER_FEATURES } from '../services/stripe-service';
 import { markBusinessSuspendedInCache, invalidateBusinessCache } from '../middleware/tenant-scope-middleware';
-import { getRedisClient }                from '../config/redis';
+import { getRedisClient, redisHealth }   from '../config/redis';
 import { purgeCustomerData }             from '../services/gdpr-service';
 
 
@@ -478,22 +478,24 @@ const systemHealthHandler = async (req: Request, res: Response): Promise<void> =
     await prisma.$queryRaw`SELECT 1`;
     const dbLatencyMs = Date.now() - start;
 
-    // Redis ping
-    const redisStart = Date.now();
-    await getRedisClient().ping();
-    const redisLatencyMs = Date.now() - redisStart;
+    // Redis health — never throws; distinguishes an over-limit cap from a
+    // healthy connection so the admin UI can flag it clearly.
+    const rh = await redisHealth();
 
-    const queueHealth = await getMessageQueueHealth();
+    // Queue health needs Redis; guard it so a Redis cap doesn't 503 the whole
+    // health endpoint.
+    let queueHealth: unknown = null;
+    try { queueHealth = await getMessageQueueHealth(); } catch { queueHealth = { status: 'unavailable' }; }
 
     const mem  = process.memoryUsage();
     const load = os.loadavg();
 
     res.status(200).json({
-      status:    'healthy',
+      status:    rh.ok ? 'healthy' : 'degraded',
       uptime:    process.uptime(),
       timestamp: new Date().toISOString(),
       database:  { status: 'connected', latencyMs: dbLatencyMs },
-      redis:     { status: 'connected', latencyMs: redisLatencyMs },
+      redis:     { status: rh.ok ? 'connected' : (rh.error === 'OVER_LIMIT' ? 'over_limit' : 'down'), latencyMs: rh.latencyMs, error: rh.error },
       queue:     queueHealth,
       process: {
         nodeVersion:  process.version,

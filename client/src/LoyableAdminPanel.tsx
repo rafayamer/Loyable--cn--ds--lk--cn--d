@@ -262,7 +262,7 @@ const OverviewSection: React.FC = () => {
           <div className="space-y-3">
             {[
               { name: 'Database',   ok: health.database?.status === 'connected', sub: `${health.database?.latencyMs ?? '–'}ms` },
-              { name: 'Redis',      ok: health.redis?.status    === 'connected', sub: `${health.redis?.latencyMs    ?? '–'}ms` },
+              { name: 'Redis',      ok: health.redis?.status    === 'connected', sub: health.redis?.status === 'over_limit' ? 'OVER LIMIT — upgrade plan' : health.redis?.status === 'down' ? 'unreachable' : `${health.redis?.latencyMs ?? '–'}ms` },
               { name: 'API Server', ok: true,                                    sub: `up ${Math.round(health.uptime / 60)}m` },
             ].map(s => (
               <div key={s.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
