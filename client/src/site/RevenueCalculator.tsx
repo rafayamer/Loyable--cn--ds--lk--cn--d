@@ -1,12 +1,11 @@
 // Game-like revenue estimator. Conservative, research-grounded (Bain; BIA/Kelsey)
 // 8–15% uplift band on existing customer revenue. Clearly an estimate, not a promise.
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../design/ui';
 import { BRAND, type ThemeTokens } from '../design/tokens';
+import { goAuth } from './MarketingNav';
 
 export const RevenueCalculator = ({ t, dark }: { t: ThemeTokens; dark: boolean }) => {
-  const nav = useNavigate();
   const [customers, setCustomers] = useState(300);
   const [spend, setSpend] = useState(18);
   const [freq, setFreq] = useState(2);
@@ -43,7 +42,7 @@ export const RevenueCalculator = ({ t, dark }: { t: ThemeTokens; dark: boolean }
         <div className="mt-1 text-3xl md:text-4xl font-black" style={{ color: BRAND.papaya, letterSpacing: '-0.03em' }}>{fmt(yr(0.115))}<span className="text-base font-bold" style={{ color: t.tx2 }}> / year</span></div>
         <div className="mt-1 text-[11px]" style={{ color: t.tx2 }}>Range {fmt(yr(0.08))} – {fmt(yr(0.15))} a year</div>
       </div>
-      <Button variant="primary" className="mt-4 w-full" onClick={() => nav('/signup')}>Start recovering it free →</Button>
+      <Button variant="primary" className="mt-4 w-full" onClick={() => goAuth('/signup')}>Start recovering it free →</Button>
       <p className="mt-3 text-[10px] leading-relaxed" style={{ color: t.tx2 }}>Estimate only, not a guarantee. Based on published retention research (Bain &amp; Company; BIA/Kelsey) applied as a conservative 8–15% uplift to your existing customer revenue.</p>
     </div>
   );

@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown, Sparkles } from 'lucide-react';
 import { FadeIn, ScrollReveal, Stagger, StaggerItem } from '../../design/motion';
 import { GlassCard, Button, SectionHeader } from '../../design/ui';
 import { BRAND, type ThemeTokens } from '../../design/tokens';
+import { goAuth } from '../MarketingNav';
 import { PLANS, FAQS } from '../content';
 
 export default function Pricing({ t }: { t: ThemeTokens; dark: boolean }) {
-  const nav = useNavigate();
   const [yearly, setYearly] = useState(false);
   const [open, setOpen] = useState<number | null>(0);
 
@@ -42,7 +41,7 @@ export default function Pricing({ t }: { t: ThemeTokens; dark: boolean }) {
                 <ul className="mb-6 space-y-2 flex-1">
                   {p.features.map(f => <li key={f} className="flex gap-2 text-xs" style={{ color: t.tx2 }}><Check size={14} style={{ color: BRAND.success, flexShrink: 0, marginTop: 1 }} />{f}</li>)}
                 </ul>
-                <Button variant={p.highlight ? 'primary' : 'secondary'} t={t} className="w-full" onClick={() => nav(`/signup?plan=${encodeURIComponent(p.name)}`)}>{p.cta}</Button>
+                <Button variant={p.highlight ? 'primary' : 'secondary'} t={t} className="w-full" onClick={() => goAuth('/signup')}>{p.cta}</Button>
               </GlassCard>
             </StaggerItem>
           );

@@ -1380,7 +1380,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
     if((d.user as any)?.businessSlug)localStorage.setItem("biz_slug",(d.user as any).businessSlug);
     if((d.user as any)?.businessName)localStorage.setItem("biz_name",(d.user as any).businessName);
     if((d.user as any)?.businessIndustry)localStorage.setItem("biz_industry",(d.user as any).businessIndustry);
-    if((d.user as any)?.role)localStorage.setItem("role",(d.user as any).role);
+    if((d.user as any)?.role){localStorage.setItem("role",(d.user as any).role);localStorage.setItem("userRole",(d.user as any).role);}
     await hydrateFromApi();
     onLogin(d.user);
   };
@@ -1478,6 +1478,7 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
       const d=await api.auth.register({businessName:bizName,ownerName:name,ownerEmail:email,ownerPassword:pass,country,timezone:tz,currency,industry});
       localStorage.setItem("accessToken",d.accessToken);
       if(d.user?.id)localStorage.setItem("userId",d.user.id);
+      if((d.user as any)?.role){localStorage.setItem("role",(d.user as any).role);localStorage.setItem("userRole",(d.user as any).role);}
       await hydrateFromApi();
       onLogin(d.user);
     }catch(ex){
@@ -2384,7 +2385,7 @@ export const LandingPage=({onLogin,initialView,onExitAuth}:{onLogin:(u:any)=>voi
   );
 };
 
-const LoginPage=({onLogin}:{onLogin:(u:any)=>void})=><LandingPage onLogin={onLogin}/>;
+const LoginPage=({onLogin,initialView}:{onLogin:(u:any)=>void;initialView?:AuthView})=><LandingPage onLogin={onLogin} initialView={initialView}/>;
 
 // ── Accept Staff Invite ───────────────────────────────────────────
 const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
@@ -7551,12 +7552,20 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   );
   // Lemon Squeezy checkout redirect lands here; polls until the webhook activates.
   if(window.location.pathname==="/billing/success")return <BillingSuccessPage/>;
-  if(!loggedIn)return <LoginPage onLogin={(u:any)=>{
-    if(u?.role)localStorage.setItem("userRole",u.role);
-    onRoleChange?.(u?.role??'');
-    if(u?.role==='PLATFORM_ADMINISTRATOR')return; // App.tsx will switch to AdminPanel
-    setLoggedIn(true);
-  }}/>;
+  if(!loggedIn){
+    // Open directly on the right auth view when the visitor came from the
+    // marketing site's /login or /signup links.
+    const p=window.location.pathname;
+    const startView:AuthView|undefined = p==="/signup"?"signup" : p==="/login"?"login" : undefined;
+    return <LoginPage initialView={startView} onLogin={(u:any)=>{
+      if(u?.role)localStorage.setItem("userRole",u.role);
+      onRoleChange?.(u?.role??'');
+      if(u?.role==='PLATFORM_ADMINISTRATOR')return; // App.tsx will switch to AdminPanel
+      // Clean the URL so the app isn't sitting on /login or /signup.
+      if(p==="/login"||p==="/signup")window.history.replaceState({},"","/");
+      setLoggedIn(true);
+    }}/>;
+  }
   const nav=(p:any)=>{
     // Enforce role restrictions — redirect to POS if not allowed. Utility pages
     // (profile, builders) aren't in a module → rolesForPage returns permissive.

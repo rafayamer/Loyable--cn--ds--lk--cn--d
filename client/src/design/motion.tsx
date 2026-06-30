@@ -89,3 +89,30 @@ export const pageVariants: Variants = {
   enter: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } },
   exit: { opacity: 0, y: -8, transition: { duration: 0.25, ease: EASE } },
 };
+
+// Count a number up from 0 → `to` when it scrolls into view (once).
+export const useCountUp = (to: number, duration = 1400) => {
+  const reduce = useReducedMotion();
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [val, setVal] = React.useState(reduce ? to : 0);
+  React.useEffect(() => {
+    if (reduce) { setVal(to); return; }
+    const el = ref.current; if (!el) return;
+    let raf = 0; let started = false;
+    const run = (t0: number) => {
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        setVal(to * eased);
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const io = new IntersectionObserver((es) => {
+      if (es[0].isIntersecting && !started) { started = true; run(performance.now()); }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [to, duration, reduce]);
+  return { ref, val };
+};

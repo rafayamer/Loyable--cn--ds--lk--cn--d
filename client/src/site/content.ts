@@ -9,7 +9,7 @@ export type Feature = { icon: string; title: string; desc: string };
 export type Step = { n: string; title: string; desc: string };
 export type Plan = { name: string; monthly: number; yearly: number; desc: string; features: string[]; cta: string; highlight?: boolean };
 export type Faq = { q: string; a: string };
-export type Story = { emoji: string; biz: string; owner: string; city: string; stat: string; statLabel: string; story: string };
+export type Story = { biz: string; owner: string; city: string; stat: string; statLabel: string; story: string };
 
 export const FEATURES: Feature[] = [
   { icon: 'QrCode', title: 'QR check-ins', desc: 'Customers scan once at the counter — no apps, no plastic cards. Every visit is captured automatically.' },
@@ -56,12 +56,19 @@ export const FAQS: Faq[] = [
 ];
 
 export const STORIES: Story[] = [
-  { emoji: '☕', biz: 'Casa Bistro', owner: 'Amara', city: 'Manchester', stat: '480', statLabel: 'loyal regulars', story: 'Comeback messages with a free-coffee reward brought her quietest customers back — her café is the busiest on the street again.' },
-  { emoji: '💈', biz: 'Urban Cuts', owner: 'Deon', city: 'Birmingham', stat: '3×', statLabel: 'more rebookings', story: 'Every haircut now earns points and a friendly reminder when it is time for the next trim. Clients come back like clockwork.' },
-  { emoji: '🏋️', biz: 'Pulse Gym', owner: 'Marcus', city: 'Leeds', stat: '40%', statLabel: 'fewer dropouts', story: 'The Loyaly spotted members slipping away and nudged them with a guest-pass. Members felt noticed — and they stayed.' },
+  { biz: 'Casa Bistro', owner: 'Amara', city: 'Manchester', stat: '480', statLabel: 'loyal regulars', story: 'Comeback messages with a free-coffee reward brought her quietest customers back — her café is the busiest on the street again.' },
+  { biz: 'Urban Cuts', owner: 'Deon', city: 'Birmingham', stat: '3×', statLabel: 'more rebookings', story: 'Every haircut now earns points and a friendly reminder when it is time for the next trim. Clients come back like clockwork.' },
+  { biz: 'Pulse Gym', owner: 'Marcus', city: 'Leeds', stat: '40%', statLabel: 'fewer dropouts', story: 'The Loyaly spotted members slipping away and nudged them with a guest-pass. Members felt noticed — and they stayed.' },
 ];
 
 export const BRANDS = ['Casa Bistro', 'Urban Cuts', 'Pulse Gym', 'Bloom Spa', 'The Coffee House', 'Olive & Thyme', 'Lush Nails'];
+
+export const STATS: { value: number; prefix?: string; suffix?: string; label: string; decimals?: number }[] = [
+  { value: 60, suffix: '%', label: 'more repeat customers (avg)' },
+  { value: 8420, prefix: '£', label: 'revenue recovered / mo (sample)' },
+  { value: 14, suffix: '-day', label: 'free trial, no card' },
+  { value: 5, suffix: 'min', label: 'to set up' },
+];
 
 export const PROOF = {
   quote: 'The Loyaly increased our repeat customers by 60%. The WhatsApp campaigns and rewards work like magic.',

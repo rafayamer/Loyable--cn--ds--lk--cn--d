@@ -4,7 +4,6 @@
 //  existing in-CRM auth via LandingPage's initialView. Mounted from
 //  App.tsx only for logged-out marketing paths.
 // ================================================================
-import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
 import { MotionProvider, pageVariants } from '../design/motion';
@@ -16,11 +15,9 @@ import Product from './pages/Product';
 import Pricing from './pages/Pricing';
 import About from './pages/About';
 
-// Auth reuses the existing LandingPage (lives in CRM.tsx). Lazy so the heavy
-// CRM bundle only loads when a visitor actually opens /login or /signup.
-const AuthLanding = lazy(() => import('../CRM').then(m => ({ default: m.LandingPage })));
-
-const onAuthSuccess = () => { window.location.assign('/'); };
+// NOTE: /login and /signup are NOT handled here. They are full-page navigations
+// to the real CRM (see App.tsx), which renders auth and swaps to the app in
+// place on success. Marketing CTAs use window.location.assign for those routes.
 
 function Page({ children }: { children: React.ReactNode }) {
   return <m.main variants={pageVariants} initial="initial" animate="enter" exit="exit">{children}</m.main>;
@@ -29,17 +26,6 @@ function Page({ children }: { children: React.ReactNode }) {
 function Shell() {
   const { dark, toggle, t } = useTheme();
   const location = useLocation();
-  const isAuth = location.pathname === '/login' || location.pathname === '/signup';
-
-  // Auth pages render the existing split-screen LandingPage (its own chrome).
-  if (isAuth) {
-    return (
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: t.bg }} />}>
-        <AuthLanding onLogin={onAuthSuccess} onExitAuth={() => window.location.assign('/')}
-          initialView={location.pathname === '/signup' ? 'signup' : 'login'} />
-      </Suspense>
-    );
-  }
 
   return (
     <div style={{ minHeight: '100vh', background: t.bg, color: t.tx, transition: 'background .3s, color .3s' }} className="overflow-x-hidden">

@@ -1,12 +1,11 @@
-import { useNavigate } from 'react-router-dom';
 import { Heart, Target, Sparkles } from 'lucide-react';
 import { FadeIn, ScrollReveal, Stagger, StaggerItem } from '../../design/motion';
-import { GlassCard, Button, SectionHeader } from '../../design/ui';
+import { GlassCard, Button, SectionHeader, Monogram } from '../../design/ui';
 import { BRAND, type ThemeTokens } from '../../design/tokens';
+import { goAuth } from '../MarketingNav';
 import { STORIES } from '../content';
 
 export default function About({ t }: { t: ThemeTokens; dark: boolean }) {
-  const nav = useNavigate();
   const values = [
     { icon: Heart, title: 'Built for owners', desc: 'For non-technical business owners — simple, warm and genuinely useful from day one.' },
     { icon: Target, title: 'Honest by design', desc: 'No fake guarantees or vanity metrics. Real data, clear answers, your customers respected.' },
@@ -43,7 +42,7 @@ export default function About({ t }: { t: ThemeTokens; dark: boolean }) {
             <StaggerItem key={s.biz}>
               <GlassCard t={t} hover className="h-full p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">{s.emoji}</span>
+                  <Monogram name={s.biz} size={40} />
                   <div><div className="text-sm font-bold" style={{ color: t.tx }}>{s.biz}</div><div className="text-xs" style={{ color: t.tx3 }}>{s.owner} · {s.city}</div></div>
                 </div>
                 <div className="mb-2 text-2xl font-black" style={{ color: BRAND.papaya }}>{s.stat} <span className="text-xs font-medium" style={{ color: t.tx3 }}>{s.statLabel}</span></div>
@@ -56,7 +55,7 @@ export default function About({ t }: { t: ThemeTokens; dark: boolean }) {
 
       <ScrollReveal className="py-14 text-center">
         <h2 className="text-2xl md:text-3xl font-extrabold mb-4" style={{ color: t.tx, letterSpacing: '-0.02em' }}>Write your comeback story</h2>
-        <Button variant="primary" onClick={() => nav('/signup')}>Start free trial →</Button>
+        <Button variant="primary" onClick={() => goAuth('/signup')}>Start free trial →</Button>
       </ScrollReveal>
     </div>
   );

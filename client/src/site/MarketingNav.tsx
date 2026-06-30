@@ -12,6 +12,9 @@ const LINKS = [
   { to: '/about', label: 'About' },
 ];
 
+// Auth lives in the real CRM (outside this router) — use a full-page navigation.
+export const goAuth = (path: '/login' | '/signup') => window.location.assign(path);
+
 export const MarketingNav = ({ t, dark, toggle }: { t: ThemeTokens; dark: boolean; toggle: () => void }) => {
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
@@ -42,8 +45,8 @@ export const MarketingNav = ({ t, dark, toggle }: { t: ThemeTokens; dark: boolea
           <button onClick={toggle} aria-label="Toggle theme" className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors" style={{ color: t.tx2, border: `1px solid ${t.bdr}` }}>
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <div className="hidden sm:block"><Button variant="ghost" t={t} onClick={() => nav('/login')}>Sign in</Button></div>
-          <div className="hidden sm:block"><Button variant="primary" onClick={() => nav('/signup')}>Start free</Button></div>
+          <div className="hidden sm:block"><Button variant="ghost" t={t} onClick={() => goAuth('/login')}>Sign in</Button></div>
+          <div className="hidden sm:block"><Button variant="primary" onClick={() => goAuth('/signup')}>Start free</Button></div>
           <button onClick={() => setOpen(o => !o)} aria-label="Menu" className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl" style={{ color: t.tx, border: `1px solid ${t.bdr}` }}>
             {open ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -61,8 +64,8 @@ export const MarketingNav = ({ t, dark, toggle }: { t: ThemeTokens; dark: boolea
             </NavLink>
           ))}
           <div className="mt-2 flex gap-2">
-            <Button variant="secondary" t={t} className="flex-1" onClick={() => { setOpen(false); nav('/login'); }}>Sign in</Button>
-            <Button variant="primary" className="flex-1" onClick={() => { setOpen(false); nav('/signup'); }}>Start free</Button>
+            <Button variant="secondary" t={t} className="flex-1" onClick={() => { setOpen(false); goAuth('/login'); }}>Sign in</Button>
+            <Button variant="primary" className="flex-1" onClick={() => { setOpen(false); goAuth('/signup'); }}>Start free</Button>
           </div>
         </m.div>
       )}

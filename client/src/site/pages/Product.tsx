@@ -1,12 +1,11 @@
-import { useNavigate } from 'react-router-dom';
 import { FadeIn, ScrollReveal, Stagger, StaggerItem } from '../../design/motion';
 import { GlassCard, Button, SectionHeader } from '../../design/ui';
 import { BRAND, type ThemeTokens } from '../../design/tokens';
 import { Icon } from '../icons';
+import { goAuth } from '../MarketingNav';
 import { FEATURES, STEPS, INDUSTRIES } from '../content';
 
-export default function Product({ t, dark }: { t: ThemeTokens; dark: boolean }) {
-  const nav = useNavigate();
+export default function Product({ t }: { t: ThemeTokens; dark: boolean }) {
   return (
     <div className="px-5 md:px-10">
       <section className="pt-10 md:pt-16 pb-6 text-center">
@@ -65,7 +64,7 @@ export default function Product({ t, dark }: { t: ThemeTokens; dark: boolean }) 
       </section>
 
       <ScrollReveal className="py-14 text-center">
-        <Button variant="primary" onClick={() => nav('/signup')}>Start free trial →</Button>
+        <Button variant="primary" onClick={() => goAuth('/signup')}>Start free trial →</Button>
       </ScrollReveal>
     </div>
   );

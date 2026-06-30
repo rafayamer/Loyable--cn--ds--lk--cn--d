@@ -14,10 +14,12 @@ const isTerms  = window.location.pathname.startsWith('/terms');
 // `npm run admin:dev` → http://localhost:3002/admin). Forces the admin panel.
 const isAdmin  = window.location.pathname.startsWith('/admin');
 
-// Public marketing + auth routes. When logged-out, these render the new 4-page
-// motion website (which itself owns the router). When a token exists, `/` falls
-// through to the CRM so the app loads normally.
-const MARKETING_PATHS = ['/', '/product', '/pricing', '/about', '/login', '/signup'];
+// Public marketing routes. When logged-out, these render the new 4-page motion
+// website (which owns its own router). `/login` and `/signup` are deliberately
+// NOT here — they fall through to the real CRM, which renders its auth and swaps
+// to the app IN PLACE on success (and handles the OAuth ?accessToken= redirect).
+// When a token exists, `/` also falls through to the CRM so the app loads.
+const MARKETING_PATHS = ['/', '/product', '/pricing', '/about'];
 const isMarketingPath = MARKETING_PATHS.includes(window.location.pathname);
 
 function AdminOrCRM() {
