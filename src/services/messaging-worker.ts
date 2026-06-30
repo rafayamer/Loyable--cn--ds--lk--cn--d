@@ -561,8 +561,24 @@ export const startAllWorkers = (): {
       console.warn(`[${name}.worker] Job ${jobId} stalled — worker may have crashed`);
     });
 
+    // Worker-level errors (e.g. Redis unreachable, or Upstash "max requests
+    // limit exceeded") would otherwise fire on every poll and flood the logs
+    // while hammering Redis. Throttle the logging and, when Redis is clearly
+    // rejecting traffic, pause the worker for a cooldown before retrying.
+    let lastLog = 0; let pausedUntil = 0;
     worker.on('error', (err) => {
-      console.error(`[${name}.worker] Worker-level error:`, err);
+      const now = Date.now();
+      const msg = (err as Error)?.message || String(err);
+      const isRedisCapped = /max requests limit exceeded|max daily request limit|ECONNREFUSED|ETIMEDOUT|Connection is closed/i.test(msg);
+      if (now - lastLog > 60_000) {
+        lastLog = now;
+        console.error(`[${name}.worker] Worker-level error (throttled): ${msg}`);
+      }
+      if (isRedisCapped && now > pausedUntil) {
+        pausedUntil = now + 60_000; // back off for 60s instead of tight-looping
+        worker.pause(true).catch(() => {});
+        setTimeout(() => { worker.resume(); }, 60_000);
+      }
     });
   }
 
