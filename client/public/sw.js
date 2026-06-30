@@ -14,7 +14,7 @@
  * clients.claim + the controllerchange handler in main.tsx — reloads clients
  * onto the fresh build automatically.
  */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE = 'loyaly-' + CACHE_VERSION;
 const SHELL = ['/offline.html', '/white.png', '/black.png', '/manifest.webmanifest'];
 

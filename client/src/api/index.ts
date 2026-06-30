@@ -33,14 +33,17 @@ async function req<T>(path: string, init: RequestInit = {}, _retryDepth = 0): Pr
     const hadToken = !!localStorage.getItem('accessToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('sessionId');
-    if (hadToken) window.location.href = '/';
+    // Redirect to /login (the CRM auth), NOT '/' — '/' is now the marketing
+    // website, so sending a signed-out user there looked like "login bounced
+    // me back to the homepage".
+    if (hadToken) window.location.href = '/login';
     throw new Error('Unauthenticated');
   }
 
   if (res.status === 401) {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('sessionId');
-    window.location.href = '/';
+    window.location.href = '/login';
     throw new Error('Unauthenticated');
   }
 
