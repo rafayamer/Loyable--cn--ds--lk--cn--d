@@ -697,9 +697,28 @@ async function bootstrap() {
     next();
   });
 
+  // LIVENESS — used by Railway's healthcheck. MUST return 200 as long as the
+  // Node process is up, even when a dependency (Redis/DB) is degraded. Returning
+  // 503 here would make Railway restart-loop and kill the container during a
+  // dependency blip. Dependency detail is included in the body for visibility.
   app.get('/health', async (_req, res) => {
-    // Reports Redis + DB health so the admin panel (and uptime checks) can flag
-    // problems like an Upstash over-limit before they break the whole app.
+    let redis: unknown = { ok: null };
+    let db: { ok: boolean; error?: string } = { ok: true };
+    try {
+      const [{ redisHealth }, { prisma }] = await Promise.all([
+        import('./config/redis'),
+        import('./config/prisma'),
+      ]);
+      redis = await redisHealth();
+      try { await prisma.$queryRaw`SELECT 1`; } catch (e) { db = { ok: false, error: (e as Error).message }; }
+    } catch { /* never let the liveness probe throw */ }
+    res.status(200).json({ status: 'ok', redis, db, ts: new Date().toISOString() });
+  });
+
+  // READINESS — strict probe for external uptime monitors: 503 when a hard
+  // dependency (DB) is down. Redis being degraded is reported but NOT fatal,
+  // because the app degrades gracefully without it.
+  app.get('/health/ready', async (_req, res) => {
     const [{ redisHealth }, { prisma }] = await Promise.all([
       import('./config/redis'),
       import('./config/prisma'),
@@ -707,8 +726,7 @@ async function bootstrap() {
     const redis = await redisHealth();
     let db: { ok: boolean; error?: string } = { ok: true };
     try { await prisma.$queryRaw`SELECT 1`; } catch (e) { db = { ok: false, error: (e as Error).message }; }
-    const ok = redis.ok && db.ok;
-    res.status(ok ? 200 : 503).json({ status: ok ? 'ok' : 'degraded', redis, db, ts: new Date().toISOString() });
+    res.status(db.ok ? 200 : 503).json({ status: db.ok ? 'ready' : 'degraded', redis, db, ts: new Date().toISOString() });
   });
 
   // ── API Routes ────────────────────────────────────────────────
