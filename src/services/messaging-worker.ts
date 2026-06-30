@@ -555,6 +555,26 @@ export const startAllWorkers = (): {
       console.error(
         `[${name}.worker] Job ${job?.id} failed (${attempts}/${maxAttempts}): ${err.message}`
       );
+
+      // When the message worker exhausts all BullMQ retries on a gateway throw,
+      // the row was left at PENDING (it's only flipped to SENT/FAILED on a clean
+      // result, not on a thrown error). Without this, undeliverable messages —
+      // e.g. WhatsApp not connected — sit at PENDING in the log forever. Once
+      // retries are exhausted, mark the row FAILED so the owner sees a clear,
+      // terminal status instead of a perpetually "pending" message.
+      if (name === 'message' && attempts >= maxAttempts) {
+        const mqId = (job?.data as OutboundMessageJobData | undefined)?.messageQueueId;
+        if (mqId) {
+          prisma.messageQueue.updateMany({
+            where: { id: mqId, status: 'PENDING' },
+            data: {
+              status:        'FAILED',
+              failureReason: (err?.message || 'GATEWAY_ERROR').slice(0, 250),
+              updatedAt:     new Date(),
+            },
+          }).catch(e => console.error('[message.worker] Failed to finalize PENDING row:', e));
+        }
+      }
     });
 
     worker.on('stalled', (jobId) => {
