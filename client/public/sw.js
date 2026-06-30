@@ -3,12 +3,20 @@
  * Strategy:
  *  - API requests (/api/*) and auth flows are NEVER cached (security: no
  *    sensitive tenant data in the cache). They always go to the network.
- *  - Static assets (scripts, styles, images, fonts) → cache-first.
- *  - Navigations → network-first, falling back to the cached app shell, then
- *    the offline page if both fail.
+ *  - Static hashed assets (scripts, styles, images, fonts) → cache-first.
+ *  - Navigations → network-first, falling back ONLY to the offline page.
+ *    We deliberately do NOT precache or serve index.html from cache, so a new
+ *    deploy is never masked by a stale app shell on mobile/PWA.
+ *
+ * IMPORTANT: bump CACHE_VERSION on every deploy that must invalidate the
+ * cache. Because the bytes of this file then change, the browser detects a
+ * new worker, runs activate (which purges old caches) and — via skipWaiting +
+ * clients.claim + the controllerchange handler in main.tsx — reloads clients
+ * onto the fresh build automatically.
  */
-const CACHE = 'loyaly-v1';
-const SHELL = ['/', '/index.html', '/offline.html', '/white.png', '/black.png', '/manifest.webmanifest'];
+const CACHE_VERSION = 'v2';
+const CACHE = 'loyaly-' + CACHE_VERSION;
+const SHELL = ['/offline.html', '/white.png', '/black.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -33,13 +41,10 @@ self.addEventListener('fetch', (event) => {
   // Never cache API / auth / cross-origin — always network, no fallback caching.
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
 
-  // Navigations: network-first → app shell → offline page.
+  // Navigations: network-first → offline page only (never a cached shell, so a
+  // fresh deploy is always served when the device is online).
   if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req).catch(() =>
-        caches.match('/index.html').then((r) => r || caches.match('/offline.html'))
-      )
-    );
+    event.respondWith(fetch(req).catch(() => caches.match('/offline.html')));
     return;
   }
 
