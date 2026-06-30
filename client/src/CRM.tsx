@@ -1579,6 +1579,65 @@ const Reveal=({children,delay=0,y=24,className="",style={}}:{children:React.Reac
   return <div ref={ref} className={className} style={{...style,opacity:shown?1:0,transform:shown?"translateY(0)":`translateY(${y}px)`,transition:`opacity .6s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .6s cubic-bezier(.16,1,.3,1) ${delay}ms`,willChange:"opacity,transform"}}>{children}</div>;
 };
 
+// ── Revenue calculator ──────────────────────────────────────────
+// A light, game-like estimator near the top of the marketing site.
+// The numbers are intentionally CONSERVATIVE and clearly framed as an
+// estimate, not a promise. The model is grounded in published retention
+// research rather than invented multipliers:
+//   • Bain & Company — a 5% lift in retention raises profit 25%+.
+//   • BIA/Kelsey — repeat customers spend ~67% more than first-timers.
+//   • Industry loyalty-program benchmarks — reminders + rewards typically
+//     lift repeat-visit frequency by a low-double-digit %.
+// We translate that into a deliberately modest 8–15% uplift band applied to
+// the revenue a business already earns from its existing customers.
+const RevenueCalculator=({dark,onStart}:{dark:boolean;onStart:()=>void})=>{
+  const [customers,setCustomers]=useState(300);   // monthly active customers
+  const [spend,setSpend]=useState(18);            // average spend per visit (£)
+  const [freq,setFreq]=useState(2);               // visits per customer / month
+  const D=dark;
+  const tx=D?"#FFF7ED":"#1C1917", tx2=D?"#C4B5A8":"#78716C";
+  const card=D?"rgba(42,25,16,0.55)":"rgba(255,255,255,0.55)";
+  const bdr=D?"rgba(255,255,255,0.10)":"rgba(231,220,211,0.9)";
+  // Conservative uplift band on existing customer revenue.
+  const LOW=0.08, MID=0.115, HIGH=0.15;
+  const baseMonthly=customers*spend*freq;
+  const fmt=(n:number)=>"£"+Math.round(n).toLocaleString();
+  const extraYrLow=baseMonthly*LOW*12, extraYrMid=baseMonthly*MID*12, extraYrHigh=baseMonthly*HIGH*12;
+  const Slider=({label,val,min,max,step,onChange,suffix,prefix}:any)=>(
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-medium" style={{color:tx2}}>{label}</span>
+        <span className="text-sm font-bold tabular-nums" style={{color:tx}}>{prefix||""}{val.toLocaleString()}{suffix||""}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={val} onChange={e=>onChange(Number(e.target.value))}
+        className="w-full appearance-none cursor-pointer" style={{height:6,borderRadius:999,
+          background:`linear-gradient(90deg,#F97316 ${((val-min)/(max-min))*100}%, ${D?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.08)"} ${((val-min)/(max-min))*100}%)`,
+          accentColor:"#F97316"}}/>
+    </div>
+  );
+  return(
+    <div className="liquid-glass rounded-3xl p-6 md:p-8 w-full max-w-md mx-auto" style={{background:card,border:`1px solid ${bdr}`,boxShadow:D?"0 24px 70px rgba(0,0,0,0.38)":"0 18px 50px rgba(120,53,15,0.12)"}}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md" style={{background:"rgba(249,115,22,0.14)",color:"#F97316"}}>Revenue estimator</span>
+      </div>
+      <h3 className="text-xl font-bold mt-2" style={{color:tx,letterSpacing:"-0.02em"}}>How much repeat revenue are you leaving on the table?</h3>
+      <p className="text-xs mt-1 mb-5" style={{color:tx2}}>Move the sliders to match your business.</p>
+      <div className="space-y-4">
+        <Slider label="Customers a month" val={customers} min={50} max={3000} step={10} onChange={setCustomers}/>
+        <Slider label="Average spend per visit" val={spend} min={5} max={150} step={1} onChange={setSpend} prefix="£"/>
+        <Slider label="Visits per customer / month" val={freq} min={1} max={8} step={1} onChange={setFreq}/>
+      </div>
+      <div className="mt-6 rounded-2xl p-5 text-center" style={{background:D?"rgba(249,115,22,0.10)":"rgba(249,115,22,0.07)",border:"1px solid rgba(249,115,22,0.25)"}}>
+        <div className="text-xs font-medium" style={{color:tx2}}>Estimated extra revenue you could recover</div>
+        <div className="text-3xl md:text-4xl font-black mt-1" style={{color:"#F97316",letterSpacing:"-0.03em"}}>{fmt(extraYrMid)}<span className="text-base font-bold" style={{color:tx2}}> / year</span></div>
+        <div className="text-[11px] mt-1" style={{color:tx2}}>Range {fmt(extraYrLow)} – {fmt(extraYrHigh)} a year</div>
+      </div>
+      <button onClick={onStart} className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-105" style={{background:"linear-gradient(135deg,#FF8A3D,#F97316)"}}>Start recovering it free →</button>
+      <p className="text-[10px] mt-3 leading-relaxed" style={{color:tx2}}>Estimate only, not a guarantee. Based on published retention research (Bain &amp; Company; BIA/Kelsey) applied as a conservative 8–15% uplift to your existing customer revenue. Your results depend on your offer, audience and how you use The Loyaly.</p>
+    </div>
+  );
+};
+
 const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [view,setView]=useState<AuthView>("landing");
   const [dark,setDark]=useState(()=>{
@@ -2004,6 +2063,16 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
           </div>
           <div className="absolute right-0 top-0 h-full w-20 z-10 pointer-events-none" style={{background:`linear-gradient(to left, ${bg}, transparent)`}}/>
         </div>
+      </div>
+
+      {/* ── Revenue calculator ──────────────────────────────── */}
+      <div className="px-4 pt-4 pb-16 relative">
+        <div className="text-center mb-8 max-w-xl mx-auto">
+          <p className="inline-block font-medium px-10 py-2 rounded-full border text-sm mb-4" style={{background:secPillBg,border:`1px solid ${secPillBdr}`,color:secPillTx}}>Quick estimate</p>
+          <h2 className="text-3xl font-black mt-1" style={{color:tx}}>See your comeback revenue in 10 seconds</h2>
+          <p className="mt-2 text-sm" style={{color:tx2}}>A rough, honest estimate of the repeat revenue The Loyaly could help you bring back.</p>
+        </div>
+        <RevenueCalculator dark={D} onStart={()=>nav("signup")}/>
       </div>
 
       {/* ── Features ────────────────────────────────────────── */}
