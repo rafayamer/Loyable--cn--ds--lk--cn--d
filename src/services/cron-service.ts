@@ -69,6 +69,10 @@ export const startAllCronJobs = (): void => {
   // Every 5 minutes — WhatsApp session health check + auto-failover to backup
   cron.schedule('*/5 * * * *', jobRunner('whatsappHealth', whatsappHealthJob), { timezone: 'UTC' });
 
+  // Every 10 minutes — resolve messages stuck in PENDING (orphaned BullMQ jobs
+  // after a worker restart). Prevents the UI from showing perpetual "Pending".
+  cron.schedule('*/10 * * * *', jobRunner('stuckMessageReaper', stuckMessageReaperJob), { timezone: 'UTC' });
+
   // 03:30 UTC — cohort retention analysis (monthly snapshot)
   cron.schedule('30 3 * * *', jobRunner('cohortRetention', cohortRetentionJob), { timezone: 'UTC' });
 
@@ -78,7 +82,33 @@ export const startAllCronJobs = (): void => {
   // 1st of month 21:00 — monthly AI business report
   cron.schedule('0 21 1 * *', jobRunner('monthlyReport', monthlyReportJob), { timezone: REPORT_TZ });
 
-  console.log('[cron] 12 jobs registered (8 nightly + 2 reports + 1 hourly + 1 every-5-min).');
+  console.log('[cron] 13 jobs registered (8 nightly + 2 reports + 1 hourly + 2 frequent).');
+};
+
+/**
+ * Reaps messages stuck in PENDING/QUEUED. These are rows whose BullMQ job was
+ * lost (e.g. the worker process restarted mid-flight, or an enqueue partially
+ * failed). After a generous grace window they are marked FAILED with a clear
+ * reason so dashboards and campaign stats reflect reality instead of an endless
+ * "Pending". We never re-send here — that risks duplicate delivery — the owner
+ * can relaunch if needed.
+ */
+const STUCK_GRACE_MINUTES = Number(process.env.STUCK_MESSAGE_GRACE_MINUTES || 30);
+export const stuckMessageReaperJob = async (): Promise<Record<string, unknown>> => {
+  const cutoff = new Date(Date.now() - STUCK_GRACE_MINUTES * 60 * 1000);
+  const { count } = await prisma.messageQueue.updateMany({
+    where: {
+      status:    { in: ['PENDING', 'QUEUED'] },
+      createdAt: { lt: cutoff },
+    },
+    data: {
+      status:        'FAILED',
+      failureReason: `STUCK_IN_PENDING_OVER_${STUCK_GRACE_MINUTES}_MINUTES`,
+      updatedAt:     new Date(),
+    },
+  });
+  if (count > 0) console.log(`[cron.stuckMessageReaper] resolved ${count} stuck message(s) to FAILED.`);
+  return { reaped: count };
 };
 
 /** Wraps a job function with error boundary + execution timing */

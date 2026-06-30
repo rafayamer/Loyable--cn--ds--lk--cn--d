@@ -167,9 +167,15 @@ const btn="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-al
 // ROLE SYSTEM — 4 tiers
 // ════════════════════════════════════════════════════════════════
 // Roles: TENANT_OWNER > BRANCH_MANAGER > MARKETING_STAFF > KITCHEN
-const ROLES={OWNER:"TENANT_OWNER",MANAGER:"BRANCH_MANAGER",STAFF:"MARKETING_STAFF",KITCHEN:"KITCHEN"};
-const getRole=():string=>localStorage.getItem("userRole")||ROLES.OWNER;
-const useRole=()=>{const[role,setRole]=useState(getRole);useEffect(()=>{const fn=()=>setRole(getRole());window.addEventListener("storage",fn);return()=>window.removeEventListener("storage",fn);},[]);return role;};
+// Roles MUST match the backend Prisma Role enum exactly. CASHIER is the
+// transaction-only role (formerly mislabelled "KITCHEN" on the client).
+const ROLES={OWNER:"TENANT_OWNER",MANAGER:"BRANCH_MANAGER",STAFF:"MARKETING_STAFF",CASHIER:"CASHIER",KITCHEN:"CASHIER"};
+// Resolve the signed-in role. We prefer the value the server last confirmed.
+// IMPORTANT: never silently default to OWNER — that would expose owner-only
+// modules to staff if the role hasn't hydrated yet. Default to the most
+// restrictive role until the server confirms otherwise.
+const getRole=():string=>localStorage.getItem("userRole")||localStorage.getItem("role")||ROLES.CASHIER;
+const useRole=()=>{const[role,setRole]=useState(getRole);useEffect(()=>{const fn=()=>setRole(getRole());window.addEventListener("storage",fn);window.addEventListener("loyaly-role",fn as any);return()=>{window.removeEventListener("storage",fn);window.removeEventListener("loyaly-role",fn as any);};},[]);return role;};
 
 // Real-time SSE hook — connects to /api/realtime/stream, calls onEvent per message
 const useRealtime=(onEvent:(e:any)=>void,enabled=true)=>{
@@ -1144,7 +1150,13 @@ const hydrateFromApi=async()=>{
     if(biz?.slug)localStorage.setItem("biz_slug",biz.slug);
     if(biz?.currency)localStorage.setItem("biz_currency",biz.currency);
     if(biz?.logoUrl)localStorage.setItem("biz_logo",biz.logoUrl);
-    if(d?.user?.role)localStorage.setItem("role",d.user.role);
+    if(d?.user?.role){
+      // The server is the source of truth for the role. Keep both keys in sync
+      // and notify useRole() listeners so the nav re-filters immediately.
+      localStorage.setItem("role",d.user.role);
+      localStorage.setItem("userRole",d.user.role);
+      window.dispatchEvent(new Event("loyaly-role"));
+    }
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
     if(biz?.visitBasePoints!=null)localStorage.setItem("visitBasePoints",String(biz.visitBasePoints));
     if(biz?.country)localStorage.setItem("biz_country",biz.country);
@@ -7483,9 +7495,22 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     if(!allowed.includes(role)){setPage("pos");return;}
     setPage(p);localStorage.setItem("crm_page",p);if(p!=="profile"&&p!=="campaign-builder"&&p!=="automation-builder")setSelC(null);setMobileMenu(false);
   };
+  // Role-appropriate first screen when the saved/initial page isn't permitted.
+  const landingFor=(r:string)=>r===ROLES.OWNER?"dashboard":r===ROLES.MANAGER?"customers":r===ROLES.STAFF?"campaigns":"pos";
   const render=()=>{
-    // Block non-owner from owner-only pages
-    if(!can(role,"viewAnalytics")&&(page==="dashboard"||page==="ai"||page==="datahub"))return<POSPage role={role}/>;
+    // Generic role gate: if the current page belongs to a module this role
+    // can't access, fall back to their role-appropriate landing screen. This
+    // covers owner-only modules (dashboard, analytics, settings, operations)
+    // and any stale saved page. Backend entitlements remain the real guard.
+    const allowedHere=rolesForPage(page);
+    if(!allowedHere.includes(role)){
+      const home=landingFor(role);
+      if(home==="pos")return<POSPage role={role}/>;
+      if(page!==home){return render2(home);}
+    }
+    return render2(page);
+  };
+  const render2=(page:string)=>{
     switch(page){
     case"dashboard":return<DashboardPage setPage={nav}/>;
     case"customers":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
