@@ -35,7 +35,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 27 | Passwords set by owner only; staff email format (name)(business)(3-digit)(role)(branch)@theloyaly.com | 🟡 (email format generator exists) |
 | 30 | HR performance & rewards works / makes sense | ⬜ |
 | 31 | HR included in Growth plan | ✅ |
-| 32 | Role-based: only that role's panel is shown | ⬜ |
+| 32 | Role-based: only that role's panel is shown | ✅ |
 | 32b | Pro = everything unlimited except branches & integrations | ✅ |
 | 33 | Rewards calculator illustrative/easy + (i) | ⬜ |
 | 34 | Website wording non-technical | 🟡 (rewritten in site overhaul; review) |

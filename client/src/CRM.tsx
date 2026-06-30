@@ -7560,6 +7560,18 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","ops-hr","coming-soon","advisor","reports","billing"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
+  // Role guard: a user must only ever see the panels their role allows.
+  // If the current page belongs to a module this role can't access (e.g. a
+  // restored localStorage page, or an owner-only default), bounce them to the
+  // first module their role is actually allowed.
+  useEffect(()=>{
+    const mod=(PAGE_TO_MODULE as any)[page];
+    const allowed=mod?mod.roles.includes(role):false;
+    if(!allowed){
+      const first=NAV_ALL.find((m:any)=>m.roles.includes(role));
+      if(first&&first.id!==page)setPage(first.id);
+    }
+  },[role,page]);
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
   const [portalDark,setPortalDark]=useState(()=>{
     // Default to dark; only go light if user explicitly chose it
