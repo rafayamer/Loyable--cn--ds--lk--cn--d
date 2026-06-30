@@ -147,7 +147,15 @@ const mapCustomer = (c: any) => ({
 // MICRO COMPONENTS
 // ════════════════════════════════════════════════════════════════
 const Badge=({children,color,size="sm"}:{children?:any;color?:any;size?:any})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:"1px solid "+(color)+"33"}}>{children}</span>;
-const KPI=({icon:Icon,label,value,change,positive,color,sub}:{icon?:any;label?:any;value?:any;change?:any;positive?:any;color?:any;sub?:any})=>(
+// Small (i) tooltip used to explain a metric in plain language. Pure CSS hover
+// + focus (keyboard accessible) so non-technical owners can learn each number.
+const InfoDot=({text}:{text:string})=>(
+  <span className="group relative inline-flex items-center" tabIndex={0} aria-label={text}>
+    <Info size={12} className="text-slate-500 hover:text-slate-300 cursor-help"/>
+    <span className="pointer-events-none absolute right-0 top-5 z-30 w-52 rounded-lg px-3 py-2 text-[11px] leading-relaxed font-normal text-slate-200 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity" style={{background:"rgba(20,12,8,0.96)",border:"1px solid rgba(255,255,255,0.12)",boxShadow:"0 12px 30px rgba(0,0,0,0.45)"}}>{text}</span>
+  </span>
+);
+const KPI=({icon:Icon,label,value,change,positive,color,sub,info}:{icon?:any;label?:any;value?:any;change?:any;positive?:any;color?:any;sub?:any;info?:string})=>(
   <div className="gc rounded-2xl p-5 relative overflow-hidden" style={CARD}>
     <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-[0.06]" style={{background:color,transform:"translate(35%,-35%)"}}/>
     <div className="flex items-start justify-between mb-4">
@@ -155,7 +163,7 @@ const KPI=({icon:Icon,label,value,change,positive,color,sub}:{icon?:any;label?:a
       {change&&<span className={`text-xs font-semibold flex items-center gap-0.5 px-2 py-1 rounded-lg ${positive?"text-emerald-400 bg-emerald-400/10":"text-red-400 bg-red-400/10"}`}>{positive?<ArrowUpRight size={11}/>:<ArrowDownRight size={11}/>}{change}</span>}
     </div>
     <div className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</div>
-    <div className="text-xs font-medium text-slate-400">{label}</div>
+    <div className="text-xs font-medium text-slate-400 flex items-center gap-1">{label}{info&&<InfoDot text={info}/>}</div>
     {sub&&<div className="text-xs text-slate-600 mt-0.5">{sub}</div>}
   </div>
 );
@@ -2546,45 +2554,33 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
         </div>
       </div>
 
-      {/* Quota warning banner */}
-      {k&&quotaPct>=80&&(
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:quotaPct>=95?"rgba(239,68,68,0.12)":"rgba(245,158,11,0.12)",border:`1px solid ${quotaPct>=95?"rgba(239,68,68,0.3)":"rgba(245,158,11,0.3)"}`}}>
-          <AlertTriangle size={16} className={quotaPct>=95?"text-red-400":"text-amber-400"}/>
-          <div className="flex-1">
-            <span className={`text-sm font-semibold ${quotaPct>=95?"text-red-400":"text-amber-400"}`}>{quotaPct>=95?"⚠️ Quota almost full":"📊 Approaching quota limit"}</span>
-            <span className="text-xs text-slate-400 ml-2">{k.quotaUsed?.toLocaleString()} / {k.quotaTotal?.toLocaleString()} messages used ({quotaPct}%)</span>
-          </div>
-          <button onClick={()=>setPage("settings")} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex-shrink-0" style={{background:quotaPct>=95?"linear-gradient(135deg,#ef4444,#dc2626)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>Upgrade Plan</button>
-        </div>
-      )}
-
-      {/* Primary KPIs */}
+      {/* Primary KPIs — customers, engagement & retention.
+          NOTE: revenue lives in its own section below, so we don't repeat
+          "Revenue" or "LTV" here. Each card has an (i) explainer. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {loading?[...Array(8)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
-          <KPI icon={Users} label="Total Customers" value={k?.totalCustomers?.toLocaleString()??"-"} change={`+${k?.newThisMonth??0} new`} positive color={C.primary}/>
-          <KPI icon={Eye} label="Active (30d)" value={k?.activeCustomers?.toLocaleString()??"-"} change="visited this month" positive color={C.accent}/>
-          <KPI icon={TrendingUp} label="Revenue (period)" value={`£${(k?.revenue??0).toLocaleString()}`} change={`${(k?.revenueChange??0)>=0?"+":""}${k?.revenueChange??0}% vs prev`} positive={(k?.revenueChange??0)>=0} color={C.green}/>
-          <KPI icon={Send} label="Messages sent" value={k?.messagesThisMonth?.toLocaleString()??"-"} change={`${quotaPct}% quota`} positive={quotaPct<80} color={C.blue}/>
-          <KPI icon={Heart} label="Retention Rate" value={retRate} change="loyal / total" positive color={C.pink}/>
-          <KPI icon={AlertTriangle} label="Churn Rate" value={churnRate} change="lost this period" positive={false} color={C.red}/>
-          <KPI icon={TrendingUp} label="Avg. LTV" value={avgLtv} change="lifetime spend" positive color={C.amber}/>
-          <KPI icon={Repeat} label="Repeat Visit Rate" value={repeatRate} change="came back" positive color={C.green}/>
+          <KPI icon={Users} label="Total Customers" value={k?.totalCustomers?.toLocaleString()??"-"} change={`+${k?.newThisMonth??0} new`} positive color={C.primary} info="Everyone in your customer list. The badge shows how many joined this month."/>
+          <KPI icon={Eye} label="Active (30d)" value={k?.activeCustomers?.toLocaleString()??"-"} change="visited this month" positive color={C.accent} info="Customers who visited or bought in the last 30 days. Your living, engaged base."/>
+          <KPI icon={Send} label="Messages sent" value={k?.messagesThisMonth?.toLocaleString()??"-"} change={`${quotaPct}% quota`} positive={quotaPct<80} color={C.blue} info="WhatsApp messages sent this billing period, and how much of your monthly quota that uses."/>
+          <KPI icon={Heart} label="Retention Rate" value={retRate} change="loyal / total" positive color={C.pink} info="Share of customers who keep coming back (loyal ÷ total). Higher is healthier."/>
+          <KPI icon={AlertTriangle} label="Churn Rate" value={churnRate} change="lost this period" positive={false} color={C.red} info="Share of customers who appear to have stopped visiting in this period. Lower is better."/>
+          <KPI icon={Repeat} label="Repeat Visit Rate" value={repeatRate} change="came back" positive color={C.green} info="How often customers return for a second-or-more visit. The core of retention."/>
+          <KPI icon={Activity} label="Customer Health" value={`${Math.round(ek.customerHealth?.value??0)}/100`} change={ek.customerHealth?.deltaPct!=null?`${ek.customerHealth.deltaPct>=0?"+":""}${ek.customerHealth.deltaPct}%`:undefined} positive={ek.customerHealth?.trend!=="down"} color={C.green} info="A 0–100 blend of retention and sentiment — a quick pulse on your base."/>
+          <KPI icon={Star} label="Reviews" {...ekNum("reviews")} color={C.amber} info="Customer feedback responses collected in this period."/>
         </>}
       </div>
 
-      {/* ═══ EXECUTIVE REVENUE KPIs (recovered / loyalty / referral) ═══ */}
+      {/* ═══ REVENUE — single source of truth (no overlap with cards above) ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-3"><DollarSign size={15} style={{color:C.green}}/><h2 className="text-sm font-bold text-white">Where your revenue comes from</h2><span className="text-[11px] text-slate-500">last {exec?.windowDays??30} days</span></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {!exec?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
-            <KPI icon={DollarSign} label="Total Revenue" {...ekMoney("revenue")} color={C.green} sub="all visits in period"/>
-            <KPI icon={RotateCcw} label="Recovered Revenue" {...ekMoney("recoveredRevenue")} color={C.accent} sub="won back by automations"/>
-            <KPI icon={Crown} label="Loyalty Revenue" {...ekMoney("loyaltyRevenue")} color={C.amber} sub="from tier members"/>
-            <KPI icon={UserPlus} label="Referral Revenue" {...ekMoney("referralRevenue")} color={C.pink} sub="from referred customers"/>
-            <KPI icon={ShoppingBag} label="Avg. Order Value" {...ekMoney("averageOrderValue")} color={C.blue}/>
-            <KPI icon={TrendingUp} label="Customer LTV" {...ekMoney("customerLifetimeValue")} color={C.primary} sub="avg lifetime spend"/>
-            <KPI icon={Activity} label="Customer Health" value={`${Math.round(ek.customerHealth?.value??0)}/100`} change={ek.customerHealth?.deltaPct!=null?`${ek.customerHealth.deltaPct>=0?"+":""}${ek.customerHealth.deltaPct}%`:undefined} positive={ek.customerHealth?.trend!=="down"} color={C.green} sub="retention + sentiment"/>
-            <KPI icon={Star} label="Reviews" {...ekNum("reviews")} color={C.amber} sub="feedback received"/>
+            <KPI icon={DollarSign} label="Total Revenue" {...ekMoney("revenue")} color={C.green} sub="all visits in period" info="Every pound taken across all visits in this period, from all customers."/>
+            <KPI icon={RotateCcw} label="Recovered Revenue" {...ekMoney("recoveredRevenue")} color={C.accent} sub="won back by automations" info="Revenue from customers who came back after a win-back or comeback automation."/>
+            <KPI icon={Crown} label="Loyalty Revenue" {...ekMoney("loyaltyRevenue")} color={C.amber} sub="from tier members" info="Revenue from customers who belong to a loyalty tier."/>
+            <KPI icon={UserPlus} label="Referral Revenue" {...ekMoney("referralRevenue")} color={C.pink} sub="from referred customers" info="Revenue from customers who joined through a referral."/>
+            <KPI icon={ShoppingBag} label="Avg. Order Value" {...ekMoney("averageOrderValue")} color={C.blue} info="Average spend per visit across the period."/>
+            <KPI icon={TrendingUp} label="Customer LTV" {...ekMoney("customerLifetimeValue")} color={C.primary} sub="avg lifetime spend" info="Average total spend of a customer over their whole lifetime with you."/>
           </>}
         </div>
       </div>
