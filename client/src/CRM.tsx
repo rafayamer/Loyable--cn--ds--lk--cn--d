@@ -3130,9 +3130,9 @@ const InboxView=({connected}:{connected:boolean})=>{
   );
   const phoneRe=/^\+?\d[\d\s-]+$/;
   return(
-    <div className="flex rounded-xl overflow-hidden" style={{height:"calc(100vh - 200px)",background:card,border:`1px solid ${border}`}}>
-      {/* Conversation list */}
-      <div className="w-72 flex-shrink-0 flex flex-col border-r" style={{borderColor:border}}>
+    <div className="flex rounded-xl overflow-hidden" style={{height:"calc(100vh - 200px)",minHeight:"420px",background:card,border:`1px solid ${border}`}}>
+      {/* Conversation list — full-width on mobile; hidden once a chat is open */}
+      <div className={`w-full md:w-72 flex-shrink-0 flex-col border-r ${active?"hidden md:flex":"flex"}`} style={{borderColor:border}}>
         <div className="p-3 border-b text-xs font-semibold" style={{borderColor:border,color:sub}}>CONVERSATIONS</div>
         <div className="flex-1 overflow-y-auto">
           {loading?<div className="p-4 text-center"><RefreshCw size={18} className="animate-spin text-slate-500 mx-auto"/></div>
@@ -3159,8 +3159,8 @@ const InboxView=({connected}:{connected:boolean})=>{
           );})}
         </div>
       </div>
-      {/* Thread */}
-      <div className="flex-1 flex flex-col">
+      {/* Thread — full-width on mobile; hidden until a chat is open */}
+      <div className={`flex-1 flex-col min-w-0 ${active?"flex":"hidden md:flex"}`}>
         {!active?(
           <div className="flex-1 flex items-center justify-center flex-col gap-2" style={{color:sub}}>
             <MessageSquare size={32} className="opacity-30"/>
@@ -3168,7 +3168,8 @@ const InboxView=({connected}:{connected:boolean})=>{
           </div>
         ):(
           <>
-            <div className="flex items-center gap-3 p-3 border-b" style={{borderColor:border}}>
+            <div className="flex items-center gap-2 p-3 border-b" style={{borderColor:border}}>
+              <button onClick={()=>setActive(null)} className="md:hidden flex-shrink-0 p-1.5 -ml-1 rounded-lg" style={{color:sub}} aria-label="Back"><ArrowLeft size={18}/></button>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{background:"linear-gradient(135deg,#F97316,#C2410C)"}}>
                 {(active.name&&active.name!==active.phone&&!phoneRe.test(active.name)?active.name:active.phone||"?")[0]?.toUpperCase()}
               </div>
