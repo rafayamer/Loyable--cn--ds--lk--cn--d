@@ -7627,7 +7627,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"advisor":return<FeatureGate feature="ai_advisor" requiredPlan="Growth"><AIAdvisorPage/></FeatureGate>;
     case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
-    case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Pro"><HRStaffPage/></FeatureGate>;
+    case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Growth"><HRStaffPage/></FeatureGate>;
     case"coming-soon":case"integrations":case"ops-branches":case"ops-inventory":case"ops-devices":case"ops-ordering":return<ComingSoonHub/>;
     case"billing":return<BillingPlansPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;

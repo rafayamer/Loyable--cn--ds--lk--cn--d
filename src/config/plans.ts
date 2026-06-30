@@ -45,10 +45,10 @@ const BASE: FeatureKey[] = ['qr_checkin', 'basic_campaigns', 'customer_profiles'
 const STARTER_F: FeatureKey[] = [...BASE, 'loyalty_wallet', 'referrals', 'segments'];
 const GROWTH_F: FeatureKey[] = [
   ...STARTER_F, 'store_credit', 'campaign_builder', 'automations',
-  'ai_advisor', 'ai_reports', 'analytics_advanced',
+  'ai_advisor', 'ai_reports', 'analytics_advanced', 'hr', 'pos',
 ];
 const PRO_F: FeatureKey[] = [
-  ...GROWTH_F, 'multi_branch', 'branch_comparison', 'pos', 'hr', 'api_access', 'white_label',
+  ...GROWTH_F, 'multi_branch', 'branch_comparison', 'api_access', 'white_label',
 ];
 
 export const PLANS: Record<Tier, PlanDef> = {
@@ -75,10 +75,10 @@ export const PLANS: Record<Tier, PlanDef> = {
   },
   PROFESSIONAL: {
     tier: 'PROFESSIONAL', slug: 'pro_199_99', name: 'Pro', priceMonthlyGBP: 199.99, publicVisible: true,
-    tagline: 'For stronger operators running up to 3 branches.',
-    limits: { branches: 3, customers: -1, messagesPerMonth: 100_000, staff: 25 },
+    tagline: 'Everything unlimited — limited only by branches and integrations.',
+    limits: { branches: 3, customers: -1, messagesPerMonth: -1, staff: -1 },
     features: PRO_F,
-    highlights: ['Up to 3 branches', 'Unlimited customers (fair use)', 'High-volume messaging (fair-use, provider limits apply)', 'Branch comparison & advanced analytics', 'Staff permissions & advanced controls', 'Priority support'],
+    highlights: ['Up to 3 branches', 'Unlimited customers (fair use)', 'Unlimited messaging (fair-use, provider limits apply)', 'Unlimited staff & full permissions', 'Branch comparison & advanced analytics', 'Priority support'],
   },
   // Internal only — never shown on public pricing. No custom/enterprise public plan.
   ENTERPRISE: {
