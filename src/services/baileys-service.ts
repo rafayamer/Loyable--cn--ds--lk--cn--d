@@ -253,7 +253,7 @@ async function startBaileysSessionInner(bizId: string, forceFresh: boolean): Pro
     if (type !== 'notify') return;
     for (const msg of messages) {
       if (!msg.key?.fromMe && msg.key?.remoteJid) {
-        await handleInboundBaileys(bizId, msg).catch(e =>
+        await handleInboundBaileys(bizId, msg, sock).catch(e =>
           console.error('[baileys] inbound handler error: %s', e?.message)
         );
       }
@@ -373,7 +373,7 @@ export async function sendBaileysMedia(
 
 const OPT_OUT_RE = /\b(STOP|UNSUBSCRIBE|OPTOUT|CANCEL|QUIT)\b|OPT[- ]OUT|REMOVE ME|NO MORE|DELETE ME|STOP (MESSAGING|SENDING)/i;
 
-async function handleInboundBaileys(bizId: string, msg: proto.IWebMessageInfo): Promise<void> {
+async function handleInboundBaileys(bizId: string, msg: proto.IWebMessageInfo, sock?: any): Promise<void> {
   const jid  = msg.key?.remoteJid ?? '';
   if (!jid || jid.endsWith('@g.us')) return; // skip group messages
 
@@ -383,7 +383,25 @@ async function handleInboundBaileys(bizId: string, msg: proto.IWebMessageInfo): 
     ''
   ).trim();
 
-  const phone = '+' + jid.replace('@s.whatsapp.net', '').replace(/[^\d]/g, '');
+  // Resolve the real phone number. WhatsApp may address a chat by LID
+  // (e.g. "82854348333157@lid") which is a privacy id, NOT the phone number.
+  // The phone-number JID is in key.remoteJidAlt; otherwise resolve via the
+  // socket's LID→PN map. Without this, inbound replies show as an unidentified
+  // number and never match the customer they were sent to.
+  let phoneJid = jid;
+  const key: any = msg.key ?? {};
+  if (jid.endsWith('@lid')) {
+    const alt: string = typeof key.remoteJidAlt === 'string' ? key.remoteJidAlt : '';
+    if (alt && (alt.endsWith('@s.whatsapp.net') || alt.endsWith('@c.us'))) {
+      phoneJid = alt;
+    } else {
+      try {
+        const pn = await sock?.signalRepository?.lidMapping?.getPNForLID?.(jid);
+        if (pn && typeof pn === 'string') phoneJid = pn;
+      } catch { /* mapping unavailable — fall back to LID digits below */ }
+    }
+  }
+  const phone = '+' + phoneJid.replace(/@.*$/, '').replace(/[^\d]/g, '');
 
   // Detect media type
   const mediaType = msg.message?.imageMessage ? 'image'
@@ -402,7 +420,7 @@ async function handleInboundBaileys(bizId: string, msg: proto.IWebMessageInfo): 
     update: {},
     create: {
       businessId: bizId,
-      chatId:     jid,
+      chatId:     phoneJid,
       phone,
       body:       text || (mediaType ? `[${mediaType}]` : ''),
       fromMe:     false,
