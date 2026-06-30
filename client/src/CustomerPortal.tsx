@@ -316,21 +316,25 @@ function LoyaltyCard({ customer, nextTier, progressToNext }: any) {
 // ================================================================
 function MenuTab({ menuImageUrl }: { menuImageUrl: string }) {
   const [zoomed, setZoomed] = useState(false);
-  const isPdf = menuImageUrl.toLowerCase().includes('.pdf');
+  const [imgFailed, setImgFailed] = useState(false);
+  // Resolve relative upload paths (e.g. "/uploads/menu/x.jpg") to an absolute
+  // URL so the menu opens regardless of which origin the portal is served from.
+  const url = /^https?:\/\//i.test(menuImageUrl) ? menuImageUrl : `${window.location.origin}${menuImageUrl.startsWith('/') ? '' : '/'}${menuImageUrl}`;
+  const isPdf = url.toLowerCase().split('?')[0].endsWith('.pdf');
 
-  if (isPdf) {
+  if (isPdf || imgFailed) {
     return (
       <div className="flex flex-col items-center gap-4 py-6">
         <div className="text-5xl">📄</div>
-        <p className="text-sm text-slate-600 text-center">Our menu is available as a PDF</p>
+        <p className="text-sm text-slate-600 text-center">Tap below to view our menu</p>
         <a
-          href={menuImageUrl}
+          href={url}
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-2xl text-white text-sm font-semibold"
-          style={{ background: 'linear-gradient(135deg,#6366f1,#F97316)' }}
+          style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E)' }}
         >
-          Open Menu PDF
+          Open Menu
         </a>
       </div>
     );
@@ -346,10 +350,14 @@ function MenuTab({ menuImageUrl }: { menuImageUrl: string }) {
       >
         {zoomed && <div className="absolute inset-0 bg-black/80 z-0" onClick={() => setZoomed(false)}/>}
         <img
-          src={menuImageUrl}
+          src={url}
           alt="Menu"
+          onError={() => setImgFailed(true)}
           className={`w-full object-contain ${zoomed ? 'max-h-screen relative z-10' : 'max-h-[70vh]'}`}
         />
+      </div>
+      <div className="text-center mt-3">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: '#F97316' }}>Open full menu in new tab</a>
       </div>
     </div>
   );
