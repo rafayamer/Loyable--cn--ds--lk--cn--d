@@ -1324,7 +1324,7 @@ const OkBox=({msg}:{msg:string})=>msg?(
 
 const Field=({label,type="text",value,onChange,onEnter,placeholder}:{label:string,type?:string,value:string,onChange:(v:string)=>void,onEnter?:()=>void,placeholder?:string})=>{
   const {dark}=useTheme();
-  const s:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",transition:"border-color .2s"};
+  const s:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(249,115,22,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",transition:"border-color .2s"};
   return(
     <div>
       <label className="text-xs font-medium mb-1.5 block" style={{color:dark?"#94a3b8":"#6b7280"}}>{label}</label>
@@ -1403,7 +1403,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
   };
   const {dark}=useTheme();
   const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
-  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(249,115,22,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
   if(bizChoices){
     return(
       <div>
@@ -1412,7 +1412,7 @@ const LoginView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>vo
           {bizChoices.map(b=>(
             <button key={b.id} onClick={async()=>{setLoading(true);try{await doLogin(e,p,b.id);}catch(ex){setErr((ex as Error).message);}finally{setLoading(false);}}}
               className="w-full text-left rounded-xl px-4 py-3 transition-all"
-              style={{background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:"1px solid rgba(124,58,237,0.25)"}}>
+              style={{background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:"1px solid rgba(249,115,22,0.25)"}}>
               <div className="font-semibold text-sm" style={{color:dark?"white":"#1C1917"}}>{b.name}</div>
               <div className="text-xs mt-0.5" style={{color:dark?"#94a3b8":"#6b7280"}}>{b.role.replace(/_/g," ")}</div>
             </button>
@@ -1488,7 +1488,7 @@ const SignupView=({onLogin,onView}:{onLogin:(u:any)=>void,onView:(v:AuthView)=>v
   };
   const {dark}=useTheme();
   const fldLbl:React.CSSProperties={display:"block",fontSize:"12px",fontWeight:600,marginBottom:"6px",color:dark?"#94a3b8":"#374151"};
-  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
+  const fldInp:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(249,115,22,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917"};
   const selSt={...fldInp,appearance:"none" as const};
   const optBg=dark?"#1C1917":"white";
   return(
@@ -1644,8 +1644,8 @@ const RevenueCalculator=({dark,onStart}:{dark:boolean;onStart:()=>void})=>{
   );
 };
 
-const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
-  const [view,setView]=useState<AuthView>("landing");
+export const LandingPage=({onLogin,initialView,onExitAuth}:{onLogin:(u:any)=>void;initialView?:AuthView;onExitAuth?:()=>void})=>{
+  const [view,setView]=useState<AuthView>(initialView??"landing");
   const [dark,setDark]=useState(()=>{
     // Default to dark; only go light if user explicitly chose it
     const saved=localStorage.getItem("site_dark");
@@ -1658,19 +1658,19 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [faqOpen,setFaqOpen]=useState<number|null>(null);
 
   const D=dark;
-  const bg    = D?"#09090b":"#ffffff";
-  const bg2   = D?"#0f0f17":"#f8fafc";
+  const bg    = D?"#0E0704":"#FFF7ED";
+  const bg2   = D?"#1A0F0A":"#FFFBF5";
   const card  = D?"rgba(255,255,255,0.04)":"#ffffff";
-  const tx    = D?"#ffffff":"#0f172a";
+  const tx    = D?"#ffffff":"#1C1917";
   const tx2   = D?"#94a3b8":"#64748b";
   const tx3   = D?"#64748b":"#94a3b8";
   const bdr   = D?"#1e293b":"#e2e8f0";
   const inpBg = D?"rgba(255,255,255,0.07)":"#FFF7ED";
-  const inpBd = D?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)";
-  const navBg = D?"rgba(9,9,11,0.88)":"rgba(255,255,255,0.88)";
-  const secPillBg  = D?"#0f172a":"#f8fafc";
-  const secPillBdr = D?"#334155":"#cbd5e1";
-  const secPillTx  = D?"#818cf8":"#4f46e5";
+  const inpBd = D?"rgba(255,255,255,0.14)":"rgba(249,115,22,0.2)";
+  const navBg = D?"rgba(14,7,4,0.88)":"rgba(255,255,255,0.88)";
+  const secPillBg  = D?"rgba(255,255,255,0.05)":"#FFF7ED";
+  const secPillBdr = D?"rgba(255,255,255,0.12)":"#F1E4D8";
+  const secPillTx  = D?"#FF8A3D":"#EA6A0E";
 
   const LS_FEATURES=[
     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,title:"QR Check-In",desc:"Instant QR scanning for seamless customer check-ins."},
@@ -1804,10 +1804,10 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
       <ThemeCtx.Provider value={{dark}}>
       <div className="min-h-screen flex flex-col lg:flex-row" style={{background:bg}}>
         {/* Left panel — marketing */}
-        <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#C2410C 0%,#EA6A0E 40%,#4f46e5 100%)"}}>
-          <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#c4b5fd 0%,transparent 40%)"}}/>
+        <div className="hidden lg:flex flex-col justify-between w-[48%] min-h-screen p-10 relative overflow-hidden" style={{background:"linear-gradient(145deg,#C2410C 0%,#EA6A0E 45%,#F97316 100%)"}}>
+          <div className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 50%,#fff 0%,transparent 50%),radial-gradient(circle at 80% 20%,#FFB085 0%,transparent 40%)"}}/>
           <div className="relative z-10">
-            <button onClick={()=>setView("landing")} className="mb-12">
+            <button onClick={()=>onExitAuth?onExitAuth():setView("landing")} className="mb-12">
               <img src="/white.png" alt="The Loyaly" className="h-9 w-auto object-contain"/>
             </button>
             <h1 className="text-3xl font-black text-white mb-3 leading-tight">
@@ -1850,7 +1850,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
         {/* Right panel — form */}
         <div className="flex-1 flex flex-col" style={{background:bg}}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{borderColor:bdr}}>
-            <button onClick={()=>setView("landing")} className="lg:hidden">
+            <button onClick={()=>onExitAuth?onExitAuth():setView("landing")} className="lg:hidden">
               <ThemeLogo dark={dark} className="h-7 w-auto object-contain"/>
             </button>
             <div className="lg:ml-auto flex items-center gap-2">
@@ -2260,7 +2260,7 @@ const LandingPage=({onLogin}:{onLogin:(u:any)=>void})=>{
             return(
               <div key={i} className="p-6 rounded-2xl w-full max-w-[280px] flex flex-col relative transition-all hover:-translate-y-1" style={{
                 boxShadow:isPopular?"0 4px 40px rgba(249,115,22,0.3)":"0 4px 24px rgba(0,0,0,0.06)",
-                background:isPopular?"linear-gradient(145deg,#4f46e5,#EA6A0E)":"",
+                background:isPopular?"linear-gradient(145deg,#FF8A3D,#F97316)":"",
                 ...(isPopular?{}:{background:D?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.8)",border:`1px solid ${bdr}`}),
               }}>
                 {isPopular&&(
@@ -2396,8 +2396,8 @@ const AcceptInvitePage=({onLogin}:{onLogin:(u:any)=>void})=>{
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
   const [done,setDone]=useState(false);
-  const card:React.CSSProperties={background:dark?"#1C1917":"#fff",borderRadius:"20px",padding:"40px",maxWidth:"420px",width:"100%",boxShadow:"0 8px 32px rgba(124,58,237,0.15)"};
-  const fld:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(124,58,237,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",marginTop:"6px"};
+  const card:React.CSSProperties={background:dark?"#1C1917":"#fff",borderRadius:"20px",padding:"40px",maxWidth:"420px",width:"100%",boxShadow:"0 8px 32px rgba(249,115,22,0.15)"};
+  const fld:React.CSSProperties={background:dark?"rgba(255,255,255,0.07)":"#FFF7ED",border:`1px solid ${dark?"rgba(255,255,255,0.14)":"rgba(249,115,22,0.2)"}`,borderRadius:"10px",padding:"11px 14px",fontSize:"14px",width:"100%",outline:"none",color:dark?"white":"#1C1917",marginTop:"6px"};
   const lbl:React.CSSProperties={fontSize:"12px",fontWeight:600,color:dark?"#94a3b8":"#374151"};
   const submit=async()=>{
     if(!name.trim()){setErr("Please enter your name.");return;}
@@ -2765,7 +2765,7 @@ const CustomersPage=({onSelect}: {onSelect:(c:any)=>void})=>{
       {/* Saved views */}
       {views.length>0&&<div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[11px]" style={{color:ct.tx3}}>Saved views:</span>
-        {views.map(v=><span key={v.id} className="group flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] cursor-pointer" style={{background:"rgba(249,115,22,0.12)",color:"#c4b5fd"}} onClick={()=>applyView(v)}><Eye size={10}/>{v.name}{v.isShared&&<span className="opacity-60">·shared</span>}<X size={10} className="opacity-0 group-hover:opacity-70 hover:!opacity-100" onClick={(e)=>{e.stopPropagation();api.customers.deleteSavedView(v.id).then(loadViews);}}/></span>)}
+        {views.map(v=><span key={v.id} className="group flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] cursor-pointer" style={{background:"rgba(249,115,22,0.12)",color:"#FFB085"}} onClick={()=>applyView(v)}><Eye size={10}/>{v.name}{v.isShared&&<span className="opacity-60">·shared</span>}<X size={10} className="opacity-0 group-hover:opacity-70 hover:!opacity-100" onClick={(e)=>{e.stopPropagation();api.customers.deleteSavedView(v.id).then(loadViews);}}/></span>)}
       </div>}
       {/* Filter bar */}
       <div className="flex gap-2 flex-wrap">
@@ -2874,13 +2874,13 @@ const CustomerProfile=({customer:c,onBack,onMsg}:{customer:any,onBack:()=>void,o
           {[["Gender",p.gender],["Address",p.address],["Joined",p.createdAt?new Date(p.createdAt).toLocaleDateString("en-GB"):null],["First visit",p.firstVisitAt?new Date(p.firstVisitAt).toLocaleDateString("en-GB"):null],["Last visit",p.lastVisitAt?timeAgo(p.lastVisitAt):"Never"]].filter(r=>r[1]).map(([l,v])=><div key={l} className="flex justify-between"><span className="text-slate-500">{l}</span><span className="text-slate-200">{v}</span></div>)}
           {fav.length>0&&<div className="pt-2 border-t border-white/5"><div className="text-slate-500 mb-1.5">Favourite products</div><div className="flex flex-wrap gap-1">{fav.map((f:string)=><span key={f} className="px-2 py-0.5 rounded text-[10px]" style={{background:"rgba(245,158,11,0.15)",color:"#fbbf24"}}>{f}</span>)}</div></div>}
           {Object.keys(prefs).length>0&&<div className="pt-2 border-t border-white/5">{Object.entries(prefs).map(([k,v])=><div key={k} className="flex justify-between"><span className="text-slate-500 capitalize">{k}</span><span className="text-slate-200">{String(v)}</span></div>)}</div>}
-          {Object.keys(social).length>0&&<div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(social).map(([k,v])=><span key={k} className="px-2 py-0.5 rounded text-[10px] flex items-center gap-1" style={{background:"rgba(249,115,22,0.15)",color:"#c4b5fd"}}><Link size={9}/>{k}: {String(v)}</span>)}</div>}
+          {Object.keys(social).length>0&&<div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">{Object.entries(social).map(([k,v])=><span key={k} className="px-2 py-0.5 rounded text-[10px] flex items-center gap-1" style={{background:"rgba(249,115,22,0.15)",color:"#FFB085"}}><Link size={9}/>{k}: {String(v)}</span>)}</div>}
         </div>}
       </div>
       <div className="gc rounded-xl p-4" style={CARD}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Star size={14} style={{color:C.amber}}/>Points Ledger</h3>
-          <button onClick={()=>setPtOpen(o=>!o)} className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg" style={{background:C.primary+"22",color:"#c4b5fd"}}><Plus size={11}/>Adjust points</button>
+          <button onClick={()=>setPtOpen(o=>!o)} className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg" style={{background:C.primary+"22",color:"#FFB085"}}><Plus size={11}/>Adjust points</button>
         </div>
         {ptOpen&&<div className="mb-3 p-3 rounded-lg space-y-2" style={{background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)"}}>
           <div className="flex gap-2">
@@ -3118,7 +3118,7 @@ const InboxView=({connected}:{connected:boolean})=>{
   };
   const bg=dark?"#1A0F0A":"#FFF7ED";
   const card=dark?"rgba(255,255,255,0.04)":"#fff";
-  const border=dark?"rgba(255,255,255,0.08)":"rgba(124,58,237,0.1)";
+  const border=dark?"rgba(255,255,255,0.08)":"rgba(249,115,22,0.1)";
   const txt=dark?"#e2d9f3":"#1C1917";
   const sub=dark?"#A8A29E":"#6b7280";
   if(!connected)return(
@@ -3377,7 +3377,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
         <p className="text-xs text-slate-400 mb-2 font-medium">Start from a template</p>
         <div className="flex flex-wrap gap-2">
           {CB_TEMPLATES.map(t=>(
-            <button key={t.label} onClick={()=>applyTemplate(t)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#c4b5fd"}}>
+            <button key={t.label} onClick={()=>applyTemplate(t)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#FFB085"}}>
               <span>{t.emoji}</span>{t.label}
             </button>
           ))}
@@ -3525,7 +3525,7 @@ const CampaignBuilderPage=({onBack}:any)=>{
                 {saving==="launch"?<RefreshCw size={14} className="animate-spin"/>:<Send size={14}/>}
                 {saving==="launch"?"Sending…":cSchedule?"Schedule Campaign":"Send Campaign Now"}
               </button>
-              <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-50" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#c4b5fd"}}>
+              <button onClick={()=>save(false)} disabled={!!saving} className="w-full py-2.5 rounded-xl text-xs font-medium disabled:opacity-50" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)",color:"#FFB085"}}>
                 {saving==="draft"?"Saving…":"Save as Draft"}
               </button>
             </div>
@@ -3716,7 +3716,7 @@ const AutomationBuilderPage=({onBack}:any)=>{
             {/* Timing presets */}
             <div className="flex flex-wrap gap-2 mt-3">
               {[{l:"Immediately",d:0,u:"minutes"},{l:"1 hour later",d:1,u:"hours"},{l:"Same evening",d:6,u:"hours"},{l:"Next day",d:1,u:"days"},{l:"3 days later",d:3,u:"days"}].map(p=>(
-                <button key={p.l} onClick={()=>{setDelay(p.d);setDelayUnit(p.u as any);}} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={delay===p.d&&delayUnit===p.u?{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.4)",color:"#c4b5fd"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b"}}>{p.l}</button>
+                <button key={p.l} onClick={()=>{setDelay(p.d);setDelayUnit(p.u as any);}} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={delay===p.d&&delayUnit===p.u?{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.4)",color:"#FFB085"}:{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b"}}>{p.l}</button>
               ))}
             </div>
           </div>
@@ -3928,7 +3928,7 @@ const RewardsManager=()=>{
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{rewards.map(r=>(
       <div key={r.id} className="gc rounded-xl p-4" style={{...CARD,opacity:r.isActive?1:0.55}}>
         <div className="flex items-start justify-between"><div className="flex items-center gap-2"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:C.amber+"22"}}><Gift size={16} style={{color:C.amber}}/></div><div><div className="text-sm font-semibold text-white">{r.name}</div><div className="text-[10px] text-slate-500">{REWARD_TYPES.find(t=>t[0]===r.type)?.[1]||r.type}</div></div></div><div className="flex gap-1"><button onClick={()=>setForm({...r})} className="text-slate-500 hover:text-white"><Edit size={13}/></button><button onClick={()=>del(r.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={13}/></button></div></div>
-        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]"><span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#c4b5fd"}}>{r.pointsCost} pts</span>{r.value!=null&&<span className="text-slate-400">£{Number(r.value)} value</span>}{r.stock!=null&&<span className="text-slate-500">{r.stock} left</span>}{r.minTierRank!=null&&<span className="text-amber-400">Tier {r.minTierRank}+</span>}{!r.isActive&&<span className="text-red-400">Inactive</span>}</div>
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]"><span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#FFB085"}}>{r.pointsCost} pts</span>{r.value!=null&&<span className="text-slate-400">£{Number(r.value)} value</span>}{r.stock!=null&&<span className="text-slate-500">{r.stock} left</span>}{r.minTierRank!=null&&<span className="text-amber-400">Tier {r.minTierRank}+</span>}{!r.isActive&&<span className="text-red-400">Inactive</span>}</div>
       </div>
     ))}</div>}
     {form&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setForm(null)}>
@@ -4056,7 +4056,7 @@ const ChallengesManager=()=>{
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{items.map(ch=>(
       <div key={ch.id} className="gc rounded-xl p-4" style={{...CARD,opacity:ch.isActive?1:0.55}}>
         <div className="flex items-start justify-between"><div className="flex items-center gap-2"><span className="text-xl">{ch.badgeIcon||"🏆"}</span><div><div className="text-sm font-semibold text-white">{ch.name}</div><div className="text-[10px] text-slate-500">{CHALLENGE_TYPES.find(t=>t[0]===ch.type)?.[1]||ch.type} · goal {ch.goal}</div></div></div><div className="flex gap-1"><button onClick={()=>setForm({...ch})} className="text-slate-500 hover:text-white"><Edit size={13}/></button><button onClick={()=>del(ch.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={13}/></button></div></div>
-        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]">{ch.rewardPoints>0&&<span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#c4b5fd"}}>+{ch.rewardPoints} pts</span>}{ch.badgeName&&<span className="text-amber-400">🏅 {ch.badgeName}</span>}<span className="text-slate-500 ml-auto">{ch.participants??0} joined · {ch.completions??0} done</span></div>
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]">{ch.rewardPoints>0&&<span className="px-2 py-0.5 rounded font-bold" style={{background:C.primary+"22",color:"#FFB085"}}>+{ch.rewardPoints} pts</span>}{ch.badgeName&&<span className="text-amber-400">🏅 {ch.badgeName}</span>}<span className="text-slate-500 ml-auto">{ch.participants??0} joined · {ch.completions??0} done</span></div>
       </div>
     ))}</div>}
     {form&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.7)",backdropFilter:"blur(6px)"}} onClick={()=>setForm(null)}>
@@ -4348,7 +4348,7 @@ const DataHubPage=()=>{
           </label>
           {acSendMsg&&<div className="mt-3 space-y-2">
             <textarea value={acMsg} onChange={e=>setAcMsg(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-xl text-xs text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}/>
-            <div className="flex flex-wrap gap-1.5">{["{{name}}","{{points}}","{{tier}}","{{business_name}}"].map(v=><button key={v} onClick={()=>setAcMsg(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(249,115,22,0.12)",color:"#c4b5fd"}}>+{v}</button>)}</div>
+            <div className="flex flex-wrap gap-1.5">{["{{name}}","{{points}}","{{tier}}","{{business_name}}"].map(v=><button key={v} onClick={()=>setAcMsg(p=>p+v)} className="px-2 py-1 rounded-md text-xs font-mono" style={{background:"rgba(249,115,22,0.12)",color:"#FFB085"}}>+{v}</button>)}</div>
           </div>}
         </div>
         {acResult&&<p className="text-xs" style={{color:acResult.ok?"#22c55e":"#ef4444"}}>{acResult.text}</p>}
@@ -4746,7 +4746,7 @@ const CustomerPortalPage=()=>{
                   <div className="flex-1 h-px" style={{background:"rgba(255,255,255,0.08)"}}/>
                 </div>
                 <label className="flex items-center justify-center gap-2 py-2.5 rounded-xl cursor-pointer transition-all"
-                  style={{background:"rgba(249,115,22,0.12)",border:"1px dashed rgba(249,115,22,0.4)",color:"#c4b5fd"}}>
+                  style={{background:"rgba(249,115,22,0.12)",border:"1px dashed rgba(249,115,22,0.4)",color:"#FFB085"}}>
                   <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="hidden"
                     onChange={async e=>{
                       const f=e.target.files?.[0]; if(!f) return;
@@ -4778,7 +4778,7 @@ const CustomerPortalPage=()=>{
               return(
                 <div key={device} className="mb-3">
                   <label className="text-xs text-slate-400 mb-1 block">{device} Background</label>
-                  <label className="flex items-center justify-center gap-2 py-2 rounded-xl cursor-pointer transition-all" style={{background:"rgba(249,115,22,0.08)",border:"1px dashed rgba(249,115,22,0.3)",color:"#c4b5fd"}}>
+                  <label className="flex items-center justify-center gap-2 py-2 rounded-xl cursor-pointer transition-all" style={{background:"rgba(249,115,22,0.08)",border:"1px dashed rgba(249,115,22,0.3)",color:"#FFB085"}}>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
                       onChange={async e=>{
                         const f=e.target.files?.[0]; if(!f) return;
@@ -4996,7 +4996,7 @@ const CustomerPortalPage=()=>{
               }}
               disabled={locSaving||!locLat||!locLon}
               className="w-full mt-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-              style={{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.35)",color:"#c4b5fd"}}>
+              style={{background:"rgba(249,115,22,0.2)",border:"1px solid rgba(249,115,22,0.35)",color:"#FFB085"}}>
               {locSaving?"Saving…":locSaved?"✓ Saved!":"Save Location"}
             </button>
           </PortalCard>
@@ -6667,7 +6667,7 @@ const ActiveOrderCard=({order,currency,bizType,onPaid,role=ROLES.OWNER}:{order:A
                 <button onClick={()=>editQty(i.name,-1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(239,68,68,0.2)",color:"#f87171"}}>−</button>
                 <span className="text-slate-300 flex-1 truncate">{i.name}</span>
                 <span className="text-white font-bold w-4 text-center">{i.qty}</span>
-                <button onClick={()=>editQty(i.name,1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(249,115,22,0.25)",color:"#c4b5fd"}}>+</button>
+                <button onClick={()=>editQty(i.name,1)} className="w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:"rgba(249,115,22,0.25)",color:"#FFB085"}}>+</button>
                 <span className="text-slate-400 w-16 text-right">{currency} {(i.qty*i.price).toFixed(2)}</span>
               </div>
             ))}

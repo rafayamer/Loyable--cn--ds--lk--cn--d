@@ -4,6 +4,7 @@ const LoyalyAdminPanel    = lazy(() => import('./LoyableAdminPanel'));
 const CRM                 = lazy(() => import('./CRM'));
 const CustomerPortal      = lazy(() => import('./CustomerPortal'));
 const TermsAndConditions  = lazy(() => import('./TermsAndConditions'));
+const MarketingApp        = lazy(() => import('./site/MarketingApp'));
 
 type Role = 'PLATFORM_ADMINISTRATOR' | 'TENANT_OWNER' | 'BRANCH_MANAGER' | 'CASHIER' | 'MARKETING_STAFF' | 'CUSTOMER' | null;
 
@@ -12,6 +13,12 @@ const isTerms  = window.location.pathname.startsWith('/terms');
 // Owner/SaaS-operator console — served on its own path (and its own dev port, see
 // `npm run admin:dev` → http://localhost:3002/admin). Forces the admin panel.
 const isAdmin  = window.location.pathname.startsWith('/admin');
+
+// Public marketing + auth routes. When logged-out, these render the new 4-page
+// motion website (which itself owns the router). When a token exists, `/` falls
+// through to the CRM so the app loads normally.
+const MARKETING_PATHS = ['/', '/product', '/pricing', '/about', '/login', '/signup'];
+const isMarketingPath = MARKETING_PATHS.includes(window.location.pathname);
 
 function AdminOrCRM() {
   const [role, setRole] = useState<Role>(null);
@@ -42,7 +49,7 @@ function PageLoader() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0f0f17', flexDirection: 'column', gap: 16 }}>
       <img src="/white.png" alt="The Loyaly" style={{ width: 120, opacity: 0.9 }} />
       <div style={{ width: 200, height: 3, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #06b6d4)', borderRadius: 2, animation: 'slide 1.2s ease-in-out infinite' }} />
+        <div style={{ height: '100%', background: 'linear-gradient(90deg, #FF8A3D, #F97316)', borderRadius: 2, animation: 'slide 1.2s ease-in-out infinite' }} />
       </div>
       <style>{`@keyframes slide { 0% { width: 0%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } 100% { width: 0%; margin-left: 100%; } }`}</style>
     </div>
@@ -53,5 +60,8 @@ export default function App() {
   if (isPortal) return <Suspense fallback={<PageLoader />}><CustomerPortal /></Suspense>;
   if (isTerms)  return <Suspense fallback={<PageLoader />}><TermsAndConditions /></Suspense>;
   if (isAdmin)  return <Suspense fallback={<PageLoader />}><LoyalyAdminPanel /></Suspense>;
+  // Logged-out visitors on a marketing/auth path → new motion website.
+  const hasToken = !!localStorage.getItem('accessToken');
+  if (isMarketingPath && !hasToken) return <Suspense fallback={<PageLoader />}><MarketingApp /></Suspense>;
   return <AdminOrCRM />;
 }
