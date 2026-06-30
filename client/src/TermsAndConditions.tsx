@@ -1,8 +1,8 @@
 import React from 'react';
 
 const EFFECTIVE_DATE = 'June 24, 2026';
-const COMPANY_NAME   = 'Loyable Technologies Ltd.';
-const COMPANY_EMAIL  = 'legal@loyable.io';
+const COMPANY_NAME   = 'The Loyaly';
+const COMPANY_EMAIL  = 'support@theloyaly.com';
 const GOVERNING_LAW  = 'England and Wales';
 
 export default function TermsAndConditions() {
@@ -12,10 +12,7 @@ export default function TermsAndConditions() {
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
-              <span className="text-white font-bold text-sm">L</span>
-            </div>
-            <span className="font-bold text-gray-900 text-lg">Loyable</span>
+            <img src="/black.png" alt="The Loyaly" className="h-8 w-auto object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms and Conditions of Service</h1>
           <p className="text-sm text-gray-500">Effective Date: {EFFECTIVE_DATE} &nbsp;|&nbsp; Version 1.0</p>
@@ -30,7 +27,7 @@ export default function TermsAndConditions() {
           <p className="text-sm leading-7 text-gray-700">
             PLEASE READ THESE TERMS AND CONDITIONS OF SERVICE (hereinafter, the &ldquo;<strong>Agreement</strong>&rdquo;
             or &ldquo;<strong>Terms</strong>&rdquo;) CAREFULLY BEFORE ACCESSING, REGISTERING FOR, OR USING THE
-            LOYABLE PLATFORM (the &ldquo;<strong>Platform</strong>&rdquo;). BY CLICKING &ldquo;I AGREE,&rdquo; BY
+            THE LOYALY PLATFORM (the &ldquo;<strong>Platform</strong>&rdquo;). BY CLICKING &ldquo;I AGREE,&rdquo; BY
             COMPLETING THE REGISTRATION PROCESS, OR BY ACCESSING OR USING ANY PORTION OF THE PLATFORM, YOU
             (&ldquo;<strong>User</strong>,&rdquo; &ldquo;<strong>You</strong>,&rdquo; OR &ldquo;<strong>Your</strong>&rdquo;)
             ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND UNCONDITIONALLY AGREE TO BE LEGALLY BOUND BY THIS
@@ -40,7 +37,7 @@ export default function TermsAndConditions() {
           <p className="text-sm leading-7 text-gray-700 mt-4">
             This Agreement constitutes a legally binding contract between You and <strong>{COMPANY_NAME}</strong>
             (hereinafter, the &ldquo;<strong>Company</strong>,&rdquo; &ldquo;<strong>We</strong>,&rdquo; &ldquo;<strong>Us</strong>,&rdquo;
-            or &ldquo;<strong>Our</strong>&rdquo;). This Agreement governs Your access to and use of the Loyable
+            or &ldquo;<strong>Our</strong>&rdquo;). This Agreement governs Your access to and use of The Loyaly
             Software-as-a-Service platform, including all associated websites, APIs, mobile applications, dashboards,
             customer-facing portals, WhatsApp messaging pipelines, analytics tooling, loyalty programme infrastructure,
             and any other products or services offered by the Company (collectively, the &ldquo;<strong>Services</strong>&rdquo;).
@@ -60,7 +57,7 @@ export default function TermsAndConditions() {
               ['"Account"', 'means the unique account created by a Tenant or End Customer to access and use the Services.'],
               ['"Business Data"', 'means all data, content, materials, and information submitted by a Tenant to the Platform in connection with the operation of their business, including but not limited to customer records, transaction histories, loyalty configurations, and campaign content.'],
               ['"End Customer"', 'means any natural person who interacts with the Platform as a customer of a Tenant, including through the Customer Loyalty Portal.'],
-              ['"Platform"', 'means the Loyable software platform and all associated Services as described in the preamble.'],
+              ['"Platform"', 'means The Loyaly software platform and all associated Services as described in the preamble.'],
               ['"Tenant"', 'means any business entity or individual that registers for, accesses, or uses the Platform in a business capacity, including Tenant Owners, Branch Managers, and Marketing Staff as defined within the role hierarchy.'],
               ['"Third-Party Services"', 'means external platforms, APIs, gateways, and services integrated with or used by the Platform, including but not limited to WhatsApp (Meta Platforms, Inc.), Stripe, Inc., Neon Technologies, Upstash, OpenAI, and any messaging gateway providers.'],
               ['"User Data"', 'means collectively, Business Data and any personal data of End Customers processed through the Platform.'],
