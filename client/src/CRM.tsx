@@ -240,14 +240,10 @@ const MODULES=[
     {id:"ai",label:"AI Insights"},
     {id:"datahub",label:"Data Hub"},
   ]},
-  {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.KITCHEN],tabs:[
+  {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.CASHIER],tabs:[
     {id:"pos",label:"POS"},
     {id:"ops-hr",label:"HR & Staff"},
-    {id:"ops-branches",label:"Branches"},
-    {id:"ops-inventory",label:"Inventory"},
-    {id:"ops-devices",label:"Devices"},
-    {id:"integrations",label:"Integrations"},
-    {id:"ops-ordering",label:"Ordering"},
+    {id:"coming-soon",label:"What's Next"},
   ]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER],tabs:[]},
 ];
@@ -355,23 +351,41 @@ const IntegrationsPage=()=>{
   );
 };
 
-// ── Operations: placeholder for modules being built next iteration ──
-const OperationsComingSoon=({title,desc,icon:Icon}:{title:string;desc:string;icon:any})=>{
+// ── What's Next: a single, honest roadmap window. Replaces the scattered
+//    "coming soon" stubs (branches, inventory, devices, ordering, integrations,
+//    WhatsApp Ads) with one place that lists everything being built — so the
+//    rest of the app only ever shows features that actually work today.
+const ROADMAP_FEATURES:{icon:any;title:string;desc:string}[]=[
+  {icon:Building,title:"Multi-branch management",desc:"Run every location from one place — per-branch staff, settings and reporting."},
+  {icon:Layers,title:"Inventory & products",desc:"Track stock and products across branches, linked to visits and loyalty."},
+  {icon:Smartphone,title:"Devices",desc:"Register POS terminals, printers and check-in tablets per location."},
+  {icon:ShoppingBag,title:"Digital ordering",desc:"Menus and order capture that feed straight into visits and points."},
+  {icon:Link,title:"Integrations",desc:"Connect Square, Shopify, Google Sheets and your existing tools."},
+  {icon:Send,title:"WhatsApp Ads",desc:"Promote offers with click-to-WhatsApp campaigns and real-time attribution."},
+];
+const ComingSoonHub=()=>{
   const ct=useCard();
   return(
     <div>
       <div className="mb-5">
-        <h1 className="text-2xl font-bold" style={{color:ct.tx}}>{title}</h1>
-        <p className="text-sm mt-1" style={{color:ct.tx3}}>{desc}</p>
+        <h1 className="text-2xl font-bold" style={{color:ct.tx}}>What's Next</h1>
+        <p className="text-sm mt-1" style={{color:ct.tx3}}>The features we're building next. Everything in your sidebar today is live and ready to use.</p>
       </div>
-      <div className="rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-3" style={{background:ct.card,border:`1px dashed ${ct.bdr}`}}>
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{background:"rgba(139,92,246,0.12)"}}>
-          <Icon size={26} className="text-violet-400"/>
-        </div>
-        <div className="text-base font-semibold" style={{color:ct.tx}}>Coming soon</div>
-        <div className="text-xs max-w-md" style={{color:ct.tx3}}>{desc}</div>
-        <span className="mt-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md" style={{background:"rgba(6,182,212,0.12)",color:"#06b6d4"}}>In development</span>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {ROADMAP_FEATURES.map(({icon:Icon,title,desc})=>(
+          <div key={title} className="liquid-glass rounded-2xl p-4 flex flex-col gap-2.5" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"rgba(249,115,22,0.12)"}}>
+                <Icon size={18} style={{color:"#F97316"}}/>
+              </div>
+              <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md" style={{background:"rgba(249,115,22,0.12)",color:"#F97316"}}>Soon</span>
+            </div>
+            <div className="text-sm font-semibold" style={{color:ct.tx}}>{title}</div>
+            <div className="text-xs leading-relaxed" style={{color:ct.tx3}}>{desc}</div>
+          </div>
+        ))}
       </div>
+      <div className="text-[11px] mt-4" style={{color:ct.tx3}}>Want one of these sooner? Tell us at <a href="mailto:hello@theloyaly.com" style={{color:"#F97316"}}>hello@theloyaly.com</a> — customer demand sets our roadmap.</div>
     </div>
   );
 };
@@ -6024,16 +6038,6 @@ const CampaignsPage=({onBuilder}:{onBuilder:()=>void})=>{
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold text-white">Campaigns</h1><p className="text-xs text-slate-400 mt-0.5">Send WhatsApp messages to your customers in bulk</p></div><button onClick={onBuilder} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#8b5cf6,#7c3aed)"}}><Plus size={14}/>Campaign Builder</button></div>
 
-      {/* WhatsApp Ads — Coming Soon (compact) */}
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:"rgba(37,211,102,0.06)",border:"1px solid rgba(37,211,102,0.18)"}}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"linear-gradient(135deg,#25d366,#128c7e)"}}>
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.848L0 24l6.335-1.652A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.371l-.36-.213-3.732.973.999-3.636-.234-.374A9.818 9.818 0 1112 21.818z"/></svg>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2"><span className="text-sm font-semibold text-white">WhatsApp Ads</span><span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{background:"rgba(37,211,102,0.2)",color:"#4ade80"}}>Coming Soon</span></div>
-          <p className="text-xs mt-0.5 truncate" style={{color:"rgba(255,255,255,0.45)"}}>Targeted WhatsApp promotions with AI copywriting and real-time attribution — built right into The Loyaly.</p>
-        </div>
-      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {loading?[...Array(4)].map((_,i)=><Skeleton key={i} h="h-24"/>):<>
           <KPI icon={Send} label="Total Sent" value={totalSent.toLocaleString()} color={C.blue}/>
@@ -7450,7 +7454,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const r=localStorage.getItem("userRole")||ROLES.OWNER;
     if(r===ROLES.KITCHEN)return"pos";
     const saved=localStorage.getItem("crm_page");
-    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","integrations","ops-hr","ops-onboarding","ops-branches","ops-inventory","ops-devices","ops-ordering","advisor","reports","billing"];
+    const safePgs=["dashboard","customers","messages","campaigns","automations","settings","loyalty","portal","pos","ai-bi","segments","ai","datahub","analytics","ops-hr","coming-soon","advisor","reports","billing"];
     return(saved&&safePgs.includes(saved))?saved:"dashboard";
   });
   const [col,setCol]=useState(false);const [selC,setSelC]=useState(null);const [mobileMenu,setMobileMenu]=useState(false);const [wa,setWa]=useState(false);const [showWA,setShowWA]=useState(false);
@@ -7529,12 +7533,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"advisor":return<FeatureGate feature="ai_advisor" requiredPlan="Growth"><AIAdvisorPage/></FeatureGate>;
     case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
-    case"integrations":return<IntegrationsPage/>;
     case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Pro"><HRStaffPage/></FeatureGate>;
-    case"ops-branches":return<OperationsComingSoon title="Branches" desc="Manage all your locations, their settings, geofencing and per-branch staff from one place." icon={Building}/>;
-    case"ops-inventory":return<OperationsComingSoon title="Inventory" desc="Track stock levels, products and supplies across branches." icon={Layers}/>;
-    case"ops-devices":return<OperationsComingSoon title="Devices" desc="Register and manage POS terminals, printers and check-in devices per branch." icon={Smartphone}/>;
-    case"ops-ordering":return<OperationsComingSoon title="Ordering" desc="Digital menus and order capture that feed directly into visits and loyalty." icon={ShoppingBag}/>;
+    case"coming-soon":case"integrations":case"ops-branches":case"ops-inventory":case"ops-devices":case"ops-ordering":return<ComingSoonHub/>;
     case"billing":return<BillingPlansPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
     default:return<DashboardPage setPage={nav}/>;
