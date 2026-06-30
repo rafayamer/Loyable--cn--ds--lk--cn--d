@@ -10,7 +10,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 2 | Message container fits on mobile | ✅ |
 | 3 | Reply shows correct customer number (not "unidentified") | ✅ |
 | 4 | Remove "email me"; auto weekly (Sun) / monthly (month-end) / yearly (year-end + new-year wishes) | ✅ |
-| 5 | "Send a message" opens that number → "write with AI" → AI writes → send | ⬜ |
+| 5 | "Send a message" opens that number → "write with AI" → AI writes → send | ✅ |
 | 6 | Automations toggle now actually turns on/off (was 404 + silent fail) | ✅ |
 | 7 | Campaigns: messages no longer stuck "pending" — now resolve to FAILED if undeliverable | 🟡 (needs connected WhatsApp to actually send) |
 | 8 | POS/FBR: Pakistan → FBR only; tax services for 5–6 major countries | ⬜ |

@@ -4149,6 +4149,14 @@ const DataHubPage=()=>{
   const [acName,setAcName]=useState("");const [acPhone,setAcPhone]=useState("");const [acCategory,setAcCategory]=useState("NEW");const [acPoints,setAcPoints]=useState(0);const [acSendMsg,setAcSendMsg]=useState(false);const [acMsg,setAcMsg]=useState("Hi {{name}}, welcome to our loyalty programme! You have {{points}} points to start with.");const [acSaving,setAcSaving]=useState(false);const [acResult,setAcResult]=useState<{text:string;ok:boolean}|null>(null);
   // Send message state for queue rows
   const [sendMsgFor,setSendMsgFor]=useState<any|null>(null);const [directMsg,setDirectMsg]=useState("");const [sendingDirect,setSendingDirect]=useState(false);
+  const [aiOpen,setAiOpen]=useState(false);const [aiPrompt,setAiPrompt]=useState("");const [aiBusy,setAiBusy]=useState(false);
+  const writeWithAi=async()=>{
+    if(!aiPrompt.trim())return;
+    setAiBusy(true);
+    try{const d=await api.ai.generateMessage(aiPrompt.trim());setDirectMsg(d.message||"");setAiOpen(false);setAiPrompt("");}
+    catch(e:any){alert(e?.message||"AI couldn't write the message right now. Try again.");}
+    finally{setAiBusy(false);}
+  };
   // Customers management tab
   const [custList,setCustList]=useState<any[]>([]);const [custLoading,setCustLoading]=useState(false);const [custSearch,setCustSearch]=useState("");const [busyRow,setBusyRow]=useState<string|null>(null);
 
@@ -4306,6 +4314,13 @@ const DataHubPage=()=>{
           <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{background:"#181124",border:"1px solid rgba(249,115,22,0.3)"}}>
             <div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Send Message to {sendMsgFor.customer?.fullName}</h3><button onClick={()=>setSendMsgFor(null)}><X size={16} className="text-slate-400"/></button></div>
             <p className="text-xs text-slate-400">{sendMsgFor.customer?.whatsappNumber||sendMsgFor.recipientPhone}</p>
+            <div className="flex justify-end">
+              <button onClick={()=>setAiOpen(o=>!o)} className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-orange-300 flex items-center gap-1" style={{border:"1px solid rgba(249,115,22,0.3)"}}><Brain size={11}/>Write with AI</button>
+            </div>
+            {aiOpen&&<div className="space-y-2 p-2.5 rounded-xl" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.2)"}}>
+              <input value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&writeWithAi()} placeholder="What should the message say? e.g. 'thank them for visiting and offer 10% off'" className="w-full px-2.5 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}/>
+              <button onClick={writeWithAi} disabled={!aiPrompt.trim()||aiBusy} className="w-full py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{aiBusy?<RefreshCw size={12} className="animate-spin"/>:<Brain size={12}/>}{aiBusy?"Writing…":"Generate"}</button>
+            </div>}
             <textarea value={directMsg} onChange={e=>setDirectMsg(e.target.value)} rows={4} placeholder="Type your message…" className="w-full px-3 py-2 rounded-xl text-sm text-white resize-none outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)"}}/>
             <div className="flex gap-2">
               <button onClick={handleSendDirect} disabled={!directMsg.trim()||sendingDirect} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{sendingDirect?<RefreshCw size={12} className="animate-spin"/>:<Send size={12}/>}{sendingDirect?"Sending…":"Send"}</button>
