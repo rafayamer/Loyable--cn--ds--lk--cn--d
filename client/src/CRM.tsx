@@ -5818,6 +5818,17 @@ const GdprTab=({onAccountDeleted}:{onAccountDeleted:()=>void})=>{
         <div className="text-xs font-semibold text-green-400 mb-1">🛑 Auto Unsubscribe</div>
         <div className="text-xs text-slate-400">If a customer replies STOP, UNSUBSCRIBE, or CANCEL to any WhatsApp message, they are immediately removed from all future marketing messages. No action needed from you.</div>
       </div>
+      <div className="p-4 rounded-xl" style={{background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.15)"}}>
+        <div className="text-xs font-semibold text-blue-300 mb-1">📤 Give a Customer Their Data (Right of Access)</div>
+        <div className="text-xs text-slate-400 mb-3">If a customer asks for a copy of the information you hold on them, download your customer data and share their row. This meets the GDPR "right of access / data portability" requirement.</div>
+        <button onClick={async()=>{try{await api.customers.exportCsv();}catch(e:any){alert(e?.message||"Export failed");}}} className="px-3 py-2 rounded-lg text-xs font-medium text-blue-200 flex items-center gap-1.5" style={{border:"1px solid rgba(59,130,246,0.3)",background:"rgba(59,130,246,0.08)"}}>
+          <Download size={11}/>Download customer data (CSV)
+        </button>
+      </div>
+      <div className="p-3 rounded-lg" style={{background:"rgba(255,255,255,0.02)"}}>
+        <div className="text-xs text-white font-medium mb-0.5">How long we keep data</div>
+        <div className="text-xs text-slate-500">Customer records are kept while your account is active so you can run loyalty and messaging. When you delete a customer, or delete your account, their personal data is permanently removed. Message logs are retained only as needed to prove consent and delivery.</div>
+      </div>
       <div className="p-4 rounded-xl" style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)"}}>
         <div className="text-xs font-semibold text-red-400 mb-2">🗑️ Delete a Customer's Data</div>
         <div className="text-xs text-slate-400 mb-3">If a customer asks you to delete their information, enter their phone number below. All their personal details will be permanently removed from your account.</div>

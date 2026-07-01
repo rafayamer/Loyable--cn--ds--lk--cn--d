@@ -18,7 +18,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 10 | Analytics wording → plain/layman | ✅ |
 | 11 | Heatmap should look like a heatmap, not a table | ✅ |
 | 12 | CRM fully mobile-friendly | ⬜ |
-| 13 | GDPR values (proper) | ⬜ |
+| 13 | GDPR values (proper) | ✅ (access/export + retention + erasure) |
 | 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | 🟡 (drainDelay/stalled tuning already in place) |
 | 15 | Customer portal theme matches brand | ⬜ |
 | 16 | Portal: login = number + name; "earn more points" adds email, DOB, Google review; business sets Google Maps location | ✅ |
