@@ -15,7 +15,7 @@
 
 import { Queue, QueueEvents, JobsOptions, ConnectionOptions } from 'bullmq';
 import { MessageChannel, MessagingProvider } from '@prisma/client';
-import { getRedisConnection } from '../config/redis';
+import { getRedisConnection, getRedisClient } from '../config/redis';
 
 // ================================================================
 // QUEUE NAME REGISTRY
@@ -349,7 +349,9 @@ export const enqueueOutboundWebhook = async (
  *   - Platform Admin manually suspends the account
  */
 export const pauseTenantQueue = async (businessId: string): Promise<void> => {
-  const redis = getRedisConnection() as any;
+  // Must use the real node-redis client (has get/set/del) — NOT
+  // getRedisConnection(), which returns only { host, port } for BullMQ/ioredis.
+  const redis = getRedisClient() as any;
   await redis.set(
     `tenant:queue_paused:${businessId}`,
     '1',
@@ -362,7 +364,7 @@ export const pauseTenantQueue = async (businessId: string): Promise<void> => {
  * or admin manually lifts the pause).
  */
 export const resumeTenantQueue = async (businessId: string): Promise<void> => {
-  const redis = getRedisConnection() as any;
+  const redis = getRedisClient() as any;
   await redis.del(`tenant:queue_paused:${businessId}`);
 };
 
@@ -370,9 +372,15 @@ export const resumeTenantQueue = async (businessId: string): Promise<void> => {
  * Check if a tenant's queue is currently paused.
  */
 export const isTenantQueuePaused = async (businessId: string): Promise<boolean> => {
-  const redis = getRedisConnection() as any;
-  const val   = await redis.get(`tenant:queue_paused:${businessId}`);
-  return val === '1';
+  // Fail-OPEN: if Redis is unavailable, treat the tenant as NOT paused so a Redis
+  // blip never blocks all sends. Uses the real client (get/set/del).
+  try {
+    const redis = getRedisClient() as any;
+    const val   = await redis.get(`tenant:queue_paused:${businessId}`);
+    return val === '1';
+  } catch {
+    return false;
+  }
 };
 
 // ================================================================

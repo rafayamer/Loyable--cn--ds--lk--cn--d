@@ -513,8 +513,7 @@ const processOptOut = async (phone: string, businessId: string, rawKeyword: stri
     }),
   ]);
 
-  const redis = getRedisConnection() as any;
-  await redis.del(`customer:consent:${customer.id}`);
+  await getRedisClient().del(`customer:consent:${customer.id}`);
 
   // Store pending reason-capture key (24h TTL) before sending the follow-up
   const reasonKey = `optout:reason:${phone}:${businessId}`;
