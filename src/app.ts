@@ -526,6 +526,16 @@ async function ensureSchemaPatches() {
       )` },
     { label: 'employee_rewards idx',
       sql: 'CREATE INDEX IF NOT EXISTS "emprew_biz_emp" ON "employee_rewards" ("businessId","employeeId")' },
+    // ── Account kinds: screen logins + recoverable display password ──
+    { label: 'users.screenPanel',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "screenPanel" TEXT' },
+    { label: 'users.screenNumber',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "screenNumber" INTEGER' },
+    { label: 'users.displayPassword',
+      sql: 'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "displayPassword" TEXT' },
+    // Per-employee annual paid-leave override (business default lives in portalSettings)
+    { label: 'employees.annualLeaveDays',
+      sql: 'ALTER TABLE "employees" ADD COLUMN IF NOT EXISTS "annualLeaveDays" INTEGER' },
     ...(process.env.WAHA_BASE_URL && process.env.WAHA_BASE_URL.trim()
       ? [{ label: 'businesses.wahaBaseUrl clear stale (!= env)',
           sql: `UPDATE "businesses" SET "wahaBaseUrl" = NULL WHERE "wahaBaseUrl" IS NOT NULL AND "wahaBaseUrl" <> '${process.env.WAHA_BASE_URL.trim().replace(/'/g, "''")}'` }]

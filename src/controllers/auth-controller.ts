@@ -389,6 +389,7 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
         email:            true,
         phone:            true,
         role:             true,
+        screenPanel:      true,
         businessId:       true,
         branchLocationId: true,
         lastLoginAt:      true,
@@ -471,7 +472,10 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.status(200).json({ user });
+    // Tell the client which top-level app to render (owner suite / staff / screen).
+    const kind = (user as any).role === 'TENANT_OWNER' ? 'owner'
+               : (user as any).screenPanel ? 'screen' : 'staff';
+    res.status(200).json({ user: { ...user, kind, screenPanel: (user as any).screenPanel ?? null } });
   } catch (err) {
     handleAuthError(err, res);
   }

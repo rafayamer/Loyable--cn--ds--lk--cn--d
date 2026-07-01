@@ -69,12 +69,24 @@ export interface LoginInput {
   businessSlug?: string; // Disambiguate if same email exists across multiple tenants
 }
 
+export type AccountKind = 'owner' | 'staff' | 'screen';
+
+// Decide which top-level app a login sees. Owners get the full suite; screens
+// (screenPanel set) open one locked panel; everyone else is staff (attendance).
+export const resolveAccountKind = (u: { role: Role; screenPanel?: string | null }): AccountKind => {
+  if (u.role === Role.TENANT_OWNER) return 'owner';
+  if (u.screenPanel) return 'screen';
+  return 'staff';
+};
+
 export interface AuthResult extends TokenPair {
   user: {
     id:               string;
     name:             string;
     email:            string;
     role:             Role;
+    kind:             AccountKind;
+    screenPanel?:     string | null;
     businessId:       string;
     businessName:     string;
     businessSlug?:     string;
@@ -218,6 +230,8 @@ export const registerBusiness = async (
       name:             owner.name,
       email:            owner.email,
       role:             owner.role,
+      kind:             'owner',
+      screenPanel:      null,
       businessId:       business.id,
       businessName:     business.name,
       branchLocationId: null,
@@ -324,6 +338,8 @@ export const login = async (
       name:             user.name,
       email:            user.email,
       role:             user.role,
+      kind:             resolveAccountKind(user),
+      screenPanel:      (user as any).screenPanel ?? null,
       businessId:       user.businessId,
       businessName:     user.business.name,
       businessSlug:     user.business.slug,
@@ -831,6 +847,8 @@ export const acceptStaffInvite = async (
       name:             user.name,
       email:            user.email,
       role:             user.role,
+      kind:             resolveAccountKind(user),
+      screenPanel:      (user as any).screenPanel ?? null,
       businessId,
       businessName:     business?.name ?? '',
       branchLocationId: branchLocationId ?? null,

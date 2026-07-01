@@ -261,8 +261,6 @@ const MODULES=[
     {id:"ops-hr",label:"HR & Staff",roles:[ROLES.OWNER,ROLES.MANAGER]},
     {id:"coming-soon",label:"What's Next",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ]},
-  // Always available to every team member — clock in/out and leave.
-  {id:"my-work",icon:UserCheck,label:"My Work",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.CASHIER],tabs:[]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER],tabs:[]},
 ];
 // Sidebar renders modules
@@ -479,7 +477,6 @@ const HRStaffPage=()=>{
             style={active?{background:"linear-gradient(135deg,rgba(249,115,22,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(249,115,22,0.28)"}:{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>{t.label}</button>
         );})}
       </div>
-      <MyHRCard ct={ct}/>
       {tab==="directory"&&<HRDirectory ct={ct}/>}
       {tab==="roles"&&<HRRoles ct={ct}/>}
       {tab==="onboarding"&&<HROnboarding ct={ct}/>}
@@ -557,6 +554,75 @@ const MyWorkPage=()=>{
         </div>
       </>}
     </div>
+  );
+};
+
+// ── STAFF APP — the entire experience for a staff/manager login ───
+// Only three things: clock in/out (GPS), leave, and their shift plan.
+const StaffApp=({onLogout,portalDark,setPortalDark}:any)=>{
+  const ct=pdTokens(portalDark);
+  const [data,setData]=useState<any>(undefined);
+  useEffect(()=>{api.hr.me().then(setData).catch(()=>setData(null));},[]);
+  const shifts=(data?.shifts??[]);
+  const leaves=(data?.leave??[]).filter((l:any)=>l.status==="APPROVED"||l.status==="PENDING");
+  const onLeave=(d:Date)=>leaves.find((l:any)=>new Date(l.startDate)<=d&&new Date(l.endDate)>=d);
+  const name=data?.employee?.fullName||localStorage.getItem("biz_name")||"My Work";
+  return(
+    <PortalThemeCtx.Provider value={{pd:portalDark,setPd:(v)=>{setPortalDark(v);localStorage.setItem("portal_dark",String(v));}}}>
+    <div className={`min-h-screen ${portalDark?"crm-dark":"crm-light"}`} style={{background:ct.bg,color:ct.tx}}>
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",borderBottom:`1px solid ${ct.bdr}`,backdropFilter:"blur(16px)"}}>
+        <ThemeLogo dark={portalDark} className="h-6 w-auto object-contain"/>
+        <div className="flex items-center gap-3">
+          <button onClick={()=>setPortalDark(!portalDark)} className="text-xs" style={{color:ct.tx3}}>{portalDark?"☀️":"🌙"}</button>
+          <button onClick={onLogout} className="text-xs font-medium" style={{color:"#ef4444"}}>Sign out</button>
+        </div>
+      </div>
+      <div className="max-w-xl mx-auto p-4">
+        <div className="mb-4"><h1 className="text-xl font-bold" style={{color:ct.tx}}>Hi {name.split(" ")[0]}</h1><p className="text-xs mt-0.5" style={{color:ct.tx3}}>Clock in and out, manage your leave, and see your shifts.</p></div>
+        <MyHRCard ct={ct}/>
+        {data&&!data.employee&&<div className="rounded-2xl p-8 text-center text-sm mt-4" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>Your login isn't linked to a staff record yet. Ask the owner to finish your setup in HR.</div>}
+        {data?.employee&&<>
+          <h3 className="text-sm font-bold mt-6 mb-2" style={{color:ct.tx}}>My shift plan</h3>
+          <div className="grid gap-2">{shifts.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No shifts scheduled yet.</div>:
+            shifts.map((s:any)=>{const day=new Date(s.startsAt);const lv=onLeave(day);const isLeave=s.status==="LEAVE"||!!lv;return(
+              <div key={s.id} className="rounded-xl p-3 flex items-center justify-between" style={{background:ct.card,border:`1px solid ${isLeave?"rgba(139,92,246,0.3)":ct.bdr}`}}>
+                <div><div className="text-xs font-semibold" style={{color:ct.tx}}>{day.toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"})}</div>
+                  <div className="text-[11px]" style={{color:ct.tx3}}>{s.role||"Shift"}</div></div>
+                {isLeave?<span className="text-[11px] px-2 py-1 rounded-lg" style={{background:"rgba(139,92,246,0.15)",color:"#c4b5fd"}}>🏖 On leave</span>
+                  :<span className="text-[11px]" style={{color:ct.tx2}}>{day.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} – {new Date(s.endsAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>}
+              </div>
+            );})}
+          </div>
+        </>}
+      </div>
+    </div>
+    </PortalThemeCtx.Provider>
+  );
+};
+
+// ── SCREEN APP — a locked terminal showing exactly one panel ──────
+const SCREEN_PANEL_LABEL:Record<string,string>={dashboard_analytics:"Dashboard & Analytics",pos_full:"Point of Sale",pos_sales:"New Sale",pos_kitchen:"Kitchen",inventory:"Inventory",crm:"Customers & Campaigns",all:"Full Suite"};
+const ScreenApp=({panel,role,onLogout,portalDark,setPortalDark}:any)=>{
+  const ct=pdTokens(portalDark);
+  const body=()=>{
+    switch(panel){
+      case"pos_full":case"pos_sales":case"pos_kitchen":case"inventory":return<POSPage role={role||ROLES.CASHIER}/>;
+      case"crm":return<CustomersUnifiedPage onSelect={()=>{}} setPage={()=>{}}/>;
+      case"dashboard_analytics":return<AnalyticsPage/>;
+      case"all":return<DashboardPage setPage={()=>{}}/>;
+      default:return<div className="p-10 text-center text-sm" style={{color:ct.tx3}}>This screen has no panel assigned. Ask the owner to set one in Settings → Screens.</div>;
+    }
+  };
+  return(
+    <PortalThemeCtx.Provider value={{pd:portalDark,setPd:(v)=>{setPortalDark(v);localStorage.setItem("portal_dark",String(v));}}}>
+    <div className={`min-h-screen ${portalDark?"crm-dark":"crm-light"}`} style={{background:ct.bg,color:ct.tx}}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{background:portalDark?"rgba(8,6,18,0.95)":"rgba(255,255,255,0.96)",borderBottom:`1px solid ${ct.bdr}`}}>
+        <div className="flex items-center gap-3"><ThemeLogo dark={portalDark} className="h-5 w-auto object-contain"/><span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{background:"rgba(249,115,22,0.15)",color:"#F97316"}}>{SCREEN_PANEL_LABEL[panel]||"Screen"}</span></div>
+        <button onClick={onLogout} className="text-xs font-medium" style={{color:"#ef4444"}}>Sign out</button>
+      </div>
+      <div className="p-3 md:p-5">{body()}</div>
+    </div>
+    </PortalThemeCtx.Provider>
   );
 };
 
@@ -1413,6 +1479,9 @@ const hydrateFromApi=async()=>{
       // and notify useRole() listeners so the nav re-filters immediately.
       localStorage.setItem("role",d.user.role);
       localStorage.setItem("userRole",d.user.role);
+      // Account kind decides which top-level app renders (owner suite / staff / screen).
+      localStorage.setItem("userKind",(d.user as any).kind||(d.user.role==="TENANT_OWNER"?"owner":"staff"));
+      localStorage.setItem("screen_panel",(d.user as any).screenPanel||"");
       window.dispatchEvent(new Event("loyaly-role"));
     }
     if(biz?.pointsPerPound!=null)localStorage.setItem("pointsPerPound",String(biz.pointsPerPound));
@@ -7950,6 +8019,8 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     const startView:AuthView|undefined = p==="/signup"?"signup" : p==="/login"?"login" : undefined;
     return <LoginPage initialView={startView} onLogin={(u:any)=>{
       if(u?.role)localStorage.setItem("userRole",u.role);
+      localStorage.setItem("userKind",u?.kind||(u?.role==="TENANT_OWNER"?"owner":"staff"));
+      localStorage.setItem("screen_panel",u?.screenPanel||"");
       onRoleChange?.(u?.role??'');
       if(u?.role==='PLATFORM_ADMINISTRATOR')return; // App.tsx will switch to AdminPanel
       // Clean the URL so the app isn't sitting on /login or /signup.
@@ -7957,6 +8028,12 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
       setLoggedIn(true);
     }}/>;
   }
+  // ── Account-kind dispatch: only owners see the business suite. Staff get a
+  //    tiny attendance/leave app; screens open one locked panel. This is decided
+  //    once here, so non-owner logins never enter the suite router at all.
+  const kind=localStorage.getItem("userKind")||(role===ROLES.OWNER?"owner":"staff");
+  if(kind==="staff")return <StaffApp onLogout={doLogout} portalDark={portalDark} setPortalDark={setPortalDark}/>;
+  if(kind==="screen")return <ScreenApp panel={localStorage.getItem("screen_panel")||""} role={role} onLogout={doLogout} portalDark={portalDark} setPortalDark={setPortalDark}/>;
   const nav=(p:any)=>{
     // Enforce role restrictions — redirect to POS if not allowed. Utility pages
     // (profile, builders) aren't in a module → rolesForPage returns permissive.
@@ -7999,7 +8076,6 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Growth"><HRStaffPage/></FeatureGate>;
-    case"my-work":return<MyWorkPage/>;
     case"coming-soon":case"integrations":case"ops-branches":case"ops-inventory":case"ops-devices":case"ops-ordering":return<ComingSoonHub/>;
     case"billing":return<BillingPlansPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;

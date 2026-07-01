@@ -637,7 +637,11 @@ hrRouter.get('/me', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => 
   const openAttendance = await prisma.attendanceRecord.findFirst({ where: { businessId: bz(req), employeeId: employee.id, clockOut: null } });
   const recent = await prisma.attendanceRecord.findMany({ where: { businessId: bz(req), employeeId: employee.id }, orderBy: { clockIn: 'desc' }, take: 10 });
   const leave = await prisma.leaveRequest.findMany({ where: { businessId: bz(req), employeeId: employee.id }, orderBy: { createdAt: 'desc' }, take: 20 });
-  res.json({ employee, openAttendance, recent, leave });
+  // The employee's own shift plan (last 7 days → next ~60) so they can see their rota.
+  const from = new Date(); from.setDate(from.getDate() - 7);
+  const to = new Date(); to.setDate(to.getDate() + 60);
+  const shifts = await prisma.shift.findMany({ where: { businessId: bz(req), employeeId: employee.id, startsAt: { gte: from, lte: to } }, orderBy: { startsAt: 'asc' } });
+  res.json({ employee, openAttendance, recent, leave, shifts });
 }));
 
 hrRouter.post('/me/clock-in', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => {

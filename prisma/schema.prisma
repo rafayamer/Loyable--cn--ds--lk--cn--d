@@ -297,6 +297,9 @@ model User {
   lastLoginAt      DateTime?
   totpSecret       String?         // base32 TOTP secret; null until 2FA enabled
   totpEnabled      Boolean         @default(false)
+  screenPanel      String?         // non-null ⇒ this login is a locked "screen" showing this panel
+  screenNumber     Int?            // screen's number, used in its login email/label
+  displayPassword  String?         // encrypted copy so the owner can view it (auth uses passwordHash)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -1609,6 +1612,7 @@ model Employee {
   fullName              String
   email                 String?
   phone                 String?
+  annualLeaveDays       Int?      // per-employee paid-leave override; null ⇒ use business default
   jobTitle              String?
   hrRole                String    @default("CASHIER") // OWNER|MANAGER|MARKETING|CASHIER|SUPPORT|CUSTOM
   customRoleId          String?   // when hrRole = CUSTOM
