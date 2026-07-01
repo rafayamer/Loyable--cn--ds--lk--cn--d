@@ -29,6 +29,7 @@ import {
 import { getRedisClient } from '../config/redis';
 import { sendEmail } from '../utils/email.util';
 import { generateBusinessSlug } from '../utils/slug.util';
+import { encryptSecret } from '../utils/reversible-crypto.util';
 
 
 // ================================================================
@@ -662,7 +663,7 @@ export const createStaffLoginForEmployee = async (input: {
 
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { businessId, name: employee.fullName, email: loginEmail, passwordHash, role, branchLocationId: employee.branchLocationId ?? null },
+    data: { businessId, name: employee.fullName, email: loginEmail, passwordHash, displayPassword: encryptSecret(password), role, branchLocationId: employee.branchLocationId ?? null } as any,
   });
   await prisma.employee.update({ where: { id: employee.id }, data: { userId: user.id, status: employee.status === 'ONBOARDING' ? 'ACTIVE' : employee.status } });
   await prisma.auditLog.create({ data: { businessId, userId: inviterUserId, action: 'CREATE_STAFF_LOGIN', entityType: 'Employee', entityId: employee.id, metaJson: { loginEmail, role } } }).catch(() => {});

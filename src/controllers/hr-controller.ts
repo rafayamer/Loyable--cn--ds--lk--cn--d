@@ -27,6 +27,7 @@ import { requireFeature } from '../services/entitlement-service';
 import { compressUnder } from '../utils/image-compress.util';
 import { inviteStaff, createStaffLoginForEmployee } from '../services/auth-service';
 import { sendEmail } from '../utils/email.util';
+import { decryptSecret } from '../utils/reversible-crypto.util';
 
 export const hrRouter = Router();
 hrRouter.use(tenantScope as any);
@@ -135,7 +136,16 @@ hrRouter.get('/employees', requireRoles(...MANAGE) as any, wrap(async (req, res)
     { jobTitle: { contains: q, mode: 'insensitive' } },
   ];
   const employees = await prisma.employee.findMany({ where, orderBy: { createdAt: 'desc' } });
-  res.json({ employees });
+  // Attach the linked login's email + (decrypted) password so the owner can see
+  // and hand over staff credentials from HR.
+  const userIds = employees.map(e => e.userId).filter(Boolean) as string[];
+  const users = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true, displayPassword: true } }) : [];
+  const byId = new Map(users.map(u => [u.id, u]));
+  const withCreds = employees.map(e => {
+    const u = e.userId ? byId.get(e.userId) : undefined;
+    return { ...e, loginEmail: u?.email ?? null, loginPassword: u ? decryptSecret((u as any).displayPassword) : null };
+  });
+  res.json({ employees: withCreds });
 }));
 
 hrRouter.post('/employees', requireRoles(...MANAGE) as any, wrap(async (req, res) => {
@@ -159,6 +169,7 @@ hrRouter.post('/employees', requireRoles(...MANAGE) as any, wrap(async (req, res
       emergencyContactName:  b.emergencyContactName ?? null,
       emergencyContactPhone: b.emergencyContactPhone ?? null,
       notes:                 b.notes ?? null,
+      annualLeaveDays:       (typeof b.annualLeaveDays === 'number' ? b.annualLeaveDays : null) as any,
       onboardingJson:        DEFAULT_ONBOARDING,
     },
   });
@@ -190,6 +201,7 @@ hrRouter.put('/employees/:id', requireRoles(...MANAGE) as any, wrap(async (req, 
   }
   if (b.hireDate !== undefined)    data.hireDate    = b.hireDate ? new Date(b.hireDate) : null;
   if (b.dateOfBirth !== undefined) data.dateOfBirth = b.dateOfBirth ? new Date(b.dateOfBirth) : null;
+  if (b.annualLeaveDays !== undefined) data.annualLeaveDays = (b.annualLeaveDays === null || b.annualLeaveDays === '' ? null : Number(b.annualLeaveDays));
   const employee = await prisma.employee.update({ where: { id: existing.id }, data });
   res.json({ employee });
 }));

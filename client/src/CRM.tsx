@@ -680,6 +680,7 @@ const EmployeeModal=({emp,ct,onClose,onSaved}:any)=>{
         <div className="col-span-2"><label className="text-xs" style={{color:ct.tx3}}>Address</label><HInput value={f.address} onChange={(v:any)=>set("address",v)} ct={ct}/></div>
         <div><label className="text-xs" style={{color:ct.tx3}}>Emergency contact</label><HInput value={f.emergencyContactName} onChange={(v:any)=>set("emergencyContactName",v)} ct={ct}/></div>
         <div><label className="text-xs" style={{color:ct.tx3}}>Emergency phone</label><HInput value={f.emergencyContactPhone} onChange={(v:any)=>set("emergencyContactPhone",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Paid leave/yr (blank = default)</label><HInput type="number" value={f.annualLeaveDays??""} onChange={(v:any)=>set("annualLeaveDays",v===""?null:Number(v))} ct={ct}/></div>
       </div>
       <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save} disabled={saving}>{saving?"Saving…":"Save"}</HBtn></div>
     </Modal>
@@ -729,13 +730,12 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
           <div className="text-[10px] mt-1" style={{color:ct.tx3}}>A login email is auto-generated (name+business+###+role+branch@theloyaly.com). Credentials are emailed to {e.email||"the employee"} and shown to you here.</div>
         </>}
       </div>}
-      {creds&&<div className="mb-4 rounded-xl p-3" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)"}}>
-        <div className="text-xs font-semibold mb-2" style={{color:"#22c55e"}}>✓ Login created — hand these to {e.fullName}</div>
+      {(creds||e.loginEmail)&&<div className="mb-4 rounded-xl p-3" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)"}}>
+        <div className="text-xs font-semibold mb-2" style={{color:"#22c55e"}}>🔑 Login for {e.fullName}</div>
         <div className="text-[11px] font-mono space-y-1" style={{color:ct.tx}}>
-          <div>Email: <span className="text-orange-300">{creds.loginEmail}</span></div>
-          <div>Password: <span className="text-orange-300">{creds.password}</span></div>
+          <div>Email: <span className="text-orange-300">{creds?.loginEmail||e.loginEmail}</span></div>
+          <div>Password: <span className="text-orange-300">{creds?.password||e.loginPassword||"—"}</span></div>
         </div>
-        <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Save these now — the password isn't stored and can't be shown again.</div>
       </div>}
       {/* Status actions */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -6217,8 +6217,10 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [timezoneVal,setTimezoneVal]=useState(()=>localStorage.getItem("biz_timezone")||"Europe/London");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
   const [lat,setLat]=useState<string>("");const [lng,setLng]=useState<string>("");const [radius,setRadius]=useState<number>(20);
+  const [leaveDays,setLeaveDays]=useState<number>(20);const [leaveMsg,setLeaveMsg]=useState("");
+  const saveLeaveDefault=async()=>{try{await api.settings.update({annualLeaveDays:Math.max(0,leaveDays||0)});setLeaveMsg("✓ Saved");setTimeout(()=>setLeaveMsg(""),2000);}catch(e:any){setLeaveMsg(e?.message||"Failed");}};
   const [locMsg,setLocMsg]=useState("");const [locSaving,setLocSaving]=useState(false);
-  useEffect(()=>{api.settings.get().then(d=>{const bz=d?.user?.business??d?.business;if(bz?.latitude!=null)setLat(String(bz.latitude));if(bz?.longitude!=null)setLng(String(bz.longitude));if(bz?.checkInRadiusMeters!=null)setRadius(bz.checkInRadiusMeters);}).catch(()=>{});},[]);
+  useEffect(()=>{api.settings.get().then(d=>{const bz=d?.user?.business??d?.business;if(bz?.latitude!=null)setLat(String(bz.latitude));if(bz?.longitude!=null)setLng(String(bz.longitude));if(bz?.checkInRadiusMeters!=null)setRadius(bz.checkInRadiusMeters);const al=(bz?.portalSettings as any)?.annualLeaveDays;if(typeof al==="number")setLeaveDays(al);}).catch(()=>{});},[]);
   const useCurrentLocation=()=>{
     setLocMsg("");
     if(!navigator.geolocation){setLocMsg("Location isn't available on this device.");return;}
@@ -6311,6 +6313,16 @@ const SettingsPage=({wa,onConnect}:any)=>{
             <div className="flex items-center gap-3 mt-2">
               <button onClick={saveLocation} disabled={locSaving} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{locSaving?"Saving…":"Save location"}</button>
               {locMsg&&<span className="text-[11px]" style={{color:locMsg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{locMsg}</span>}
+            </div>
+          </div>
+          <div className="rounded-xl p-3.5" style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div className="text-xs font-semibold text-white mb-1">Paid annual leave (default)</div>
+            <p className="text-[10px] text-slate-400 mb-2">Paid leave days each employee gets per year. Beyond this, leave is automatically unpaid. You can override this per person in HR.</p>
+            <div className="flex items-center gap-2">
+              <input type="number" min={0} max={365} value={leaveDays} onChange={e=>setLeaveDays(Number(e.target.value))} className="w-24 px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/>
+              <span className="text-xs text-slate-400">days / year</span>
+              <button onClick={saveLeaveDefault} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save</button>
+              {leaveMsg&&<span className="text-[11px]" style={{color:leaveMsg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{leaveMsg}</span>}
             </div>
           </div>
           <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
