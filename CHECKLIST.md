@@ -21,8 +21,8 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 13 | GDPR values (proper) | ⬜ |
 | 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | 🟡 (drainDelay/stalled tuning already in place) |
 | 15 | Customer portal theme matches brand | ⬜ |
-| 16 | Portal: login = number + name; "earn more points" adds email, DOB, Google review; business sets Google Maps location | ⬜ |
-| 17 | Customer panel autofill; uploaded menu opens | 🟡 (menu open fixed; autofill pending) |
+| 16 | Portal: login = number + name; "earn more points" adds email, DOB, Google review; business sets Google Maps location | ✅ |
+| 17 | Customer panel autofill; uploaded menu opens | ✅ |
 | 18 | Fix unsupported buttons that bounce to main website | ⬜ |
 | 19 | Portal consent line: single agree line + terms link | ✅ |
 | 20 | POS layout de-congested / well ordered | ⬜ |

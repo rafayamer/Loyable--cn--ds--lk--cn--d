@@ -237,6 +237,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
                   value={birthday}
                   onChange={e => setBirthday(e.target.value)}
                   max={new Date(new Date().setFullYear(new Date().getFullYear() - 5)).toISOString().split('T')[0]}
+                  autoComplete="bday"
                   className="flex-1 bg-transparent text-white outline-none text-sm"
                   style={{ colorScheme: 'dark' }}
                 />
