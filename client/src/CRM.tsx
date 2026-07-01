@@ -6136,6 +6136,32 @@ const ScreensPanel=()=>{
   );
 };
 
+// ── Invite another owner (shares the full suite) ──────────────────
+const InviteOwnerCard=()=>{
+  const [name,setName]=useState("");const [email,setEmail]=useState("");const [pw,setPw]=useState("");
+  const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const add=async()=>{
+    if(!name.trim()||!email.trim()||pw.length<6){setMsg("Enter a name, email, and a password of 6+ characters.");return;}
+    setBusy(true);setMsg("");
+    try{await api.auth.inviteOwner({name:name.trim(),email:email.trim(),password:pw});setMsg("✓ Owner added — share the email and password you set.");setName("");setEmail("");setPw("");}
+    catch(e:any){setMsg(e?.message==="EMAIL_IN_USE"?"That email already has an account here.":(e?.message||"Couldn't add the owner."));}
+    finally{setBusy(false);}
+  };
+  return(
+    <div className="gc rounded-xl p-4" style={CARD}>
+      <div className="text-sm font-semibold text-white mb-1">Add a co-owner</div>
+      <p className="text-[10px] text-slate-400 mb-3">Co-owners get the same full access as you. You set their password.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+        <div><label className="text-[10px] text-slate-400 block mb-1">Name</label><input value={name} onChange={e=>setName(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        <div><label className="text-[10px] text-slate-400 block mb-1">Email</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        <div><label className="text-[10px] text-slate-400 block mb-1">Password</label><input value={pw} onChange={e=>setPw(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+        <button onClick={add} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{busy?"Adding…":"Add owner"}</button>
+      </div>
+      {msg&&<div className="text-[11px] mt-2" style={{color:msg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{msg}</div>}
+    </div>
+  );
+};
+
 const GdprTab=({onAccountDeleted}:{onAccountDeleted:()=>void})=>{
   const [purging,setPurging]=useState(false);
   const [phone,setPhone]=useState("");
@@ -6341,7 +6367,8 @@ const SettingsPage=({wa,onConnect}:any)=>{
         </div>}
         {tab==="whatsapp"&&<WhatsAppSettingsTab/>}
         {tab==="rbac"&&<div className="space-y-4">
-          <p className="text-xs text-slate-400">Add staff members to your account. You set their login email and password — credentials are shown to you and emailed directly to them.</p>
+          <p className="text-xs text-slate-400">Staff are hired and given logins in HR. Here you manage co-owners who share full access to the business suite.</p>
+          <InviteOwnerCard/>
 
           {/* Role permission matrix */}
           <div className="rounded-xl overflow-hidden" style={{border:"1px solid rgba(255,255,255,0.06)"}}>

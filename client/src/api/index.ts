@@ -75,6 +75,7 @@ export const api = {
     logout:        () => post('/auth/logout'),
     forgotPassword:(email: string) => post('/auth/forgot-password', { email }),
     resetPassword: (token: string, newPassword: string) => post('/auth/reset-password', { token, newPassword }),
+    inviteOwner:   (body: { name: string; email: string; password: string }) => post<any>('/auth/invite-owner', body),
   },
 
   // ── Dashboard ─────────────────────────────────────────────────

@@ -339,6 +339,29 @@ const inviteStaffHandler = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+/** POST /api/auth/invite-owner  — owner adds another owner (owner-set password) */
+const InviteOwnerSchema = z.object({
+  name:     z.string().min(2).max(100),
+  email:    z.string().email(),
+  password: z.string().min(6).max(200),
+});
+const inviteOwnerHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.tenantContext;
+    const { name, email, password } = InviteOwnerSchema.parse(req.body);
+    const normalized = email.toLowerCase().trim();
+    const clash = await prisma.user.findFirst({ where: { email: normalized, businessId }, select: { id: true } });
+    if (clash) { res.status(409).json({ error: 'EMAIL_IN_USE' }); return; }
+    const { hashPassword } = await import('../services/token-service');
+    await prisma.user.create({
+      data: { businessId, name: name.trim(), email: normalized, passwordHash: await hashPassword(password), role: 'TENANT_OWNER' },
+    });
+    res.status(201).json({ ok: true, email: normalized });
+  } catch (err) {
+    handleAuthError(err, res);
+  }
+};
+
 /** POST /api/auth/accept-invite */
 const acceptInviteHandler = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -693,6 +716,7 @@ authRouter.put('/me',         tenantScope, validate(UpdateMeSchema),            
 authRouter.post('/invite',    tenantScope, inviteLimit, validate(InviteStaffSchema),
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), inviteStaffHandler
 );
+authRouter.post('/invite-owner', tenantScope, requireRoles(Role.TENANT_OWNER), inviteOwnerHandler);
 authRouter.post('/staff',     tenantScope, inviteLimit,
   requireRoles(Role.TENANT_OWNER, Role.BRANCH_MANAGER), createStaffDirectHandler
 );
