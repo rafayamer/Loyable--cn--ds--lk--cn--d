@@ -17,7 +17,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 9 | Settings (timezone/country/currency) apply per-business globally; country sets default dial code | ✅ |
 | 10 | Analytics wording → plain/layman | ✅ |
 | 11 | Heatmap should look like a heatmap, not a table | ✅ |
-| 12 | CRM fully mobile-friendly | ⬜ |
+| 12 | CRM fully mobile-friendly | ✅ (verified 390px: dashboard, POS, settings, login — no overflow) |
 | 13 | GDPR values (proper) | ✅ (access/export + retention + erasure) |
 | 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | 🟡 (drainDelay/stalled tuning already in place) |
 | 15 | Customer portal theme matches brand | ✅ |
@@ -27,7 +27,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 19 | Portal consent line: single agree line + terms link | ✅ |
 | 20 | POS layout de-congested / well ordered | ⬜ |
 | 21 | Menu manager works; container works | ✅ (now persists server-side) |
-| 22 | CRM login page fits screen (no scroll/overflow) | 🟡 (login routing fixed; fit needs your check) |
+| 22 | CRM login page fits screen (no scroll/overflow) | ✅ (verified 390px, fits exactly) |
 | 23 | Font colour correct per theme | ⬜ |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
 | 25 | Analytics (i) tooltips with easy explanations | 🟡 (KPI tooltips added; more panels pending) |
