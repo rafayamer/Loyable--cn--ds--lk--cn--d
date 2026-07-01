@@ -2556,7 +2556,10 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
   const money=(v:number)=>`£${Math.round(v??0).toLocaleString()}`;
   const ekMoney=(key:string)=>({value:money(ek[key]?.value),change:ek[key]?.deltaPct!=null?`${ek[key].deltaPct>=0?"+":""}${ek[key].deltaPct}%`:undefined,positive:ek[key]?.trend!=="down"});
   const ekNum=(key:string,suffix="")=>({value:`${Math.round(ek[key]?.value??0).toLocaleString()}${suffix}`,change:ek[key]?.deltaPct!=null?`${ek[key].deltaPct>=0?"+":""}${ek[key].deltaPct}%`:undefined,positive:ek[key]?.trend!=="down"});
-  const tasks=exec?.tasks??[];
+  // Dismissed tasks are remembered so a task the owner has handled stays gone.
+  const [dismissedTasks,setDismissedTasks]=useState<string[]>(()=>{try{return JSON.parse(localStorage.getItem("dismissed_tasks")||"[]");}catch{return [];}});
+  const dismissTask=(id:string)=>setDismissedTasks(p=>{const n=[...new Set([...p,id])];localStorage.setItem("dismissed_tasks",JSON.stringify(n));return n;});
+  const tasks=(exec?.tasks??[]).filter((t:any)=>!dismissedTasks.includes(t.id));
   const SEV_COLOR:Record<string,string>={opportunity:C.accent,positive:C.green,warning:C.amber,critical:C.red};
   const PRI_COLOR:Record<string,string>={HIGH:C.red,MEDIUM:C.amber,LOW:C.accent};
   const go=(path:string)=>{const seg=path.replace(/^\//,"").split("/")[0]||"dashboard";const map:Record<string,string>={customers:"customers",campaigns:"campaigns",automations:"automations",settings:"settings"};setPage(map[seg]??"dashboard");};
@@ -2640,6 +2643,7 @@ const DashboardPage=({setPage}: {setPage:(p:string)=>void})=>{
                   <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">{t.detail}</div>
                 </div>
                 <button onClick={()=>go(t.actionPath)} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg flex-shrink-0 whitespace-nowrap" style={{background:PRI_COLOR[t.priority]+"22",color:PRI_COLOR[t.priority]}}>{t.actionLabel}</button>
+                <button onClick={()=>dismissTask(t.id)} title="Mark done / remove" className="flex-shrink-0 p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-colors"><X size={13}/></button>
               </div>
             ))}</div>}
         </div>
