@@ -7633,9 +7633,12 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
   // restored localStorage page, or an owner-only default), bounce them to the
   // first module their role is actually allowed.
   useEffect(()=>{
+    // Only guard known top-level module/tab pages. Sub-pages that aren't in the
+    // module map (campaign-builder, automation-builder, profile, detail views…)
+    // are reached from within an already-allowed module, so leave them alone —
+    // otherwise clicking e.g. "Campaign Builder" would bounce straight back.
     const mod=(PAGE_TO_MODULE as any)[page];
-    const allowed=mod?mod.roles.includes(role):false;
-    if(!allowed){
+    if(mod&&!mod.roles.includes(role)){
       const first=NAV_ALL.find((m:any)=>m.roles.includes(role));
       if(first&&first.id!==page)setPage(first.id);
     }
