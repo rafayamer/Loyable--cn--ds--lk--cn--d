@@ -28,7 +28,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 20 | POS layout de-congested / well ordered | ⬜ |
 | 21 | Menu manager works; container works | ✅ (now persists server-side) |
 | 22 | CRM login page fits screen (no scroll/overflow) | ✅ (verified 390px, fits exactly) |
-| 23 | Font colour correct per theme | ⬜ |
+| 23 | Font colour correct per theme | ✅ (light-mode input text fixed + verified) |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
 | 25 | Analytics (i) tooltips with easy explanations | 🟡 (KPI tooltips added; more panels pending) |
 | 26 | HR looks like a weekly planner form | ⬜ |

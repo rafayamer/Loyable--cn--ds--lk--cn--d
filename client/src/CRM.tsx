@@ -7785,8 +7785,12 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         .crm-light .text-slate-400{color:#57534E!important}
         .crm-light .text-slate-500{color:#78716C!important}
         .crm-light .text-slate-600{color:#9A8478!important}
-        .crm-light input,.crm-light select,.crm-light textarea{color:#1C1917}
-        .crm-light input::placeholder,.crm-light textarea::placeholder{color:#A8A29E}
+        /* !important so it wins over inline style={{color:"white"}} on inputs
+           (inline styles beat normal stylesheet rules, but not !important ones).
+           This fixes invisible white-on-light input text in Light Mode. */
+        .crm-light input,.crm-light select,.crm-light textarea{color:#1C1917!important}
+        .crm-light select option{color:#1C1917;background:#ffffff}
+        .crm-light input::placeholder,.crm-light textarea::placeholder{color:#A8A29E!important}
       `}</style>
       {showWA&&<MetaWizard onDone={()=>{setWa(true);setShowWA(false);setPage("messages");}} onClose={()=>setShowWA(false)}/>}
       {/* Desktop sidebar */}
