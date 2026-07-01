@@ -162,12 +162,22 @@ const mapCustomer = (c: any) => ({
 const Badge=({children,color,size="sm"}:{children?:any;color?:any;size?:any})=><span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{background:color+"22",color,border:"1px solid "+(color)+"33"}}>{children}</span>;
 // Small (i) tooltip used to explain a metric in plain language. Pure CSS hover
 // + focus (keyboard accessible) so non-technical owners can learn each number.
-const InfoDot=({text}:{text:string})=>(
-  <span className="group relative inline-flex items-center" tabIndex={0} aria-label={text}>
-    <Info size={12} className="text-slate-500 hover:text-slate-300 cursor-help"/>
-    <span className="pointer-events-none absolute right-0 top-5 z-30 w-52 rounded-lg px-3 py-2 text-[11px] leading-relaxed font-normal text-slate-200 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity" style={{background:"rgba(20,12,8,0.96)",border:"1px solid rgba(255,255,255,0.12)",boxShadow:"0 12px 30px rgba(0,0,0,0.45)"}}>{text}</span>
-  </span>
-);
+// Tooltip renders in a fixed-position layer so it's never clipped by a card's
+// overflow:hidden. Positioned next to the icon on hover/focus/tap.
+const InfoDot=({text}:{text:string})=>{
+  const [show,setShow]=useState(false);const [pos,setPos]=useState<{x:number;y:number}>({x:0,y:0});
+  const ref=useRef<HTMLSpanElement|null>(null);
+  const open=()=>{const r=ref.current?.getBoundingClientRect();if(r)setPos({x:Math.min(r.left,window.innerWidth-230),y:r.bottom+6});setShow(true);};
+  const close=()=>setShow(false);
+  return(
+    <span ref={ref} className="inline-flex items-center" tabIndex={0} aria-label={text}
+      onMouseEnter={open} onMouseLeave={close} onFocus={open} onBlur={close}
+      onClick={(e)=>{e.stopPropagation();show?close():open();}}>
+      <Info size={12} className="text-slate-500 hover:text-slate-300 cursor-help"/>
+      {show&&<span className="fixed z-[9999] w-56 rounded-lg px-3 py-2 text-[11px] leading-relaxed font-normal text-slate-200 pointer-events-none" style={{left:pos.x,top:pos.y,background:"rgba(20,12,8,0.98)",border:"1px solid rgba(255,255,255,0.14)",boxShadow:"0 12px 30px rgba(0,0,0,0.5)"}}>{text}</span>}
+    </span>
+  );
+};
 const KPI=({icon:Icon,label,value,change,positive,color,sub,info}:{icon?:any;label?:any;value?:any;change?:any;positive?:any;color?:any;sub?:any;info?:string})=>(
   <div className="gc rounded-2xl p-5 relative overflow-hidden" style={CARD}>
     <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-[0.06]" style={{background:color,transform:"translate(35%,-35%)"}}/>
