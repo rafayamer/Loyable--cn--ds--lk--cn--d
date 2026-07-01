@@ -257,9 +257,9 @@ const MODULES=[
     {id:"reports",label:"Reports"},
   ]},
   {id:"operations",icon:Building,label:"Operations",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.CASHIER],tabs:[
-    {id:"pos",label:"POS"},
-    {id:"ops-hr",label:"HR & Staff"},
-    {id:"coming-soon",label:"What's Next"},
+    {id:"pos",label:"POS",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.CASHIER]},
+    {id:"ops-hr",label:"HR & Staff",roles:[ROLES.OWNER,ROLES.MANAGER]},
+    {id:"coming-soon",label:"What's Next",roles:[ROLES.OWNER,ROLES.MANAGER]},
   ]},
   // Always available to every team member — clock in/out and leave.
   {id:"my-work",icon:UserCheck,label:"My Work",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.CASHIER],tabs:[]},
