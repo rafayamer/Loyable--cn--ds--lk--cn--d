@@ -519,7 +519,7 @@ const MyHRCard=({ct}:any)=>{
   if(me===undefined||me===null)return null; // not a linked staff login → nothing to show
   const open=me.openAttendance;const set=(k:string,v:any)=>setLf((p:any)=>({...p,[k]:v}));
   return(
-    <div className="rounded-2xl p-4 mb-5" style={{background:ct.card,border:`1px solid rgba(249,115,22,0.3)`}}>
+    <div className="gc rounded-2xl p-4 mb-5" style={{background:ct.card,border:`1px solid rgba(249,115,22,0.3)`}}>
       <div className="flex items-center gap-2 mb-3"><UserCheck size={15} style={{color:"#F97316"}}/><h3 className="text-sm font-bold" style={{color:ct.tx}}>My shift · {me.employee?.fullName}</h3></div>
       <div className="flex flex-wrap items-center gap-2">
         {open
@@ -595,7 +595,7 @@ const StaffApp=({onLogout,portalDark,setPortalDark}:any)=>{
           <h3 className="text-sm font-bold mt-6 mb-2" style={{color:ct.tx}}>My shift plan</h3>
           <div className="grid gap-2">{shifts.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No shifts scheduled yet.</div>:
             shifts.map((s:any)=>{const day=new Date(s.startsAt);const lv=onLeave(day);const isLeave=s.status==="LEAVE"||!!lv;return(
-              <div key={s.id} className="rounded-xl p-3 flex items-center justify-between" style={{background:ct.card,border:`1px solid ${isLeave?"rgba(139,92,246,0.3)":ct.bdr}`}}>
+              <div key={s.id} className="gc rounded-xl p-3 flex items-center justify-between" style={{background:ct.card,border:`1px solid ${isLeave?"rgba(139,92,246,0.3)":ct.bdr}`}}>
                 <div><div className="text-xs font-semibold" style={{color:ct.tx}}>{day.toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"})}</div>
                   <div className="text-[11px]" style={{color:ct.tx3}}>{s.role||"Shift"}</div></div>
                 {isLeave?<span className="text-[11px] px-2 py-1 rounded-lg" style={{background:"rgba(139,92,246,0.15)",color:"#c4b5fd"}}>🏖 On leave</span>
@@ -940,7 +940,7 @@ const HRShifts=({ct}:any)=>{
   return(
     <div className="space-y-4">
       {/* Weekly planner */}
-      <div className="rounded-2xl p-3 sm:p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+      <div className="gc rounded-2xl p-3 sm:p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold" style={{color:ct.tx}}>Weekly Rota</h3>
@@ -1096,7 +1096,7 @@ const HRPerformance=({ct}:any)=>{
       {loading?<div className="text-center py-10 text-xs" style={{color:ct.tx3}}>Loading…</div>:
        emps.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>Add team members in the Directory to see their scorecards here.</div>:
        <div className="grid sm:grid-cols-2 gap-3">{cards.map(c=>(
-        <div key={c.id} className="rounded-2xl p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <div key={c.id} className="gc rounded-2xl p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"#fff"}}>{c.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("")}</div>
             <div className="min-w-0"><div className="text-sm font-semibold truncate" style={{color:ct.tx}}>{c.name}</div><div className="text-[11px] truncate" style={{color:ct.tx3}}>{c.title||"Team member"}</div></div>
@@ -1127,7 +1127,7 @@ const HRRewards=({ct}:any)=>{
   return(
     <div>
       <div className="flex items-center justify-between mb-4"><p className="text-xs" style={{color:ct.tx3}}>Give points, bonuses and shout-outs to recognise great work. Points build up into a recognition leaderboard.</p><HBtn ct={ct} onClick={()=>setModal(true)}><Plus size={13} className="inline mr-1"/>Grant Reward</HBtn></div>
-      {board.length>0&&<div className="rounded-2xl p-4 mb-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+      {board.length>0&&<div className="gc rounded-2xl p-4 mb-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
         <div className="text-sm font-bold mb-2" style={{color:ct.tx}}>🏆 Recognition leaderboard</div>
         <div className="space-y-1.5">{board.map((b:any,i:number)=>(
           <div key={b.id} className="flex items-center justify-between text-xs">
@@ -6317,7 +6317,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
     }catch{}
   };
   const isPK=countryVal==="PK";
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"screens",label:"Screens",icon:Smartphone},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"screens",label:"Screens",icon:Smartphone},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe} ]; /* FBR / Tax tab hidden until tax services are ready */
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
@@ -6338,7 +6338,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="text-xs text-slate-400 mb-1 block">Business Name</label><input value={bizNameVal} onChange={e=>setBizNameVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Logo URL (for receipts & portal)</label><input value={logoUrlVal} onChange={e=>setLogoUrlVal(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
-            <div><label className="text-xs text-slate-400 mb-1 block">Country</label><select value={countryVal} onChange={e=>setCountryVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">{countryVal==="PK"?"🇵🇰 FBR tax integration is available — see the FBR / Tax tab after saving.":""}</div></div>
+            <div><label className="text-xs text-slate-400 mb-1 block">Country</label><select value={countryVal} onChange={e=>setCountryVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{COUNTRIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5"></div></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Currency</label><select value={currencyVal} onChange={e=>setCurrencyVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{CURRENCIES.map(c=><option key={c.v} value={c.v} style={{background:"#1a1030"}}>{c.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Used across POS, receipts, and dashboard</div></div>
             <div><label className="text-xs text-slate-400 mb-1 block">Timezone</label><select value={timezoneVal} onChange={e=>setTimezoneVal(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{TIMEZONES.map(t=><option key={t.v} value={t.v} style={{background:"#1a1030"}}>{t.l}</option>)}</select><div className="text-[10px] text-slate-500 mt-0.5">Birthday messages and automations fire in your local time</div></div>
             <div>
@@ -8231,7 +8231,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:rgba(249,115,22,0.35);border-radius:4px}
         ::-webkit-scrollbar-thumb:hover{background:rgba(249,115,22,0.6)}
-        .gc{position:relative;overflow:hidden}
+        .gc{position:relative;overflow:hidden;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
         .gc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);z-index:1;pointer-events:none}
         .gc::after{content:'';position:absolute;top:0;left:0;width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent,rgba(255,255,255,0.15));z-index:1;pointer-events:none}
         button,a{touch-action:manipulation}
