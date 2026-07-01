@@ -322,6 +322,11 @@ export const api = {
     attendance:     (p?: any)                => get<any>(`/hr/attendance${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
     clockIn:        (b: any)                 => post<any>('/hr/attendance/clock-in', b),
     clockOut:       (id: string, b?: any)    => post<any>(`/hr/attendance/${id}/clock-out`, b ?? {}),
+    // Self-service (logged-in staff/manager)
+    me:             ()                       => get<any>('/hr/me'),
+    meClockIn:      (b: any)                 => post<any>('/hr/me/clock-in', b),
+    meClockOut:     ()                       => post<any>('/hr/me/clock-out', {}),
+    meLeave:        (b: any)                 => post<any>('/hr/me/leave', b),
     // Shifts
     shifts:         (p?: any)                => get<any>(`/hr/shifts${p ? `?${new URLSearchParams(p).toString()}` : ''}`),
     createShift:    (b: any)                 => post<any>('/hr/shifts', b),

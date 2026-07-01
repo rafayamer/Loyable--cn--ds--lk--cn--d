@@ -50,7 +50,21 @@ const HR_ROLE_TO_PLATFORM: Record<string, Role> = {
 };
 
 const MANAGE = [Role.TENANT_OWNER, Role.BRANCH_MANAGER];
+// Self-service ("me") endpoints are open to every authenticated staff role so a
+// team member can clock in/out and apply for leave against their own record.
+const ANY_STAFF = [Role.TENANT_OWNER, Role.BRANCH_MANAGER, Role.MARKETING_STAFF, Role.CASHIER];
 const bz = (req: Request) => req.tenantContext.businessId;
+
+// Great-circle distance between two lat/long points, in metres.
+const distanceMeters = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  const R = 6371000; const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat); const dLng = toRad(bLng - aLng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+};
+// Staff must clock in within the business location. Honour the owner's configured
+// radius but never allow more than 20 m, per requirement.
+const clockInRadius = (configured?: number | null) => Math.min(configured ?? 20, 20);
 
 // Default onboarding checklist seeded onto every new employee.
 const DEFAULT_ONBOARDING = [
@@ -523,7 +537,8 @@ hrRouter.post('/leave', requireRoles(...MANAGE) as any, wrap(async (req, res) =>
 hrRouter.post('/leave/:id/decision', requireRoles(...MANAGE) as any, wrap(async (req, res) => {
   const businessId = bz(req);
   const { decision } = req.body ?? {};
-  if (!['APPROVED', 'REJECTED'].includes(decision)) { res.status(400).json({ error: 'decision must be APPROVED or REJECTED' }); return; }
+  // CANCELLED = the owner revokes an already-approved leave.
+  if (!['APPROVED', 'REJECTED', 'CANCELLED'].includes(decision)) { res.status(400).json({ error: 'decision must be APPROVED, REJECTED or CANCELLED' }); return; }
   const existing = await prisma.leaveRequest.findFirst({ where: { id: req.params.id, businessId } });
   if (!existing) { res.status(404).json({ error: 'LEAVE_NOT_FOUND' }); return; }
   const request = await prisma.leaveRequest.update({
@@ -539,6 +554,72 @@ hrRouter.delete('/leave/:id', requireRoles(...MANAGE) as any, wrap(async (req, r
   if (!existing) { res.status(404).json({ error: 'LEAVE_NOT_FOUND' }); return; }
   await prisma.leaveRequest.delete({ where: { id: existing.id } });
   res.json({ ok: true });
+}));
+
+// ================================================================
+// SELF-SERVICE ("me") — for the logged-in staff member / manager
+//   - GET  /hr/me                 → own employee record + open shift/attendance
+//   - POST /hr/me/clock-in        → GPS-validated clock-in (within 20 m)
+//   - POST /hr/me/clock-out       → close own open attendance record
+//   - POST /hr/me/leave           → apply for leave for oneself
+// ================================================================
+
+const findMyEmployee = async (req: Request) =>
+  prisma.employee.findFirst({ where: { businessId: bz(req), userId: req.tenantContext.userId } });
+
+hrRouter.get('/me', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => {
+  const employee = await findMyEmployee(req);
+  if (!employee) { res.json({ employee: null, openAttendance: null }); return; }
+  const openAttendance = await prisma.attendanceRecord.findFirst({ where: { businessId: bz(req), employeeId: employee.id, clockOut: null } });
+  const recent = await prisma.attendanceRecord.findMany({ where: { businessId: bz(req), employeeId: employee.id }, orderBy: { clockIn: 'desc' }, take: 10 });
+  const leave = await prisma.leaveRequest.findMany({ where: { businessId: bz(req), employeeId: employee.id }, orderBy: { createdAt: 'desc' }, take: 20 });
+  res.json({ employee, openAttendance, recent, leave });
+}));
+
+hrRouter.post('/me/clock-in', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => {
+  const businessId = bz(req);
+  const employee = await findMyEmployee(req);
+  if (!employee) { res.status(404).json({ error: 'NO_STAFF_RECORD' }); return; }
+  const open = await prisma.attendanceRecord.findFirst({ where: { businessId, employeeId: employee.id, clockOut: null } });
+  if (open) { res.status(409).json({ error: 'ALREADY_CLOCKED_IN', record: open }); return; }
+  const { latitude, longitude } = req.body ?? {};
+  const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { latitude: true, longitude: true, checkInRadiusMeters: true } });
+  // Enforce GPS proximity only when the business has set its location.
+  if (biz?.latitude != null && biz?.longitude != null) {
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') { res.status(400).json({ error: 'LOCATION_REQUIRED' }); return; }
+    const dist = distanceMeters(latitude, longitude, biz.latitude, biz.longitude);
+    const allowed = clockInRadius(biz.checkInRadiusMeters);
+    if (dist > allowed) { res.status(403).json({ error: 'OUT_OF_RANGE', distance: Math.round(dist), allowed }); return; }
+  }
+  const record = await prisma.attendanceRecord.create({
+    data: { businessId, employeeId: employee.id, clockIn: new Date(), method: 'GPS', latitude: latitude ?? null, longitude: longitude ?? null },
+  });
+  res.status(201).json({ record });
+}));
+
+hrRouter.post('/me/clock-out', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => {
+  const businessId = bz(req);
+  const employee = await findMyEmployee(req);
+  if (!employee) { res.status(404).json({ error: 'NO_STAFF_RECORD' }); return; }
+  const open = await prisma.attendanceRecord.findFirst({ where: { businessId, employeeId: employee.id, clockOut: null } });
+  if (!open) { res.status(404).json({ error: 'NOT_CLOCKED_IN' }); return; }
+  const record = await prisma.attendanceRecord.update({ where: { id: open.id }, data: { clockOut: new Date() } });
+  res.json({ record });
+}));
+
+hrRouter.post('/me/leave', requireRoles(...ANY_STAFF) as any, wrap(async (req, res) => {
+  const employee = await findMyEmployee(req);
+  if (!employee) { res.status(404).json({ error: 'NO_STAFF_RECORD' }); return; }
+  const b = req.body ?? {};
+  if (!b.startDate || !b.endDate) { res.status(400).json({ error: 'startDate and endDate are required' }); return; }
+  const request = await prisma.leaveRequest.create({
+    data: {
+      businessId: bz(req), employeeId: employee.id,
+      type: b.type ?? 'ANNUAL', startDate: new Date(b.startDate), endDate: new Date(b.endDate),
+      reason: b.reason ?? null, status: 'PENDING',
+    },
+  });
+  res.status(201).json({ request });
 }));
 
 // ================================================================

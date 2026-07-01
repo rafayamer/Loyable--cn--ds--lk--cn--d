@@ -477,6 +477,7 @@ const HRStaffPage=()=>{
             style={active?{background:"linear-gradient(135deg,rgba(249,115,22,0.2),rgba(6,182,212,0.08))",color:ct.tx,boxShadow:"inset 0 0 0 1px rgba(249,115,22,0.28)"}:{color:ct.tx3,background:ct.bg2,border:`1px solid ${ct.bdr}`}}>{t.label}</button>
         );})}
       </div>
+      <MyHRCard ct={ct}/>
       {tab==="directory"&&<HRDirectory ct={ct}/>}
       {tab==="roles"&&<HRRoles ct={ct}/>}
       {tab==="onboarding"&&<HROnboarding ct={ct}/>}
@@ -485,6 +486,50 @@ const HRStaffPage=()=>{
       {tab==="shifts"&&<HRShifts ct={ct}/>}
       {tab==="performance"&&<HRPerformance ct={ct}/>}
       {tab==="rewards"&&<HRRewards ct={ct}/>}
+    </div>
+  );
+};
+
+// ── Self-service: clock in/out (GPS) + apply for leave ────────────
+const MyHRCard=({ct}:any)=>{
+  const [me,setMe]=useState<any>(undefined); // undefined=loading, null=no staff record
+  const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const [leaveOpen,setLeaveOpen]=useState(false);const [lf,setLf]=useState<any>({type:"ANNUAL",startDate:"",endDate:"",reason:""});
+  const load=()=>api.hr.me().then(d=>setMe(d.employee?d:null)).catch(()=>setMe(null));
+  useEffect(()=>{load();},[]);
+  const getPos=()=>new Promise<{latitude:number;longitude:number}>((resolve,reject)=>{
+    if(!navigator.geolocation){reject(new Error("Location isn't available on this device."));return;}
+    navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude}),()=>reject(new Error("Please allow location access to clock in.")),{enableHighAccuracy:true,timeout:10000});
+  });
+  const clockIn=async()=>{setBusy(true);setMsg("");try{const loc=await getPos();await api.hr.meClockIn(loc);setMsg("✓ Clocked in");await load();}
+    catch(e:any){setMsg(e?.message?.includes("OUT_OF_RANGE")||e?.message==="OUT_OF_RANGE"?"You're too far from work to clock in. Get within 20 m of the business.":(e?.message||"Couldn't clock in."));}finally{setBusy(false);}};
+  const clockOut=async()=>{setBusy(true);setMsg("");try{await api.hr.meClockOut();setMsg("✓ Clocked out");await load();}catch(e:any){setMsg(e?.message||"Couldn't clock out.");}finally{setBusy(false);}};
+  const applyLeave=async()=>{if(!lf.startDate||!lf.endDate){setMsg("Pick leave dates.");return;}setBusy(true);setMsg("");
+    try{await api.hr.meLeave(lf);setMsg("✓ Leave request sent to your manager");setLeaveOpen(false);setLf({type:"ANNUAL",startDate:"",endDate:"",reason:""});await load();}
+    catch(e:any){setMsg(e?.message||"Couldn't send leave request.");}finally{setBusy(false);}};
+  if(me===undefined||me===null)return null; // not a linked staff login → nothing to show
+  const open=me.openAttendance;const set=(k:string,v:any)=>setLf((p:any)=>({...p,[k]:v}));
+  return(
+    <div className="rounded-2xl p-4 mb-5" style={{background:ct.card,border:`1px solid rgba(249,115,22,0.3)`}}>
+      <div className="flex items-center gap-2 mb-3"><UserCheck size={15} style={{color:"#F97316"}}/><h3 className="text-sm font-bold" style={{color:ct.tx}}>My shift · {me.employee?.fullName}</h3></div>
+      <div className="flex flex-wrap items-center gap-2">
+        {open
+          ?<><span className="text-xs px-2 py-1 rounded-lg" style={{background:"rgba(34,197,94,0.12)",color:"#22c55e"}}>● On shift since {new Date(open.clockIn).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+             <HBtn ct={ct} onClick={clockOut}>{busy?"…":"Clock out"}</HBtn></>
+          :<HBtn ct={ct} onClick={clockIn}>{busy?"Checking location…":"📍 Clock in"}</HBtn>}
+        <HBtn variant="ghost" ct={ct} onClick={()=>setLeaveOpen(o=>!o)}>Apply for leave</HBtn>
+        {msg&&<span className="text-xs" style={{color:msg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{msg}</span>}
+      </div>
+      <p className="text-[11px] mt-2" style={{color:ct.tx3}}>Clock-in uses your location — you must be within 20 m of the business.</p>
+      {leaveOpen&&<div className="mt-3 pt-3 grid sm:grid-cols-4 gap-2 items-end" style={{borderTop:`1px solid ${ct.bdr}`}}>
+        <div><label className="text-[10px]" style={{color:ct.tx3}}>Type</label><HSelect value={lf.type} onChange={(v:any)=>set("type",v)} options={["ANNUAL","SICK","EMERGENCY","UNPAID"]} ct={ct}/></div>
+        <div><label className="text-[10px]" style={{color:ct.tx3}}>From</label><HInput type="date" value={lf.startDate} onChange={(v:any)=>set("startDate",v)} ct={ct}/></div>
+        <div><label className="text-[10px]" style={{color:ct.tx3}}>To</label><HInput type="date" value={lf.endDate} onChange={(v:any)=>set("endDate",v)} ct={ct}/></div>
+        <HBtn ct={ct} onClick={applyLeave}>{busy?"Sending…":"Send request"}</HBtn>
+      </div>}
+      {(me.leave??[]).length>0&&<div className="flex flex-wrap gap-1.5 mt-3">
+        {(me.leave??[]).slice(0,4).map((l:any)=>(<span key={l.id} className="text-[10px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:ct.tx3}}>{l.type} {new Date(l.startDate).toLocaleDateString([], {month:"short",day:"numeric"})} · <span style={{color:STATUS_COLOR[l.status]||ct.tx3}}>{l.status}</span></span>))}
+      </div>}
     </div>
   );
 };
@@ -806,6 +851,7 @@ const HRShifts=({ct}:any)=>{
             <div className="flex items-center justify-between"><div className="text-xs font-semibold" style={{color:ct.tx}}>{empName(l.employeeId)}</div><Pill text={l.status} color={STATUS_COLOR[l.status]||"#6b7280"}/></div>
             <div className="text-[11px] mt-0.5" style={{color:ct.tx3}}>{l.type} · {new Date(l.startDate).toLocaleDateString()} → {new Date(l.endDate).toLocaleDateString()}</div>
             {l.status==="PENDING"&&<div className="flex gap-2 mt-2"><HBtn ct={ct} onClick={()=>api.hr.decideLeave(l.id,"APPROVED").then(load)}>Approve</HBtn><HBtn variant="ghost" ct={ct} onClick={()=>api.hr.decideLeave(l.id,"REJECTED").then(load)}>Reject</HBtn></div>}
+            {l.status==="APPROVED"&&<div className="flex gap-2 mt-2"><HBtn variant="ghost" ct={ct} onClick={()=>{if(confirm("Revoke this approved leave?"))api.hr.decideLeave(l.id,"CANCELLED").then(load);}}>Revoke approval</HBtn></div>}
           </div>
         ))}</div>
       </div>
@@ -815,17 +861,56 @@ const HRShifts=({ct}:any)=>{
   );
 };
 const ShiftModal=({emps,ct,onClose,onSaved,initial}:any)=>{
-  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",status:"SCHEDULED",...(initial||{})});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
-  const save=async()=>{if(!f.employeeId||!f.startsAt||!f.endsAt)return;await api.hr.createShift(f);onSaved();};
+  // Pre-fill from a planner day click (initial.startsAt like "2026-07-01T09:00").
+  const initDate=initial?.startsAt?String(initial.startsAt).slice(0,10):"";
+  const initStart=initial?.startsAt?String(initial.startsAt).slice(11,16):"09:00";
+  const initEnd=initial?.endsAt?String(initial.endsAt).slice(11,16):"17:00";
+  const [employeeId,setEmployeeId]=useState(emps[0]?.id||"");
+  const [startTime,setStartTime]=useState(initStart);const [endTime,setEndTime]=useState(initEnd);
+  const [role,setRole]=useState("");const [pickDate,setPickDate]=useState(initDate);
+  const [dates,setDates]=useState<string[]>(initDate?[initDate]:[]);
+  const [saving,setSaving]=useState(false);const [err,setErr]=useState("");
+  const addDate=()=>{if(pickDate&&!dates.includes(pickDate))setDates(d=>[...d,pickDate].sort());};
+  const addNextNDays=(n:number)=>{const base=pickDate?new Date(pickDate):new Date();const out=[...dates];for(let i=0;i<n;i++){const d=new Date(base);d.setDate(d.getDate()+i);const s=d.toISOString().slice(0,10);if(!out.includes(s))out.push(s);}setDates(out.sort());};
+  const fmt=(s:string)=>new Date(s+"T00:00").toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"});
+  const save=async()=>{
+    if(!employeeId){setErr("Choose a team member.");return;}
+    if(dates.length===0){setErr("Add at least one date.");return;}
+    if(!startTime||!endTime){setErr("Set a start and end time.");return;}
+    setSaving(true);setErr("");
+    try{
+      // One shift per selected date, all with the same time window.
+      for(const d of dates){
+        await api.hr.createShift({employeeId,status:"SCHEDULED",role:role||undefined,startsAt:`${d}T${startTime}`,endsAt:`${d}T${endTime}`});
+      }
+      onSaved();
+    }catch(e:any){setErr(e?.message||"Couldn't save the shifts. Please try again.");setSaving(false);}
+  };
   return(
-    <Modal title="New Shift" onClose={onClose} ct={ct}>
-      <label className="text-xs" style={{color:ct.tx3}}>Employee</label><HSelect value={f.employeeId} onChange={(v:any)=>set("employeeId",v)} options={emps.map((e:any)=>({value:e.id,label:e.fullName}))} ct={ct}/>
+    <Modal title={`Add Shift${dates.length>1?`s (${dates.length} days)`:""}`} onClose={onClose} ct={ct}>
+      <label className="text-xs" style={{color:ct.tx3}}>Team member</label>
+      <HSelect value={employeeId} onChange={setEmployeeId} options={emps.map((e:any)=>({value:e.id,label:e.fullName}))} ct={ct}/>
       <div className="grid grid-cols-2 gap-3 mt-2">
-        <div><label className="text-xs" style={{color:ct.tx3}}>Start</label><HInput type="datetime-local" value={f.startsAt} onChange={(v:any)=>set("startsAt",v)} ct={ct}/></div>
-        <div><label className="text-xs" style={{color:ct.tx3}}>End</label><HInput type="datetime-local" value={f.endsAt} onChange={(v:any)=>set("endsAt",v)} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>Start time</label><HInput type="time" value={startTime} onChange={setStartTime} ct={ct}/></div>
+        <div><label className="text-xs" style={{color:ct.tx3}}>End time</label><HInput type="time" value={endTime} onChange={setEndTime} ct={ct}/></div>
       </div>
-      <label className="text-xs mt-2 block" style={{color:ct.tx3}}>Role / note</label><HInput value={f.role} onChange={(v:any)=>set("role",v)} placeholder="Front counter" ct={ct}/>
-      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>Save</HBtn></div>
+      <label className="text-xs mt-3 block" style={{color:ct.tx3}}>Pick the days this shift repeats on</label>
+      <div className="flex gap-2 mt-1">
+        <div className="flex-1"><HInput type="date" value={pickDate} onChange={setPickDate} ct={ct}/></div>
+        <HBtn ct={ct} onClick={addDate}><Plus size={12} className="inline mr-1"/>Add day</HBtn>
+      </div>
+      <div className="flex gap-1.5 mt-2 flex-wrap">
+        <button onClick={()=>addNextNDays(5)} className="text-[11px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:ct.tx2}}>+ 5 days from date</button>
+        <button onClick={()=>addNextNDays(7)} className="text-[11px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:ct.tx2}}>+ Whole week</button>
+        {dates.length>0&&<button onClick={()=>setDates([])} className="text-[11px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:"#ef4444"}}>Clear</button>}
+      </div>
+      {dates.length>0&&<div className="flex gap-1.5 mt-2 flex-wrap">
+        {dates.map(d=>(<span key={d} className="text-[11px] px-2 py-1 rounded-lg flex items-center gap-1" style={{background:"rgba(249,115,22,0.12)",color:"#FFB085"}}>{fmt(d)}<button onClick={()=>setDates(x=>x.filter(y=>y!==d))}><X size={10}/></button></span>))}
+      </div>}
+      <label className="text-xs mt-3 block" style={{color:ct.tx3}}>Role / note (optional)</label>
+      <HInput value={role} onChange={setRole} placeholder="Front counter" ct={ct}/>
+      {err&&<div className="text-xs mt-2" style={{color:"#ef4444"}}>{err}</div>}
+      <div className="flex justify-end gap-2 mt-4"><HBtn variant="ghost" ct={ct} onClick={onClose}>Cancel</HBtn><HBtn ct={ct} onClick={save}>{saving?"Saving…":dates.length>1?`Add ${dates.length} shifts`:"Add shift"}</HBtn></div>
     </Modal>
   );
 };
