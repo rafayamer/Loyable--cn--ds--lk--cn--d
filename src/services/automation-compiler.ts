@@ -84,6 +84,7 @@ export interface ActionNodeData {
   actionType:     ActionType;
   // SEND_WHATSAPP
   templateName?:  string;
+  messageBody?:   string;   // the actual message text the owner typed
   langCode?:      string;
   // AWARD_POINTS / DEDUCT_POINTS
   points?:        number;
@@ -383,8 +384,8 @@ const validateNode = (node: RFNode): string[] => {
         break;
       }
       // Type-specific requirements
-      if (d.actionType === 'SEND_WHATSAPP' && !d.templateName) {
-        errors.push(`${loc}: SEND_WHATSAPP action requires templateName.`);
+      if (d.actionType === 'SEND_WHATSAPP' && !(d.messageBody && d.messageBody.trim()) && !(d.templateName && d.templateName !== 'default')) {
+        errors.push(`${loc}: the WhatsApp step needs a message to send.`);
       }
       if (d.actionType === 'SEND_EMAIL' && !d.emailTemplateId) {
         errors.push(`${loc}: SEND_EMAIL action requires emailTemplateId.`);
@@ -541,7 +542,7 @@ const extractTriggerConfig = (d: TriggerNodeData): Record<string, unknown> => {
 const extractActionConfig = (d: ActionNodeData): Record<string, unknown> => {
   switch (d.actionType) {
     case 'SEND_WHATSAPP':
-      return { templateName: d.templateName, langCode: d.langCode ?? 'en_US' };
+      return { templateName: d.templateName, messageBody: d.messageBody ?? '', langCode: d.langCode ?? 'en_US' };
     case 'SEND_EMAIL':
       return { templateId: d.emailTemplateId, subject: d.emailSubject };
     case 'AWARD_POINTS':

@@ -373,43 +373,55 @@ export const processAutomationJob = async (
   });
 
   try {
-    // Compiled JSON structure:
-    // { trigger: {...}, actions: [{ type, templateName, delayMinutes, ... }] }
+    // Compiled JSON structure (from automation-compiler): each action is
+    // { type, delayMinutes, config: {...}, branchConditions }. The action-
+    // specific fields (message text, points, segment) live inside `config`.
     const compiled = workflow.compiledJson as {
       actions: Array<{
         type:           string;
-        templateName?:  string;
         delayMinutes?:  number;
+        config?:        Record<string, any>;
+        // legacy/flat fallbacks
+        templateName?:  string;
+        messageBody?:   string;
         points?:        number;
         segmentChange?: string;
       }>;
     };
 
     for (const action of compiled.actions) {
+      const cfg: Record<string, any> = (action.config ?? action) as Record<string, any>; // support both shapes
       switch (action.type) {
         case 'SEND_WHATSAPP': {
-          // Create a MessageQueue record, then enqueue
-          await dispatchAutomationMessage(
-            businessId,
-            customerId,
-            workflowId,
-            run.id,
-            action.templateName!,
-            action.delayMinutes ?? 0
-          );
-          break;
-        }
-        case 'AWARD_POINTS': {
-          if (action.points) {
-            await awardAutomationPoints(businessId, customerId, action.points, workflowId);
+          // Send the actual message the owner typed (messageBody). Fall back to
+          // templateName only if no body was set.
+          const body = (cfg.messageBody && String(cfg.messageBody).trim())
+            ? String(cfg.messageBody)
+            : (cfg.templateName && cfg.templateName !== 'default' ? String(cfg.templateName) : '');
+          if (body) {
+            await dispatchAutomationMessage(
+              businessId, customerId, workflowId, run.id,
+              body, action.delayMinutes ?? 0
+            );
           }
           break;
         }
+        case 'AWARD_POINTS': {
+          const pts = Number(cfg.points ?? 0);
+          if (pts) await awardAutomationPoints(businessId, customerId, pts, workflowId);
+          break;
+        }
+        case 'DEDUCT_POINTS': {
+          const pts = Number(cfg.points ?? 0);
+          if (pts) await awardAutomationPoints(businessId, customerId, -Math.abs(pts), workflowId);
+          break;
+        }
         case 'CHANGE_SEGMENT': {
-          if (action.segmentChange) {
+          const seg = cfg.targetSegment ?? cfg.segmentChange;
+          if (seg) {
             await prisma.customer.update({
               where:  { id: customerId },
-              data:   { segment: action.segmentChange as any },
+              data:   { segment: seg as any },
               select: { id: true },
             });
           }
@@ -673,26 +685,37 @@ const notifyQuotaExhausted = async (businessId: string): Promise<void> => {
   }
 };
 
-/** Create a MessageQueue record + enqueue for an automation action */
+/** Create a MessageQueue record + enqueue for an automation action.
+ *  `messageBody` is the actual text the owner typed — sent as a real TEXT
+ *  message (personalised), NOT as a template reference. */
 const dispatchAutomationMessage = async (
   businessId:     string,
   customerId:     string,
   workflowId:     string,
   automationRunId: string,
-  templateName:   string,
+  messageBody:    string,
   delayMinutes:   number
 ): Promise<void> => {
   const customer = await prisma.customer.findUnique({
     where:  { id: customerId },
-    select: { whatsappNumber: true },
+    select: { whatsappNumber: true, fullName: true },
   });
 
   if (!customer?.whatsappNumber) return;
 
   const business = await prisma.business.findUnique({
     where:  { id: businessId },
-    select: { messagingProvider: true, wahaBaseUrl: true, wahaSessionId: true },
+    select: { messagingProvider: true, wahaBaseUrl: true, wahaSessionId: true, name: true },
   });
+
+  // Personalise the message text with the customer's name and the business name.
+  const firstName = (customer.fullName || '').split(' ')[0] || 'there';
+  const body = messageBody
+    .replace(/\{name\}/gi, firstName)
+    .replace(/\{fullname\}/gi, customer.fullName || firstName)
+    .replace(/\{business\}/gi, business?.name ?? '')
+    .replace(/\{businessname\}/gi, business?.name ?? '')
+    .trim() || (business?.name ?? 'Hello');
 
   // Mirror provider logic from campaign-service
   const globalBaileys = useBaileys();
@@ -708,11 +731,9 @@ const dispatchAutomationMessage = async (
       channel:       provider === 'WAHA' ? 'WHATSAPP_WAHA' : 'WHATSAPP_META',
       provider,
       status:        'PENDING',
-      templateName,
       payloadJson: {
-        type:         'TEMPLATE',
-        templateName,
-        langCode:     'en_US',
+        type: 'TEXT',
+        body,
       },
       isPromotional: true,
       scheduledFor,

@@ -3580,8 +3580,8 @@ const MessagesPage=({onConnect}:{onConnect:()=>void})=>{
           <tbody>{loading?[...Array(6)].map((_,i)=><tr key={i}><td colSpan={4} className="py-2 px-4"><Skeleton h="h-8"/></td></tr>):messages.length===0?<tr><td colSpan={4} className="py-8 text-center text-slate-500">No messages found</td></tr>:messages.map((m:any)=>(
             <tr key={m.id} className="border-b border-white/3 hover:bg-white/2">
               <td className="py-2.5 px-4"><div className="font-medium text-white">{m.customer?.fullName||"—"}</div><div className="text-slate-500">{m.customer?.phone||""}</div></td>
-              <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
-              <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono truncate max-w-[120px]">{m.providerId||<span className="text-slate-700">—</span>}</td>
+              <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge>{m.failureReason&&<div className="text-[10px] text-red-400 mt-0.5 max-w-[180px] truncate" title={m.failureReason}>{m.failureReason}</div>}</td>
+              <td className="py-2.5 px-3 text-slate-500 hidden md:table-cell font-mono truncate max-w-[120px]">{m.providerId||m.providerMessageId||<span className="text-slate-700">—</span>}</td>
               <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
             </tr>
           ))}</tbody>
@@ -4633,7 +4633,7 @@ const DataHubPage=()=>{
                 <td className="py-2.5 px-3 text-slate-400 font-mono">{m.customer?.whatsappNumber||m.recipientPhone||"—"}</td>
                 <td className="py-2.5 px-3">{m.customer?.segment?<Badge color="#F97316">{m.customer.segment}</Badge>:<span className="text-slate-600">—</span>}</td>
                 <td className="py-2.5 px-3 text-amber-300 font-medium">{m.customer?.pointsBalance!=null?m.customer.pointsBalance.toLocaleString():"—"}</td>
-                <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge></td>
+                <td className="py-2.5 px-3"><Badge color={STATUS_COLORS[m.status as keyof typeof STATUS_COLORS]||"#6b7280"}>{m.status}</Badge>{m.failureReason&&<div className="text-[10px] text-red-400 mt-0.5 max-w-[180px] truncate" title={m.failureReason}>{m.failureReason}</div>}</td>
                 <td className="py-2.5 px-3 text-slate-400">{m.createdAt?timeAgo(m.createdAt):"—"}</td>
                 <td className="py-2.5 px-3"><button onClick={()=>{setSendMsgFor(m);setDirectMsg("");}} className="px-2 py-1 rounded-lg text-xs text-orange-300 hover:bg-orange-500/10 transition-all" style={{border:"1px solid rgba(249,115,22,0.3)"}}><MessageSquare size={11} className="inline mr-1"/>Message</button></td>
               </tr>
@@ -6093,9 +6093,9 @@ const SCREEN_PANELS=[
   {v:"all",l:"Everything"},
 ];
 const ScreensPanel=()=>{
-  const [screens,setScreens]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  const [screens,setScreens]=useState<any[]>([]);const [loading,setLoading]=useState(true);const [loadErr,setLoadErr]=useState("");
   const [panel,setPanel]=useState("pos_sales");const [pw,setPw]=useState("");const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
-  const load=()=>api.screens.list().then(d=>setScreens(d.screens??[])).catch(()=>{}).finally(()=>setLoading(false));
+  const load=()=>{setLoadErr("");return api.screens.list().then(d=>setScreens(d.screens??[])).catch((e:any)=>setLoadErr(e?.message||"Couldn't load screens.")).finally(()=>setLoading(false));};
   useEffect(()=>{load();},[]);
   const create=async()=>{
     if(pw.length<4){setMsg("Set a password of at least 4 characters.");return;}
@@ -6121,6 +6121,7 @@ const ScreensPanel=()=>{
         {msg&&<div className="text-[11px] mt-2" style={{color:msg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{msg}</div>}
         <div className="text-[10px] text-slate-500 mt-1">The login email is generated automatically as screen(number)(business)(branch)@theloyaly.com.</div>
       </div>
+      {loadErr&&<div className="rounded-xl p-3 text-xs" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",color:"#fca5a5"}}>Couldn't load screens: {loadErr}</div>}
       {loading?<div className="text-center py-8 text-xs text-slate-500">Loading…</div>:
        screens.length===0?<div className="gc rounded-xl p-8 text-center text-sm text-slate-400" style={CARD}>No screens yet. Add one above.</div>:
        <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400">
