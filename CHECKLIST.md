@@ -26,7 +26,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 18 | Fix unsupported buttons that bounce to main website | ⬜ |
 | 19 | Portal consent line: single agree line + terms link | ✅ |
 | 20 | POS layout de-congested / well ordered | ⬜ |
-| 21 | Menu manager works; container works | ⬜ |
+| 21 | Menu manager works; container works | ✅ (now persists server-side) |
 | 22 | CRM login page fits screen (no scroll/overflow) | 🟡 (login routing fixed; fit needs your check) |
 | 23 | Font colour correct per theme | ⬜ |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |

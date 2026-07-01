@@ -501,6 +501,8 @@ const UpdateMeSchema = z.object({
   birthdayBonusPoints:z.number().int().min(0).max(100000).optional(),
   referralBonusPoints:    z.number().int().min(0).max(100000).optional(),
   referralReferrerPoints: z.number().int().min(0).max(100000).optional(),
+  // POS menu — stored in portalSettings so it persists across devices/browsers.
+  posMenu:                z.array(z.any()).max(2000).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
@@ -513,7 +515,8 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
     // menu, etc.) are preserved rather than overwritten.
     let portalSettingsUpdate: Record<string, unknown> | undefined;
     if (body.emailBonusPoints !== undefined || body.birthdayBonusPoints !== undefined
-        || body.referralBonusPoints !== undefined || body.referralReferrerPoints !== undefined) {
+        || body.referralBonusPoints !== undefined || body.referralReferrerPoints !== undefined
+        || body.posMenu !== undefined) {
       const current = await prisma.business.findUnique({
         where:  { id: businessId },
         select: { portalSettings: true },
@@ -525,6 +528,7 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.birthdayBonusPoints !== undefined && { birthdayBonusPoints: body.birthdayBonusPoints }),
         ...(body.referralBonusPoints    !== undefined && { referralBonusPoints:    body.referralBonusPoints }),
         ...(body.referralReferrerPoints !== undefined && { referralReferrerPoints: body.referralReferrerPoints }),
+        ...(body.posMenu !== undefined && { posMenu: body.posMenu }),
       };
     }
 

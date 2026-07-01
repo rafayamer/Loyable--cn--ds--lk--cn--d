@@ -1215,6 +1215,13 @@ const hydrateFromApi=async()=>{
     if(biz?.ntn)localStorage.setItem("biz_ntn",biz.ntn);
     if(biz?.taxNumber)localStorage.setItem("biz_taxNumber",biz.taxNumber);
     if(biz?.gstRate!=null)localStorage.setItem("biz_gstRate",String(biz.gstRate));
+    // POS menu is stored server-side (portalSettings.posMenu) so it persists
+    // across devices/browsers. Hydrate it into the per-industry localStorage key.
+    const serverMenu=(biz?.portalSettings as any)?.posMenu;
+    const bt=getPosBizType(); // reads biz_industry we just set above
+    if(Array.isArray(serverMenu)&&serverMenu.length&&bt){
+      localStorage.setItem(`pos_menu_${bt}`,JSON.stringify(serverMenu));
+    }
   }catch{}
 };
 
@@ -6423,8 +6430,12 @@ const DEFAULT_MENUS:Record<string,MenuItem[]>={
   retail:[],
 };
 const getMenu=(bizType:string):MenuItem[]=>{const stored=localStorage.getItem(`pos_menu_${bizType}`);return stored?JSON.parse(stored):DEFAULT_MENUS[bizType]??[];};
-const saveMenu=(bizType:string,items:MenuItem[])=>{localStorage.setItem(`pos_menu_${bizType}`,JSON.stringify(items));};
-const deductStock=(bizType:string,itemName:string,qty:number)=>{const m=getMenu(bizType);const updated=m.map(i=>i.name===itemName&&i.stock!=null?{...i,stock:Math.max(0,i.stock-qty)}:i);saveMenu(bizType,updated);};
+const saveMenu=(bizType:string,items:MenuItem[])=>{
+  localStorage.setItem(`pos_menu_${bizType}`,JSON.stringify(items));
+  // Persist to the server too so the menu survives across devices/browsers.
+  api.settings.update({posMenu:items}).catch(()=>{});
+};
+const deductStock=(bizType:string,itemName:string,qty:number)=>{const m=getMenu(bizType);const updated=m.map(i=>i.name===itemName&&i.stock!=null?{...i,stock:Math.max(0,i.stock-qty)}:i);localStorage.setItem(`pos_menu_${bizType}`,JSON.stringify(updated));};
 
 // ── Bill helpers ──────────────────────────────────────────────────
 const calcOrderTotal=(order:ActiveOrder)=>{const sub=order.items.reduce((s,i)=>s+i.qty*i.price,0)-order.discount;return Math.max(0,sub);};
