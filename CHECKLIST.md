@@ -31,9 +31,9 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 23 | Font colour correct per theme | ✅ (light-mode input text fixed + verified) |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
 | 25 | Analytics (i) tooltips with easy explanations | 🟡 (KPI tooltips added; more panels pending) |
-| 26 | HR looks like a weekly planner form | ⬜ |
+| 26 | HR looks like a weekly planner form | ✅ (weekly rota planner grid) |
 | 27 | Passwords set by owner only; staff email format (name)(business)(3-digit)(role)(branch)@theloyaly.com | 🟡 (email format generator exists) |
-| 30 | HR performance & rewards works / makes sense | ⬜ |
+| 30 | HR performance & rewards works / makes sense | ✅ (per-staff scorecards: shifts/hours/points) |
 | 31 | HR included in Growth plan | ✅ |
 | 32 | Role-based: only that role's panel is shown | ✅ |
 | 32b | Pro = everything unlimited except branches & integrations | ✅ |

@@ -739,29 +739,68 @@ const HRAttendance=({ct}:any)=>{
 };
 
 // ── Shifts & Leave ─────────────────────────────────────────────────
+const startOfWeek=(d:Date)=>{const x=new Date(d);const day=(x.getDay()+6)%7;/*Mon=0*/x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x;};
+const toLocalInput=(d:Date)=>{const p=(n:number)=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
 const HRShifts=({ct}:any)=>{
   const [shifts,setShifts]=useState<any[]>([]);const [leave,setLeave]=useState<any[]>([]);const [emps,setEmps]=useState<any[]>([]);
   const [shiftModal,setShiftModal]=useState<any>(null);const [leaveModal,setLeaveModal]=useState<any>(null);
+  const [weekStart,setWeekStart]=useState<Date>(()=>startOfWeek(new Date()));
   const load=()=>{api.hr.shifts().then(d=>setShifts(d.shifts??[])).catch(()=>{});api.hr.leave().then(d=>setLeave(d.requests??[])).catch(()=>{});};
   useEffect(()=>{api.hr.employees().then(d=>setEmps(d.employees??[])).catch(()=>{});load();},[]);
   const empName=(id:string)=>emps.find(e=>e.id===id)?.fullName||id.slice(0,6);
+  const days=[...Array(7)].map((_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d;});
+  const sameDay=(a:Date,b:Date)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  const shiftsOn=(d:Date)=>shifts.filter(s=>sameDay(new Date(s.startsAt),d)).sort((a,b)=>+new Date(a.startsAt)-+new Date(b.startsAt));
+  const leaveOn=(d:Date)=>leave.filter(l=>l.status!=="REJECTED"&&new Date(l.startDate)<=d&&new Date(l.endDate)>=d);
+  const DOW=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];const today=new Date();
+  const weekLabel=`${days[0].toLocaleDateString([], {month:"short",day:"numeric"})} – ${days[6].toLocaleDateString([], {month:"short",day:"numeric"})}`;
+  const shiftAt=(d:Date)=>{const pre=new Date(d);pre.setHours(9,0,0,0);const end=new Date(d);end.setHours(17,0,0,0);
+    setShiftModal({startsAt:toLocalInput(pre),endsAt:toLocalInput(end)});};
   return(
-    <div className="grid md:grid-cols-2 gap-4">
-      <div>
-        <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold" style={{color:ct.tx}}>Rota / Shifts</h3><HBtn ct={ct} onClick={()=>setShiftModal({})}><Plus size={12} className="inline mr-1"/>Shift</HBtn></div>
-        <div className="grid gap-2">{shifts.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No shifts scheduled.</div>:
-          shifts.map(s=>(
-          <div key={s.id} className="rounded-xl p-2.5 flex items-center gap-2" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
-            <div className="flex-1"><div className="text-xs font-semibold" style={{color:ct.tx}}>{empName(s.employeeId)} {s.role?`· ${s.role}`:""}</div>
-              <div className="text-[11px]" style={{color:ct.tx3}}>{new Date(s.startsAt).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})} → {new Date(s.endsAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div></div>
-            <Pill text={s.status} color={STATUS_COLOR[s.status]||"#6b7280"}/>
-            <button onClick={()=>api.hr.deleteShift(s.id).then(load)} style={{color:"#ef4444"}}><Trash2 size={13}/></button>
+    <div className="space-y-4">
+      {/* Weekly planner */}
+      <div className="rounded-2xl p-3 sm:p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold" style={{color:ct.tx}}>Weekly Rota</h3>
+            <span className="text-xs" style={{color:ct.tx3}}>{weekLabel}</span>
           </div>
-        ))}</div>
+          <div className="flex items-center gap-1.5">
+            <button onClick={()=>setWeekStart(w=>{const n=new Date(w);n.setDate(n.getDate()-7);return n;})} className="p-1.5 rounded-lg" style={{background:ct.bg2,color:ct.tx2}}><ChevronLeft size={14}/></button>
+            <button onClick={()=>setWeekStart(startOfWeek(new Date()))} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{background:ct.bg2,color:ct.tx2}}>Today</button>
+            <button onClick={()=>setWeekStart(w=>{const n=new Date(w);n.setDate(n.getDate()+7);return n;})} className="p-1.5 rounded-lg" style={{background:ct.bg2,color:ct.tx2}}><ChevronRight size={14}/></button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {days.map((d,i)=>{const isToday=sameDay(d,today);const ds=shiftsOn(d);const dl=leaveOn(d);return(
+            <div key={i} className="rounded-xl p-2 flex flex-col min-h-[120px]" style={{background:isToday?"rgba(249,115,22,0.08)":ct.bg2,border:`1px solid ${isToday?"rgba(249,115,22,0.35)":ct.bdr}`}}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[11px] font-bold" style={{color:isToday?"#F97316":ct.tx2}}>{DOW[i]} {d.getDate()}</div>
+                <button onClick={()=>shiftAt(d)} title="Add shift" className="w-4 h-4 rounded flex items-center justify-center" style={{background:"rgba(249,115,22,0.15)",color:"#F97316"}}><Plus size={10}/></button>
+              </div>
+              <div className="space-y-1 flex-1">
+                {dl.map(l=>(<div key={l.id} className="rounded-md px-1.5 py-1 text-[10px]" style={{background:"rgba(139,92,246,0.12)",color:"#c4b5fd"}} title={`${l.type} leave`}>🏖 {empName(l.employeeId).split(" ")[0]}</div>))}
+                {ds.length===0&&dl.length===0&&<div className="text-[10px] text-center py-2" style={{color:ct.tx3,opacity:0.6}}>—</div>}
+                {ds.map(s=>(
+                  <div key={s.id} className="group rounded-md px-1.5 py-1" style={{background:"rgba(249,115,22,0.12)",border:"1px solid rgba(249,115,22,0.2)"}}>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-semibold truncate" style={{color:ct.tx}}>{empName(s.employeeId).split(" ")[0]}</span>
+                      <button onClick={()=>api.hr.deleteShift(s.id).then(load)} className="opacity-0 group-hover:opacity-100 flex-shrink-0" style={{color:"#ef4444"}}><X size={9}/></button>
+                    </div>
+                    <div className="text-[9px]" style={{color:ct.tx3}}>{new Date(s.startsAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}–{new Date(s.endsAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                    {s.role&&<div className="text-[9px] truncate" style={{color:ct.tx3}}>{s.role}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );})}
+        </div>
+        <div className="flex justify-end mt-3"><HBtn ct={ct} onClick={()=>setShiftModal({})}><Plus size={12} className="inline mr-1"/>Add Shift</HBtn></div>
       </div>
+      {/* Leave requests */}
       <div>
         <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold" style={{color:ct.tx}}>Leave Requests</h3><HBtn ct={ct} onClick={()=>setLeaveModal({})}><Plus size={12} className="inline mr-1"/>Leave</HBtn></div>
-        <div className="grid gap-2">{leave.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No leave requests.</div>:
+        <div className="grid sm:grid-cols-2 gap-2">{leave.length===0?<div className="rounded-xl p-6 text-center text-xs sm:col-span-2" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No leave requests.</div>:
           leave.map(l=>(
           <div key={l.id} className="rounded-xl p-2.5" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
             <div className="flex items-center justify-between"><div className="text-xs font-semibold" style={{color:ct.tx}}>{empName(l.employeeId)}</div><Pill text={l.status} color={STATUS_COLOR[l.status]||"#6b7280"}/></div>
@@ -770,13 +809,13 @@ const HRShifts=({ct}:any)=>{
           </div>
         ))}</div>
       </div>
-      {shiftModal&&<ShiftModal emps={emps} ct={ct} onClose={()=>setShiftModal(null)} onSaved={()=>{setShiftModal(null);load();}}/>}
+      {shiftModal&&<ShiftModal emps={emps} ct={ct} initial={shiftModal} onClose={()=>setShiftModal(null)} onSaved={()=>{setShiftModal(null);load();}}/>}
       {leaveModal&&<LeaveModal emps={emps} ct={ct} onClose={()=>setLeaveModal(null)} onSaved={()=>{setLeaveModal(null);load();}}/>}
     </div>
   );
 };
-const ShiftModal=({emps,ct,onClose,onSaved}:any)=>{
-  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",status:"SCHEDULED"});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
+const ShiftModal=({emps,ct,onClose,onSaved,initial}:any)=>{
+  const [f,setF]=useState<any>({employeeId:emps[0]?.id||"",status:"SCHEDULED",...(initial||{})});const set=(k:string,v:any)=>setF((p:any)=>({...p,[k]:v}));
   const save=async()=>{if(!f.employeeId||!f.startsAt||!f.endsAt)return;await api.hr.createShift(f);onSaved();};
   return(
     <Modal title="New Shift" onClose={onClose} ct={ct}>
@@ -809,21 +848,44 @@ const LeaveModal=({emps,ct,onClose,onSaved}:any)=>{
 
 // ── Performance ────────────────────────────────────────────────────
 const HRPerformance=({ct}:any)=>{
-  const [rows,setRows]=useState<any[]>([]);const [loading,setLoading]=useState(true);
-  useEffect(()=>{api.hr.performance().then(d=>setRows(d.rows??[])).catch(()=>{}).finally(()=>setLoading(false));},[]);
+  const [rows,setRows]=useState<any[]>([]);const [emps,setEmps]=useState<any[]>([]);const [shifts,setShifts]=useState<any[]>([]);const [rewards,setRewards]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  useEffect(()=>{Promise.all([
+    api.hr.performance().then(d=>setRows(d.rows??[])).catch(()=>{}),
+    api.hr.employees().then(d=>setEmps(d.employees??[])).catch(()=>{}),
+    api.hr.shifts().then(d=>setShifts(d.shifts??[])).catch(()=>{}),
+    api.hr.rewards().then(d=>setRewards(d.rewards??[])).catch(()=>{}),
+  ]).finally(()=>setLoading(false));},[]);
   const cur=localStorage.getItem("biz_currency")||"£";const sym=cur==="GBP"?"£":cur==="USD"?"$":cur==="PKR"?"₨":"£";
-  const max=Math.max(1,...rows.map(r=>r.revenue));
+  // Build a per-employee scorecard from data the HR module always has (shifts,
+  // hours, rewards) — plus POS revenue when it's available — so this is useful
+  // even for businesses that don't attribute sales to staff at the till.
+  const now=Date.now();const monthAgo=now-30*24*3600*1000;
+  const cards=emps.map((e:any)=>{
+    const es=shifts.filter((s:any)=>s.employeeId===e.id&&+new Date(s.startsAt)>=monthAgo);
+    const hours=es.reduce((t,s)=>t+Math.max(0,(+new Date(s.endsAt)-+new Date(s.startsAt))/3600000),0);
+    const er=rewards.filter((r:any)=>r.employeeId===e.id);
+    const pts=er.reduce((t,r)=>t+(r.points||0),0);
+    const perf=rows.find((r:any)=>r.employeeId===e.id);
+    return {id:e.id,name:e.fullName,title:e.jobTitle,shifts:es.length,hours:Math.round(hours),points:pts,rewards:er.length,revenue:perf?.revenue||0,visits:perf?.visits||0};
+  });
+  const anyRevenue=cards.some(c=>c.revenue>0);
   return(
     <div>
-      <p className="text-xs mb-4" style={{color:ct.tx3}}>Revenue and visits attributed to each staff member (last 30 days), plus internal reward points earned.</p>
+      <p className="text-xs mb-4" style={{color:ct.tx3}}>A simple scorecard for each team member over the last 30 days — shifts worked, hours, reward points, {anyRevenue?"and sales taken at the till.":"and recognition given."}</p>
       {loading?<div className="text-center py-10 text-xs" style={{color:ct.tx3}}>Loading…</div>:
-       rows.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No performance data yet. Link employees to staff accounts and record visits at POS.</div>:
-       <div className="grid gap-2">{rows.map(r=>(
-        <div key={r.employeeId} className="rounded-xl p-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
-          <div className="flex items-center justify-between mb-1.5"><div className="text-sm font-semibold" style={{color:ct.tx}}>{r.fullName}<span className="text-xs font-normal ml-2" style={{color:ct.tx3}}>{r.jobTitle||""}</span></div>
-            <div className="text-sm font-bold" style={{color:ct.tx}}>{sym}{r.revenue.toLocaleString()}</div></div>
-          <div className="h-1.5 rounded-full mb-1.5" style={{background:ct.bg2}}><div className="h-full rounded-full" style={{width:`${r.revenue/max*100}%`,background:"linear-gradient(90deg,#F97316,#06b6d4)"}}/></div>
-          <div className="flex gap-3 text-[11px]" style={{color:ct.tx3}}><span>{r.visits} visits</span><span>·</span><span>{r.rewardPoints} reward pts</span></div>
+       emps.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>Add team members in the Directory to see their scorecards here.</div>:
+       <div className="grid sm:grid-cols-2 gap-3">{cards.map(c=>(
+        <div key={c.id} className="rounded-2xl p-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)",color:"#fff"}}>{c.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("")}</div>
+            <div className="min-w-0"><div className="text-sm font-semibold truncate" style={{color:ct.tx}}>{c.name}</div><div className="text-[11px] truncate" style={{color:ct.tx3}}>{c.title||"Team member"}</div></div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg py-2" style={{background:ct.bg2}}><div className="text-base font-bold" style={{color:ct.tx}}>{c.shifts}</div><div className="text-[10px]" style={{color:ct.tx3}}>shifts</div></div>
+            <div className="rounded-lg py-2" style={{background:ct.bg2}}><div className="text-base font-bold" style={{color:ct.tx}}>{c.hours}h</div><div className="text-[10px]" style={{color:ct.tx3}}>hours</div></div>
+            <div className="rounded-lg py-2" style={{background:ct.bg2}}><div className="text-base font-bold" style={{color:"#f59e0b"}}>{c.points}</div><div className="text-[10px]" style={{color:ct.tx3}}>reward pts</div></div>
+          </div>
+          {(c.revenue>0||c.visits>0)&&<div className="flex items-center justify-between mt-2 pt-2 text-[11px]" style={{borderTop:`1px solid ${ct.bdr}`,color:ct.tx3}}><span>Sales at till</span><span className="font-semibold" style={{color:ct.tx}}>{sym}{c.revenue.toLocaleString()} · {c.visits} visits</span></div>}
         </div>
       ))}</div>}
     </div>
