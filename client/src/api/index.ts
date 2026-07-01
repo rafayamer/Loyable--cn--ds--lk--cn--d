@@ -292,6 +292,7 @@ export const api = {
     updateEmployee: (id: string, b: any)     => put<any>(`/hr/employees/${id}`, b),
     deleteEmployee: (id: string)             => del<any>(`/hr/employees/${id}`),
     setOnboarding:  (id: string, key: string, done: boolean) => patch<any>(`/hr/employees/${id}/onboarding`, { key, done }),
+    createLogin:    (id: string, body: { role?: string; password: string }) => post<any>(`/hr/employees/${id}/create-login`, body),
     addDocument:    (id: string, b: any)     => post<any>(`/hr/employees/${id}/documents`, b),
     uploadDocument: async (id: string, file: File, meta: { name?: string; type?: string }): Promise<any> => {
       const form = new FormData();

@@ -25,7 +25,8 @@ import { prisma } from '../config/prisma';
 import { tenantScope, requireRoles } from '../middleware/tenant-scope-middleware';
 import { requireFeature } from '../services/entitlement-service';
 import { compressUnder } from '../utils/image-compress.util';
-import { inviteStaff } from '../services/auth-service';
+import { inviteStaff, createStaffLoginForEmployee } from '../services/auth-service';
+import { sendEmail } from '../utils/email.util';
 
 export const hrRouter = Router();
 hrRouter.use(tenantScope as any);
@@ -327,7 +328,46 @@ hrRouter.post('/employees/:id/status', requireRoles(...MANAGE) as any, wrap(asyn
   if (!existing) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
   const employee = await prisma.employee.update({ where: { id: existing.id }, data: { status } });
   await prisma.auditLog.create({ data: { businessId, userId: req.tenantContext.userId, action: 'EMPLOYEE_STATUS_CHANGE', entityType: 'Employee', entityId: existing.id, metaJson: { from: existing.status, to: status } } }).catch(() => {});
+
+  // On termination/suspension, revoke the linked login so they can no longer
+  // access the system; on re-activation, restore it. TERMINATED also emails them.
+  if (existing.userId) {
+    if (status === 'TERMINATED' || status === 'SUSPENDED') {
+      await prisma.user.update({ where: { id: existing.userId }, data: { isActive: false } }).catch(() => {});
+      await prisma.userSession.deleteMany({ where: { userId: existing.userId } }).catch(() => {});
+    } else if (status === 'ACTIVE') {
+      await prisma.user.update({ where: { id: existing.userId }, data: { isActive: true } }).catch(() => {});
+    }
+  }
+  if (status === 'TERMINATED' && employee.email) {
+    const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true } });
+    await sendEmail({
+      to: employee.email.toLowerCase().trim(),
+      subject: `Your access to ${biz?.name ?? 'the team'} has ended`,
+      templateId: 'STAFF_TERMINATED',
+      variables: { name: employee.fullName, businessName: biz?.name ?? '' },
+    }).catch((e: unknown) => console.warn('[hr] termination email failed (non-fatal):', (e as Error).message));
+  }
   res.json({ employee });
+}));
+
+// Create a login (owner-set password) for an existing employee — HR module.
+hrRouter.post('/employees/:id/create-login', requireRoles(Role.TENANT_OWNER) as any, wrap(async (req, res) => {
+  const businessId = bz(req);
+  const emp = await prisma.employee.findFirst({ where: { id: req.params.id, businessId } });
+  if (!emp) { res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' }); return; }
+  const roleStr = String(req.body?.role ?? emp.hrRole ?? 'MARKETING');
+  // Accept either a platform Role (BRANCH_MANAGER/…) or an HR label (MANAGER/…).
+  const asPlatform = (Object.values(Role) as string[]).includes(roleStr) ? (roleStr as Role) : undefined;
+  const role = asPlatform ?? HR_ROLE_TO_PLATFORM[roleStr] ?? Role.MARKETING_STAFF;
+  try {
+    const result = await createStaffLoginForEmployee({ inviterUserId: req.tenantContext.userId, businessId, employeeId: emp.id, role, password: String(req.body?.password ?? '') });
+    res.status(201).json(result);
+  } catch (e: any) {
+    const msg = e?.message ?? 'CREATE_LOGIN_FAILED';
+    const code = msg === 'ALREADY_HAS_LOGIN' ? 409 : msg === 'PASSWORD_TOO_SHORT' ? 400 : 400;
+    res.status(code).json({ error: msg });
+  }
 }));
 
 // ================================================================

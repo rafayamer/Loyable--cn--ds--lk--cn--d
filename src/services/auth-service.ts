@@ -609,6 +609,60 @@ export const createStaffDirect = async (
 };
 
 /**
+ * Create a login for an EXISTING HR employee, with an owner-set password.
+ * Generates the (name)(business)(3-digit)(role)(branch)@theloyaly.com email,
+ * links it to the employee, emails the credentials, and returns them so the
+ * owner can hand them over. Used from the HR module (not Settings).
+ */
+export const createStaffLoginForEmployee = async (input: {
+  inviterUserId: string; businessId: string; employeeId: string; role: Role; password: string;
+}): Promise<{ loginEmail: string; password: string }> => {
+  const { inviterUserId, businessId, employeeId, role, password } = input;
+  const INVITABLE_ROLES: Role[] = [Role.BRANCH_MANAGER, Role.CASHIER, Role.MARKETING_STAFF];
+  if (!INVITABLE_ROLES.includes(role)) throw new Error('ROLE_NOT_INVITABLE');
+  const employee = await prisma.employee.findFirst({ where: { id: employeeId, businessId } });
+  if (!employee) throw new Error('EMPLOYEE_NOT_FOUND');
+  if (employee.userId) throw new Error('ALREADY_HAS_LOGIN');
+  if (!password || password.length < 6) throw new Error('PASSWORD_TOO_SHORT');
+
+  const firstName  = employee.fullName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const roleSuffix = role === Role.BRANCH_MANAGER ? 'manager' : role === Role.MARKETING_STAFF ? 'marketing' : 'staff';
+  const biz        = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true } });
+  const bizPart    = (biz?.name || 'biz').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'biz';
+  let branchNum = 1;
+  if (employee.branchLocationId) {
+    const ordered = await prisma.branchLocation.findMany({ where: { businessId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+    const idx = ordered.findIndex(b => b.id === employee.branchLocationId);
+    branchNum = idx >= 0 ? idx + 1 : 1;
+  }
+  const mkEmail = () => `${firstName}${bizPart}${Math.floor(Math.random() * 900) + 100}${roleSuffix}${branchNum}@theloyaly.com`;
+  let loginEmail = mkEmail();
+  for (let i = 0; i < 5; i++) {
+    const clash = await prisma.user.findFirst({ where: { email: loginEmail, businessId }, select: { id: true } });
+    if (!clash) break;
+    if (i === 4) throw new Error('Could not generate unique login email. Please try again.');
+    loginEmail = mkEmail();
+  }
+
+  const passwordHash = await hashPassword(password);
+  const user = await prisma.user.create({
+    data: { businessId, name: employee.fullName, email: loginEmail, passwordHash, role, branchLocationId: employee.branchLocationId ?? null },
+  });
+  await prisma.employee.update({ where: { id: employee.id }, data: { userId: user.id, status: employee.status === 'ONBOARDING' ? 'ACTIVE' : employee.status } });
+  await prisma.auditLog.create({ data: { businessId, userId: inviterUserId, action: 'CREATE_STAFF_LOGIN', entityType: 'Employee', entityId: employee.id, metaJson: { loginEmail, role } } }).catch(() => {});
+
+  if (employee.email) {
+    await sendEmail({
+      to: employee.email.toLowerCase().trim(),
+      subject: `Your login details for ${biz?.name ?? 'The Loyaly'}`,
+      templateId: 'STAFF_CREDENTIALS',
+      variables: { name: employee.fullName, businessName: biz?.name ?? '', loginEmail, password, loginUrl: process.env.API_BASE_URL ?? 'https://theloyaly.com', role: roleSuffix },
+    }).catch((e: unknown) => console.warn('[auth] staff credentials email failed (non-fatal):', (e as Error).message));
+  }
+  return { loginEmail, password };
+};
+
+/**
  * Invite a new staff member to an existing business.
  *
  * Invitable roles: BRANCH_MANAGER, CASHIER, MARKETING_STAFF

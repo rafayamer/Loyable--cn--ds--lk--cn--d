@@ -629,7 +629,20 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
     try{const r=await api.hr.uploadDocument(e.id,file,{name:docName||file.name,type:docType}); setNote(r.compressed?`Uploaded · compressed to ${r.sizeKB}KB`:`Uploaded · ${r.sizeKB}KB`); setDocName(""); onChanged();}
     catch(err:any){setNote(err?.message||"Upload failed");}finally{setUploading(false);if(fileRef.current)fileRef.current.value="";} };
   const invite=async()=>{setNote("");try{const r=await api.hr.invite(e.id);setNote(`Login invite sent to ${r.invitedEmail}`);}catch(err:any){setNote(err?.message==="ALREADY_HAS_LOGIN"?"This person already has a login.":err?.message==="EMPLOYEE_HAS_NO_EMAIL"?"Add an email first.":err?.message||"Could not send invite");}};
-  const setStatus=async(s:string)=>{await api.hr.setStatus(e.id,s).then(onChanged);};
+  const setStatus=async(s:string)=>{
+    if(s==="TERMINATED"&&!confirm("Terminate this employee? Their login will be deleted, they'll lose access, and they'll be emailed."))return;
+    await api.hr.setStatus(e.id,s).then(onChanged);
+  };
+  const [cpass,setCpass]=useState("");const [crole,setCrole]=useState(e.hrRole==="MANAGER"?"BRANCH_MANAGER":e.hrRole==="MARKETING"?"MARKETING_STAFF":"CASHIER");
+  const [creds,setCreds]=useState<any>(null);const [creating,setCreating]=useState(false);
+  const onboardingDone=pct===100;const hasLogin=!!e.userId;
+  const createLogin=async()=>{
+    if(cpass.length<6){setNote("Password must be at least 6 characters.");return;}
+    setCreating(true);setNote("");
+    try{const r=await api.hr.createLogin(e.id,{role:crole,password:cpass});setCreds(r);setCpass("");onChanged();}
+    catch(err:any){setNote(err?.message==="ALREADY_HAS_LOGIN"?"This person already has a login.":err?.message||"Couldn't create login.");}
+    finally{setCreating(false);}
+  };
   return(
     <Modal title={e.fullName} onClose={onClose} ct={ct}>
       <div className="flex items-center gap-2 mb-3 flex-wrap"><Pill text={e.hrRole} color="#F97316"/><Pill text={e.status} color={STATUS_COLOR[e.status]||"#6b7280"}/><Pill text={e.employmentType} color="#06b6d4"/></div>
@@ -637,9 +650,30 @@ const EmployeeDetailModal=({data,ct,onClose,onChanged}:any)=>{
         {e.jobTitle&&<div>💼 {e.jobTitle}</div>}{e.email&&<div>✉️ {e.email}</div>}{e.phone&&<div>📞 {e.phone}</div>}
         {e.emergencyContactName&&<div>🚨 {e.emergencyContactName} · {e.emergencyContactPhone||"—"}</div>}
       </div>
-      {/* Account & status actions */}
+      {/* Create login (owner-set password) — only after onboarding is complete */}
+      {!hasLogin&&!creds&&<div className="mb-4 rounded-xl p-3" style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.2)"}}>
+        <div className="text-xs font-semibold mb-1" style={{color:ct.tx}}>Create staff login</div>
+        {!onboardingDone?<div className="text-[11px]" style={{color:ct.tx3}}>Finish the onboarding checklist below first — then you can set their password and give them a login.</div>
+        :<>
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div><label className="text-[10px]" style={{color:ct.tx3}}>Role (their window)</label><HSelect value={crole} onChange={setCrole} options={[{value:"BRANCH_MANAGER",label:"Manager"},{value:"MARKETING_STAFF",label:"Marketing"},{value:"CASHIER",label:"Cashier / Staff"}]} ct={ct}/></div>
+            <div><label className="text-[10px]" style={{color:ct.tx3}}>Set password</label><HInput value={cpass} onChange={setCpass} placeholder="At least 6 characters" ct={ct}/></div>
+          </div>
+          <HBtn ct={ct} onClick={createLogin}>{creating?"Creating…":"Create login & email credentials"}</HBtn>
+          <div className="text-[10px] mt-1" style={{color:ct.tx3}}>A login email is auto-generated (name+business+###+role+branch@theloyaly.com). Credentials are emailed to {e.email||"the employee"} and shown to you here.</div>
+        </>}
+      </div>}
+      {creds&&<div className="mb-4 rounded-xl p-3" style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)"}}>
+        <div className="text-xs font-semibold mb-2" style={{color:"#22c55e"}}>✓ Login created — hand these to {e.fullName}</div>
+        <div className="text-[11px] font-mono space-y-1" style={{color:ct.tx}}>
+          <div>Email: <span className="text-orange-300">{creds.loginEmail}</span></div>
+          <div>Password: <span className="text-orange-300">{creds.password}</span></div>
+        </div>
+        <div className="text-[10px] mt-1" style={{color:ct.tx3}}>Save these now — the password isn't stored and can't be shown again.</div>
+      </div>}
+      {/* Status actions */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <HBtn ct={ct} onClick={invite}>Send login invite</HBtn>
+        {!hasLogin&&<HBtn variant="ghost" ct={ct} onClick={invite}>Send email invite instead</HBtn>}
         {e.status!=="SUSPENDED"&&<button onClick={()=>setStatus("SUSPENDED")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(245,158,11,0.12)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.3)"}}>Suspend</button>}
         {e.status!=="TERMINATED"&&<button onClick={()=>setStatus("TERMINATED")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(239,68,68,0.12)",color:"#ef4444",border:"1px solid rgba(239,68,68,0.3)"}}>Terminate</button>}
         {(e.status==="SUSPENDED"||e.status==="TERMINATED")&&<button onClick={()=>setStatus("ACTIVE")} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{background:"rgba(34,197,94,0.12)",color:"#22c55e",border:"1px solid rgba(34,197,94,0.3)"}}>Reactivate</button>}

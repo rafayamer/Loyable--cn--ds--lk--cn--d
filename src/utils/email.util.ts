@@ -171,6 +171,12 @@ export const renderTemplate = (
       {{cta:Log In Now:{{loginUrl}}}}
       <p class="muted">If you have any questions, contact your manager at {{businessName}}.</p>
     `,
+    STAFF_TERMINATED: `
+      <h1>Access ended</h1>
+      <p>Hi {{name}},</p>
+      <p>Your access to <strong>{{businessName}}</strong> has been ended and your login has been deactivated. You will no longer be able to sign in.</p>
+      <p class="muted">If you believe this is a mistake, please contact {{businessName}} directly.</p>
+    `,
     WHATSAPP_HEALTH_ALERT: `
       <h1>{{subject}}</h1>
       <p>Hi {{name}},</p>
