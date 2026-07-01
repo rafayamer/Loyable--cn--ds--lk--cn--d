@@ -46,6 +46,25 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 39 | Unexplained "segments" in customer → removed | ✅ |
 | + | Loyalty "save points/tier settings" actually saves | ✅ |
 
+## Follow-up fixes & features (after first 39)
+| Item | Status |
+|------|--------|
+| Loyalty tier save (type/validation errors) | ✅ |
+| Campaign Builder button (role-guard regression) | ✅ |
+| Automation on/off + delete (status mapping) | ✅ |
+| Dashboard "Today's Tasks" delete/dismiss | ✅ |
+| POS Menu Manager rebuilt (editor no longer overflows) | ✅ |
+| HR: weekly rota planner + per-staff scorecards | ✅ |
+| HR: bulk shift scheduling (many days at once) | ✅ |
+| HR: GPS clock in/out (within 20 m of business) | ✅ |
+| HR: staff/manager self-service "My Work" window | ✅ |
+| HR: apply for leave (staff) + revoke approved leave (owner) | ✅ |
+| HR: annual leave allotment → auto-unpaid once used up | ✅ |
+| Settings: business GPS location + check-in radius | ✅ |
+| HR: create staff login + owner-set password (in HR, not Settings) | ✅ |
+| HR: terminate deletes login + emails staff; suspend disables login | ✅ |
+| AI reports: skip LLM if that week/month/year report already exists (save tokens) | ✅ |
+
 ## Notes
 - **35/36/37** are not code — they're console/DNS settings. Tell me and I'll give you the exact steps (Google Cloud OAuth consent "App name" + authorized domains; Railway variables; Cloudflare CNAME for `www`).
 - **7** code now finalizes undeliverable messages instead of leaving them pending. Actual sending still requires the tenant's WhatsApp number to be connected.
