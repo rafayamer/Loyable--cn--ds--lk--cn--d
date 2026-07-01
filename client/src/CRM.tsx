@@ -6591,6 +6591,7 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
     if(f.size>500*1024){alert("Image must be under 500 KB");return;}
     const r=new FileReader();r.onload=ev=>setForm(p=>({...p,image:ev.target?.result as string}));r.readAsDataURL(f);
   };
+  const _cur=localStorage.getItem("biz_currency")||"GBP";const sym=_cur==="USD"?"$":_cur==="PKR"?"₨":_cur==="EUR"?"€":"£";
   return(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)"}}>
       <div className="gc rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" style={CARD}>
@@ -6598,63 +6599,70 @@ const MenuEditor=({bizType,onClose}:{bizType:string;onClose:()=>void})=>{
           <div><div className="text-sm font-bold text-white">Menu Manager</div><div className="text-[10px] text-slate-400">Add, edit or remove items. Changes apply instantly.</div></div>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 space-y-2">
-          {cats.map(cat=>(
-            <div key={cat}>
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 mt-3">{cat}</div>
-              {items.filter(i=>i.cat===cat).map(item=>(
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
-                  {item.image
-                    ?<img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
-                    :<div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(249,115,22,0.12)"}}><ShoppingBag size={14} className="text-orange-400"/></div>
-                  }
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-xs font-semibold">{item.name}</div>
-                    <div className="text-slate-400 text-[10px]">{item.desc||""} {item.stock!=null?`· Stock: ${item.stock}`:""}</div>
-                  </div>
-                  <span className="text-orange-400 text-xs font-bold">{item.price.toFixed(2)}</span>
-                  <button onClick={()=>startEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors" style={{background:"rgba(255,255,255,0.05)"}}><Edit size={12}/></button>
-                  <button onClick={()=>setItems(p=>p.filter(i=>i.id!==item.id))} className="p-1.5 rounded-lg text-red-400 hover:text-red-300 transition-colors" style={{background:"rgba(239,68,68,0.08)"}}><X size={12}/></button>
+        {/* Single-panel: show the edit form OR the list, never stacked (which
+            used to overflow the modal and cut off the Save button). */}
+        {editing?(
+          <>
+            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+              <div className="text-sm font-semibold text-white">{editing.id?"Edit Item":"New Item"}</div>
+              <div className="flex items-center gap-3">
+                <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImage}/>
+                {form.image
+                  ?<img src={form.image} alt="preview" className="w-16 h-16 rounded-xl object-cover border border-white/10 flex-shrink-0"/>
+                  :<div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"rgba(255,255,255,0.04)",border:"1px dashed rgba(255,255,255,0.15)"}}><Image size={18} className="text-slate-500"/></div>
+                }
+                <div>
+                  <button onClick={pickImage} className="block px-3 py-1.5 rounded-lg text-[11px] text-orange-400 font-semibold mb-1" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}>📷 {form.image?"Change Photo":"Upload Photo"}</button>
+                  {form.image&&<button onClick={()=>setForm(p=>({...p,image:""}))} className="text-[10px] text-red-400 hover:text-red-300">Remove</button>}
+                  <div className="text-[10px] text-slate-500 mt-0.5">PNG/JPG · max 500 KB</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                <div><label className="text-[10px] text-slate-400 block mb-1">Name *</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
+                <div><label className="text-[10px] text-slate-400 block mb-1">Category *</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. Starters" value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}/></div>
+                <div><label className="text-[10px] text-slate-400 block mb-1">Price ({sym}) *</label><input type="number" className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
+                <div><label className="text-[10px] text-slate-400 block mb-1">Stock (optional)</label><input type="number" className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Blank = unlimited" value={form.stock} onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
+                {bizType==="restaurant"&&<div><label className="text-[10px] text-slate-400 block mb-1">Prep Time (min)</label><input type="number" min={1} className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. 15" value={form.prepTime} onChange={e=>setForm(p=>({...p,prepTime:e.target.value}))}/></div>}
+                {bizType==="retail"&&<div><label className="text-[10px] text-slate-400 block mb-1">Barcode (optional)</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Scan or type barcode" value={form.barcode} onChange={e=>setForm(p=>({...p,barcode:e.target.value}))}/></div>}
+                <div className="sm:col-span-2"><label className="text-[10px] text-slate-400 block mb-1">Description</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-5 border-t border-white/10">
+              <button onClick={applyEdit} disabled={!form.name||!form.price} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white disabled:opacity-40" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save Item</button>
+              <button onClick={()=>setEditing(null)} className="px-5 py-2.5 rounded-xl text-xs text-slate-300" style={{background:"rgba(255,255,255,0.06)"}}>Cancel</button>
+            </div>
+          </>
+        ):(
+          <>
+            <div className="flex-1 overflow-y-auto p-5 space-y-2">
+              {items.length===0&&<div className="py-10 text-center text-slate-500 text-xs">No items yet. Tap “Add Item” to build your menu.</div>}
+              {cats.map(cat=>(
+                <div key={cat}>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 mt-3">{cat}</div>
+                  {items.filter(i=>i.cat===cat).map(item=>(
+                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl mb-1.5" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                      {item.image
+                        ?<img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0"/>
+                        :<div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:"rgba(249,115,22,0.12)"}}><ShoppingBag size={14} className="text-orange-400"/></div>
+                      }
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white text-xs font-semibold truncate">{item.name}</div>
+                        <div className="text-slate-400 text-[10px] truncate">{item.desc||""}{item.desc&&item.stock!=null?" · ":""}{item.stock!=null?`Stock: ${item.stock}`:""}</div>
+                      </div>
+                      <span className="text-orange-400 text-xs font-bold flex-shrink-0">{sym}{item.price.toFixed(2)}</span>
+                      <button onClick={()=>startEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors flex-shrink-0" style={{background:"rgba(255,255,255,0.05)"}}><Edit size={12}/></button>
+                      <button onClick={()=>setItems(p=>p.filter(i=>i.id!==item.id))} className="p-1.5 rounded-lg text-red-400 hover:text-red-300 transition-colors flex-shrink-0" style={{background:"rgba(239,68,68,0.08)"}}><X size={12}/></button>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-        {editing&&(
-          <div className="border-t border-white/10 p-5 space-y-3">
-            <div className="text-xs font-semibold text-white mb-2">{editing.id?"Edit Item":"New Item"}</div>
-            {/* Image upload */}
-            <div className="flex items-center gap-3 mb-3">
-              <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImage}/>
-              {form.image
-                ?<img src={form.image} alt="preview" className="w-14 h-14 rounded-xl object-cover border border-white/10"/>
-                :<div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.04)",border:"1px dashed rgba(255,255,255,0.15)"}}><Image size={18} className="text-slate-500"/></div>
-              }
-              <div>
-                <button onClick={pickImage} className="block px-3 py-1.5 rounded-lg text-[11px] text-orange-400 font-semibold mb-1" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}>📷 {form.image?"Change Photo":"Upload Photo"}</button>
-                {form.image&&<button onClick={()=>setForm(p=>({...p,image:""}))} className="text-[10px] text-red-400 hover:text-red-300">Remove</button>}
-                <div className="text-[10px] text-slate-500 mt-0.5">PNG/JPG · max 500 KB</div>
-              </div>
+            <div className="flex items-center justify-between p-5 border-t border-white/10">
+              <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-orange-400 font-semibold" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}><Plus size={13}/>Add Item</button>
+              <button onClick={save} className="px-5 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Save &amp; Close</button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-[10px] text-slate-400 block mb-1">Name *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
-              <div><label className="text-[10px] text-slate-400 block mb-1">Category *</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}/></div>
-              <div><label className="text-[10px] text-slate-400 block mb-1">Price *</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div>
-              <div><label className="text-[10px] text-slate-400 block mb-1">Stock (optional)</label><input type="number" className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Leave blank = unlimited" value={form.stock} onChange={e=>setForm(p=>({...p,stock:e.target.value}))}/></div>
-              {bizType==="restaurant"&&<div><label className="text-[10px] text-slate-400 block mb-1">Prep Time (min)</label><input type="number" min={1} className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="e.g. 15" value={form.prepTime} onChange={e=>setForm(p=>({...p,prepTime:e.target.value}))}/></div>}
-              {bizType==="retail"&&<div><label className="text-[10px] text-slate-400 block mb-1">Barcode (optional)</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Scan or type barcode" value={form.barcode} onChange={e=>setForm(p=>({...p,barcode:e.target.value}))}/></div>}
-              <div className="col-span-2"><label className="text-[10px] text-slate-400 block mb-1">Description</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/></div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={applyEdit} className="px-4 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Save Item</button>
-              <button onClick={()=>setEditing(null)} className="px-4 py-2 rounded-xl text-xs text-slate-400" style={{background:"rgba(255,255,255,0.06)"}}>Cancel</button>
-            </div>
-          </div>
+          </>
         )}
-        <div className="flex items-center justify-between p-5 border-t border-white/10">
-          <button onClick={startNew} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-orange-400 font-semibold" style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.2)"}}><Plus size={13}/>Add Item</button>
-          <button onClick={save} className="px-5 py-2 rounded-xl text-xs font-semibold text-white" style={{background:"linear-gradient(135deg,#22c55e,#16a34a)"}}>Save & Close</button>
-        </div>
       </div>
     </div>
   );
@@ -7212,11 +7220,11 @@ const POSBuilder=({bizType,currency,extraTop}:{bizType:string;currency:string;ex
 
         {/* Customer + payment + table */}
         <div className="gc rounded-2xl p-5" style={CARD}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><PhoneInput value={phone} onChange={setPhone} inputStyle={{...inpS,padding:"7px 10px",fontSize:"12px",color:"white"}}/></div>
-            <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 mb-4">
+            <div><label className="text-[10px] text-slate-400 block mb-1">Table / Ref</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="T1, Chair 3…" value={table} onChange={e=>setTable(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Customer Name</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Optional" value={cname} onChange={e=>setCname(e.target.value)}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">WhatsApp (for loyalty points)</label><PhoneInput value={phone} onChange={setPhone} inputStyle={{...inpS,padding:"9px 10px",fontSize:"12px",color:"white"}}/></div>
+            <div><label className="text-[10px] text-slate-400 block mb-1">Notes / Special req.</label><input className="w-full px-3 py-2.5 rounded-xl text-xs text-white outline-none" style={inpS} placeholder="Allergy, mods…" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
           </div>
           <div className="flex gap-2 mb-3">
             {(["CASH","CARD","WALLET"] as const).map(m=>(

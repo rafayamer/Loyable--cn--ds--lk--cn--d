@@ -25,8 +25,8 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 17 | Customer panel autofill; uploaded menu opens | ✅ |
 | 18 | Fix unsupported buttons that bounce to main website | ✅ (audited: no dead links; root cause was login bounce, fixed) |
 | 19 | Portal consent line: single agree line + terms link | ✅ |
-| 20 | POS layout de-congested / well ordered | ⬜ |
-| 21 | Menu manager works; container works | ✅ (now persists server-side) |
+| 20 | POS layout de-congested / well ordered | ✅ (form 2×2, menu manager rebuilt) |
+| 21 | Menu manager works; container works | ✅ (persists server-side + rebuilt editor) |
 | 22 | CRM login page fits screen (no scroll/overflow) | ✅ (verified 390px, fits exactly) |
 | 23 | Font colour correct per theme | ✅ (light-mode input text fixed + verified) |
 | 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
