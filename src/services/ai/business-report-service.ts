@@ -224,8 +224,30 @@ export const generateAndPersistReport = async (
   type: 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   now = new Date(),
 ): Promise<{ id: string; created: boolean; content: ReportContent; periodStart: Date }> => {
+  // IMPORTANT: check whether this period's report already exists BEFORE calling
+  // buildReport(), because buildReport() hits the LLM. Computing metrics is a
+  // cheap DB-only step and gives us the period key, so a report that already
+  // exists for this week/month/year is returned without burning any AI tokens.
+  const metricsOnly = await computeMetrics(businessId, type, now);
+  const periodStart = metricsOnly.window.start;
+
+  const preExisting = await prisma.businessReport.findUnique({
+    where: { businessId_type_periodStart: { businessId, type, periodStart } },
+  });
+  if (preExisting) {
+    return {
+      id: preExisting.id,
+      created: false,
+      content: {
+        subject: preExisting.subject, previewText: preExisting.previewText, summary: preExisting.summary,
+        metrics: preExisting.keyMetricsJson as any, recommendations: preExisting.recommendationsJson as any,
+        llmUsed: preExisting.llmUsed,
+      } as ReportContent,
+      periodStart,
+    };
+  }
+
   const content = await buildReport(businessId, type, now);
-  const periodStart = content.metrics.window.start;
   const periodEnd = content.metrics.window.end;
 
   const existing = await prisma.businessReport.findUnique({

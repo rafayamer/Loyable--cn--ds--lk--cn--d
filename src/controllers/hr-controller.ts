@@ -66,6 +66,28 @@ const distanceMeters = (aLat: number, aLng: number, bLat: number, bLng: number):
 // radius but never allow more than 20 m, per requirement.
 const clockInRadius = (configured?: number | null) => Math.min(configured ?? 20, 20);
 
+// Paid annual-leave allotment per employee per calendar year. Once used up, any
+// further ANNUAL leave is automatically downgraded to UNPAID.
+const ANNUAL_LEAVE_DAYS = 20;
+const daysBetween = (a: Date, b: Date) => Math.max(1, Math.round((b.getTime() - a.getTime()) / 86400000) + 1);
+// Returns the leave type to actually store: keeps SICK/EMERGENCY/UNPAID as-is,
+// but converts ANNUAL to UNPAID when the employee has no paid days left this year.
+const resolveLeaveType = async (businessId: string, employeeId: string, requestedType: string, start: Date, end: Date): Promise<{ type: string; autoUnpaid: boolean }> => {
+  const type = requestedType || 'ANNUAL';
+  if (type !== 'ANNUAL') return { type, autoUnpaid: false };
+  const yearStart = new Date(Date.UTC(start.getUTCFullYear(), 0, 1));
+  const yearEnd = new Date(Date.UTC(start.getUTCFullYear(), 11, 31, 23, 59, 59));
+  const existing = await prisma.leaveRequest.findMany({
+    where: { businessId, employeeId, type: 'ANNUAL', status: { in: ['PENDING', 'APPROVED'] }, startDate: { gte: yearStart, lte: yearEnd } },
+    select: { startDate: true, endDate: true },
+  });
+  const usedDays = existing.reduce((t, l) => t + daysBetween(l.startDate, l.endDate), 0);
+  const requestDays = daysBetween(start, end);
+  // If this request pushes them past their paid allotment, it becomes unpaid.
+  if (usedDays + requestDays > ANNUAL_LEAVE_DAYS) return { type: 'UNPAID', autoUnpaid: true };
+  return { type: 'ANNUAL', autoUnpaid: false };
+};
+
 // Default onboarding checklist seeded onto every new employee.
 const DEFAULT_ONBOARDING = [
   { key: 'invite',     label: 'Send invite & temporary credentials', done: false },
@@ -524,14 +546,16 @@ hrRouter.get('/leave', requireRoles(...MANAGE) as any, wrap(async (req, res) => 
 hrRouter.post('/leave', requireRoles(...MANAGE) as any, wrap(async (req, res) => {
   const b = req.body ?? {};
   if (!b.employeeId || !b.startDate || !b.endDate) { res.status(400).json({ error: 'employeeId, startDate, endDate are required' }); return; }
+  const start = new Date(b.startDate); const end = new Date(b.endDate);
+  const { type, autoUnpaid } = await resolveLeaveType(bz(req), b.employeeId, b.type ?? 'ANNUAL', start, end);
   const request = await prisma.leaveRequest.create({
     data: {
       businessId: bz(req), employeeId: b.employeeId,
-      type: b.type ?? 'ANNUAL', startDate: new Date(b.startDate), endDate: new Date(b.endDate),
+      type, startDate: start, endDate: end,
       reason: b.reason ?? null, status: 'PENDING',
     },
   });
-  res.status(201).json({ request });
+  res.status(201).json({ request, autoUnpaid });
 }));
 
 hrRouter.post('/leave/:id/decision', requireRoles(...MANAGE) as any, wrap(async (req, res) => {
@@ -612,14 +636,16 @@ hrRouter.post('/me/leave', requireRoles(...ANY_STAFF) as any, wrap(async (req, r
   if (!employee) { res.status(404).json({ error: 'NO_STAFF_RECORD' }); return; }
   const b = req.body ?? {};
   if (!b.startDate || !b.endDate) { res.status(400).json({ error: 'startDate and endDate are required' }); return; }
+  const start = new Date(b.startDate); const end = new Date(b.endDate);
+  const { type, autoUnpaid } = await resolveLeaveType(bz(req), employee.id, b.type ?? 'ANNUAL', start, end);
   const request = await prisma.leaveRequest.create({
     data: {
       businessId: bz(req), employeeId: employee.id,
-      type: b.type ?? 'ANNUAL', startDate: new Date(b.startDate), endDate: new Date(b.endDate),
+      type, startDate: start, endDate: end,
       reason: b.reason ?? null, status: 'PENDING',
     },
   });
-  res.status(201).json({ request });
+  res.status(201).json({ request, autoUnpaid });
 }));
 
 // ================================================================

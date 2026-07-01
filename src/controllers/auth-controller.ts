@@ -418,6 +418,9 @@ const meHandler = async (req: Request, res: Response): Promise<void> => {
             fbrSandbox:      true,
             fbrEnabled:      true,
             gstRate:         true,
+            latitude:            true,
+            longitude:           true,
+            checkInRadiusMeters: true,
             subscription: {
               select: { tier: true, status: true, monthlyMessageQuota: true },
             },
@@ -503,6 +506,10 @@ const UpdateMeSchema = z.object({
   referralReferrerPoints: z.number().int().min(0).max(100000).optional(),
   // POS menu — stored in portalSettings so it persists across devices/browsers.
   posMenu:                z.array(z.any()).max(2000).optional(),
+  // Business location — used for staff GPS clock-in and customer QR check-in.
+  latitude:               z.number().min(-90).max(90).nullable().optional(),
+  longitude:              z.number().min(-180).max(180).nullable().optional(),
+  checkInRadiusMeters:    z.number().int().min(5).max(500).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
@@ -555,6 +562,9 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.redeemRate      !== undefined && { redeemRate:      body.redeemRate }),
         ...(body.minRedeemPoints !== undefined && { minRedeemPoints: body.minRedeemPoints }),
         ...(body.pointsExpiryDays!== undefined && { pointsExpiryDays:body.pointsExpiryDays }),
+        ...(body.latitude           !== undefined && { latitude:            body.latitude }),
+        ...(body.longitude          !== undefined && { longitude:           body.longitude }),
+        ...(body.checkInRadiusMeters!== undefined && { checkInRadiusMeters: body.checkInRadiusMeters }),
         ...(portalSettingsUpdate !== undefined && { portalSettings:  portalSettingsUpdate as any }),
       } as any,
       select: { id: true, name: true, industry: true, currency: true, logoUrl: true,

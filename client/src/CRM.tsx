@@ -261,6 +261,8 @@ const MODULES=[
     {id:"ops-hr",label:"HR & Staff"},
     {id:"coming-soon",label:"What's Next"},
   ]},
+  // Always available to every team member — clock in/out and leave.
+  {id:"my-work",icon:UserCheck,label:"My Work",roles:[ROLES.OWNER,ROLES.MANAGER,ROLES.STAFF,ROLES.CASHIER],tabs:[]},
   {id:"settings",icon:Settings,label:"Settings",roles:[ROLES.OWNER],tabs:[]},
 ];
 // Sidebar renders modules
@@ -505,7 +507,7 @@ const MyHRCard=({ct}:any)=>{
     catch(e:any){setMsg(e?.message?.includes("OUT_OF_RANGE")||e?.message==="OUT_OF_RANGE"?"You're too far from work to clock in. Get within 20 m of the business.":(e?.message||"Couldn't clock in."));}finally{setBusy(false);}};
   const clockOut=async()=>{setBusy(true);setMsg("");try{await api.hr.meClockOut();setMsg("✓ Clocked out");await load();}catch(e:any){setMsg(e?.message||"Couldn't clock out.");}finally{setBusy(false);}};
   const applyLeave=async()=>{if(!lf.startDate||!lf.endDate){setMsg("Pick leave dates.");return;}setBusy(true);setMsg("");
-    try{await api.hr.meLeave(lf);setMsg("✓ Leave request sent to your manager");setLeaveOpen(false);setLf({type:"ANNUAL",startDate:"",endDate:"",reason:""});await load();}
+    try{const r=await api.hr.meLeave(lf);setMsg(r?.autoUnpaid?"✓ Sent — you've used your paid leave, so this will be unpaid.":"✓ Leave request sent to your manager");setLeaveOpen(false);setLf({type:"ANNUAL",startDate:"",endDate:"",reason:""});await load();}
     catch(e:any){setMsg(e?.message||"Couldn't send leave request.");}finally{setBusy(false);}};
   if(me===undefined||me===null)return null; // not a linked staff login → nothing to show
   const open=me.openAttendance;const set=(k:string,v:any)=>setLf((p:any)=>({...p,[k]:v}));
@@ -530,6 +532,30 @@ const MyHRCard=({ct}:any)=>{
       {(me.leave??[]).length>0&&<div className="flex flex-wrap gap-1.5 mt-3">
         {(me.leave??[]).slice(0,4).map((l:any)=>(<span key={l.id} className="text-[10px] px-2 py-1 rounded-lg" style={{background:ct.bg2,color:ct.tx3}}>{l.type} {new Date(l.startDate).toLocaleDateString([], {month:"short",day:"numeric"})} · <span style={{color:STATUS_COLOR[l.status]||ct.tx3}}>{l.status}</span></span>))}
       </div>}
+    </div>
+  );
+};
+
+// ── My Work — self-service window every team member can reach ──────
+const MyWorkPage=()=>{
+  const ct=useCard();
+  const [data,setData]=useState<any>(undefined);
+  useEffect(()=>{api.hr.me().then(setData).catch(()=>setData(null));},[]);
+  const upcoming=(data?.recent??[]); // recent attendance
+  return(
+    <div>
+      <div className="mb-5"><h1 className="text-2xl font-bold" style={{color:ct.tx}}>My Work</h1><p className="text-sm mt-1" style={{color:ct.tx3}}>Clock in and out, and manage your leave.</p></div>
+      <MyHRCard ct={ct}/>
+      {data&&!data.employee&&<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>Your login isn't linked to a staff record yet. Ask your manager to add you in HR → Directory.</div>}
+      {data?.employee&&<>
+        <h3 className="text-sm font-bold mt-5 mb-2" style={{color:ct.tx}}>My recent attendance</h3>
+        <div className="grid gap-2">{upcoming.length===0?<div className="rounded-xl p-6 text-center text-xs" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No attendance yet — clock in above to start.</div>:
+          upcoming.map((a:any)=>(<div key={a.id} className="rounded-xl p-2.5 flex items-center justify-between" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+            <span className="text-xs" style={{color:ct.tx2}}>{new Date(a.clockIn).toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"})}</span>
+            <span className="text-[11px]" style={{color:ct.tx3}}>{new Date(a.clockIn).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} → {a.clockOut?new Date(a.clockOut).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"on shift"}</span>
+          </div>))}
+        </div>
+      </>}
     </div>
   );
 };
@@ -6033,6 +6059,24 @@ const SettingsPage=({wa,onConnect}:any)=>{
   const [currencyVal,setCurrencyVal]=useState(()=>localStorage.getItem("biz_currency")||"GBP");
   const [timezoneVal,setTimezoneVal]=useState(()=>localStorage.getItem("biz_timezone")||"Europe/London");
   const [logoUrlVal,setLogoUrlVal]=useState(()=>localStorage.getItem("biz_logo")||"");
+  const [lat,setLat]=useState<string>("");const [lng,setLng]=useState<string>("");const [radius,setRadius]=useState<number>(20);
+  const [locMsg,setLocMsg]=useState("");const [locSaving,setLocSaving]=useState(false);
+  useEffect(()=>{api.settings.get().then(d=>{const bz=d?.user?.business??d?.business;if(bz?.latitude!=null)setLat(String(bz.latitude));if(bz?.longitude!=null)setLng(String(bz.longitude));if(bz?.checkInRadiusMeters!=null)setRadius(bz.checkInRadiusMeters);}).catch(()=>{});},[]);
+  const useCurrentLocation=()=>{
+    setLocMsg("");
+    if(!navigator.geolocation){setLocMsg("Location isn't available on this device.");return;}
+    navigator.geolocation.getCurrentPosition(
+      p=>{setLat(p.coords.latitude.toFixed(6));setLng(p.coords.longitude.toFixed(6));setLocMsg("✓ Captured — stand at your business, then Save.");},
+      ()=>setLocMsg("Please allow location access, then try again."),
+      {enableHighAccuracy:true,timeout:10000});
+  };
+  const saveLocation=async()=>{
+    setLocSaving(true);setLocMsg("");
+    try{
+      await api.settings.update({latitude:lat?Number(lat):null,longitude:lng?Number(lng):null,checkInRadiusMeters:Math.min(radius||20,20)});
+      setLocMsg("✓ Business location saved.");
+    }catch(e:any){setLocMsg(e?.message||"Couldn't save location.");}finally{setLocSaving(false);}
+  };
   const [bizSaved,setBizSaved]=useState(false);
   const [requiresApproval,setRequiresApproval]=useState(false);
   const [inviteEmail,setInviteEmail]=useState("");
@@ -6095,6 +6139,21 @@ const SettingsPage=({wa,onConnect}:any)=>{
               <div className="text-[10px] text-slate-500 mt-1">
                 POS type: <span className="text-orange-400 font-semibold">{getPosBizType()||"Not detected"}</span> · Changes POS layout automatically
               </div>
+            </div>
+          </div>
+          {/* Business location — required for staff GPS clock-in and customer QR check-in */}
+          <div className="rounded-xl p-3.5" style={{background:"rgba(249,115,22,0.05)",border:"1px solid rgba(249,115,22,0.2)"}}>
+            <div className="flex items-center gap-2 mb-1"><Globe size={13} className="text-orange-400"/><span className="text-xs font-semibold text-white">Business Location (GPS)</span></div>
+            <p className="text-[10px] text-slate-400 mb-3">Set your shop's exact spot. Staff can only clock in when they're within 20 m of it. Stand inside your business and tap “Use my current location”.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+              <div><label className="text-[10px] text-slate-400 block mb-1">Latitude</label><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="51.5074" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+              <div><label className="text-[10px] text-slate-400 block mb-1">Longitude</label><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="-0.1278" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+              <div><label className="text-[10px] text-slate-400 block mb-1">Radius (m, max 20)</label><input type="number" min={5} max={20} value={radius} onChange={e=>setRadius(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+              <button onClick={useCurrentLocation} className="px-3 py-2 rounded-lg text-xs font-medium text-orange-300" style={{border:"1px solid rgba(249,115,22,0.3)",background:"rgba(249,115,22,0.08)"}}>📍 Use my location</button>
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              <button onClick={saveLocation} disabled={locSaving} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{locSaving?"Saving…":"Save location"}</button>
+              {locMsg&&<span className="text-[11px]" style={{color:locMsg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{locMsg}</span>}
             </div>
           </div>
           <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
@@ -7906,6 +7965,7 @@ export default function App({onLogout,onRoleChange}:{onLogout?:()=>void,onRoleCh
     case"reports":return<FeatureGate feature="ai_reports" requiredPlan="Growth"><BusinessReportsPage/></FeatureGate>;
     case"portal":return<CustomersUnifiedPage onSelect={c=>{setSelC(c);setPage("profile");}} setPage={nav}/>;
     case"ops-hr":return<FeatureGate feature="hr" requiredPlan="Growth"><HRStaffPage/></FeatureGate>;
+    case"my-work":return<MyWorkPage/>;
     case"coming-soon":case"integrations":case"ops-branches":case"ops-inventory":case"ops-devices":case"ops-ordering":return<ComingSoonHub/>;
     case"billing":return<BillingPlansPage/>;
     case"settings":return<SettingsPage wa={wa} onConnect={()=>{}}/>;
