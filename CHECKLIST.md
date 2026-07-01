@@ -23,7 +23,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 15 | Customer portal theme matches brand | ✅ |
 | 16 | Portal: login = number + name; "earn more points" adds email, DOB, Google review; business sets Google Maps location | ✅ |
 | 17 | Customer panel autofill; uploaded menu opens | ✅ |
-| 18 | Fix unsupported buttons that bounce to main website | ⬜ |
+| 18 | Fix unsupported buttons that bounce to main website | ✅ (audited: no dead links; root cause was login bounce, fixed) |
 | 19 | Portal consent line: single agree line + terms link | ✅ |
 | 20 | POS layout de-congested / well ordered | ⬜ |
 | 21 | Menu manager works; container works | ✅ (now persists server-side) |
