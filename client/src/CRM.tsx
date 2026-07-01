@@ -3854,7 +3854,22 @@ const LoyaltyPage=()=>{
   const update=(i:number,field:string,val:any)=>setTiers(p=>p.map((t,j)=>j===i?{...t,[field]:val}:t));
   const save=async()=>{
     setSaving(true);
-    try{await api.analytics.updateTiers(tiers);setSaved(true);setTimeout(()=>setSaved(false),2500);}
+    // Send only the fields the API validates, with correct types. Loaded tier
+    // data can carry minTotalSpend as a string and benefitsJson as null (from the
+    // DB), which fail validation on an unmodified save. Coerce the numbers and
+    // omit benefitsJson unless it's a valid array (omitting preserves existing).
+    const payload=tiers.map((t:any)=>{
+      const row:any={
+        rank:          Number(t.rank),
+        name:          String(t.name??""),
+        minVisitCount: Number(t.minVisitCount??0),
+        minTotalSpend: Number(t.minTotalSpend??0),
+      };
+      if(typeof t.color==="string"&&/^#[0-9A-Fa-f]{6}$/.test(t.color))row.color=t.color;
+      if(Array.isArray(t.benefitsJson))row.benefitsJson=t.benefitsJson;
+      return row;
+    });
+    try{await api.analytics.updateTiers(payload);setSaved(true);setTimeout(()=>setSaved(false),2500);}
     catch(e:any){alert(e?.message||"Couldn't save tiers. Please try again.");}finally{setSaving(false);}
   };
   const tierColors=["#cd7f32","#c0c0c0","#ffd700","#b19cd9","#ef4444","#06b6d4"];
