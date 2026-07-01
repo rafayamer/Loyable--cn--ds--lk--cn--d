@@ -783,6 +783,7 @@ async function bootstrap() {
   await loadRouter('./controllers/integrations-controller',  'integrationsRouter',    '/api/integrations');
   await loadRouter('./controllers/totp-controller',          'totpRouter',            '/api/totp');
   await loadRouter('./controllers/hr-controller',            'hrRouter',              '/api/hr');
+  await loadRouter('./controllers/screens-controller',       'screensRouter',         '/api/screens');
   await loadRouter('./controllers/ai-advisor-controller',    'aiAdvisorRouter',       '/api/ai-advisor');
   await loadRouter('./controllers/entitlements-controller',  'plansPublicRouter',     '/api/plans');
   await loadRouter('./controllers/entitlements-controller',  'entitlementsRouter',    '/api/entitlements');

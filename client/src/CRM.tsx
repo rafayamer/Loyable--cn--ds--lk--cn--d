@@ -6082,6 +6082,60 @@ const DeleteAccountModal=({onClose,onDeleted}:{onClose:()=>void,onDeleted:()=>vo
   );
 };
 
+// ── Screens: display-terminal logins locked to one panel ──────────
+const SCREEN_PANELS=[
+  {v:"dashboard_analytics",l:"Dashboard & Analytics"},
+  {v:"pos_full",l:"Complete POS"},
+  {v:"pos_sales",l:"Only New Sales (POS)"},
+  {v:"pos_kitchen",l:"Only Kitchen (POS)"},
+  {v:"inventory",l:"Only Inventory"},
+  {v:"crm",l:"Customers, Loyalty & Campaigns"},
+  {v:"all",l:"Everything"},
+];
+const ScreensPanel=()=>{
+  const [screens,setScreens]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  const [panel,setPanel]=useState("pos_sales");const [pw,setPw]=useState("");const [busy,setBusy]=useState(false);const [msg,setMsg]=useState("");
+  const load=()=>api.screens.list().then(d=>setScreens(d.screens??[])).catch(()=>{}).finally(()=>setLoading(false));
+  useEffect(()=>{load();},[]);
+  const create=async()=>{
+    if(pw.length<4){setMsg("Set a password of at least 4 characters.");return;}
+    setBusy(true);setMsg("");
+    try{await api.screens.create({panel,password:pw});setPw("");await load();}
+    catch(e:any){setMsg(e?.message||"Couldn't create the screen.");}finally{setBusy(false);}
+  };
+  const remove=async(s:any)=>{if(!confirm("Delete this screen login? The device using it will lose access."))return;await api.screens.remove(s.id).then(load).catch(()=>{});};
+  const resetPw=async(s:any)=>{const p=prompt("New password for this screen (min 4 chars):");if(!p||p.length<4)return;await api.screens.update(s.id,{password:p}).then(load).catch(()=>{});};
+  const label=(v:string)=>SCREEN_PANELS.find(p=>p.v===v)?.l||v;
+  return(
+    <div className="space-y-4">
+      <p className="text-xs text-slate-400">Create a login for each display or till in your business. Each screen opens straight into just the panel you choose — nothing else. IDs and passwords are shown here so you can set them up on any device.</p>
+      <div className="gc rounded-xl p-4" style={CARD}>
+        <div className="text-sm font-semibold text-white mb-3">Add a screen</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+          <div><label className="text-[10px] text-slate-400 block mb-1">What it shows</label>
+            <select value={panel} onChange={e=>setPanel(e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}>{SCREEN_PANELS.map(p=><option key={p.v} value={p.v} style={{background:"#1a1030"}}>{p.l}</option>)}</select></div>
+          <div><label className="text-[10px] text-slate-400 block mb-1">Set password</label>
+            <input value={pw} onChange={e=>setPw(e.target.value)} placeholder="At least 4 characters" className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none" style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)"}}/></div>
+          <button onClick={create} disabled={busy} className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>{busy?"Creating…":"Create screen"}</button>
+        </div>
+        {msg&&<div className="text-[11px] mt-2" style={{color:msg.startsWith("✓")?"#22c55e":"#f59e0b"}}>{msg}</div>}
+        <div className="text-[10px] text-slate-500 mt-1">The login email is generated automatically as screen(number)(business)(branch)@theloyaly.com.</div>
+      </div>
+      {loading?<div className="text-center py-8 text-xs text-slate-500">Loading…</div>:
+       screens.length===0?<div className="gc rounded-xl p-8 text-center text-sm text-slate-400" style={CARD}>No screens yet. Add one above.</div>:
+       <div className="gc rounded-xl overflow-hidden" style={CARD}><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b border-white/5 text-slate-400">
+         <th className="text-left py-2.5 px-4">Screen</th><th className="text-left py-2.5 px-3">Login ID</th><th className="text-left py-2.5 px-3">Password</th><th className="text-left py-2.5 px-3">Shows</th><th className="text-right py-2.5 px-4"></th></tr></thead>
+         <tbody>{screens.map(s=>(<tr key={s.id} className="border-b border-white/5">
+           <td className="py-2.5 px-4 text-white font-medium">#{s.screenNumber}</td>
+           <td className="py-2.5 px-3 font-mono text-orange-300">{s.email}</td>
+           <td className="py-2.5 px-3 font-mono text-slate-200">{s.password||"—"}</td>
+           <td className="py-2.5 px-3 text-slate-300">{label(s.screenPanel)}</td>
+           <td className="py-2.5 px-4 text-right whitespace-nowrap"><button onClick={()=>resetPw(s)} className="text-slate-400 hover:text-white mr-3" title="Reset password"><RotateCcw size={13} className="inline"/></button><button onClick={()=>remove(s)} className="text-red-400 hover:text-red-300" title="Delete"><Trash2 size={13} className="inline"/></button></td>
+         </tr>))}</tbody></table></div></div>}
+    </div>
+  );
+};
+
 const GdprTab=({onAccountDeleted}:{onAccountDeleted:()=>void})=>{
   const [purging,setPurging]=useState(false);
   const [phone,setPhone]=useState("");
@@ -6210,7 +6264,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
     }catch{}
   };
   const isPK=countryVal==="PK";
-  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
+  const tabs=[{id:"business",label:"Business",icon:Building},{id:"loyalty",label:"Loyalty Program",icon:Award},{id:"screens",label:"Screens",icon:Smartphone},{id:"whatsapp",label:"WhatsApp API",icon:MessageSquare},{id:"rbac",label:"Team & Roles",icon:Users},{id:"integrations",label:"Integrations",icon:Link},{id:"stripe",label:"Billing",icon:CreditCard},{id:"security",label:"Security",icon:Shield},{id:"gdpr",label:"Privacy",icon:Globe},...(isPK?[{id:"fbr",label:"FBR / Tax",icon:Receipt}]:[]) ];
   return(
     <div className="space-y-4">
       <div><h1 className="text-xl font-bold" style={{color:ct.tx}}>Settings</h1><p className="text-xs mt-0.5" style={{color:ct.tx2}}>Manage your business, loyalty program, team, and billing</p></div>
@@ -6322,6 +6376,7 @@ const SettingsPage=({wa,onConnect}:any)=>{
         {tab==="stripe"&&<BillingTab/>}
         {tab==="security"&&<div className="space-y-4"><TwoFactorPanel/>{[{l:"Secure Password Storage",d:"Your passwords are encrypted using industry-leading methods — never stored in plain text",on:true},{l:"Auto Sign-Out",d:"Your session expires automatically after a period of inactivity to keep your account safe",on:true},{l:"Session Protection",d:"If someone steals your session, they are automatically signed out on all devices",on:true},{l:"Instant Logout",d:"When you sign out, your session is immediately invalidated everywhere",on:true},{l:"Login Attempt Limits",d:"Too many failed login attempts will temporarily lock access to prevent break-ins",on:true},{l:"DDoS & Bot Protection",d:"Your account is protected from automated attacks and suspicious traffic",on:true},{l:"Data Isolation",d:"Your customer data is completely separate from other businesses — no data is ever shared",on:true}].map((s,i)=><div key={i} className="flex items-center justify-between py-3 border-b border-white/5"><div><div className="text-xs font-medium text-white">{s.l}</div><div className="text-xs text-slate-500">{s.d}</div></div><div className={`w-10 h-5 rounded-full relative flex-shrink-0 ${s.on?"bg-orange-500":"bg-white/10"}`}><div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:s.on?22:2}}/></div></div>)}</div>}
         {tab==="gdpr"&&<GdprTab onAccountDeleted={()=>{localStorage.clear();window.location.href="/";}}/>}
+        {tab==="screens"&&<ScreensPanel/>}
         {tab==="fbr"&&<FBRPanel/>}
       </div>
     </div>

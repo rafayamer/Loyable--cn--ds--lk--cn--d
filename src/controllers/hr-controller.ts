@@ -67,10 +67,18 @@ const distanceMeters = (aLat: number, aLng: number, bLat: number, bLng: number):
 // radius but never allow more than 20 m, per requirement.
 const clockInRadius = (configured?: number | null) => Math.min(configured ?? 20, 20);
 
-// Paid annual-leave allotment per employee per calendar year. Once used up, any
-// further ANNUAL leave is automatically downgraded to UNPAID.
-const ANNUAL_LEAVE_DAYS = 20;
+// Paid annual-leave allotment: per-employee override ?? business default
+// (portalSettings.annualLeaveDays) ?? 20. Once used up, further ANNUAL leave is
+// automatically downgraded to UNPAID.
+const DEFAULT_ANNUAL_LEAVE_DAYS = 20;
 const daysBetween = (a: Date, b: Date) => Math.max(1, Math.round((b.getTime() - a.getTime()) / 86400000) + 1);
+const allowedAnnualLeave = async (businessId: string, employeeId: string): Promise<number> => {
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, businessId }, select: { annualLeaveDays: true } });
+  if (emp?.annualLeaveDays != null) return emp.annualLeaveDays;
+  const biz = await prisma.business.findUnique({ where: { id: businessId }, select: { portalSettings: true } });
+  const fromSettings = (biz?.portalSettings as any)?.annualLeaveDays;
+  return typeof fromSettings === 'number' ? fromSettings : DEFAULT_ANNUAL_LEAVE_DAYS;
+};
 // Returns the leave type to actually store: keeps SICK/EMERGENCY/UNPAID as-is,
 // but converts ANNUAL to UNPAID when the employee has no paid days left this year.
 const resolveLeaveType = async (businessId: string, employeeId: string, requestedType: string, start: Date, end: Date): Promise<{ type: string; autoUnpaid: boolean }> => {
@@ -84,8 +92,9 @@ const resolveLeaveType = async (businessId: string, employeeId: string, requeste
   });
   const usedDays = existing.reduce((t, l) => t + daysBetween(l.startDate, l.endDate), 0);
   const requestDays = daysBetween(start, end);
+  const allotment = await allowedAnnualLeave(businessId, employeeId);
   // If this request pushes them past their paid allotment, it becomes unpaid.
-  if (usedDays + requestDays > ANNUAL_LEAVE_DAYS) return { type: 'UNPAID', autoUnpaid: true };
+  if (usedDays + requestDays > allotment) return { type: 'UNPAID', autoUnpaid: true };
   return { type: 'ANNUAL', autoUnpaid: false };
 };
 
@@ -609,6 +618,19 @@ hrRouter.post('/leave/:id/decision', requireRoles(...MANAGE) as any, wrap(async 
     where: { id: existing.id },
     data:  { status: decision, approverId: req.tenantContext.userId, decidedAt: new Date() },
   });
+  // Approving leave converts any scheduled shifts in that range to LEAVE;
+  // revoking (CANCELLED) restores them to SCHEDULED.
+  if (decision === 'APPROVED') {
+    await prisma.shift.updateMany({
+      where: { businessId, employeeId: existing.employeeId, startsAt: { gte: existing.startDate }, endsAt: { lte: new Date(existing.endDate.getTime() + 86400000) }, status: { not: 'LEAVE' } },
+      data:  { status: 'LEAVE' },
+    }).catch(() => {});
+  } else if (decision === 'CANCELLED') {
+    await prisma.shift.updateMany({
+      where: { businessId, employeeId: existing.employeeId, startsAt: { gte: existing.startDate }, endsAt: { lte: new Date(existing.endDate.getTime() + 86400000) }, status: 'LEAVE' },
+      data:  { status: 'SCHEDULED' },
+    }).catch(() => {});
+  }
   res.json({ request });
 }));
 

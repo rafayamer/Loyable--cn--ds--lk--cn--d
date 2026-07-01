@@ -375,6 +375,14 @@ export const api = {
     update: (body: any) => put<any>('/auth/me', body),
   },
 
+  // ── Screens (display terminals, owner-only) ───────────────────
+  screens: {
+    list:   () => get<{ screens: any[] }>('/screens'),
+    create: (body: { panel: string; password: string; branchLocationId?: string }) => post<any>('/screens', body),
+    update: (id: string, body: any) => patch<any>(`/screens/${id}`, body),
+    remove: (id: string) => del<any>(`/screens/${id}`),
+  },
+
   // ── WhatsApp / WAHA ───────────────────────────────────────────
   whatsapp: {
     status:       () => get<any>('/whatsapp/status'),

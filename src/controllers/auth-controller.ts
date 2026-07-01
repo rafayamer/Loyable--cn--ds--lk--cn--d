@@ -514,6 +514,8 @@ const UpdateMeSchema = z.object({
   latitude:               z.number().min(-90).max(90).nullable().optional(),
   longitude:              z.number().min(-180).max(180).nullable().optional(),
   checkInRadiusMeters:    z.number().int().min(5).max(500).optional(),
+  // Business-wide paid annual-leave default (per-employee override lives in HR).
+  annualLeaveDays:        z.number().int().min(0).max(365).optional(),
 });
 
 const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
@@ -527,7 +529,7 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
     let portalSettingsUpdate: Record<string, unknown> | undefined;
     if (body.emailBonusPoints !== undefined || body.birthdayBonusPoints !== undefined
         || body.referralBonusPoints !== undefined || body.referralReferrerPoints !== undefined
-        || body.posMenu !== undefined) {
+        || body.posMenu !== undefined || body.annualLeaveDays !== undefined) {
       const current = await prisma.business.findUnique({
         where:  { id: businessId },
         select: { portalSettings: true },
@@ -540,6 +542,7 @@ const updateMeHandler = async (req: Request, res: Response): Promise<void> => {
         ...(body.referralBonusPoints    !== undefined && { referralBonusPoints:    body.referralBonusPoints }),
         ...(body.referralReferrerPoints !== undefined && { referralReferrerPoints: body.referralReferrerPoints }),
         ...(body.posMenu !== undefined && { posMenu: body.posMenu }),
+        ...(body.annualLeaveDays !== undefined && { annualLeaveDays: body.annualLeaveDays }),
       };
     }
 
