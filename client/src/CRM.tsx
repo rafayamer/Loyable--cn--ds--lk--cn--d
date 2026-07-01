@@ -6354,17 +6354,33 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
   useEffect(()=>{
     api.automations.list().then(d=>setAutos(d.workflows??[])).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
-  const toggle=async(id:string,isActive:boolean)=>{
+  const reload=()=>api.automations.list().then(d=>setAutos(d.workflows??[])).catch(()=>{});
+  const toggle=async(id:string,isOn:boolean)=>{
     setToggling(id);
     try{
-      if(isActive) await api.automations.deactivate(id);
+      if(isOn) await api.automations.deactivate(id);
       else await api.automations.activate(id);
-      setAutos(p=>p.map(a=>a.id===id?{...a,isActive:!a.isActive,status:isActive?"PAUSED":"ACTIVE"}:a));
+      setAutos(p=>p.map(a=>a.id===id?{...a,status:isOn?"PAUSED":"ACTIVE"}:a));
     }catch(e:any){
-      alert(e?.message?.includes("COMPILE")||e?.message?.includes("NOT_COMPILED")
-        ? "This automation needs to be finished and saved before it can be turned on. Open it, complete the steps, then save."
-        : (e?.message||"Couldn't update this automation. Please try again."));
+      const msg=e?.message||"";
+      // Server and UI were out of sync — reflect the real state and don't alarm.
+      if(msg.includes("ALREADY_ACTIVE")){setAutos(p=>p.map(a=>a.id===id?{...a,status:"ACTIVE"}:a));}
+      else if(msg.includes("NOT_FOUND_OR_INACTIVE")||msg.includes("ALREADY")){await reload();}
+      else if(msg.includes("COMPILE")||msg.includes("NOT_COMPILED"))
+        alert("This automation needs to be finished and saved before it can be turned on. Open it, complete the steps, then save.");
+      else alert(msg||"Couldn't update this automation. Please try again.");
     }finally{setToggling(null);}
+  };
+  const removeAuto=async(a:any)=>{
+    if(!confirm(`Delete automation "${a.name}"? This can't be undone.`))return;
+    setToggling(a.id);
+    try{
+      // An active workflow can't be deleted until it's paused — pause first.
+      if(a.status==="ACTIVE"){try{await api.automations.deactivate(a.id);}catch{}}
+      await api.automations.delete(a.id);
+      setAutos(p=>p.filter(x=>x.id!==a.id));
+    }catch(e:any){alert(e?.message||"Couldn't delete this automation. Please try again.");await reload();}
+    finally{setToggling(null);}
   };
   const TRIGGER_NAMES:Record<string,string>={BIRTHDAY:"🎂 Birthday",INACTIVITY:"⏰ Inactivity",VISIT_MILESTONE:"⭐ Visit Milestone",TIER_UPGRADE:"👑 Tier Upgrade",SENTIMENT_NEGATIVE:"⚠️ Negative Sentiment",NEW_CUSTOMER:"👋 New Customer",SPEND_THRESHOLD:"💰 Spend Threshold"};
   const ACTION_NAMES:Record<string,string>={SEND_WHATSAPP:"💬 Send WhatsApp",AWARD_POINTS:"⭐ Award Points",CHANGE_SEGMENT:"🏷️ Change Segment",SEND_EMAIL:"📧 Send Email",MANAGER_ALERT:"🔔 Manager Alert",DEDUCT_POINTS:"➖ Deduct Points"};
@@ -6386,9 +6402,9 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
       {loading?<div className="space-y-3">{[...Array(3)].map((_,i)=><Skeleton key={i} h="h-24"/>)}</div>:autos.length===0?
         <div className="gc rounded-xl p-8 text-center" style={CARD}><Zap size={32} className="text-slate-600 mx-auto mb-3"/><p className="text-slate-400 text-sm">No automations yet</p><button onClick={onBuilder} className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-white" style={{background:"linear-gradient(135deg,#F97316,#EA6A0E)"}}>Build First Automation</button></div>:
       <div className="space-y-3">{autos.map((a:any)=>{
-        const on=a.isActive??a.on??false;
+        const on=a.status==="ACTIVE";
         const compiledActions=(a.compiledJson?.actions||a.compiledJson||[]);
-        const triggerType=a.trigger?.type||a.trigger||(typeof a.compiledJson?.trigger==="object"?a.compiledJson?.trigger?.type:a.compiledJson?.trigger)||"—";
+        const triggerType=a.triggerType||a.trigger?.type||a.trigger||(typeof a.compiledJson?.trigger==="object"?a.compiledJson?.trigger?.type:a.compiledJson?.trigger)||"—";
         return(
         <div key={a.id} className={`gc rounded-xl p-4 transition-all ${on?"":"opacity-60"}`} style={{...CARD,border:`1px solid ${on?"rgba(249,115,22,0.3)":"rgba(255,255,255,0.07)"}`}}>
           <div className="flex items-center justify-between gap-3">
@@ -6398,12 +6414,13 @@ const AutomationsPage=({onBuilder}:{onBuilder:()=>void})=>{
             </div>
             <div className="flex items-center gap-2">
               <button onClick={()=>setLogsFor(a)} className="px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300 font-medium flex items-center gap-1" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)"}} title="View run logs"><Activity size={11}/>Logs</button>
-              <button onClick={()=>toggle(a.id,on)} disabled={toggling===a.id} className={`w-10 h-5 rounded-full relative flex-shrink-0 transition-colors ${on?"bg-orange-500":"bg-white/10"} disabled:opacity-50`}>
+              <button onClick={()=>toggle(a.id,on)} disabled={toggling===a.id} title={on?"Turn off":"Turn on"} className={`w-10 h-5 rounded-full relative flex-shrink-0 transition-colors ${on?"bg-orange-500":"bg-white/10"} disabled:opacity-50`}>
                 {toggling===a.id?<RefreshCw size={10} className="absolute inset-0 m-auto text-white animate-spin"/>:<div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all" style={{left:on?22:2}}/>}
               </button>
+              <button onClick={()=>removeAuto(a)} disabled={toggling===a.id} title="Delete automation" className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"><Trash2 size={13}/></button>
             </div>
           </div>
-          {(a.executionCount>0||a.conversions>0)&&<div className="flex gap-4 mt-3 pt-3 border-t border-white/5"><div className="text-xs text-slate-400">Ran: <span className="text-white font-medium">{a.executionCount??0}</span></div><div className="text-xs text-slate-400">Converted: <span className="text-green-400 font-medium">{a.conversions??0}</span></div>{a.executionCount>0&&<div className="text-xs text-slate-400">Rate: <span className="text-cyan-400 font-medium">{Math.round(((a.conversions??0)/(a.executionCount||1))*100)}%</span></div>}</div>}
+          {(a.runCount>0||a.convertedCount>0)&&<div className="flex gap-4 mt-3 pt-3 border-t border-white/5"><div className="text-xs text-slate-400">Ran: <span className="text-white font-medium">{a.runCount??0}</span></div><div className="text-xs text-slate-400">Converted: <span className="text-green-400 font-medium">{a.convertedCount??0}</span></div>{a.runCount>0&&<div className="text-xs text-slate-400">Rate: <span className="text-cyan-400 font-medium">{a.conversionRate??Math.round(((a.convertedCount??0)/(a.runCount||1))*100)}%</span></div>}</div>}
         </div>
       )})}</div>}
     </div>
