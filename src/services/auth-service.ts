@@ -502,29 +502,34 @@ export const createStaffDirect = async (
   const INVITABLE_ROLES: Role[] = [Role.BRANCH_MANAGER, Role.CASHIER, Role.MARKETING_STAFF];
   if (!INVITABLE_ROLES.includes(role)) throw new Error('ROLE_NOT_INVITABLE');
 
-  // Generate login email: firstname.role42@theloyaly.com
+  // Generate login email in the format (name)(business)(3-digit)(role)(branch):
+  //   e.g. john.smithcafe482manager1@theloyaly.com
   const firstName   = name.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   const roleSuffix  = role === Role.BRANCH_MANAGER ? 'manager'
                     : role === Role.MARKETING_STAFF ? 'marketing'
                     : 'staff';
-  const num         = Math.floor(Math.random() * 100) + 1;
-  const loginEmail  = `${firstName}.${roleSuffix}${num}@theloyaly.com`;
-  const normalizedPersonal = personalEmail.toLowerCase().trim();
-
-  // Check loginEmail not already taken in this business
-  const existing = await prisma.user.findFirst({ where: { email: loginEmail, businessId } });
-  if (existing) {
-    // Retry with a different number (rare collision)
-    const num2 = Math.floor(Math.random() * 100) + 1;
-    const loginEmail2 = `${firstName}.${roleSuffix}${num2}@theloyaly.com`;
-    const existing2 = await prisma.user.findFirst({ where: { email: loginEmail2, businessId } });
-    if (existing2) throw new Error('Could not generate unique login email. Please try again.');
-    return createStaffDirect({ ...input });
-  }
-
+  const bizRow      = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true } });
+  const bizPart     = (bizRow?.name || 'biz').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'biz';
+  // Branch defaults to 1; if a specific branch is given, number it by creation order.
+  let branchNum = 1;
   if (branchLocationId) {
     const branch = await prisma.branchLocation.findFirst({ where: { id: branchLocationId, businessId }, select: { id: true } });
     if (!branch) throw new Error('BRANCH_NOT_FOUND_IN_BUSINESS');
+    const ordered = await prisma.branchLocation.findMany({ where: { businessId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+    const idx = ordered.findIndex(b => b.id === branchLocationId);
+    branchNum = idx >= 0 ? idx + 1 : 1;
+  }
+  const mkEmail = () => `${firstName}${bizPart}${Math.floor(Math.random() * 900) + 100}${roleSuffix}${branchNum}@theloyaly.com`;
+  const normalizedPersonal = personalEmail.toLowerCase().trim();
+
+  // Ensure the generated login email is unique within this business (retry a few
+  // times on the rare 3-digit collision before giving up).
+  let loginEmail = mkEmail();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const clash = await prisma.user.findFirst({ where: { email: loginEmail, businessId }, select: { id: true } });
+    if (!clash) break;
+    if (attempt === 4) throw new Error('Could not generate unique login email. Please try again.');
+    loginEmail = mkEmail();
   }
 
   const passwordHash = await hashPassword(password);

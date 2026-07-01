@@ -19,7 +19,7 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 11 | Heatmap should look like a heatmap, not a table | ✅ |
 | 12 | CRM fully mobile-friendly | ✅ (verified 390px: dashboard, POS, settings, login — no overflow) |
 | 13 | GDPR values (proper) | ✅ (access/export + retention + erasure) |
-| 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | 🟡 (drainDelay/stalled tuning already in place) |
+| 14 | Redis → fixed plan / reduce command volume (BullMQ tuning) | ✅ (drainDelay/stalled tuning + 60s status poll) |
 | 15 | Customer portal theme matches brand | ✅ |
 | 16 | Portal: login = number + name; "earn more points" adds email, DOB, Google review; business sets Google Maps location | ✅ |
 | 17 | Customer panel autofill; uploaded menu opens | ✅ |
@@ -29,16 +29,16 @@ Legend: ✅ shipped & build-verified · 🟡 partial / needs your live test · �
 | 21 | Menu manager works; container works | ✅ (persists server-side + rebuilt editor) |
 | 22 | CRM login page fits screen (no scroll/overflow) | ✅ (verified 390px, fits exactly) |
 | 23 | Font colour correct per theme | ✅ (light-mode input text fixed + verified) |
-| 24 | Glassmorphic design present | 🟡 (site done; CRM partial) |
-| 25 | Analytics (i) tooltips with easy explanations | 🟡 (KPI tooltips added; more panels pending) |
+| 24 | Glassmorphic design present | ✅ (glass .gc/liquid-glass cards across CRM) |
+| 25 | Analytics (i) tooltips with easy explanations | ✅ (KPIs + all chart panels) |
 | 26 | HR looks like a weekly planner form | ✅ (weekly rota planner grid) |
-| 27 | Passwords set by owner only; staff email format (name)(business)(3-digit)(role)(branch)@theloyaly.com | 🟡 (email format generator exists) |
+| 27 | Passwords set by owner only; staff email format (name)(business)(3-digit)(role)(branch)@theloyaly.com | ✅ (owner sets password; email matches format) |
 | 30 | HR performance & rewards works / makes sense | ✅ (per-staff scorecards: shifts/hours/points) |
 | 31 | HR included in Growth plan | ✅ |
 | 32 | Role-based: only that role's panel is shown | ✅ |
 | 32b | Pro = everything unlimited except branches & integrations | ✅ |
 | 33 | Rewards calculator illustrative/easy + (i) | ✅ |
-| 34 | Website wording non-technical | 🟡 (rewritten in site overhaul; review) |
+| 34 | Website wording non-technical | ✅ (audited: no jargon in copy) |
 | 35 | Signup shows "continue to …railway.app" | ⚙️ Google OAuth consent screen (Cloud Console) |
 | 36 | theloyaly.com default; dashboard shows railway url | ⚙️ Railway env vars (API_BASE_URL/FRONTEND_URL) |
 | 37 | www.theloyaly.com doesn't work | ⚙️ DNS/Cloudflare CNAME |
