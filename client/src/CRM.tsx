@@ -1119,9 +1119,23 @@ const HRRewards=({ct}:any)=>{
   const load=()=>api.hr.rewards().then(d=>setRewards(d.rewards??[])).catch(()=>{});
   useEffect(()=>{api.hr.employees().then(d=>setEmps(d.employees??[])).catch(()=>{});load();},[]);
   const empName=(id:string)=>emps.find(e=>e.id===id)?.fullName||id.slice(0,6);
+  // Recognition leaderboard — total approved points per person, most first.
+  const board=Object.values(rewards.filter((r:any)=>r.status!=="REJECTED").reduce((acc:any,r:any)=>{
+    const k=r.employeeId;acc[k]=acc[k]||{id:k,pts:0,count:0};acc[k].pts+=(r.points||0);acc[k].count+=1;return acc;
+  },{})).sort((a:any,b:any)=>b.pts-a.pts).slice(0,5);
+  const medal=(i:number)=>i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`;
   return(
     <div>
-      <div className="flex items-center justify-between mb-4"><p className="text-xs" style={{color:ct.tx3}}>Points, bonuses and recognition to motivate your team.</p><HBtn ct={ct} onClick={()=>setModal(true)}><Plus size={13} className="inline mr-1"/>Grant Reward</HBtn></div>
+      <div className="flex items-center justify-between mb-4"><p className="text-xs" style={{color:ct.tx3}}>Give points, bonuses and shout-outs to recognise great work. Points build up into a recognition leaderboard.</p><HBtn ct={ct} onClick={()=>setModal(true)}><Plus size={13} className="inline mr-1"/>Grant Reward</HBtn></div>
+      {board.length>0&&<div className="rounded-2xl p-4 mb-4" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
+        <div className="text-sm font-bold mb-2" style={{color:ct.tx}}>🏆 Recognition leaderboard</div>
+        <div className="space-y-1.5">{board.map((b:any,i:number)=>(
+          <div key={b.id} className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2" style={{color:ct.tx2}}><span className="w-5 text-center">{medal(i)}</span>{empName(b.id)}</span>
+            <span className="font-semibold" style={{color:"#f59e0b"}}>{b.pts.toLocaleString()} pts <span className="font-normal" style={{color:ct.tx3}}>· {b.count} reward{b.count>1?"s":""}</span></span>
+          </div>
+        ))}</div>
+      </div>}
       <div className="grid gap-2">{rewards.length===0?<div className="rounded-2xl p-8 text-center text-sm" style={{background:ct.card,border:`1px dashed ${ct.bdr}`,color:ct.tx3}}>No rewards granted yet.</div>:
         rewards.map(r=>(
         <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:ct.card,border:`1px solid ${ct.bdr}`}}>
