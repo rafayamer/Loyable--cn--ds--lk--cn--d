@@ -22,7 +22,7 @@ function PortalPhoneInput({value,onChange}:{value:string;onChange:(v:string)=>vo
   return(
     <div className="flex items-center gap-2 px-4 py-3 rounded-2xl" style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)"}}>
       <select value={cc} onChange={e=>onChange(e.target.value+local)} style={{...base,width:"72px",flexShrink:0,cursor:"pointer",borderRadius:"8px",padding:"2px 4px"}} className="bg-transparent">
-        {PORTAL_CC.map(c=><option key={c.code} value={c.code} style={{background:"#2d1b6e"}}>{c.flag} {c.code}</option>)}
+        {PORTAL_CC.map(c=><option key={c.code} value={c.code} style={{background:"#2A1508"}}>{c.flag} {c.code}</option>)}
       </select>
       <div style={{width:"1px",height:"20px",background:"rgba(255,255,255,0.2)"}}/>
       <input type="tel" value={local} onChange={e=>onChange(cc+e.target.value.replace(/[^\d\s\-]/g,"").replace(/^0+/,""))} placeholder="7700 900000" required autoComplete="tel" className="flex-1 bg-transparent text-white placeholder-orange-400 outline-none text-sm"/>
@@ -170,7 +170,7 @@ function LoginScreen({ slug, bizName, portalSettings, onLogin }: { slug: string;
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c 0%,#2d1052 50%,#3d1a6e 100%)' }}>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1A0F0A 0%,#2A1508 50%,#3A1E0C 100%)' }}>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
@@ -504,7 +504,7 @@ function GiftCardsTab({ cards, currency, onRedeem, onGift, onDeletionResponse }:
         </div>
       )}
       {(cards ?? []).map((c: any) => (
-        <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#C2410C,#9333ea 60%,#c026d3)', boxShadow: '0 10px 30px rgba(124,58,237,0.35)' }}>
+        <div key={c.id} className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#F97316,#EA6A0E 60%,#C2410C)', boxShadow: '0 10px 30px rgba(249,115,22,0.35)' }}>
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}/>
           <div className="absolute -right-2 bottom-2 w-20 h-20 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}/>
           <div className="flex items-center justify-between mb-6 relative">
@@ -650,7 +650,7 @@ function ReferralTab({ customer, referralCount, bizName }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1e0a3c,#3d1a6e)', color: 'white' }}>
+      <div className="rounded-3xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A0F0A,#3A1E0C)', color: 'white' }}>
         <div className="text-4xl mb-2">🎉</div>
         <h3 className="font-black text-xl mb-1">Refer Friends</h3>
         <p className="text-orange-200 text-sm">Share your code and earn bonus points when friends join!</p>
@@ -984,13 +984,13 @@ export default function CustomerPortal() {
   }, [slug]);
 
   if (!loaded) return (
-    <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#1A0F0A,#3A1E0C)' }}>
       <ThemeLogo dark={true} className="w-12 h-12 object-contain animate-pulse"/>
     </div>
   );
 
   if (!slug || !biz) return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1e0a3c,#3d1a6e)' }}>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#1A0F0A,#3A1E0C)' }}>
       <div className="text-center text-white">
         <ThemeLogo dark={true} className="w-14 h-14 object-contain mx-auto mb-4"/>
         <h1 className="font-black text-xl mb-2">Loyalty Portal</h1>
